@@ -9,6 +9,7 @@ function AddNewNode(data:FileNode,parentId:string,type:FileType,name:string):Fil
         id:Date.now().toString(),
         name,
         type,
+        isExpanded: false,
         children:[]
       }]
     }

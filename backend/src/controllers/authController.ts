@@ -1,11 +1,9 @@
 import { Request, Response } from 'express';
 import { AuthService } from '../services/authService';
-import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../utils/tokenUtils';
-import { User } from '../../model/User';
+import { AppError } from '../utils/AppError';
 
 const isProduction = process.env.NODE_ENV === 'production';
 
-// Cookie options
 const cookieOptions = {
   httpOnly: true,
   secure: isProduction,
@@ -14,105 +12,57 @@ const cookieOptions = {
 
 export const AuthController = {
   async register(req: Request, res: Response) {
-    try {
-      const { name, email, password, confirmPassword } = req.body;
+    const { name, email, password, confirmPassword } = req.body;
 
-      if (!name || !email || !password || !confirmPassword) {
-        return res.status(400).json({ message: 'All fields are required' });
-      }
-
-      if (password !== confirmPassword) {
-        return res.status(400).json({ message: 'Passwords do not match' });
-      }
-
-      const user = await AuthService.registerUser({ name, email, password });
-
-      const accessToken = generateAccessToken(user._id.toString());
-      const refreshToken = generateRefreshToken(user._id.toString());
-
-      await AuthService.addRefreshToken(user._id.toString(), refreshToken);
-
-      res.cookie('accessToken', accessToken, { ...cookieOptions, maxAge: 15 * 60 * 1000 }); // 15 mins
-      res.cookie('refreshToken', refreshToken, { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 * 1000 }); // 7 days
-
-      res.status(201).json({ user, message: 'User registered successfully' });
-    } catch (error: any) {
-      if (error.message === 'User already exists') {
-        return res.status(409).json({ message: error.message });
-      }
-      res.status(500).json({ message: 'Server error' });
+    if (!name || !email || !password || !confirmPassword) {
+      throw new AppError('All fields are required', 400);
     }
+
+    if (password !== confirmPassword) {
+      throw new AppError('Passwords do not match', 400);
+    }
+
+    const { user, accessToken, refreshToken } = await AuthService.register({ name, email, password });
+
+    res.cookie('accessToken', accessToken, { ...cookieOptions, maxAge: 15 * 60 * 1000 }); // 15 mins
+    res.cookie('refreshToken', refreshToken, { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 * 1000 }); // 7 days
+
+    res.status(201).json({ user, message: 'User registered successfully' });
   },
 
   async login(req: Request, res: Response) {
-    try {
-      const { email, password } = req.body;
+    const { email, password } = req.body;
 
-      if (!email || !password) {
-        return res.status(400).json({ message: 'Email and password are required' });
-      }
-
-      const user = await AuthService.loginUser(email);
-      if (!user) {
-        return res.status(401).json({ message: 'Invalid credentials' });
-      }
-
-      const isMatch = await user.comparePassword(password);
-      if (!isMatch) {
-         return res.status(401).json({ message: 'Invalid credentials' });
-      }
-
-      const accessToken = generateAccessToken(user._id.toString());
-      const refreshToken = generateRefreshToken(user._id.toString());
-
-      await AuthService.addRefreshToken(user._id.toString(), refreshToken);
-
-      res.cookie('accessToken', accessToken, { ...cookieOptions, maxAge: 15 * 60 * 1000 });
-      res.cookie('refreshToken', refreshToken, { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 * 1000 });
-
-      res.status(200).json({ user, message: 'Logged in successfully' });
-    } catch (error: any) {
-      res.status(500).json({ message: 'Server error' });
+    if (!email || !password) {
+      throw new AppError('Email and password are required', 400);
     }
+
+    const { user, accessToken, refreshToken } = await AuthService.login({ email, password });
+
+    res.cookie('accessToken', accessToken, { ...cookieOptions, maxAge: 15 * 60 * 1000 });
+    res.cookie('refreshToken', refreshToken, { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 * 1000 });
+
+    res.status(200).json({ user, message: 'Logged in successfully' });
   },
 
   async refresh(req: Request, res: Response) {
     const cookies = req.cookies;
     if (!cookies?.refreshToken) {
-      return res.status(401).json({ message: 'Unauthorized' });
+      throw new AppError('Unauthorized', 401);
     }
 
-    const refreshToken = cookies.refreshToken;
-
     try {
-      const decoded: any = verifyRefreshToken(refreshToken);
-      const user = await User.findById(decoded.userId);
+      const { accessToken, refreshToken } = await AuthService.refresh(cookies.refreshToken);
 
-      // Token Rotation: Check if token exists in DB, if not, it means compromised
-      if (!user || !user.refreshTokens.includes(refreshToken)) {
-        if (user) {
-          // Compromised token detected, clear all tokens to re-login user
-          await AuthService.clearAllTokens(user._id.toString());
-        }
-        res.clearCookie('accessToken', cookieOptions);
-        res.clearCookie('refreshToken', cookieOptions);
-        return res.status(403).json({ message: 'Forbidden: Compromised Token' });
-      }
-
-      const newAccessToken = generateAccessToken(user._id.toString());
-      const newRefreshToken = generateRefreshToken(user._id.toString());
-
-      // Replace old with new token
-      await AuthService.replaceRefreshToken(user._id.toString(), refreshToken, newRefreshToken);
-
-      res.cookie('accessToken', newAccessToken, { ...cookieOptions, maxAge: 15 * 60 * 1000 });
-      res.cookie('refreshToken', newRefreshToken, { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 * 1000 });
+      res.cookie('accessToken', accessToken, { ...cookieOptions, maxAge: 15 * 60 * 1000 });
+      res.cookie('refreshToken', refreshToken, { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 * 1000 });
 
       res.status(200).json({ message: 'Token refreshed' });
-    } catch (error: any) {
-       res.clearCookie('accessToken', cookieOptions);
-       res.clearCookie('refreshToken', cookieOptions);
-       return res.status(403).json({ message: 'Forbidden' });
+    } catch(err: any) {
+      // Clear cookies if refresh fails
+      res.clearCookie('accessToken', cookieOptions);
+      res.clearCookie('refreshToken', cookieOptions);
+      throw err; // Let the global error handler catch it
     }
   },
 
@@ -122,30 +72,18 @@ export const AuthController = {
         return res.sendStatus(204); // No content
     }
 
-    const refreshToken = cookies.refreshToken;
-
-    try {
-      const decoded: any = verifyRefreshToken(refreshToken);
-      if (decoded && decoded.userId) {
-          await AuthService.removeRefreshToken(decoded.userId, refreshToken);
-      }
-    } catch(err) {
-       // Ignore verification error on logout
-    }
-
+    await AuthService.logout(cookies.refreshToken);
     res.clearCookie('accessToken', cookieOptions);
     res.clearCookie('refreshToken', cookieOptions);
     res.status(200).json({ message: 'Logged out successfully' });
   },
 
   async getMe(req: Request, res: Response) {
-     if (!req.user) {
-        return res.status(401).json({ message: 'Unauthorized' });
-     }
-     const user = await User.findById(req.user.userId);
-     if (!user) {
-        return res.status(404).json({ message: 'User not found' });
-     }
-     res.status(200).json({ user });
+    if (!req.user) {
+      throw new AppError('Unauthorized', 401);
+    }
+    
+    const user = await AuthService.getMe(req.user._id.toString());
+    res.status(200).json({ user });
   }
 };

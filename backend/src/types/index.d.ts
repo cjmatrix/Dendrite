@@ -1,3 +1,5 @@
+import { IUser } from '../models/User';
+
 export interface UserPayload {
   userId: string;
 }
@@ -5,7 +7,7 @@ export interface UserPayload {
 declare global {
   namespace Express {
     interface Request {
-      user?: UserPayload;
+      user?: IUser;
     }
   }
 }

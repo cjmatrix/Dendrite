@@ -1,1 +1,38 @@
 @import "tailwindcss";
+
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --theme-bg-base: #141414;
+    --theme-bg-surface: #1a1a1a;
+    --theme-bg-elevated: #1a1a1a;
+    --theme-border: #27272a; /* zinc-800 */
+  }
+
+  html,
+  body,
+  #root {
+    background-color: var(--theme-bg-base);
+    color: #f3f4f6; /* gray-100 */
+  }
+}
+
+/* Custom Scrollbar for pure dark theme */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--theme-bg-base);
+}
+
+::-webkit-scrollbar-thumb {
+  background:#303030 ;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--theme-bg-elevated);
+}

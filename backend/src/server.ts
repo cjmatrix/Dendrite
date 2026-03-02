@@ -4,6 +4,8 @@ import cookieParser from 'cookie-parser';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import authRoutes from './routes/authRoutes';
+import folderRoutes from './routes/folderRoutes';
+import chatRoutes from './routes/chatRoutes';
 
 dotenv.config();
 
@@ -16,14 +18,19 @@ app.use(cors({
   origin: process.env.CLIENT_URL || 'http://localhost:5173',
   credentials: true 
 }));
+import { errorHandler } from './middleware/errorHandler';
 
-app.use('/api/auth', authRoutes);
+app.use('/api/v1/auth', authRoutes);
+app.use("/api/v1/folders",folderRoutes)
+app.use("/api/v1/chats",chatRoutes)
 
 app.get('/', (req, res) => {
   res.send('API is running...');
 });
 
-// Connect to MongoDB
+
+app.use(errorHandler);
+
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/dentrites';
 mongoose.connect(MONGODB_URI)
   .then(() => {
