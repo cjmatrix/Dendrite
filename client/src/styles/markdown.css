@@ -1,7 +1,7 @@
 /* Markdown response styling */
 .markdown-body {
   color: #e2e8f0;
-  font-size: 17px;
+  font-size: 16px;
   line-height: 1.9;
   letter-spacing: 0.01em;
 }
@@ -41,10 +41,16 @@
   color: #cbd5e1;
 }
 
-.markdown-body ul,
+.markdown-body ul {
+  margin: 1em 0;
+  padding-left: 1.75em;
+  list-style-type: disc;
+}
+
 .markdown-body ol {
   margin: 1em 0;
   padding-left: 1.75em;
+  list-style-type: decimal;
 }
 
 .markdown-body li {
@@ -53,7 +59,7 @@
 }
 
 .markdown-body li::marker {
-  color: #6366f1;
+  color: #e2e8f0;
 }
 
 .markdown-body a {

@@ -121,7 +121,7 @@ export const sendMessage = async(req: Request, res: Response) => {
         res.write(`data: ${JSON.stringify({ text })}\n\n`);
     }
 
-    // Save the complete model reply to DB
+   
     await saveModelReply(id, req.user._id.toString(), fullReply);
 
     res.write('data: [DONE]\n\n');

@@ -1,10 +1,12 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { useDispatch, useSelector, type TypedUseSelectorHook } from 'react-redux';
 import authReducer from './authSlice';
+import explorerReducer from './explorerSlice';
 
 export const store = configureStore({
   reducer: {
     auth: authReducer,
+    explorer: explorerReducer,
   },
   // DevTools are enabled by default in RTK
 });

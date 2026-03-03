@@ -5,6 +5,8 @@ import type { FileNode, FileType } from "../types/types";
 import { FileItem } from "./FileItem";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../api/axios";
+import { useAppDispatch, useAppSelector } from "../store/store";
+import { setTree } from "../store/explorerSlice";
 
 export default function FileExplorer() {
   const queryClient = useQueryClient();
@@ -25,13 +27,8 @@ export default function FileExplorer() {
     },
   });
 
-  const [data, setData] = useState<FileNode>({
-    id: "root",
-    name: "PROJECT",
-    type: "folder",
-    isExpanded: false,
-    children: [],
-  });
+  const dispatch = useAppDispatch();
+  const data = useAppSelector((state) => state.explorer.tree);
 
   useEffect(() => {
     if (!folders) return;
@@ -68,13 +65,15 @@ export default function FileExplorer() {
 
       folderNodes.push(...rootChats);
     }
-    setData({
-      id: "root",
-      name: "PROJECT",
-      type: "folder",
-      isExpanded: true,
-      children: folderNodes,
-    });
+    dispatch(
+      setTree({
+        id: "root",
+        name: "PROJECT",
+        type: "folder",
+        isExpanded: true,
+        children: folderNodes,
+      }),
+    );
   }, [folders, chats]);
   const [width, setWidth] = useState(256);
 
@@ -229,7 +228,7 @@ export default function FileExplorer() {
     <div
       ref={sidebarRef}
       style={{ width: `${width}px` }}
-      className="relative h-screen bg-[var(--theme-bg-base)] border-r border-zinc-900 flex-shrink-0 flex flex-col pt-2"
+      className="relative h-screen bg-neutral-950 border-r border-zinc-900 flex-shrink-0 flex flex-col pt-2"
     >
       {/* Header with action icons */}
       <div className="flex items-center justify-between px-4 mb-2">

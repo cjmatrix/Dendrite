@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import { Paperclip, Bot, Share, MoreVertical, ArrowUp } from "lucide-react";
 import { useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -8,6 +8,8 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import "../styles/markdown.css";
 import remarkGfm from "remark-gfm";
+import { useAppSelector } from "../store/store";
+import type { FileNode } from "../types/types";
 
 interface Message {
   _id?: string;
@@ -58,7 +60,7 @@ const markdownComponents = {
             margin: 0,
             padding: "1.25rem",
             background: "transparent",
-            fontSize: "14px",
+            fontSize: "14.5px",
             lineHeight: "1.6",
           }}
         >
@@ -67,7 +69,7 @@ const markdownComponents = {
       </div>
     ) : (
       <code
-        className="bg-[var(--theme-bg-surface)] px-1.5 py-0.5 rounded-md text-blue-300 text-[13.5px] border border-white/5"
+        className="bg-[var(--theme-bg-surface)] px-1.5 py-0.5 rounded-md text-blue-300 text-[14.5px] border border-white/5"
         {...props}
       >
         {children}
@@ -93,14 +95,14 @@ const MessageBubble = React.memo(({ msg }: { msg: Message }) => {
       {isUser ? (
         <div className="flex flex-col items-end max-w-[85%] md:max-w-[70%]">
           <div className="flex items-center gap-2 mb-1.5 px-1">
-            <span className="text-[11px] text-gray-500 font-medium">
+            <span className="text-[12px] text-gray-500 font-medium">
               {time}
             </span>
-            <span className="text-[12px] font-semibold text-gray-300">
+            <span className="text-[13px] font-semibold text-gray-300">
               Researcher
             </span>
           </div>
-          <div className="px-5 py-3.5 rounded-2xl rounded-tr-sm bg-[var(--theme-bg-surface)] border border-zinc-800 text-[15px] leading-relaxed whitespace-pre-wrap text-gray-200 shadow-sm">
+          <div className="px-5 py-3.5 rounded-2xl rounded-tr-sm bg-[var(--theme-bg-surface)] border border-zinc-800 text-[16px] leading-relaxed whitespace-pre-wrap text-gray-200 shadow-sm">
             {msg.content}
           </div>
         </div>
@@ -111,14 +113,14 @@ const MessageBubble = React.memo(({ msg }: { msg: Message }) => {
           </div>
           <div className="flex-1 flex flex-col min-w-0">
             <div className="flex items-center gap-2 mb-1.5">
-              <span className="text-[12px] font-semibold text-gray-200">
+              <span className="text-[13px] font-semibold text-gray-200">
                 AI ASSISTANT
               </span>
-              <span className="text-[11px] text-gray-500 font-medium">
+              <span className="text-[12px] text-gray-500 font-medium">
                 {time}
               </span>
             </div>
-            <div className="markdown-body text-[15px] leading-relaxed text-gray-300 w-full overflow-hidden">
+            <div className="markdown-body text-[16px] leading-relaxed text-gray-300 w-full overflow-hidden">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 components={markdownComponents}
@@ -140,6 +142,34 @@ const ChatWindow: React.FC = () => {
   const [isStreaming, setIsStreaming] = useState(false);
   const queryClient = useQueryClient();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const { tree } = useAppSelector((state) => state.explorer);
+
+  const breadCrumbs = useMemo(() => {
+    const path: string[] = [];
+
+    function findPath(node: FileNode): boolean {
+      if (node.type === "folder") {
+        path.push(node.name);
+      }
+
+      if (node.id === id) {
+        return true;
+      }
+
+      for (const child of node.children || []) {
+        if (findPath(child)) return true;
+      }
+
+      if (node.type === "folder") {
+        path.pop();
+      }
+      return false;
+    }
+
+    findPath(tree);
+    return path;
+  }, [tree, id]);
 
   const { data: chat, isLoading } = useQuery({
     queryKey: ["chat", id],
@@ -231,8 +261,12 @@ const ChatWindow: React.FC = () => {
       {/* Top Header */}
       <div className="h-14 border-b border-white/5 flex items-center justify-between px-6 bg-[var(--theme-bg-base)] shrink-0">
         <div className="flex items-center text-sm font-medium">
-          <span className="text-gray-500">Project Alpha</span>
-          <span className="mx-2 text-gray-600">/</span>
+          {breadCrumbs.map((crumb, index) => (
+            <span key={index} className="flex items-center">
+              <span className="text-gray-500">{crumb}</span>
+              <span className="mx-2 text-gray-600">/</span>
+            </span>
+          ))}
           <span className="text-gray-200">{chat?.title || "New Chat"}</span>
         </div>
         <div className="flex items-center gap-4 text-gray-400">
@@ -277,14 +311,14 @@ const ChatWindow: React.FC = () => {
                   </div>
                   <div className="flex-1 flex flex-col min-w-0">
                     <div className="flex items-center gap-2 mb-1.5">
-                      <span className="text-[12px] font-semibold text-gray-200">
+                      <span className="text-[13px] font-semibold text-gray-200">
                         AI ASSISTANT
                       </span>
-                      <span className="text-[11px] text-gray-500 font-medium">
+                      <span className="text-[12px] text-gray-500 font-medium">
                         typing...
                       </span>
                     </div>
-                    <div className="markdown-body text-[15px] leading-relaxed text-gray-300 w-full overflow-hidden">
+                    <div className="markdown-body text-[16px] leading-relaxed text-gray-300 w-full overflow-hidden">
                       <ReactMarkdown
                         remarkPlugins={[remarkGfm]}
                         components={markdownComponents}
@@ -305,7 +339,7 @@ const ChatWindow: React.FC = () => {
                   </div>
                   <div className="flex-1 flex flex-col min-w-0">
                     <div className="flex items-center gap-2 mb-1.5">
-                      <span className="text-[12px] font-semibold text-gray-200">
+                      <span className="text-[13px] font-semibold text-gray-200">
                         AI ASSISTANT
                       </span>
                     </div>
@@ -347,7 +381,7 @@ const ChatWindow: React.FC = () => {
             <input
               type="text"
               placeholder="Ask follow-up or research next steps..."
-              className="flex-1 bg-transparent border-none outline-none px-3 text-[15px] text-gray-200 placeholder:text-gray-500"
+              className="flex-1 bg-transparent border-none outline-none px-3 text-[16px] text-gray-200 placeholder:text-gray-500"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {
