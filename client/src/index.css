@@ -18,6 +18,22 @@
   }
 }
 
+.katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  margin: 1.5em 0;
+}
+
+.katex {
+  font-size: 1.1em;
+  padding: 0.4rem 0.8rem;
+  background-color: #242424;
+  border-radius: 10px;
+  font-weight: bolder;
+  margin: 1rem 0.3rem;
+  
+}
+
 /* Custom Scrollbar for pure dark theme */
 ::-webkit-scrollbar {
   width: 8px;
@@ -29,7 +45,7 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background:#303030 ;
+  background: #303030;
   border-radius: 4px;
 }
 

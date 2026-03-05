@@ -6,7 +6,7 @@ export interface IOutboxEvent extends Document {
     sourceId: mongoose.Types.ObjectId;
     sourceType: string;
     userId: mongoose.Types.ObjectId;
-    content: string;
+    content: any;
     metadata: Record<string, any>;
   };
   status: "pending" | "processed" | "failed";
@@ -39,7 +39,7 @@ const outboxEventSchema = new Schema<IOutboxEvent>(
         enum: ["code_block", "pdf_chunk", "chat_summary"],
       },
       userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
-      content: { type: String, required: true },
+      content: { type: Schema.Types.Mixed, required: true },
       metadata: { type: Schema.Types.Mixed, default: {} },
     },
     status: {

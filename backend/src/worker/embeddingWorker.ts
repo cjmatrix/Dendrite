@@ -7,13 +7,13 @@ import crypto from "crypto";
 
 interface EmbeddingJobData {
   outboxId: string;
-  text: string;
+  content: any;
 }
 
 const embeddingWorker = new Worker<EmbeddingJobData>(
   "embedding-queue",
   async (job: Job<EmbeddingJobData>) => {
-    const { outboxId, text } = job.data;
+    const { outboxId, content } = job.data;
 
     try {
       const outboxEvent = await OutboxEvent.findById(outboxId);
@@ -21,14 +21,21 @@ const embeddingWorker = new Worker<EmbeddingJobData>(
         throw new Error(`Outbox event not found: ${outboxId}`);
       }
 
-      const embedding = await generateEmbedding(text, "RETRIEVAL_DOCUMENT");
-      console.log(embedding);
+      const [codeEmbedding, descriptionEmbedding] = await Promise.all([
+        generateEmbedding(content.code, "RETRIEVAL_DOCUMENT"),
+        generateEmbedding(content.description, "RETRIEVAL_DOCUMENT"),
+      ]);
+
+      
 
       await qdrantClient.upsert(COLLECTION_NAME, {
         points: [
           {
-            id: crypto.randomUUID(), 
-            vector: embedding,
+            id: crypto.randomUUID(),
+            vector:{
+              code:codeEmbedding,
+              description: descriptionEmbedding,
+            },
             payload: {
               sourceId: outboxEvent.payload.sourceId.toString(),
               sourceType: outboxEvent.payload.sourceType,
@@ -40,7 +47,7 @@ const embeddingWorker = new Worker<EmbeddingJobData>(
         ],
       });
 
-      console.log(`✅ Embedded outbox ${outboxId} (${embedding.length} dims)`);
+      console.log(`✅ Embedded outbox ${outboxId}  dims)`);
 
       await OutboxEvent.findByIdAndUpdate(outboxId, {
         status: "processed",
@@ -54,7 +61,7 @@ const embeddingWorker = new Worker<EmbeddingJobData>(
         error: error.message,
         $inc: { retryCount: 1 },
       });
-      console.log(error.message)
+      console.log(error.message);
       throw error; // BullMQ will retry based on attempts config
     }
   },

@@ -69,6 +69,7 @@ export const deleteChatService = async (chatId: string, userId: string) => {
 };
 
 import { searchSimilarCode } from "./qdrantService";
+import generateCodeDescription from "../utils/AIDescription";
 
 export const prepareMessageService = async (
   chatId: string,
@@ -84,22 +85,23 @@ export const prepareMessageService = async (
   chat.messages.push({ role: "user", content: userMessage });
   await chat.save();
 
-  
   const similarCode = await searchSimilarCode(userMessage, userId, chatId);
+  console.log(similarCode);
+
 
   let dynamicSystemInstruction = systemInstruction;
   if (similarCode.length > 0) {
     const contextText = similarCode
       .map(
         (item, index) =>
-          `[Snippet ${index + 1} - ${item.language}]\n\`\`\`${item.language}\n${item.content}\n\`\`\``,
+          `[Snippet ${index + 1} - ${item.language}]\n\`\`\`${item.language}\n${item.content.code}\n\`\`\`\nDescription: ${item.content.description}`,
       )
       .join("\n\n");
 
     dynamicSystemInstruction += `\n\nHere is some context from the user's previously written code that may be relevant to their query. Use it if applicable:\n\n${contextText}`;
   }
 
-  const recentMessages = chat.messages.slice(-1);
+  const recentMessages = chat.messages.slice(-10);
 
   const contents = [
     {
@@ -148,12 +150,16 @@ export const saveModelReply = async (
     await chat.save({ session });
 
     const codeBlocks = extractCodeBlocks(modelReply);
-    const docs = codeBlocks.map((block) => ({
-      userId,
-      chatId,
-      code: block.code,
-      language: block.language,
-    }));
+    // console.log(codeBlocks);
+    const docs = await Promise.all(
+      codeBlocks.map(async (block) => ({
+        userId,
+        chatId,
+        code: block.code,
+        language: block.language,
+        description: await generateCodeDescription(block.code, block.language),
+      })),
+    );
 
     const savedBlocks = await CodeBlock.insertMany(docs, { session });
 
@@ -164,7 +170,10 @@ export const saveModelReply = async (
           sourceId: block._id,
           sourceType: "code_block",
           userId,
-          content: block.code,
+          content: {
+            code: block.code,
+            description: block.description,
+          },
           metadata: { language: block.language, chatId },
         },
         status: "pending",

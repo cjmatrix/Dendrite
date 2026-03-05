@@ -2,13 +2,13 @@ import ai from "../config/AIConfig";
 
 async function generateCodeDescription(code: string, language: string) {
   const response = await ai.models.generateContent({
-    model: "gemini-2.5-flash-lite",
+    model: "gemini-2.5-flash",
     contents: [
       {
         role: "user",
         parts: [
           {
-            text: `Summarize what this ${language} code does in one short sentence (max 20 words). No markdown, no code, just a plain description.\n\n${code}`,
+           text: `Summarize this ${language} code in 1 sentence (max 30 words). Mention function names, variable names, and what it does. No markdown:\n\n${code}`,
           },
         ],
       },

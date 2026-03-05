@@ -9,7 +9,7 @@ export const qdrantClient = new QdrantClient({
 
 export const COLLECTION_NAME = "code_blocks";
 
-// Initialize collection if it doesn't exist
+
 export async function initQdrant() {
   try {
     const collections = await qdrantClient.getCollections();
@@ -20,8 +20,8 @@ export async function initQdrant() {
     if (!exists) {
       await qdrantClient.createCollection(COLLECTION_NAME, {
         vectors: {
-          size: 3072, // Matches current Gemini API dimensions
-          distance: "Cosine",
+          code: { size: 3072, distance: "Cosine" }, // for raw code embedding
+          description: { size: 3072, distance: "Cosine" },
         },
       });
       console.log(`✅ Qdrant collection '${COLLECTION_NAME}' created.`);

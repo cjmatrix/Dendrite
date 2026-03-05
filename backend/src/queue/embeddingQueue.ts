@@ -6,9 +6,9 @@ const embeddingQueue = new Queue("embedding-queue", {
 });
 
 
-export default async function embeddingCodeDesc(outboxTask:IOutboxEvent,content:string){
+export default async function embeddingCodeDesc(outboxTask:IOutboxEvent,content:any){
     await embeddingQueue.add('process-vector', { 
       outboxId: outboxTask._id, 
-      text: content
+      content: content
     }, { attempts: 5, backoff: { type: 'exponential', delay: 1000 } });
 }

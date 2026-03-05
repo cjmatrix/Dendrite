@@ -1,131 +1,145 @@
-import { Request, Response } from 'express';
-import { createChatService, getChatsService, getChatByIdService, updateChatService, deleteChatService, prepareMessageService, saveModelReply } from '../services/chatService';
-import ai from '../config/AIConfig';
+import { Request, Response } from "express";
+import {
+  createChatService,
+  getChatsService,
+  getChatByIdService,
+  updateChatService,
+  deleteChatService,
+  prepareMessageService,
+  saveModelReply,
+} from "../services/chatService";
+import ai from "../config/AIConfig";
 
-export const createChat = async(req: Request, res: Response) => {
+export const createChat = async (req: Request, res: Response) => {
+  if (!req.user) {
+    res.status(401).json({ message: "Unauthorized" });
+    return;
+  }
 
-    if (!req.user) {
-        res.status(401).json({ message: 'Unauthorized' });
-        return;
-    }
+  const { title, folderId } = req.body;
 
-    const { title, folderId } = req.body;
+  const data = await createChatService(
+    req.user._id.toString(),
+    title,
+    folderId,
+  );
 
-    const data = await createChatService(req.user._id.toString(), title, folderId);
+  res.status(201).json({
+    success: true,
+    data,
+  });
+};
 
-    res.status(201).json({
-        success: true,
-        data
-    })
-}
+export const getChats = async (req: Request, res: Response) => {
+  if (!req.user) {
+    res.status(401).json({ message: "Unauthorized" });
+    return;
+  }
 
-export const getChats = async(req: Request, res: Response) => {
+  const data = await getChatsService(req.user._id.toString());
 
-    if (!req.user) {
-        res.status(401).json({ message: 'Unauthorized' });
-        return;
-    }
+  res.status(200).json({
+    success: true,
+    data,
+  });
+};
 
-    const data = await getChatsService(req.user._id.toString());
+export const getChatById = async (req: Request, res: Response) => {
+  if (!req.user) {
+    res.status(401).json({ message: "Unauthorized" });
+    return;
+  }
 
-    res.status(200).json({
-        success: true,
-        data
-    })
-}
+  const id = req.params.id as string;
 
-export const getChatById = async(req: Request, res: Response) => {
+  const data = await getChatByIdService(id, req.user._id.toString());
 
-    if (!req.user) {
-        res.status(401).json({ message: 'Unauthorized' });
-        return;
-    }
+  res.status(200).json({
+    success: true,
+    data,
+  });
+};
 
-    const id = req.params.id as string;
+export const updateChat = async (req: Request, res: Response) => {
+  if (!req.user) {
+    res.status(401).json({ message: "Unauthorized" });
+    return;
+  }
 
-    const data = await getChatByIdService(id, req.user._id.toString());
+  const id = req.params.id as string;
+  const { title, folderId } = req.body;
 
-    res.status(200).json({
-        success: true,
-        data
-    })
-}
+  const data = await updateChatService(id, req.user._id.toString(), {
+    title,
+    folderId,
+  });
 
-export const updateChat = async(req: Request, res: Response) => {
+  res.status(200).json({
+    success: true,
+    data,
+  });
+};
 
-    if (!req.user) {
-        res.status(401).json({ message: 'Unauthorized' });
-        return;
-    }
+export const deleteChat = async (req: Request, res: Response) => {
+  if (!req.user) {
+    res.status(401).json({ message: "Unauthorized" });
+    return;
+  }
 
-    const id = req.params.id as string;
-    const { title, folderId } = req.body;
+  const id = req.params.id as string;
 
-    const data = await updateChatService(id, req.user._id.toString(), { title, folderId });
+  const data = await deleteChatService(id, req.user._id.toString());
 
-    res.status(200).json({
-        success: true,
-        data
-    })
-}
+  res.status(200).json({
+    success: true,
+    data,
+  });
+};
 
-export const deleteChat = async(req: Request, res: Response) => {
+export const sendMessage = async (req: Request, res: Response) => {
+  if (!req.user) {
+    res.status(401).json({ message: "Unauthorized" });
+    return;
+  }
 
-    if (!req.user) {
-        res.status(401).json({ message: 'Unauthorized' });
-        return;
-    }
+  const id = req.params.id as string;
+  const { message } = req.body;
 
-    const id = req.params.id as string;
+  if (!message || !message.trim()) {
+    res.status(400).json({ message: "Message is required" });
+    return;
+  }
 
-    const data = await deleteChatService(id, req.user._id.toString());
+  const { contents } = await prepareMessageService(
+    id,
+    req.user._id.toString(),
+    message,
+  );
 
-    res.status(200).json({
-        success: true,
-        data
-    })
-}
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
 
-export const sendMessage = async(req: Request, res: Response) => {
+  const stream = await ai.models.generateContentStream({
+    model: "gemini-2.5-flash",
+    contents,
+  });
 
-    if (!req.user) {
-        res.status(401).json({ message: 'Unauthorized' });
-        return;
-    }
+  let fullReply = "";
+  res.flushHeaders();
+  for await (const chunk of stream) {
+    const text = chunk.text || "";
+    fullReply += text;
+    res.write(`data: ${JSON.stringify({ text })}\n\n`);
+  }
 
-    const id = req.params.id as string;
-    const { message } = req.body;
-
-    if (!message || !message.trim()) {
-        res.status(400).json({ message: 'Message is required' });
-        return;
-    }
-
-    const { contents } = await prepareMessageService(id, req.user._id.toString(), message);
-
-
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
-
-    const stream = await ai.models.generateContentStream({
-        model: "gemini-2.5-flash",
-        contents,
-    });
-
-    let fullReply = '';
-    res.flushHeaders();
-    for await (const chunk of stream) {
-        const text = chunk.text || '';
-        fullReply += text;
-        res.write(`data: ${JSON.stringify({ text })}\n\n`);
-    }
-
-   
+  try {
     await saveModelReply(id, req.user._id.toString(), fullReply);
+  } catch (err) {
+    console.error("Failed to save model reply:", err);
+  }
 
-    res.write('data: [DONE]\n\n');
-    res.end();
-}
+  res.write("data: [DONE]\n\n");
+  res.end();
 
-
+};
