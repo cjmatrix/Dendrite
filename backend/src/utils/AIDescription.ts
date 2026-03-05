@@ -2,7 +2,7 @@ import ai from "../config/AIConfig";
 
 async function generateCodeDescription(code: string, language: string) {
   const response = await ai.models.generateContent({
-    model: "gemini-2.0-flash-lite",
+    model: "gemini-2.5-flash-lite",
     contents: [
       {
         role: "user",

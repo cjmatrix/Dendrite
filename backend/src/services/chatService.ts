@@ -2,7 +2,9 @@ import { Chat } from "../models/Chat";
 import { AppError } from "../utils/AppError";
 import ai, { systemInstruction } from "../config/AIConfig";
 import { CodeBlock } from "../models/CodeBlock";
-import generateCodeDescription from "../utils/AIDescription";
+import { OutboxEvent } from "../models/OutboxEvent";
+import embeddingCodeDesc from "../queue/embeddingQueue";
+import mongoose from "mongoose";
 
 export const createChatService = async (
   userId: string,
@@ -66,6 +68,8 @@ export const deleteChatService = async (chatId: string, userId: string) => {
   return { deleted: true };
 };
 
+import { searchSimilarCode } from "./qdrantService";
+
 export const prepareMessageService = async (
   chatId: string,
   userId: string,
@@ -80,12 +84,27 @@ export const prepareMessageService = async (
   chat.messages.push({ role: "user", content: userMessage });
   await chat.save();
 
-  const recentMessages = chat.messages.slice(-3);
+  
+  const similarCode = await searchSimilarCode(userMessage, userId, chatId);
+
+  let dynamicSystemInstruction = systemInstruction;
+  if (similarCode.length > 0) {
+    const contextText = similarCode
+      .map(
+        (item, index) =>
+          `[Snippet ${index + 1} - ${item.language}]\n\`\`\`${item.language}\n${item.content}\n\`\`\``,
+      )
+      .join("\n\n");
+
+    dynamicSystemInstruction += `\n\nHere is some context from the user's previously written code that may be relevant to their query. Use it if applicable:\n\n${contextText}`;
+  }
+
+  const recentMessages = chat.messages.slice(-1);
 
   const contents = [
     {
       role: "user",
-      parts: [{ text: systemInstruction }],
+      parts: [{ text: dynamicSystemInstruction }],
     },
     ...recentMessages.map((msg) => ({
       role: msg.role === "model" ? "model" : "user",
@@ -121,27 +140,49 @@ export const saveModelReply = async (
     throw new AppError("Chat not found", 404);
   }
 
-  chat.messages.push({ role: "model", content: modelReply });
-  await chat.save();
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
-  const codeBlocks = extractCodeBlocks(modelReply);
-  //   if (codeBlocks.length > 0) {
-  //     console.log(`\n📦 Extracted ${codeBlocks.length} code block(s):`);
-  //     codeBlocks.forEach((block, i) => {
-  //      console.log(block.code)
-  //     });
-  //   }
+  try {
+    chat.messages.push({ role: "model", content: modelReply });
+    await chat.save({ session });
 
-  const docs = await Promise.all(
-    codeBlocks.map(async (block) => ({
+    const codeBlocks = extractCodeBlocks(modelReply);
+    const docs = codeBlocks.map((block) => ({
       userId,
       chatId,
       code: block.code,
       language: block.language,
-      description: await generateCodeDescription(block.code, block.language),
-    })),
-  );
-  const savedBlocks = await CodeBlock.insertMany(docs);
+    }));
+
+    const savedBlocks = await CodeBlock.insertMany(docs, { session });
+
+    const outboxEvents = await OutboxEvent.insertMany(
+      savedBlocks.map((block) => ({
+        eventType: "CODE_BLOCK_CREATED",
+        payload: {
+          sourceId: block._id,
+          sourceType: "code_block",
+          userId,
+          content: block.code,
+          metadata: { language: block.language, chatId },
+        },
+        status: "pending",
+      })),
+      { session },
+    );
+
+    await session.commitTransaction();
+
+    for (const event of outboxEvents) {
+      await embeddingCodeDesc(event, event.payload.content);
+    }
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
+  }
 
   return chat;
 };
