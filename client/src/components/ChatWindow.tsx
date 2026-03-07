@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
-import { Paperclip, Bot, Share, MoreVertical, ArrowUp } from "lucide-react";
+import { Paperclip, Share, MoreVertical, ArrowUp } from "lucide-react";
 import { useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../api/axios";
@@ -12,6 +12,9 @@ import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import { useAppSelector } from "../store/store";
 import type { FileNode } from "../types/types";
+import ChatCircuitTreeIcon from "./ChatCircuitTreeIcon";
+import TechNetworkIcon from "./ChatCircuitTreeIcon";
+import DendritesLogo from "./DendritesLogo";
 
 interface Message {
   _id?: string;
@@ -338,60 +341,64 @@ const markdownComponents = {
   },
 };
 
-const MessageBubble = React.memo(({ msg }: { msg: Message }) => {
-  const isUser = msg.role === "user";
-  const time = new Date().toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+const MessageBubble = React.memo(
+  ({ msg, isStreaming }: { msg: Message; isStreaming: boolean }) => {
+    const isUser = msg.role === "user";
+    const time = new Date().toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
 
-  return (
-    <div
-      className={`flex w-full message-enter ${isUser ? "justify-end" : "justify-start"}`}
-    >
-      {isUser ? (
-        <div className="flex flex-col items-end max-w-[85%] md:max-w-[70%]">
-          <div className="flex items-center gap-2 mb-1.5 px-1">
-            <span className="text-[12px] text-gray-500 font-medium">
-              {time}
-            </span>
-            <span className="text-[13px] font-semibold text-gray-300">
-              Researcher
-            </span>
-          </div>
-          <div className="px-5 py-3.5 rounded-2xl rounded-tr-sm bg-[var(--theme-bg-surface)] border border-zinc-800 text-[16px] leading-relaxed whitespace-pre-wrap text-gray-200 shadow-sm">
-            {msg.content}
-          </div>
-        </div>
-      ) : (
-        <div className="flex w-full gap-4 max-w-[95%] md:max-w-[100%]">
-          <div className="w-8 h-8 rounded bg-[var(--theme-bg-surface)] border border-blue-500/20 flex items-center justify-center shrink-0 mt-1 shadow-sm shadow-blue-500/10 hidden sm:flex">
-            <Bot size={18} className="text-blue-400" />
-          </div>
-          <div className="flex-1 flex flex-col min-w-0">
-            <div className="flex items-center gap-2 mb-1.5">
-              <span className="text-[13px] font-semibold text-gray-200">
-                AI ASSISTANT
-              </span>
+    return (
+      <div
+        className={`flex w-full message-enter ${isUser ? "justify-end" : "justify-start"}`}
+      >
+        {isUser ? (
+          <div className="flex flex-col items-end max-w-[85%] md:max-w-[70%]">
+            <div className="flex items-center gap-2 mb-1.5 px-1">
               <span className="text-[12px] text-gray-500 font-medium">
                 {time}
               </span>
+              <span className="text-[13px] font-semibold text-gray-300">
+                Researcher
+              </span>
             </div>
-            <div className="markdown-body text-[16px] leading-relaxed text-gray-300 w-full overflow-hidden">
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm, remarkMath]}
-                rehypePlugins={[rehypeKatex]}
-                components={markdownComponents}
-              >
-                {msg.content}
-              </ReactMarkdown>
+            <div className="px-5 py-3.5 rounded-2xl rounded-tr-sm bg-[var(--theme-bg-surface)] border border-zinc-800 text-[16px] leading-relaxed whitespace-pre-wrap text-gray-200 shadow-sm">
+              {msg.content}
             </div>
           </div>
-        </div>
-      )}
-    </div>
-  );
-});
+        ) : (
+          <div className="flex w-full gap-4 max-w-[95%] md:max-w-[100%]">
+            <DendritesLogo
+              isRotate={isStreaming}
+              className="mt-1 hidden sm:flex shrink-0"
+            />
+
+            <div className="flex-1 flex flex-col min-w-0">
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className="text-[13px] font-semibold text-gray-200">
+                  AI ASSISTANT
+                </span>
+                <span className="text-[12px] text-gray-500 font-medium">
+                  {time}
+                </span>
+              </div>
+              <div className="markdown-body text-[16px] leading-relaxed text-gray-300 w-full overflow-hidden">
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm, remarkMath]}
+                  rehypePlugins={[rehypeKatex]}
+                  components={markdownComponents}
+                >
+                  {msg.content}
+                </ReactMarkdown>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  },
+);
 
 const ChatWindow: React.FC = () => {
   const { id } = useParams();
@@ -546,9 +553,8 @@ const ChatWindow: React.FC = () => {
             </div>
           ) : messages.length === 0 && !isStreaming ? (
             <div className="flex items-center gap-4 mt-4">
-              <div className="bg-[var(--theme-bg-surface)] p-2 rounded-lg border border-zinc-800">
-                <Bot size={24} className="text-gray-400" />
-              </div>
+              <DendritesLogo className="shrink-0" />
+
               <h1 className="text-lg font-medium text-gray-200">
                 Welcome to Dendrite. How can I help with your research today?
               </h1>
@@ -558,15 +564,21 @@ const ChatWindow: React.FC = () => {
               className={`flex flex-col gap-6 ${isStreaming ? "pb-[40vh]" : ""}`}
             >
               {messages.map((msg, i) => (
-                <MessageBubble key={msg._id || i} msg={msg} />
+                <MessageBubble
+                  key={msg._id || i}
+                  msg={msg}
+                  isStreaming={isStreaming}
+                />
               ))}
 
               {/* Streaming response — grows in real time */}
               {streamingText && (
                 <div className="flex w-full gap-4 max-w-[95%] md:max-w-[85%] streaming-bubble">
-                  <div className="w-8 h-8 rounded bg-[var(--theme-bg-surface)] border border-blue-500/20 flex items-center justify-center shrink-0 mt-1 shadow-sm shadow-blue-500/10 hidden sm:flex">
-                    <Bot size={18} className="text-blue-400" />
-                  </div>
+                  <DendritesLogo
+                    isRotate={true}
+                    className="mt-1 hidden sm:flex shrink-0"
+                  />
+
                   <div className="flex-1 flex flex-col min-w-0">
                     <div className="flex items-center gap-2 mb-1.5">
                       <span className="text-[13px] font-semibold text-gray-200">
@@ -593,9 +605,11 @@ const ChatWindow: React.FC = () => {
               {/* Typing indicator before first chunk arrives */}
               {isStreaming && !streamingText && (
                 <div className="flex w-full gap-4 max-w-[95%] md:max-w-[85%] streaming-bubble">
-                  <div className="w-8 h-8 rounded bg-[var(--theme-bg-surface)] border border-blue-500/20 flex items-center justify-center shrink-0 mt-1 shadow-sm shadow-blue-500/10 hidden sm:flex">
-                    <Bot size={18} className="text-blue-400" />
-                  </div>
+                  <DendritesLogo
+                    isRotate={true}
+                    className="mt-1 hidden sm:flex shrink-0"
+                  />
+
                   <div className="flex-1 flex flex-col min-w-0">
                     <div className="flex items-center gap-2 mb-1.5">
                       <span className="text-[13px] font-semibold text-gray-200">

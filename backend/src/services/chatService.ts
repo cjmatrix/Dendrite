@@ -4,6 +4,7 @@ import ai, { systemInstruction } from "../config/AIConfig";
 import { CodeBlock } from "../models/CodeBlock";
 import { OutboxEvent } from "../models/OutboxEvent";
 import embeddingCodeDesc from "../queue/embeddingQueue";
+import addDescriptionQueue from "../queue/descriptionQueue";
 import mongoose from "mongoose";
 
 export const createChatService = async (
@@ -88,7 +89,6 @@ export const prepareMessageService = async (
   const similarCode = await searchSimilarCode(userMessage, userId, chatId);
   console.log(similarCode);
 
-
   let dynamicSystemInstruction = systemInstruction;
   if (similarCode.length > 0) {
     const contextText = similarCode
@@ -150,41 +150,34 @@ export const saveModelReply = async (
     await chat.save({ session });
 
     const codeBlocks = extractCodeBlocks(modelReply);
-    // console.log(codeBlocks);
-    const docs = await Promise.all(
-      codeBlocks.map(async (block) => ({
+
+    if (codeBlocks.length > 0) {
+      const docs = codeBlocks.map((block) => ({
         userId,
         chatId,
         code: block.code,
         language: block.language,
-        description: await generateCodeDescription(block.code, block.language),
-      })),
-    );
+        description: "", // Wait for background worker to populate this
+      }));
 
-    const savedBlocks = await CodeBlock.insertMany(docs, { session });
+      const savedBlocks = await CodeBlock.insertMany(docs, { session });
+      await session.commitTransaction();
 
-    const outboxEvents = await OutboxEvent.insertMany(
-      savedBlocks.map((block) => ({
-        eventType: "CODE_BLOCK_CREATED",
-        payload: {
-          sourceId: block._id,
-          sourceType: "code_block",
-          userId,
-          content: {
-            code: block.code,
-            description: block.description,
-          },
-          metadata: { language: block.language, chatId },
-        },
-        status: "pending",
-      })),
-      { session },
-    );
+      // 2. Push the empty structured blocks to BullMQ
+      const queuePayload = savedBlocks.map((b) => ({
+        _id: b._id,
+        userId: b.userId,
+        chatId: b.chatId,
+        code: b.code,
+        language: b.language,
+      }));
 
-    await session.commitTransaction();
-
-    for (const event of outboxEvents) {
-      await embeddingCodeDesc(event, event.payload.content);
+      await addDescriptionQueue(queuePayload);
+      console.log(
+        `🚀 Sent ${codeBlocks.length} code blocks to description-queue background worker!`,
+      );
+    } else {
+      await session.commitTransaction();
     }
   } catch (error) {
     await session.abortTransaction();

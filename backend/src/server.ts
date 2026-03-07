@@ -7,7 +7,9 @@ import authRoutes from "./routes/authRoutes";
 import folderRoutes from "./routes/folderRoutes";
 import chatRoutes from "./routes/chatRoutes";
 import "./worker/embeddingWorker";
-import "./cron/outboxSweeper"
+import "./worker/descriptionWorker";
+import "./cron/outboxSweeper";
+import "./cron/descriptionSweeper";
 dotenv.config();
 
 const app = express();

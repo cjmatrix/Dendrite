@@ -9,6 +9,7 @@ import {
   saveModelReply,
 } from "../services/chatService";
 import ai from "../config/AIConfig";
+import { logAIQuery } from "../utils/logger";
 
 export const createChat = async (req: Request, res: Response) => {
   if (!req.user) {
@@ -126,20 +127,29 @@ export const sendMessage = async (req: Request, res: Response) => {
   });
 
   let fullReply = "";
+  let finalUsageMetadata: any = null;
   res.flushHeaders();
+
   for await (const chunk of stream) {
     const text = chunk.text || "";
     fullReply += text;
+    if (chunk.usageMetadata) {
+      finalUsageMetadata = chunk.usageMetadata;
+    }
     res.write(`data: ${JSON.stringify({ text })}\n\n`);
   }
 
   try {
     await saveModelReply(id, req.user._id.toString(), fullReply);
+
+    // Log token usage if we captured it  
+    if (finalUsageMetadata) {
+      logAIQuery(message, finalUsageMetadata);
+    }
   } catch (err) {
-    console.error("Failed to save model reply:", err);
+    console.error("Failed to save model reply or log usage:", err);
   }
 
   res.write("data: [DONE]\n\n");
   res.end();
-
 };
