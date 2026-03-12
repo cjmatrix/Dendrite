@@ -1,0 +1,3 @@
+
+const CONTEXT_WINDOW=10
+export default CONTEXT_WINDOW;

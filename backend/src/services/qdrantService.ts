@@ -1,19 +1,20 @@
-import { qdrantClient, COLLECTION_NAME } from "../config/qdrant";
+import {
+  qdrantClient,
+  COLLECTION_NAME,
+  SUMMARY_COLLECTION_NAME,
+} from "../config/qdrant";
 import { generateEmbedding } from "../utils/embedding";
 
 const SIMILARITY_THRESHOLD = 0.7;
 
 export async function searchSimilarCode(
-  query: string,
+  codeQueryVector: number[],
+  descQueryVector: number[],
   userId: string,
   chatId: string,
   topK: number = 3,
 ) {
   try {
-    const [codeQueryVector, descQueryVector] = await Promise.all([
-      generateEmbedding(query, "CODE_RETRIEVAL_QUERY"), 
-      generateEmbedding(query, "RETRIEVAL_QUERY"), 
-    ]);
     // console.log(queryVector)
 
     const filter = {
@@ -59,8 +60,6 @@ export async function searchSimilarCode(
       .sort((a, b) => b.score - a.score)
       .slice(0, topK);
 
- 
-
     return merged.map((result) => ({
       score: result.score,
       codeBlockId: result.id,
@@ -102,6 +101,46 @@ export async function searchSimilarCode(
   } catch (error: any) {
     const errorDetails = error.data || error.response?.data || error.message;
     console.error("❌ Qdrant search failed:", errorDetails);
+    return [];
+  }
+}
+
+export async function searchSimiliarChatChunk(
+  chunkQueryVector: number[],
+  userId: string,
+  chatId: string,
+  topK: number = 5,
+) {
+  try {
+    const searchResults = await qdrantClient.search(SUMMARY_COLLECTION_NAME, {
+      vector: chunkQueryVector,
+      limit: topK,
+      filter: {
+        must: [
+          {
+            key: "userId",
+            match: { value: String(userId) },
+          },
+          {
+            key: "chatId",
+            match: { value: String(chatId) },
+          },
+        ],
+      },
+      with_payload: true,
+    });
+
+    const relevantResults = searchResults.filter(
+      (result) => result.score >= SIMILARITY_THRESHOLD,
+    );
+
+    return relevantResults.map((result) => ({
+      score: result.score,
+      fact: result.payload?.content as { fact: string },
+    }));
+  } catch (error: any) {
+    const errorDetails = error.data || error.response?.data || error.message;
+    console.error("❌ Qdrant summary search failed:", errorDetails);
     return [];
   }
 }

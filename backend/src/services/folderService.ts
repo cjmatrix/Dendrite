@@ -30,7 +30,8 @@ export const getFoldersService = async(userId: string) => {
             type: 'folder',
             parentId: folder.parentId,
             children: [],
-            isExpanded:folder.isExpanded
+            isExpanded: folder.isExpanded,
+            isSystemFolder: folder.isSystemFolder
         });
     }
 
@@ -52,6 +53,17 @@ export const getFoldersService = async(userId: string) => {
 
 export const updateFolderService = async(folderId: string, userId: string, updates: { name?: string, isExpanded?: boolean }) => {
 
+    if (updates.name) {
+        // Prevent renaming if it's a core system folder!
+        const existingFolder = await Folder.findOne({ _id: folderId, userId });
+        if (!existingFolder) {
+            throw new AppError("Folder not found", 404);
+        }
+        if (existingFolder.isSystemFolder) {
+            throw new AppError("System folders cannot be renamed", 403);
+        }
+    }
+
     const folder = await Folder.findOneAndUpdate(
         { _id: folderId, userId },
         { $set: updates },
@@ -70,6 +82,10 @@ export const deleteFolderService = async(folderId: string, userId: string) => {
     const folder = await Folder.findOne({ _id: folderId, userId });
     if (!folder) {
         throw new AppError("Folder not found", 404);
+    }
+
+    if (folder.isSystemFolder) {
+        throw new AppError("System folders are restricted and cannot be deleted", 403);
     }
 
  

@@ -10,10 +10,16 @@ import {
   Check,
   Edit,
   Trash,
+  FileText,
+  Image as ImageIcon,
+  BookOpen,
+  MessageCircle,
 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "../api/axios";
 import { useNavigate } from "react-router-dom";
+import { setActiveSidebarRootId, setTree } from "../store/explorerSlice";
+import { useAppDispatch, useAppSelector } from "../store/store";
 
 interface FileItemProps {
   node: FileNode;
@@ -28,7 +34,8 @@ export const FileItem: React.FC<FileItemProps> = ({ node }) => {
   const navigate = useNavigate();
   const isFolder = node.type === "folder";
   const queryClient = useQueryClient();
-
+  const dispatch=useAppDispatch();
+  const {tree}:{tree:FileNode}=useAppSelector(state=>state.explorer)
   // --- Folder mutations with optimistic updates ---
 
   const { mutate: createFolderMutate } = useMutation({
@@ -267,6 +274,11 @@ export const FileItem: React.FC<FileItemProps> = ({ node }) => {
     }
   };
 
+  const handleRootSetting=()=>{
+    dispatch(setActiveSidebarRootId(node.id));
+  
+  }
+
   const [contextMenu, setContextMenu] = useState<{
     x: number;
     y: number;
@@ -310,9 +322,34 @@ export const FileItem: React.FC<FileItemProps> = ({ node }) => {
           )}
 
           {isFolder ? (
-            <Folder size={19} className="text-indigo-400" />
+            node.isSystemFolder ? (() => {
+              const getSystemStyle = () => {
+                switch(node.name) {
+                  case "Documents": return { color: "text-blue-400 text-opacity-90 fill-blue-500/10", suffix: <FileText size={8} className="text-blue-100" strokeWidth={3} />, suffixBg: "bg-blue-600" };
+                  case "Media": return { color: "text-rose-400 text-opacity-90 fill-rose-500/10", suffix: <ImageIcon size={8} className="text-rose-100" strokeWidth={3} />, suffixBg: "bg-rose-600" };
+                  case "Research": return { color: "text-amber-400 text-opacity-90 fill-amber-500/10", suffix: <BookOpen size={8} className="text-amber-100" strokeWidth={3} />, suffixBg: "bg-amber-600" };
+                  case "Chats": return { color: "text-emerald-400 text-opacity-90 fill-emerald-500/10", suffix: <MessageCircle size={8} className="text-emerald-100" strokeWidth={3} />, suffixBg: "bg-emerald-600" };
+                  default: return { color: "text-indigo-400", suffix: null, suffixBg: "" };
+                }
+              };
+              const { color, suffix, suffixBg } = getSystemStyle();
+              return (
+                <div className="relative flex items-center justify-center">
+                  <Folder size={20} className={color} strokeWidth={2} />
+                  <div className={`absolute -bottom-[2px] -right-[2px] p-[2px] rounded-md shadow-[0_1px_2px_rgba(0,0,0,0.5)] border border-black/80 ${suffixBg} z-10`}>
+                    {suffix}
+                  </div>
+                </div>
+              );
+            })() : (
+              <div className="relative flex items-center justify-center">
+                <Folder size={20} className="text-indigo-400 fill-indigo-500/5 text-opacity-80" strokeWidth={1.8} />
+              </div>
+            )
           ) : (
-            <MessageSquare size={19} className="text-emerald-400" />
+            <div className="relative flex items-center justify-center pl-1 pr-0.5">
+              <MessageSquare size={17} className="text-emerald-400/90 fill-emerald-500/10" strokeWidth={1.8} />
+            </div>
           )}
           {isRenaming ? (
             <div
@@ -432,18 +469,31 @@ export const FileItem: React.FC<FileItemProps> = ({ node }) => {
             >
               <FolderPlus size={14} /> New Folder
             </button>
-            <button
+             <button
               className="w-full text-left px-3 py-1.5 hover:bg-indigo-600 hover:text-white flex items-center gap-2 transition-colors"
               onClick={(e) => {
                 e.stopPropagation();
-                setIsRenaming("folder");
+                handleRootSetting();
                 setContextMenu(null);
-                setRenameItemName(node.name);
+                setIsOpen(true);
               }}
             >
-              <Edit size={14} /> Rename
+              <FolderPlus size={14} /> Open With Folder
             </button>
-            {node.id !== "root" && (
+            {!node.isSystemFolder && (
+              <button
+                className="w-full text-left px-3 py-1.5 hover:bg-indigo-600 hover:text-white flex items-center gap-2 transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsRenaming("folder");
+                  setContextMenu(null);
+                  setRenameItemName(node.name);
+                }}
+              >
+                <Edit size={14} /> Rename
+              </button>
+            )}
+            {node.id !== "root" && !node.isSystemFolder && (
               <button
                 className="w-full text-left px-3 py-2 hover:bg-red-500/20 hover:text-red-300 flex items-center gap-2 text-red-400 transition-colors"
                 onClick={(e) => {

@@ -1,15 +1,18 @@
 import { useRef, useState, useEffect } from "react";
-import { Plus, FolderPlus, MessageSquare, Check } from "lucide-react";
+import { Plus, FolderPlus, MessageSquare, Check, Folder } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 import type { FileNode, FileType } from "../types/types";
 import { FileItem } from "./FileItem";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../api/axios";
 import { useAppDispatch, useAppSelector } from "../store/store";
-import { setTree } from "../store/explorerSlice";
+import { setTree, setActiveSidebarRootId } from "../store/explorerSlice";
 
 export default function FileExplorer() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const { tree, activeSidebarRootId } = useAppSelector((state) => state.explorer);
 
   const { data: folders } = useQuery({
     queryKey: ["folders"],
@@ -28,7 +31,20 @@ export default function FileExplorer() {
   });
 
   const dispatch = useAppDispatch();
-  const data = useAppSelector((state) => state.explorer.tree);
+
+ //handling root folder open with folder
+  const findNode = (node: FileNode, targetId: string): FileNode | null => {
+    if (node.id === targetId) return node;
+    if (!node.children) return null;
+    
+    for (const child of node.children) {
+      const found = findNode(child, targetId);
+      if (found) return found;
+    }
+    return null;
+  };
+
+  const displayTree = activeSidebarRootId ? findNode(tree, activeSidebarRootId) || tree : tree;
 
   useEffect(() => {
     if (!folders) return;
@@ -75,6 +91,9 @@ export default function FileExplorer() {
       }),
     );
   }, [folders, chats]);
+
+  
+
   const [width, setWidth] = useState(256);
 
   const [isResizing, setIsResizing] = useState(false);
@@ -146,7 +165,7 @@ export default function FileExplorer() {
     }) => {
       await api.post("/folders/create", { name, parentId });
     },
-    onMutate: async ({ name }) => {
+    onMutate: async ({ name, parentId }) => {
       await queryClient.cancelQueries({ queryKey: ["folders"] });
       const previous = queryClient.getQueryData(["folders"]);
       queryClient.setQueryData(["folders"], (old: any[]) => {
@@ -155,11 +174,18 @@ export default function FileExplorer() {
           id: `temp-${Date.now()}`,
           name,
           type: "folder",
-          parentId: null,
+          parentId: parentId,
           children: [],
           isExpanded: false,
         };
-        return [...old, tempFolder];
+        
+        const addChild = (nodes: any[]): any[] =>
+          nodes.map((n: any) =>
+            n.id === parentId
+              ? { ...n, children: [...(n.children || []), tempFolder] }
+              : { ...n, children: n.children ? addChild(n.children) : [] },
+          );
+        return parentId ? addChild(old) : [...old, tempFolder];
       });
       return { previous };
     },
@@ -182,7 +208,7 @@ export default function FileExplorer() {
     }) => {
       await api.post("/chats/create", { title, folderId });
     },
-    onMutate: async ({ title }) => {
+    onMutate: async ({ title, folderId }) => {
       await queryClient.cancelQueries({ queryKey: ["chats"] });
       const previous = queryClient.getQueryData(["chats"]);
       queryClient.setQueryData(["chats"], (old: any[]) => {
@@ -190,10 +216,17 @@ export default function FileExplorer() {
         const tempChat = {
           _id: `temp-${Date.now()}`,
           title,
-          folderId: null,
+          folderId: folderId,
           type: "chat",
         };
-        return [...old, tempChat];
+        
+        const addChild = (nodes: any[]): any[] =>
+          nodes.map((n: any) =>
+            n.id === folderId
+              ? { ...n, children: [...(n.children || []), tempChat] }
+              : { ...n, children: n.children ? addChild(n.children) : [] },
+          );
+        return folderId ? addChild(old) : [...old, tempChat];
       });
       return { previous };
     },
@@ -207,11 +240,13 @@ export default function FileExplorer() {
   });
 
   const handleRootCreate = () => {
+    const targetParentId = activeSidebarRootId ? activeSidebarRootId : null;
+
     if (rootNewName.trim()) {
       if (rootCreating === "folder") {
-        createFolderMutate({ name: rootNewName, parentId: null });
+        createFolderMutate({ name: rootNewName, parentId: targetParentId });
       } else {
-        createChatMutate({ title: rootNewName, folderId: null });
+        createChatMutate({ title: rootNewName, folderId: targetParentId });
       }
     }
 
@@ -232,8 +267,17 @@ export default function FileExplorer() {
     >
       {/* Header with action icons */}
       <div className="flex items-center justify-between px-4 mb-2">
-        <h2 className="text-[10px] font-bold text-gray-500 uppercase">
-          Explorer
+        <h2 className="text-[10px] font-bold text-gray-500 uppercase flex items-center gap-2">
+          {activeSidebarRootId && (
+            <button
+               onClick={() => dispatch(setActiveSidebarRootId(null))}
+               className="hover:text-indigo-400 transition-colors cursor-pointer mr-1"
+               title="Back to Root"
+            >
+               &larr; BACK
+            </button>
+          )}
+          <span className="truncate max-w-[120px]">{activeSidebarRootId ? displayTree.name : "Explorer"}</span>
         </h2>
         <div className="flex items-center gap-0.5">
           <button
@@ -258,7 +302,7 @@ export default function FileExplorer() {
         className="flex-1 overflow-y-auto px-2"
         onContextMenu={handleBlankContextMenu}
       >
-        {data.children?.map((child) => (
+        {displayTree.children?.map((child) => (
           <FileItem key={child.id} node={child} />
         ))}
 
@@ -340,6 +384,17 @@ export default function FileExplorer() {
           </div>
         </>
       )}
+
+      {/* Bottom Action Bar */}
+      <div className="p-3 border-t border-zinc-900 mt-auto">
+        <button 
+          onClick={() => navigate('/explorer')}
+          className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-lg bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-400 hover:text-indigo-300 transition-colors border border-indigo-500/20 text-sm font-medium"
+        >
+          <Folder size={16} />
+          Open Explorer
+        </button>
+      </div>
 
       <div
         className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-indigo-500 bg-zinc-800 z-10 transition-colors duration-200"

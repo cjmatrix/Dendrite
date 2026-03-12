@@ -22,7 +22,10 @@ const FolderSchema = new Schema({
     default: null,
     index: true
   },
-
+  isSystemFolder:{
+    type:Boolean,
+    default:false
+  },
   color: { 
     type: String, 
     default: 'default' 

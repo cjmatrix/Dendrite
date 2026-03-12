@@ -9,6 +9,7 @@ import { checkAuth, forceLogout } from "./store/authSlice";
 import "./App.css";
 import ChatWindow from "./components/ChatWindow";
 import EmptyChatState from "./components/EmptyChatState";
+import FileDisplay from "./components/FileDisplay";
 
 const router = createBrowserRouter([
   {
@@ -30,6 +31,14 @@ const router = createBrowserRouter([
           {
             index:true,
             element:<EmptyChatState></EmptyChatState>
+          },
+          {
+            path: "explorer",
+            element: <FileDisplay />
+          },
+          {
+            path: "explorer/:folderId",
+            element: <FileDisplay />
           },
           {
             path:"/:id",

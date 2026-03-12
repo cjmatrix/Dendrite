@@ -2,7 +2,8 @@ import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import type { FileNode } from '../types/types';
 
 interface ExplorerState {
-  tree: FileNode;
+  tree: FileNode,
+   activeSidebarRootId:string| null
 }
 
 const initialState: ExplorerState = {
@@ -13,6 +14,7 @@ const initialState: ExplorerState = {
     isExpanded: true,
     children: [],
   },
+  activeSidebarRootId: localStorage.getItem("dendrites_active_folder") || null
 };
 
 const explorerSlice = createSlice({
@@ -22,8 +24,16 @@ const explorerSlice = createSlice({
     setTree: (state, action: PayloadAction<FileNode>) => {
       state.tree = action.payload;
     },
+    setActiveSidebarRootId: (state, action: PayloadAction<string | null>) => {
+      state.activeSidebarRootId = action.payload;
+      if (action.payload) {
+        localStorage.setItem("dendrites_active_folder", action.payload);
+      } else {
+        localStorage.removeItem("dendrites_active_folder");
+      }
+    }
   },
 });
 
-export const { setTree } = explorerSlice.actions;
+export const { setTree ,setActiveSidebarRootId} = explorerSlice.actions;
 export default explorerSlice.reducer;

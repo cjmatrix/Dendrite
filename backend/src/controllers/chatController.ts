@@ -3,6 +3,7 @@ import {
   createChatService,
   getChatsService,
   getChatByIdService,
+  getChatMessagesService,
   updateChatService,
   deleteChatService,
   prepareMessageService,
@@ -61,6 +62,30 @@ export const getChatById = async (req: Request, res: Response) => {
   });
 };
 
+export const getChatMessages = async (req: Request, res: Response) => {
+  if (!req.user) {
+    res.status(401).json({ message: "Unauthorized" });
+    return;
+  }
+
+  const id = req.params.id as string;
+  const cursor = (req.query.cursor as string) || null;
+  const limit = parseInt((req.query.limit as string) || "10", 10);
+
+  const messages = await getChatMessagesService(id, limit, cursor);
+
+  // Next cursor is the ID of the oldest message returned, or null if there are no more
+  const nextCursor = messages.length === limit ? messages[0]._id.toString() : null;
+
+  res.status(200).json({
+    success: true,
+    data: {
+      messages,
+      nextCursor,
+    },
+  });
+};
+
 export const updateChat = async (req: Request, res: Response) => {
   if (!req.user) {
     res.status(401).json({ message: "Unauthorized" });
@@ -104,7 +129,7 @@ export const sendMessage = async (req: Request, res: Response) => {
   }
 
   const id = req.params.id as string;
-  const { message } = req.body;
+  const { message, mode } = req.body;
 
   if (!message || !message.trim()) {
     res.status(400).json({ message: "Message is required" });
@@ -115,6 +140,7 @@ export const sendMessage = async (req: Request, res: Response) => {
     id,
     req.user._id.toString(),
     message,
+    mode,
   );
 
   res.setHeader("Content-Type", "text/event-stream");

@@ -1,34 +1,60 @@
+import mongoose from 'mongoose';
 import { User } from '../models/User';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../utils/tokenUtils';
 import { AppError } from '../utils/AppError';
+import { Folder } from '../models/Folders';
 
 export const AuthService = {
   async register(userData: any) {
     const { name, email, password } = userData;
 
-    // Check if user exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       throw new AppError('User already exists', 409);
     }
 
-    // Create user
-    const user = new User({
-      name,
-      email,
-      password
-    });
-    
-    await user.save();
+    // Start a MongoDB session for atomic transactions
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
-    const accessToken = generateAccessToken(user._id.toString());
-    const refreshToken = generateRefreshToken(user._id.toString());
+    try {
+      const user = new User({
+        name,
+        email,
+        password
+      });
 
-    user.refreshTokens.push(refreshToken);
-    await user.save();
+      await user.save({ session });
 
-    const { password: _pw, refreshTokens: _rt, ...safeUser } = user.toObject();
-    return { user: safeUser, accessToken, refreshToken };
+      // Create system folders concurrently using the same transaction session
+      const systemFolders = [
+        { userId: user._id, parentId: null, name: "Documents", isSystemFolder: true },
+        { userId: user._id, parentId: null, name: "Media", isSystemFolder: true },
+        { userId: user._id, parentId: null, name: "Research", isSystemFolder: true },
+        { userId: user._id, parentId: null, name: "Chats", isSystemFolder: true }
+      ];
+
+      await Folder.insertMany(systemFolders, { session });
+
+      const accessToken = generateAccessToken(user._id.toString());
+      const refreshToken = generateRefreshToken(user._id.toString());
+
+      user.refreshTokens.push(refreshToken);
+      await user.save({ session });
+
+      // Commit the transaction only if every database step was perfectly successful
+      await session.commitTransaction();
+      session.endSession();
+
+      const { password: _pw, refreshTokens: _rt, ...safeUser } = user.toObject();
+      return { user: safeUser, accessToken, refreshToken };
+      
+    } catch (error) {
+      // If anything fails (User save, Folder creation, etc.), abort the transaction safely!
+      await session.abortTransaction();
+      session.endSession();
+      throw error;
+    }
   },
 
   async login(userData: any) {

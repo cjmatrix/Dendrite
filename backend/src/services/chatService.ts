@@ -1,4 +1,5 @@
 import { Chat } from "../models/Chat";
+import { Message } from "../models/Message";
 import { AppError } from "../utils/AppError";
 import ai, { systemInstruction } from "../config/AIConfig";
 import { CodeBlock } from "../models/CodeBlock";
@@ -6,6 +7,11 @@ import { OutboxEvent } from "../models/OutboxEvent";
 import embeddingCodeDesc from "../queue/embeddingQueue";
 import addDescriptionQueue from "../queue/descriptionQueue";
 import mongoose from "mongoose";
+import { searchSimilarCode, searchSimiliarChatChunk } from "./qdrantService";
+import generateCodeDescription from "../utils/AIDescription";
+import { generateEmbedding } from "../utils/embedding";
+import CONTEXT_WINDOW from "../constants/contextWindow";
+import addSummaryQueue from "../queue/summaryQueue";
 
 export const createChatService = async (
   userId: string,
@@ -43,6 +49,29 @@ export const getChatByIdService = async (chatId: string, userId: string) => {
   return chat;
 };
 
+export const getChatMessagesService = async (
+  chatId: string,
+  limit: number,
+  cursor: string | null,
+) => {
+  const query: any = { chatId };
+  
+  if (cursor) {
+    query._id = { $lt: cursor };
+  }
+
+
+  const messages = await Message.find(query)
+    .sort({ _id: -1 })
+    .limit(limit)
+    .lean();
+
+
+  messages.reverse();
+
+  return messages;
+};
+
 export const updateChatService = async (
   chatId: string,
   userId: string,
@@ -69,13 +98,11 @@ export const deleteChatService = async (chatId: string, userId: string) => {
   return { deleted: true };
 };
 
-import { searchSimilarCode } from "./qdrantService";
-import generateCodeDescription from "../utils/AIDescription";
-
 export const prepareMessageService = async (
   chatId: string,
   userId: string,
   userMessage: string,
+  mode?: string,
 ) => {
   const chat = await Chat.findOne({ _id: chatId, userId });
 
@@ -83,15 +110,42 @@ export const prepareMessageService = async (
     throw new AppError("Chat not found", 404);
   }
 
-  chat.messages.push({ role: "user", content: userMessage });
-  await chat.save();
+  await Message.create({ chatId, userId, role: "user", content: userMessage });
 
-  const similarCode = await searchSimilarCode(userMessage, userId, chatId);
-  console.log(similarCode);
+  const recentMessages = await Message.find({ chatId })
+    .sort({ createdAt: -1 })
+    .limit(CONTEXT_WINDOW)
+    .lean();
+  recentMessages.reverse();
+
+  const recentMessagesText = recentMessages.map((m) => m.content).join("\n");
+
+  const [codeQueryVector, descQueryVector] = await Promise.all([
+    generateEmbedding(userMessage, "CODE_RETRIEVAL_QUERY"),
+    generateEmbedding(userMessage, "RETRIEVAL_QUERY"),
+  ]);
+
+  const [rawSimilarCode, chatContextStats] = await Promise.all([
+    searchSimilarCode(codeQueryVector, descQueryVector, userId, chatId),
+    searchSimiliarChatChunk(descQueryVector, userId, chatId),
+  ]);
+  console.log(chatContextStats);
+  const deduplicatedSimilarCode = rawSimilarCode.filter((item) => {
+    return (
+      typeof item.content !== "string" &&
+      item.content?.code &&
+      !recentMessagesText.includes(item.content.code)
+    );
+  });
+
+  const deduplicatedChatContext = chatContextStats.filter((item) => {
+    return item.fact?.fact && !recentMessagesText.includes(item.fact.fact);
+  });
 
   let dynamicSystemInstruction = systemInstruction;
-  if (similarCode.length > 0) {
-    const contextText = similarCode
+
+  if (deduplicatedSimilarCode.length > 0) {
+    const contextText = deduplicatedSimilarCode
       .map(
         (item, index) =>
           `[Snippet ${index + 1} - ${item.language}]\n\`\`\`${item.language}\n${item.content.code}\n\`\`\`\nDescription: ${item.content.description}`,
@@ -101,7 +155,22 @@ export const prepareMessageService = async (
     dynamicSystemInstruction += `\n\nHere is some context from the user's previously written code that may be relevant to their query. Use it if applicable:\n\n${contextText}`;
   }
 
-  const recentMessages = chat.messages.slice(-10);
+  if (deduplicatedChatContext.length > 0) {
+    const factText = deduplicatedChatContext
+      .map((item, index) => `[Fact ${index + 1}]: ${item.fact.fact}`)
+      .join("\n\n");
+
+    dynamicSystemInstruction += `\n\nHere are some relevant facts from the user's previous chats:\n\n${factText}`;
+  }
+
+  if (mode === "visual") {
+    dynamicSystemInstruction += `\n\nCRITICAL INSTRUCTION: The user has explicitly selected "Visual Mode". 
+- If the user asks to CREATE, EDIT, or MODIFY a visualization, you MUST output the raw valid JS code inside a single \`\`\`p5\`\`\` fenced code block, with NO explanations.
+- If the user asks a FOLLOW-UP question, asks for an EXPLANATION, or discusses the behavior of the current visual, you MUST answer politely with normal conversational text and explanations, and DO NOT output a \`\`\`p5\`\`\` block unless they explicitly ask for a code change.
+
+Assume your code will be executed in a blank environment. You should write standard global p5 code (e.g., function setup() { createCanvas(600, 400); } function draw() { ... }).
+CRUCIAL: You MUST include a functional Pause/Resume button in your sketch. You can use p5's \`createButton()\` or draw it manually using \`rect()\`. IF you use \`createButton()\`, you MUST explicitly call \`.position(x, y)\` (e.g., \`button.position(10, 10)\`) to place it safely over the canvas, otherwise it will corrupt the HTML flex layout and overlap elements! The button MUST successfully toggle between \`noLoop()\` to pause and \`loop()\` to resume the animation. Make everything interactive and look beautiful using modern colors!`;
+  }
 
   const contents = [
     {
@@ -123,8 +192,10 @@ export function extractCodeBlocks(text: string) {
 
   let match;
   while ((match = regex.exec(text)) !== null) {
+    const lang = (match[1] || "text").toLowerCase();
+
     blocks.push({
-      language: match[1] || "text",
+      language: lang,
       code: match[2].trim(),
     });
   }
@@ -146,10 +217,27 @@ export const saveModelReply = async (
   session.startTransaction();
 
   try {
-    chat.messages.push({ role: "model", content: modelReply });
-    await chat.save({ session });
+    await Message.create(
+      [{ chatId, userId, role: "model", content: modelReply }],
+      { session },
+    );
+
+    let messageToCompress: any[] = [];
+    const messageCount = await Message.countDocuments({ chatId }).session(
+      session,
+    );
+
+    if (messageCount > 0 && messageCount % CONTEXT_WINDOW === 0) {
+      const recent = await Message.find({ chatId })
+        .sort({ createdAt: -1 })
+        .limit(CONTEXT_WINDOW)
+        .session(session)
+        .lean();
+      messageToCompress = recent.reverse();
+    }
 
     const codeBlocks = extractCodeBlocks(modelReply);
+    let savedBlocks: any[] = [];
 
     if (codeBlocks.length > 0) {
       const docs = codeBlocks.map((block) => ({
@@ -157,13 +245,35 @@ export const saveModelReply = async (
         chatId,
         code: block.code,
         language: block.language,
-        description: "", // Wait for background worker to populate this
+        description: "",
       }));
+      savedBlocks = await CodeBlock.insertMany(docs, { session });
+    }
 
-      const savedBlocks = await CodeBlock.insertMany(docs, { session });
-      await session.commitTransaction();
+    let summaryOutboxEvent = null;
+    if (messageToCompress.length > 0) {
+      const outboxDocs = [
+        {
+          eventType: "CHAT_SUMMARY_CREATED",
+          payload: {
+            sourceId: chat._id,
+            sourceType: "chat_summary",
+            userId,
+            content: {
+              messages: messageToCompress,
+            },
+            metadata: { chatId },
+          },
+          status: "pending",
+        },
+      ];
+      const savedOutbox = await OutboxEvent.insertMany(outboxDocs, { session });
+      summaryOutboxEvent = savedOutbox[0];
+    }
 
-      // 2. Push the empty structured blocks to BullMQ
+    await session.commitTransaction();
+
+    if (savedBlocks.length > 0) {
       const queuePayload = savedBlocks.map((b) => ({
         _id: b._id,
         userId: b.userId,
@@ -171,13 +281,18 @@ export const saveModelReply = async (
         code: b.code,
         language: b.language,
       }));
-
       await addDescriptionQueue(queuePayload);
       console.log(
         `🚀 Sent ${codeBlocks.length} code blocks to description-queue background worker!`,
       );
-    } else {
-      await session.commitTransaction();
+    }
+
+    if (summaryOutboxEvent) {
+      addSummaryQueue(summaryOutboxEvent._id.toString(), messageToCompress);
+
+      console.log(
+        `🚀 Triggered Semantic Compression for Chat ${chat._id}! Outbox ID: ${summaryOutboxEvent._id}`,
+      );
     }
   } catch (error) {
     await session.abortTransaction();

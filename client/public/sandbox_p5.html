@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" 
+      content="default-src 'none'; 
+               script-src 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; 
+               style-src 'unsafe-inline';
+               connect-src 'self' https: data: blob:;
+               img-src 'self' data: blob: https:;">
+<style>
+body {
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: transparent;
+    height: 100vh;
+    overflow: hidden;
+}
+canvas {
+    border-radius: 8px;
+    background: #18181b;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+}
+#errorOverlay {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    color: #ef4444;
+    font-family: monospace;
+    white-space: pre-wrap;
+    pointer-events: none;
+    z-index: 10;
+}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/p5@1.11.11/lib/p5.min.js"></script>
+</head>
+<body>
+
+<div id="errorOverlay"></div>
+
+<script>
+let currentP5 = null;
+
+window.addEventListener("message", (event) => {
+    const { code } = event.data;
+    if (!code) return;
+
+    try {
+        if (currentP5) {
+            currentP5.remove(); // Safely teardown old p5 instance, clears event listeners & canvas
+            currentP5 = null;
+        }
+        
+        // Remove any residual canvas tags if p5 didn't clean them up
+        document.querySelectorAll('canvas').forEach(c => c.remove());
+        document.getElementById("errorOverlay").innerText = "";
+
+        // P5 Instance Mode wrapper utilizing proxy mapping via 'with' scope closure
+        const sketch = (p) => {
+            const transformedCode = code
+                .replace(/function\s+setup\s*\(/g, "p.setup = function(")
+                .replace(/function\s+draw\s*\(/g, "p.draw = function(")
+                .replace(/function\s+windowResized\s*\(/g, "p.windowResized = function(")
+                .replace(/function\s+mousePressed\s*\(/g, "p.mousePressed = function(")
+                .replace(/function\s+mouseReleased\s*\(/g, "p.mouseReleased = function(")
+                .replace(/function\s+mouseDragged\s*\(/g, "p.mouseDragged = function(")
+                .replace(/function\s+keyPressed\s*\(/g, "p.keyPressed = function(")
+                .replace(/windowWidth/g, '(window.innerWidth || 600)')
+                .replace(/windowHeight/g, '(window.innerHeight || 400)');
+                
+            const runner = `
+                with (p) {
+                    ${transformedCode}
+                }
+            `;
+            
+            // Execute the heavily wrapped string
+            eval(runner);
+        };
+
+        currentP5 = new p5(sketch, document.body);
+
+    } catch(err) {
+        document.getElementById("errorOverlay").innerText = "Execution Error:\n" + err.message;
+    }
+});
+</script>
+
+</body>
+</html>

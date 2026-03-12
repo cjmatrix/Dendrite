@@ -2,7 +2,7 @@ import ai from "../config/AIConfig";
 import { logAIQuery, logCodeBlockTokens } from "./logger";
 
 async function generateCodeDescription(code: string, language: string) {
-  // Log the code block token count before making the generation request
+ 
   logCodeBlockTokens(code, language);
 
   const queryText = `Summarize this ${language} code in 1 sentence (max 30 words). Mention function names, variable names, and what it does. No markdown:\n\n${code}`;
@@ -17,7 +17,7 @@ async function generateCodeDescription(code: string, language: string) {
     ],
   });
 
-  // Log the token output response
+  
   if (response.usageMetadata) {
     logAIQuery(queryText, response.usageMetadata);
   }
