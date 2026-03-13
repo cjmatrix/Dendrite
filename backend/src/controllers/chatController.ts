@@ -10,6 +10,9 @@ import {
   saveModelReply,
 } from "../services/chatService";
 import ai from "../config/AIConfig";
+import mongoose from "mongoose";
+import { Chat } from "../models/Chat";
+import { SubChat } from "../models/SubChat";
 import { logAIQuery } from "../utils/logger";
 
 export const createChat = async (req: Request, res: Response) => {
@@ -75,7 +78,8 @@ export const getChatMessages = async (req: Request, res: Response) => {
   const messages = await getChatMessagesService(id, limit, cursor);
 
   // Next cursor is the ID of the oldest message returned, or null if there are no more
-  const nextCursor = messages.length === limit ? messages[0]._id.toString() : null;
+  const nextCursor =
+    messages.length === limit ? messages[0]._id.toString() : null;
 
   res.status(200).json({
     success: true,
@@ -168,7 +172,7 @@ export const sendMessage = async (req: Request, res: Response) => {
   try {
     await saveModelReply(id, req.user._id.toString(), fullReply);
 
-    // Log token usage if we captured it  
+    // Log token usage if we captured it
     if (finalUsageMetadata) {
       logAIQuery(message, finalUsageMetadata);
     }
@@ -178,4 +182,153 @@ export const sendMessage = async (req: Request, res: Response) => {
 
   res.write("data: [DONE]\n\n");
   res.end();
+};
+
+const getAnchorContext = async (chatId: string, anchorMessageId: string) => {
+  const result = await Chat.aggregate([
+    { $match: { _id: new mongoose.Types.ObjectId(chatId) } },
+    {
+      $project: {
+        anchorIndex: {
+          $indexOfArray: [
+            "$messages._id",
+            new mongoose.Types.ObjectId(anchorMessageId),
+          ],
+        },
+        messages: 1,
+      },
+    },
+    {
+      $match: { anchorIndex: { $gte: 0 } },
+    },
+    {
+      $project: {
+        contextWindow: {
+          $slice: [
+            "$messages",
+            { $max: [{ $subtract: ["$anchorIndex", 9] }, 0] },
+            10,
+          ],
+        },
+      },
+    },
+  ]);
+
+  return result.length > 0 ? result[0].contextWindow : [];
+};
+
+export const streamQuickChat = async (req: Request, res: Response) => {
+  const { chatId, anchorMessageId, highlightedText, quickChatHistory } =
+    req.body;
+
+  if (!req.user) {
+    res.status(401).json({ message: "Unauthorized" });
+    return;
+  }
+
+  const backgroundContext = await getAnchorContext(chatId, anchorMessageId);
+
+  const historicalString = backgroundContext
+    .map((msg: any) => `[${msg.role}]: ${msg.content}`)
+    .join("\n\n");
+
+  const systemPrompt = `You are an in-line AI Assistant analyzing a specific highlight from an ongoing conversation.
+
+--- HISTORICAL CONVERSATION CONTEXT ---
+The following 10 messages took place right before the user highlighted the text. Use this to understand the topic:
+${historicalString}
+
+--- THE USER'S HIGHLIGHT ---
+The user highlighted this exact text from the final message above:
+"${highlightedText}"
+
+Your ONLY job is to participate in a side-conversation explaining or expanding on that specific highlighted text. DO NOT answer questions irrelevant to the highlight. Remember that your conversation is a temporary pop-up modal, keep answers somewhat direct.`;
+
+  const contents = [
+    { role: "user", parts: [{ text: systemPrompt }] },
+    ...quickChatHistory.map((msg: any) => ({
+      role: msg.role === "model" ? "model" : "user",
+      parts: [{ text: msg.content }],
+    })),
+  ];
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+
+  const stream = await ai.models.generateContentStream({
+    model: "gemini-2.5-flash-lite",
+    contents,
+  });
+
+  for await (const chunk of stream) {
+    const text = chunk.text || "";
+    if (text) {
+      res.write(`data: ${JSON.stringify({ text })}\n\n`);
+    }
+  }
+
+  res.write("data: [DONE]\n\n");
+  res.end();
+};
+
+export const getSubChat = async (req: Request, res: Response) => {
+  const { id: chatId } = req.params;
+  
+  const { subChatId} = req.query;
+  console.log(subChatId)
+  if (!req.user) {
+    res.status(401).json({ message: "Unauthorized" });
+    return;
+  }
+
+  try {
+    const subChat = await SubChat.findOne({
+      chatId,
+      _id:subChatId,
+      userId: req.user._id,
+    }).lean();
+
+    res.json({
+      success: true,
+      data: subChat || null,
+    });
+  } catch (error) {
+    console.error("Get SubChat Error:", error);
+    res.status(500).json({ error: "Failed to fetch sub-chat history." });
+  }
+};
+
+export const saveSubChat = async (req: Request, res: Response) => {
+  const { id: chatId } = req.params;
+  const { anchorMessageId, highlightedText, messages, relativeY } = req.body;
+
+  if (!req.user) {
+    res.status(401).json({ message: "Unauthorized" });
+    return;
+  }
+
+  const sanitizedMessages = messages.map((msg: any) => {
+    if (msg._id && typeof msg._id === "string" && msg._id.startsWith("temp-")) {
+      const { _id, ...cleanMessage } = msg;
+      return cleanMessage;
+    }
+    return msg;
+  });
+
+  try {
+    const subChat = await SubChat.findOneAndUpdate(
+      { chatId, anchorMessageId, userId: req.user._id },
+      { highlightedText, messages:sanitizedMessages, relativeY },
+      { upsert: true, returnDocument: "after", setDefaultsOnInsert: true },
+    );
+
+    res.json({
+      success: true,
+      data: subChat,
+    });
+  } catch (error) {
+    console.error("Save SubChat Error:", error);
+    res.status(500).json({ error: "Failed to persist the side-chat." });
+  }
 };

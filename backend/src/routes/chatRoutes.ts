@@ -1,6 +1,6 @@
 import express from 'express'
 const router = express.Router();
-import { createChat, getChats, getChatById, getChatMessages, updateChat, deleteChat, sendMessage } from '../controllers/chatController';
+import { createChat, getChats, getChatById, getChatMessages, updateChat, deleteChat, sendMessage, streamQuickChat, getSubChat, saveSubChat } from '../controllers/chatController';
 import { userProtect } from '../middleware/authMiddleware';
 
 router.post('/create', userProtect, createChat);
@@ -10,6 +10,9 @@ router.get('/:id/messages', userProtect, getChatMessages);
 router.patch('/:id', userProtect, updateChat);
 router.delete('/:id', userProtect, deleteChat);
 router.post('/:id/message', userProtect, sendMessage);
+router.post('/:id/quick-chat', userProtect, streamQuickChat);
+router.get('/:id/subchat', userProtect, getSubChat);
+router.post('/:id/subchat', userProtect, saveSubChat);
 
 export default router
 

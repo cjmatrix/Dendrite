@@ -1,5 +1,5 @@
-import React, { useState, useRef, useMemo } from "react";
-import { Paperclip, Share, MoreVertical, ArrowUp, Image, Sparkles, ChevronDown, Check } from "lucide-react";
+import React, { useState, useRef, useMemo, useCallback } from "react";
+import { Paperclip, Share, MoreVertical, ArrowUp, Image, Sparkles, ChevronDown, Check, StickyNote } from "lucide-react";
 import { useParams } from "react-router-dom";
 import { useQuery, useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { Virtuoso } from "react-virtuoso";
@@ -15,17 +15,21 @@ import type { FileNode } from "../types/types";
 import DendritesLogo from "./DendritesLogo";
 import { markdownComponents } from "./markdown/MarkdownComponents";
 import { StreamingContext } from "../contexts/StreamingContext";
+import { QuickChatModal } from "./QuickChatModal.tsx";
 
 interface Message {
   _id?: string;
   role: "user" | "model" | "system";
   content: string;
+  hasSubChat?: boolean;
+  subChatY?: number;
+  subChatId?:string
 }
 
 const API_URL = import.meta.env.VITE_API_URL;
 
 
-const MessageBubble = React.memo(({ msg }: { msg: Message }) => {
+const MessageBubble = React.memo(({ msg, onOpenSubChat }: { msg: Message, onOpenSubChat: (msgId: string,subChatId:string) => void }) => {
     const isUser = msg.role === "user";
     const time = new Date().toLocaleTimeString([], {
       hour: "2-digit",
@@ -34,10 +38,11 @@ const MessageBubble = React.memo(({ msg }: { msg: Message }) => {
 
     return (
       <div
-        className={` flex w-full ${isUser ? "justify-end" : "justify-start"}`}
+        data-message-id={msg._id}
+        className={` flex w-full message-bubble-container ${isUser ? "justify-end" : "justify-start"}`}
       >
         {isUser ? (
-          <div className={`flex flex-col items-end max-w-[85%] md:max-w-[70%]`}>
+          <div className="flex flex-col items-end max-w-[85%] md:max-w-[70%] relative">
             <div className="flex items-center gap-2 mb-1.5 px-1">
               <span className="text-[12px] text-gray-500 font-medium">
                 {time}
@@ -46,9 +51,21 @@ const MessageBubble = React.memo(({ msg }: { msg: Message }) => {
                 Researcher
               </span>
             </div>
-            <div className="px-5 py-3.5 rounded-2xl rounded-tr-sm bg-[var(--theme-bg-surface)] border border-zinc-800 text-[16px] leading-relaxed whitespace-pre-wrap text-gray-200 shadow-sm">
+            <div className="px-5 py-3.5 rounded-2xl rounded-tr-sm bg-(--theme-bg-surface) border border-zinc-800 text-[16px] leading-relaxed whitespace-pre-wrap text-gray-200 shadow-sm">
               {msg.content}
             </div>
+
+            {/* Sticky Note for User Message */}
+            {msg.hasSubChat && (
+              <button 
+                onClick={() => onOpenSubChat(msg._id!)}
+                className="absolute left-full ml-4 p-1.5 rounded-lg bg-blue-600/20 border border-blue-500/30 text-blue-400 hover:bg-blue-600 hover:text-white transition-all group shadow-xl backdrop-blur-sm z-10"
+                style={{ top: (msg.subChatY || 0) }}
+                title="View sticky deep-dive"
+              >
+                <StickyNote size={14} className="group-hover:scale-110 transition-transform" />
+              </button>
+            )}
           </div>
         ) : (
           <div className="flex w-full gap-4 max-w-[95%] md:max-w-[100%]">
@@ -56,7 +73,7 @@ const MessageBubble = React.memo(({ msg }: { msg: Message }) => {
               className="mt-1 hidden sm:flex shrink-0"
             />
 
-            <div className="flex-1 flex flex-col min-w-0">
+            <div className="flex-1 flex flex-col min-w-0 relative">
               <div className="flex items-center gap-2 mb-1.5">
                 <span className="text-[13px] font-semibold text-gray-200">
                   AI ASSISTANT
@@ -74,6 +91,18 @@ const MessageBubble = React.memo(({ msg }: { msg: Message }) => {
                   {msg.content}
                 </ReactMarkdown>
               </div>
+              
+              {/* Sticky Note Icon - Positioned horizontally to selection */}
+              {msg.hasSubChat && (
+                <button 
+                  onClick={() => onOpenSubChat(msg._id, msg.subChatId?.toString()!)}
+                  className="absolute right-full mr-4 p-1.5 rounded-lg bg-blue-600/20 border border-blue-500/30 text-blue-400 hover:bg-blue-600 hover:text-white transition-all group shadow-xl backdrop-blur-sm z-10"
+                  style={{ top: (msg.subChatY || 0)}} // Offset for header
+                  title="View sticky deep-dive"
+                >
+                  <StickyNote size={14} className="group-hover:scale-110 transition-transform" />
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -175,6 +204,19 @@ const ChatWindow: React.FC = () => {
   const [isStreaming, setIsStreaming] = useState(false);
   const [mode, setMode] = useState<"general" | "visual">("general");
   const [isModeOpen, setIsModeOpen] = useState(false);
+  
+  
+  const [selection, setSelection] = useState<{
+    text: string;
+    x: number;
+    y: number;
+    relativeY?: number;
+    messageId: string;
+    visible: boolean;
+    subChatId:string | null
+  } | null>(null);
+  const [isQuickChatOpen, setIsQuickChatOpen] = useState(false);
+
   const queryClient = useQueryClient();
   const virtuosoRef = useRef<VirtuosoHandle>(null);
 
@@ -367,9 +409,66 @@ const ChatWindow: React.FC = () => {
       setIsStreaming(false);
     }
   };
-  
+
+  const handleTextSelection = () => {
+    const sel = window.getSelection();
+    const selectedText = sel?.toString().trim();
+
+    if (selectedText && selectedText.length > 0) {
+      const range = sel?.getRangeAt(0);
+      const rect = range?.getBoundingClientRect();  
+
+      console.log(sel)
+      let messageId = "";
+      let bubbleElement: HTMLElement | null = null;
+      let curr: any = sel?.anchorNode;
+      while (curr && curr !== document.body) {
+        if (curr.dataset?.messageId) {
+          messageId = curr.dataset.messageId;
+          bubbleElement = curr;
+          break;
+        }
+        curr = curr.parentElement;
+      }
+      console.log(messageId)
+      if (rect && messageId && bubbleElement) {
+        const bubbleRect = bubbleElement.getBoundingClientRect();
+        const relativeY = rect.top - bubbleRect.top;
+
+        setSelection({
+          text: selectedText,
+          x: rect.left + rect.width / 2,
+          y: rect.top + window.scrollY,
+          relativeY,
+          messageId,
+          visible: true,
+          subChatId:null
+        });
+      }
+    } else {
+      // Small timeout to allow the button click to happen before it disappears
+      setTimeout(() => setSelection(prev => prev ? { ...prev, visible: false } : null), 200);
+    }
+  };
+
+  const handleOpenSubChat = useCallback((messageId: string,subChatId:string) => {
+    console.log(messageId,subChatId)
+    setSelection({
+      text: "", // Modal will fetch it
+      x: window.innerWidth / 2,
+      y: window.innerHeight / 2,
+      messageId,
+      visible: false,
+      subChatId:subChatId
+    });
+    setIsQuickChatOpen(true);
+  }, []);
+
   return (
-    <div className="flex flex-col h-screen bg-[var(--theme-bg-base)] text-gray-200 font-sans w-full relative overflow-hidden">
+    <div 
+      className="flex flex-col h-screen bg-[var(--theme-bg-base)] text-gray-200 font-sans w-full relative overflow-hidden"
+      onMouseUp={handleTextSelection}
+    >
       {/* Top Header */}
       <div className="h-14 border-b border-white/5 flex items-center justify-between px-6 bg-[var(--theme-bg-base)] shrink-0 z-10">
         <div className="flex items-center text-sm font-medium">
@@ -424,7 +523,7 @@ const ChatWindow: React.FC = () => {
             }}
             itemContent={(_, msg) => (
               <div className={`max-w-4xl mx-auto w-full px-4 md:px-8 pb-0`}>
-                <MessageBubble msg={msg} />
+                <MessageBubble msg={msg} onOpenSubChat={handleOpenSubChat} />
               </div>
             )}
             components={{
@@ -520,6 +619,34 @@ const ChatWindow: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Floating Quick Chat Trigger */}
+      {selection && selection.visible && (
+        <button
+          className="fixed z-99 -translate-x-1/2 -translate-y-full mb-4 px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-lg shadow-xl hover:bg-blue-500 transition-all flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2 duration-200"
+          style={{ top: selection.y - 10, left: selection.x }}
+          onClick={() => setIsQuickChatOpen(true)}
+        >
+          <Sparkles size={14} />
+          Quick Chat
+        </button>
+      )}
+
+      {/* Quick Chat Modal */}
+      {selection && (
+        <QuickChatModal
+          key={`${selection.messageId}-${selection.text}`}
+          isOpen={isQuickChatOpen}
+          onClose={() =>{ setIsQuickChatOpen(false)
+                          setSelection(null)
+          }}
+          selectedText={selection.text}
+          sourceMessageId={selection.messageId}
+          chatId={id}
+          relativeY={selection.relativeY}
+          subChatId={selection?.subChatId}
+        />
+      )}
     </div>
   );
 };

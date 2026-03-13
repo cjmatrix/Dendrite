@@ -1,0 +1,313 @@
+import React, { useState, useRef, useEffect } from "react";
+import { X, ArrowUp, Sparkles, Pin, Maximize2, Minimize2 } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import api from "../api/axios";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import { markdownComponents } from "./markdown/MarkdownComponents";
+
+interface QuickChatModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  selectedText: string;
+  sourceMessageId: string;
+  chatId: string | undefined;
+  relativeY?: number;
+  subChatId?:string
+
+}
+
+const API_URL = import.meta.env.VITE_API_URL;
+
+export const QuickChatModal: React.FC<QuickChatModalProps> = ({
+  isOpen,
+  onClose,
+  selectedText,
+  sourceMessageId,
+  chatId,
+  relativeY,
+  subChatId
+
+}) => {
+  const [input, setInput] = useState("");
+  const [subMessages, setSubMessages] = useState<any[]>([]);
+  const [streamingText, setStreamingText] = useState("");
+  const [isExpanded, setIsExpanded] = useState(() => {
+    return localStorage.getItem("quickChatExpanded") === "true";
+  });
+  
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    localStorage.setItem("quickChatExpanded", String(isExpanded));
+  }, [isExpanded]);
+  const queryClient = useQueryClient();
+  console.log(subChatId,"heree")
+  // Fetch existing sub-chat history if it exists (Pinned/Sticky chat)
+  const { data: existingSubChat, isLoading: isHistoryLoading } = useQuery({
+    queryKey: ["subchat", chatId, sourceMessageId,subChatId],
+    queryFn: async () => {
+      const resp = await api.get(`/chats/${chatId}/subchat?subChatId=${subChatId}`);
+      return resp.data.data;
+    },
+    enabled: !!chatId && !!sourceMessageId && isOpen &&!!subChatId,
+  });
+
+  useEffect(() => {
+    // While loading a new history, clear the old one to avoid "flicker" or "leak"
+    if (isHistoryLoading) {
+      setSubMessages([]);
+      return;
+    }
+
+    if (existingSubChat?.messages) {
+      setSubMessages(existingSubChat.messages);
+    } else {
+      setSubMessages([]);
+    }
+  }, [existingSubChat, isHistoryLoading, sourceMessageId]);
+
+  useEffect(()=>{
+    if (!subMessages.length && selectedText) {
+       setInput(`Explain what is ${selectedText}`)
+    }
+  },[selectedText, subMessages.length])
+  
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [subMessages, streamingText]);
+
+  // Mutation to persist/stick the chat
+  const stickToChatMutation = useMutation({
+    mutationFn: async () => {
+      await api.post(`/chats/${chatId}/subchat`, {
+        anchorMessageId: sourceMessageId,
+        highlightedText: selectedText,
+        messages: subMessages,
+        relativeY: relativeY || existingSubChat?.relativeY || 0
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["subchat", chatId, sourceMessageId] });
+      queryClient.invalidateQueries({ queryKey: ["chatMessages", chatId] });
+    }
+  });
+
+  const streamChatMutation = useMutation({
+    mutationFn: async ({ userPrompt }: { userPrompt: string }) => {
+      const response = await fetch(`${API_URL}/chats/${chatId}/quick-chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chatId,
+          anchorMessageId: sourceMessageId,
+          highlightedText: selectedText,
+          quickChatHistory: subMessages.concat({ role: "user", content: userPrompt }),
+        }),
+        credentials: "include",
+      });
+
+      if (!response.ok || !response.body) throw new Error("Stream failed");
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let fullReply = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split("\n");
+
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            const data = line.slice(6);
+            if (data === "[DONE]") break;
+
+            try {
+              const parsed = JSON.parse(data);
+              fullReply += parsed.text;
+              setStreamingText(fullReply);
+            } catch {}
+          }
+        }
+      }
+      return fullReply;
+    },
+    onMutate: async ({ userPrompt }) => {
+      setStreamingText("");
+      setSubMessages((prev) => [...prev, { role: "user", content: userPrompt, _id: `temp-${Date.now()}` }]);
+    },
+    onSuccess: (finalReply) => {
+      setSubMessages((prev) => [
+        ...prev,
+        { role: "model", content: finalReply, _id: `temp-ai-${Date.now()}` },
+      ]);
+    },
+    onSettled: () => {
+      setStreamingText("");
+    }
+  });
+
+  const handleSend = () => {
+    if (!input.trim() || streamChatMutation.isPending) return;
+    const userPrompt = input.trim();
+    setInput("");
+    streamChatMutation.mutate({ userPrompt });
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-100" onClick={onClose} />
+      
+      <div className={`fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[95vw] transition-all duration-300 ease-in-out bg-(--theme-bg-surface) border border-white/10 rounded-2xl shadow-2xl z-101 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 ${
+        isExpanded ? "max-w-6xl h-[92vh]" : "max-w-2xl h-[70vh]"
+      }`}>
+        
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-(--theme-bg-base)">
+          <div className="flex items-center gap-2">
+            <Sparkles size={16} className="text-blue-400" />
+            <h3 className="text-sm font-semibold text-gray-200">Quick Context Chat</h3>
+          </div>
+          <div className="flex items-center gap-2">
+<button 
+  className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium transition-all border ${
+    existingSubChat 
+      ? "text-blue-400 bg-blue-500/10 border-blue-500/30 cursor-default" 
+      : "text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 border-transparent hover:border-blue-500/30"
+  }`}
+  onClick={() => !existingSubChat && stickToChatMutation.mutate()}
+  disabled={stickToChatMutation.isPending || subMessages.length === 0}
+>
+  <Pin size={14} className={existingSubChat ? "fill-blue-400" : ""} />
+  {existingSubChat ? "Pinned to Chat" : "Stick to Chat"}
+</button>
+            <button 
+              onClick={() => setIsExpanded(!isExpanded)} 
+              className="text-gray-500 hover:text-gray-300 transition-colors p-1"
+              title={isExpanded ? "Shrink" : "Expand"}
+            >
+              {isExpanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+            </button>
+            <button onClick={onClose} className="text-gray-500 hover:text-gray-300 transition-colors">
+              <X size={18} />
+            </button>
+          </div>
+        </div>
+
+        {/* Selected Text Reference */}
+        {(selectedText || existingSubChat?.highlightedText) && (
+          <div className="px-4 py-3 bg-blue-500/5 border-b border-white/5 shrink-0">
+            <p className="text-[10px] text-blue-400 font-bold uppercase tracking-wider mb-1">Referencing Selection</p>
+            <div className="text-sm text-gray-300 italic border-l-2 border-blue-500/50 pl-3 line-clamp-2">
+              "{selectedText || existingSubChat?.highlightedText}"
+            </div>
+          </div>
+        )}
+
+        {/* Messages Area */}
+        <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 flex flex-col gap-6">
+          {subMessages.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-center py-10">
+              <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center mb-4 border border-white/5">
+                <Sparkles size={24} className="text-gray-600" />
+              </div>
+              <p className="text-sm text-gray-400 max-w-[280px]">
+                Dive deeper into this specific highlight. Your conversation here won't clutter the main chat.
+              </p>
+            </div>
+          ) : (
+            subMessages.map((msg, idx) => (
+              <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                <div className={`max-w-[85%] px-4 py-3 rounded-2xl text-[15px] leading-relaxed ${
+                  msg.role === 'user' 
+                    ? 'bg-blue-600 text-white rounded-tr-sm shadow-lg shadow-blue-900/20' 
+                    : 'bg-white/5 text-gray-200 rounded-tl-sm border border-white/5'
+                }`}>
+                  {msg.role === 'user' ? (
+                    msg.content
+                  ) : (
+                    <div className="markdown-body">
+                      <ReactMarkdown 
+                        remarkPlugins={[remarkGfm, remarkMath]} 
+                        rehypePlugins={[rehypeKatex]} 
+                        components={markdownComponents}
+                      >
+                        {msg.content}
+                      </ReactMarkdown>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+
+          {/* Streaming Bubble */}
+          {(streamChatMutation.isPending || streamingText) && (
+             <div className="flex justify-start">
+               <div className="max-w-[85%] px-4 py-3 rounded-2xl text-[15px] leading-relaxed bg-white/5 text-gray-200 rounded-tl-sm border border-white/5">
+                 {streamingText ? (
+                   <div className="markdown-body">
+                     <ReactMarkdown 
+                       remarkPlugins={[remarkGfm, remarkMath]} 
+                       rehypePlugins={[rehypeKatex]} 
+                       components={markdownComponents}
+                     >
+                       {streamingText}
+                     </ReactMarkdown>
+                   </div>
+                 ) : (
+                   <span className="flex gap-1.5 items-center h-6">
+                     <span className="w-1.5 h-1.5 bg-blue-500/50 rounded-full animate-bounce"></span>
+                     <span className="w-1.5 h-1.5 bg-blue-500/50 rounded-full animate-bounce delay-100"></span>
+                     <span className="w-1.5 h-1.5 bg-blue-500/50 rounded-full animate-bounce delay-200"></span>
+                   </span>
+                 )}
+               </div>
+             </div>
+          )}
+        </div>
+
+        {/* Input Area */}
+        <div className="p-4 border-t border-white/10 bg-(--theme-bg-base)">
+          <div className="flex items-center bg-(--theme-bg-elevated) border border-white/10 rounded-2xl px-4 py-3 shadow-inner focus-within:border-blue-500/30 transition-all">
+            <input
+              type="text"
+              placeholder="Ask a clarifying question..."
+              className="flex-1 bg-transparent border-none outline-none text-sm text-gray-200 placeholder:text-gray-500"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSend();
+                }
+              }}
+              disabled={streamChatMutation.isPending}
+              autoFocus
+            />
+            <button
+              onClick={handleSend}
+              disabled={streamChatMutation.isPending || !input.trim()}
+              className={`p-2 rounded-xl ml-2 transition-all ${
+                input.trim() && !streamChatMutation.isPending
+                  ? "bg-blue-600 text-white hover:bg-blue-500 shadow-lg shadow-blue-600/20"
+                  : "bg-white/5 text-gray-600 cursor-not-allowed"
+              }`}
+            >
+              <ArrowUp size={18} strokeWidth={2.5} />
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+};

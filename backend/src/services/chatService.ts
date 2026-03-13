@@ -1,5 +1,6 @@
 import { Chat } from "../models/Chat";
 import { Message } from "../models/Message";
+import { SubChat } from "../models/SubChat";
 import { AppError } from "../utils/AppError";
 import ai, { systemInstruction } from "../config/AIConfig";
 import { CodeBlock } from "../models/CodeBlock";
@@ -66,10 +67,28 @@ export const getChatMessagesService = async (
     .limit(limit)
     .lean();
 
+ 
+  const messageIds = messages.map(m => m._id);
+  const subChats = await SubChat.find({ 
+    anchorMessageId: { $in: messageIds },
+    chatId: new mongoose.Types.ObjectId(chatId)
+  }).select('anchorMessageId relativeY').lean();
 
-  messages.reverse();
+  const subChatMap = new Map(subChats.map(sc => [sc.anchorMessageId.toString(),{relY: sc.relativeY,subChatId:sc._id}]));
 
-  return messages;
+  const messagesWithFlags = messages.map(m => {
+    const subMap = subChatMap.get(m._id.toString());
+    return {
+      ...m,
+      hasSubChat: subMap?.relY !== undefined,
+      subChatY: subMap?.relY ?? 0,
+      subChatId:subMap?.subChatId
+    };
+  });
+
+  messagesWithFlags.reverse();
+
+  return messagesWithFlags;
 };
 
 export const updateChatService = async (
