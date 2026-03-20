@@ -35,4 +35,44 @@ ${textMessages}`;
   return response.text?.trim() || "";
 }
 
+export async function generateRecursiveSummary(
+  previousSummary: string | null,
+  newMessageBatch: any[],
+) {
+  const textMessages = newMessageBatch
+    .map((m) => `[${m.role.toUpperCase()}]: ${m.content}`)
+    .join("\n\n");
+
+  const queryText = `You are an expert at maintaining conversational state. Your task is to update the "Global Conversation Summary" based on a new batch of messages.
+
+CURRENT SUMMARY (State so far):
+${previousSummary || "None - This is the start of the conversation."}
+
+NEW MESSAGES (Latest context):
+${textMessages}
+
+TASK:
+Produce a NEW updated summary that incorporates the most important developments from the new messages into the old summary. 
+
+RULES:
+1. FOCUS on: Goals, Decisions made, Technical Stack, and Key Progress.
+2. REMOVE: Outdated information or resolved questions.
+3. FORMAT: Use concise bullet points or a very short, dense paragraph.
+4. TONE: Be objective and high-signal. No conversational filler.
+
+Updated Summary:`;
+
+  const response = await ai.models.generateContent({
+    model: "gemini-2.5-flash-lite",
+    contents: [
+      {
+        role: "user",
+        parts: [{ text: queryText }],
+      },
+    ],
+  });
+
+  return response.text?.trim() || "No summary available.";
+}
+
 export default generateCompressedChat;

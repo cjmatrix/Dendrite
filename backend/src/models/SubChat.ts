@@ -7,13 +7,11 @@ const SubChatSchema = new Schema(
       type: Schema.Types.ObjectId,
       ref: "Chat",
       required: true,
-      index: true,
     },
     anchorMessageId: {
       type: Schema.Types.ObjectId,
       ref: "Message",
       required: true,
-      index: true,
     },
     userId: {
       type: Schema.Types.ObjectId,
@@ -24,7 +22,7 @@ const SubChatSchema = new Schema(
       type: String,
       required: true,
     },
-    relativeY: {
+    relativeY: {  
       type: Number,
       default: 0,
     },
@@ -42,6 +40,6 @@ const SubChatSchema = new Schema(
 );
 
 // Each message highlight can have only one Pinned/Sticky subchat
-SubChatSchema.index({ chatId: 1, anchorMessageId: 1 }, { unique: true });
+// SubChatSchema.index({ chatId: 1});
 
 export const SubChat = mongoose.model("SubChat", SubChatSchema);

@@ -2,7 +2,7 @@ import { Worker, Job } from "bullmq";
 import { redisConfig, redisConnection } from "../config/redis";
 import { CodeBlock } from "../models/CodeBlock";
 import { OutboxEvent } from "../models/OutboxEvent";
-import generateCodeDescription from "../utils/AIDescription";
+import { generateBatchCodeDescriptions } from "../utils/AIDescription";
 import embeddingCodeDesc from "../queue/embeddingQueue";
 import mongoose from "mongoose";
 
@@ -20,62 +20,73 @@ const descriptionWorker = new Worker<DescriptionJobData>(
   "description-queue",
   async (job: Job<DescriptionJobData>) => {
     const { blocks } = job.data;
-    const codeBlockUpdates = [];
-    const outboxEventsToPush = [];
+    const finalResults: { [key: string]: string } = {};
+    const toProcessBlocks: typeof blocks = [];
 
+  
     for (const block of blocks) {
+      const redisKey = `desc:${block._id}`;
+      const cachedDescription = await redisConnection.get(redisKey);
+      
+      if (cachedDescription) {
+        finalResults[block._id] = cachedDescription;
+      } else {
+        toProcessBlocks.push(block);
+      }
+    }
+
+
+    if (toProcessBlocks.length > 0) {
       try {
-        let redisKey = `desc:${block._id}`;
-        let description = await redisConnection.get(redisKey);
-
-        if (description) {
-          console.log(
-            `⏩ Cache hit for block ${block._id}, skipping AI generation.`,
-          );
-        } else {
-          description = await generateCodeDescription(
-            block.code,
-            block.language,
-          );
-
-          await redisConnection.setex(redisKey, 3600, description);
-          console.log(
-            `✅ Generated AI description natively for block: ${block._id}`,
-          );
-
-          await new Promise((resolve) => setTimeout(resolve, 2000));
-        }
-
-        codeBlockUpdates.push({
-          updateOne: {
-            filter: { _id: block._id },
-            update: { $set: { description } },
-          },
-        });
-
-        outboxEventsToPush.push({
-          eventType: "CODE_BLOCK_CREATED",
-          payload: {
-            sourceId: block._id,
-            sourceType: "code_block",
-            userId: block.userId,
-            content: {
-              code: block.code,
-              description,
-            },
-            metadata: { language: block.language, chatId: block.chatId },
-          },
-          status: "pending",
-        });
-      } catch (error: any) {
-        console.error(
-          `❌❌❌❌❌ Description generation failed for block ${block._id}:❌❌❌❌❌`,
-          error.message,
+        console.log(`🤖 Batching description generation for ${toProcessBlocks.length} blocks...`);
+        
+        const batchResults = await generateBatchCodeDescriptions(
+          toProcessBlocks.map(b => ({ id: b._id, code: b.code, language: b.language }))
         );
+
+     
+        for (const res of batchResults) {
+          finalResults[res.id] = res.description;
+          await redisConnection.setex(`desc:${res.id}`, 3600, res.description);
+        }
+      } catch (error: any) {
+        console.error(`❌ Batch Description generation failed:`, error.message);
         throw error;
       }
     }
 
+    // 3. Prepare Updates and Outbox Events
+    const codeBlockUpdates = [];
+    const outboxEventsToPush = [];
+
+    for (const block of blocks) {
+      const description = finalResults[block._id];
+      if (!description) continue; // Skip if somehow AI didn't return a description for this ID
+
+      codeBlockUpdates.push({
+        updateOne: {
+          filter: { _id: block._id },
+          update: { $set: { description } },
+        },
+      });
+
+      outboxEventsToPush.push({
+        eventType: "CODE_BLOCK_CREATED",
+        payload: {
+          sourceId: block._id,
+          sourceType: "code_block",
+          userId: block.userId,
+          content: {
+            code: block.code,
+            description,
+          },
+          metadata: { language: block.language, chatId: block.chatId },
+        },
+        status: "pending",
+      });
+    }
+
+    // 4. Bulk Write to DB
     if (codeBlockUpdates.length > 0) {
       const session = await mongoose.startSession();
       session.startTransaction();
@@ -89,6 +100,8 @@ const descriptionWorker = new Worker<DescriptionJobData>(
         );
 
         await session.commitTransaction();
+
+        // 5. Trigger Embeddings
         for (const event of savedOutboxEvents) {
           try {
             await embeddingCodeDesc(event, event.payload.content);
@@ -100,9 +113,7 @@ const descriptionWorker = new Worker<DescriptionJobData>(
           }
         }
       } catch (txnError) {
-        console.log(
-          "❌❌ Code BLock update or Outbox event creation something failed ❌❌",
-        );
+        console.log("❌❌ Code Block update or Outbox event creation failed ❌❌");
         await session.abortTransaction();
         throw txnError;
       } finally {
@@ -129,3 +140,4 @@ descriptionWorker.on("failed", (job, err) => {
 });
 
 export default descriptionWorker;
+

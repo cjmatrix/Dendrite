@@ -14,8 +14,7 @@ export default function P5Sandbox({ p5CodeString }: P5SandboxProps) {
   useEffect(() => {
     if (!iframeRef.current || isStreaming) return;
 
-    // Dispatch the stream directly to the mounted sandbox bypassing React reconciliation
-    // We only fire this once the streaming lock has been internally released
+   
     iframeRef.current.contentWindow?.postMessage(
       { code: p5CodeString },
       "*"

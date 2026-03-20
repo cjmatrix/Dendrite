@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import type { FileNode, FileType } from "../types/types";
 import {
   Folder,
-  ChevronRight,
   ChevronDown,
   MessageSquare,
   Plus,
@@ -80,6 +79,8 @@ export const FileItem: React.FC<FileItemProps> = ({ node }) => {
       queryClient.invalidateQueries({ queryKey: ["folders"] });
     },
   });
+
+
 
   const { mutate: updateFolder } = useMutation({
     mutationFn: async ({
@@ -311,11 +312,11 @@ export const FileItem: React.FC<FileItemProps> = ({ node }) => {
       <div className="group flex items-center justify-between py-1 px-2 hover:bg-zinc-900 cursor-pointer text-gray-200 rounded-md transition-colors">
         <div
           className={`${!isFolder && " -ml-4"} flex items-center gap-2 flex-1`}
-          onClick={handleToggle}
+          onClick={isFolder ? handleToggle : () => handleOpenWindow(node)}
         >
           {isFolder ? (
-            <span className="text-gray-500">
-              {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+            <span className={`text-gray-500 transition-transform duration-200 ${isOpen ? "rotate-0" : "-rotate-90"}`}>
+               <ChevronDown size={16} />
             </span>
           ) : (
             <span className="w-4" />
@@ -334,20 +335,22 @@ export const FileItem: React.FC<FileItemProps> = ({ node }) => {
               };
               const { color, suffix, suffixBg } = getSystemStyle();
               return (
-                <div className="relative flex items-center justify-center">
+                <div className="relative flex items-center justify-center transition-transform group-hover:scale-110 duration-200">
                   <Folder size={20} className={color} strokeWidth={2} />
-                  <div className={`absolute -bottom-[2px] -right-[2px] p-[2px] rounded-md shadow-[0_1px_2px_rgba(0,0,0,0.5)] border border-black/80 ${suffixBg} z-10`}>
-                    {suffix}
-                  </div>
+                  {suffix && (
+                    <div className={`absolute -bottom-[2px] -right-[2px] p-[2px] rounded-md shadow-[0_1px_2px_rgba(0,0,0,0.5)] border border-black/80 ${suffixBg} z-10 scale-90`}>
+                      {suffix}
+                    </div>
+                  )}
                 </div>
               );
             })() : (
-              <div className="relative flex items-center justify-center">
+              <div className="relative flex items-center justify-center transition-transform group-hover:scale-110 duration-200">
                 <Folder size={20} className="text-indigo-400 fill-indigo-500/5 text-opacity-80" strokeWidth={1.8} />
               </div>
             )
           ) : (
-            <div className="relative flex items-center justify-center pl-1 pr-0.5">
+            <div className="relative flex items-center justify-center pl-1 pr-0.5 transition-transform group-hover:scale-110 duration-200">
               <MessageSquare size={17} className="text-emerald-400/90 fill-emerald-500/10" strokeWidth={1.8} />
             </div>
           )}
@@ -375,31 +378,29 @@ export const FileItem: React.FC<FileItemProps> = ({ node }) => {
               </button>
             </div>
           ) : (
-            <div
-              className={`text-[15px] truncate w-full`}
-              onClick={(e) => {
-                if (!isFolder) {
-                  e.stopPropagation();
-                  handleOpenWindow(node);
-                }
-              }}
-            >
+            <div className={`text-[15px] truncate w-full transition-colors group-hover:text-white`}>
               {node.name}
             </div>
           )}
         </div>
 
         {isFolder && (
-          <div className="hidden group-hover:flex items-center gap-1">
+          <div className="flex opacity-0 group-hover:opacity-100 items-center gap-1 transition-opacity duration-200">
             <button
-              onClick={() => setIsCreating("chat")}
-              className="p-1 hover:bg-[var(--theme-bg-elevated)] text-gray-500"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsCreating("chat");
+              }}
+              className="p-1 hover:bg-white/10 rounded-md text-gray-500 hover:text-emerald-400 transition-colors"
             >
               <Plus size={14} />
             </button>
             <button
-              onClick={() => setIsCreating("folder")}
-              className="p-1 hover:bg-[var(--theme-bg-elevated)] text-gray-500"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsCreating("folder");
+              }}
+              className="p-1 hover:bg-white/10 rounded-md text-gray-500 hover:text-indigo-400 transition-colors"
             >
               <FolderPlus size={14} />
             </button>
@@ -408,7 +409,7 @@ export const FileItem: React.FC<FileItemProps> = ({ node }) => {
       </div>
 
       {isCreating && (
-        <div className="ml-6 flex items-center gap-1 py-1 px-2">
+        <div className="ml-6 flex items-center gap-1 py-1 px-2 animate-in fade-in slide-in-from-left-2 duration-200">
           <input
             autoFocus
             className="bg-[var(--theme-bg-surface)] border border-indigo-500/50 focus:border-indigo-500 rounded text-[15px] text-gray-200 outline-none px-2 py-0.5 w-[140px] transition-colors"
@@ -428,13 +429,19 @@ export const FileItem: React.FC<FileItemProps> = ({ node }) => {
           </button>
         </div>
       )}
-      {isFolder && isOpen && node.children && (
-        <div className="ml-4 border-l border-zinc-800">
-          {node.children.map((child) => (
-            <FileItem key={child.id} node={child} />
-          ))}
+      
+      {isFolder && (
+        <div className={`grid transition-all duration-300 ease-in-out ${isOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
+          <div className="overflow-hidden">
+            <div className="ml-4 border-l border-zinc-800/50 hover:border-zinc-700/50 transition-colors">
+              {node.children?.map((child) => (
+                <FileItem key={child.id} node={child} />
+              ))}
+            </div>
+          </div>
         </div>
       )}
+
 
       {contextMenu && (
         <>

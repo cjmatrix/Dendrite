@@ -9,7 +9,7 @@
 .markdown-body h1,
 .markdown-body h2,
 .markdown-body h3 {
-  color: #f1f5f9;
+  color: #cfcfcf;
   font-weight: 600;
   margin-top: 1.8em;
   margin-bottom: 1em;
@@ -29,8 +29,15 @@
   font-size: 1.4em;
 }
 .markdown-body h3 {
-  font-size: 1.2em;
+  font-size: 1.3em;
   border-bottom: none;
+}
+
+.markdown-body h4 {
+  font-size: 1.2em;
+  font-weight: bold;
+  border-bottom: none;
+  padding: 1rem 0;
 }
 
 .markdown-body p {
@@ -38,8 +45,8 @@
 }
 
 .markdown-body strong {
-  color: #f8fafc;
-  font-weight: 600;
+  color: #dadada;
+  font-weight: 800;
 }
 
 .markdown-body em {

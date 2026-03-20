@@ -14,6 +14,8 @@ import mongoose from "mongoose";
 import { Chat } from "../models/Chat";
 import { SubChat } from "../models/SubChat";
 import { logAIQuery } from "../utils/logger";
+import { Message } from "../models/Message";
+import CONTEXT_WINDOW from "../constants/contextWindow";
 
 export const createChat = async (req: Request, res: Response) => {
   if (!req.user) {
@@ -185,53 +187,44 @@ export const sendMessage = async (req: Request, res: Response) => {
 };
 
 const getAnchorContext = async (chatId: string, anchorMessageId: string) => {
-  const result = await Chat.aggregate([
-    { $match: { _id: new mongoose.Types.ObjectId(chatId) } },
-    {
-      $project: {
-        anchorIndex: {
-          $indexOfArray: [
-            "$messages._id",
-            new mongoose.Types.ObjectId(anchorMessageId),
-          ],
-        },
-        messages: 1,
-      },
-    },
-    {
-      $match: { anchorIndex: { $gte: 0 } },
-    },
-    {
-      $project: {
-        contextWindow: {
-          $slice: [
-            "$messages",
-            { $max: [{ $subtract: ["$anchorIndex", 9] }, 0] },
-            10,
-          ],
-        },
-      },
-    },
-  ]);
+  try {
+    const anchorMsg = await Message.findById(anchorMessageId);
+    if (!anchorMsg) return [];
 
-  return result.length > 0 ? result[0].contextWindow : [];
+    const contextMessages = await Message.find({
+      chatId,
+      createdAt: { $lte: anchorMsg.createdAt },
+    })
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .lean();
+
+    return contextMessages.reverse();
+  } catch (err) {
+    console.error("getAnchorContext error:", err);
+    return [];
+  }
 };
 
 export const streamQuickChat = async (req: Request, res: Response) => {
   const { chatId, anchorMessageId, highlightedText, quickChatHistory } =
     req.body;
-
+ 
   if (!req.user) {
     res.status(401).json({ message: "Unauthorized" });
     return;
   }
 
-  const backgroundContext = await getAnchorContext(chatId, anchorMessageId);
+  const recentHistory = (quickChatHistory || []).slice(-CONTEXT_WINDOW);
 
+
+  const backgroundContext = await getAnchorContext(chatId, anchorMessageId);
+ 
   const historicalString = backgroundContext
     .map((msg: any) => `[${msg.role}]: ${msg.content}`)
     .join("\n\n");
 
+  
   const systemPrompt = `You are an in-line AI Assistant analyzing a specific highlight from an ongoing conversation.
 
 --- HISTORICAL CONVERSATION CONTEXT ---
@@ -246,12 +239,13 @@ Your ONLY job is to participate in a side-conversation explaining or expanding o
 
   const contents = [
     { role: "user", parts: [{ text: systemPrompt }] },
-    ...quickChatHistory.map((msg: any) => ({
+    ...recentHistory.map((msg: any) => ({
       role: msg.role === "model" ? "model" : "user",
       parts: [{ text: msg.content }],
     })),
   ];
 
+  
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
@@ -274,9 +268,9 @@ Your ONLY job is to participate in a side-conversation explaining or expanding o
 
 export const getSubChat = async (req: Request, res: Response) => {
   const { id: chatId } = req.params;
-  
-  const { subChatId} = req.query;
-  console.log(subChatId)
+
+  const { subChatId } = req.query;
+
   if (!req.user) {
     res.status(401).json({ message: "Unauthorized" });
     return;
@@ -285,7 +279,7 @@ export const getSubChat = async (req: Request, res: Response) => {
   try {
     const subChat = await SubChat.findOne({
       chatId,
-      _id:subChatId,
+      _id: subChatId,
       userId: req.user._id,
     }).lean();
 
@@ -301,7 +295,8 @@ export const getSubChat = async (req: Request, res: Response) => {
 
 export const saveSubChat = async (req: Request, res: Response) => {
   const { id: chatId } = req.params;
-  const { anchorMessageId, highlightedText, messages, relativeY } = req.body;
+  const { subChatId, anchorMessageId, highlightedText, messages, relativeY } =
+    req.body;
 
   if (!req.user) {
     res.status(401).json({ message: "Unauthorized" });
@@ -315,13 +310,30 @@ export const saveSubChat = async (req: Request, res: Response) => {
     }
     return msg;
   });
-
+  console.log(subChatId   )
   try {
-    const subChat = await SubChat.findOneAndUpdate(
-      { chatId, anchorMessageId, userId: req.user._id },
-      { highlightedText, messages:sanitizedMessages, relativeY },
-      { upsert: true, returnDocument: "after", setDefaultsOnInsert: true },
-    );
+    let subChat;
+    if (subChatId) {
+      subChat = await SubChat.findOneAndUpdate(
+        { _id: subChatId, userId: req.user._id },
+        {
+          highlightedText,
+          messages: sanitizedMessages,
+          relativeY,
+        },
+        { new: true },
+      );
+    } else {
+      console.log("heyyyyy")
+      subChat = await SubChat.create({
+        chatId,
+        anchorMessageId,
+        userId: req.user._id,
+        highlightedText,
+        messages: sanitizedMessages,
+        relativeY,
+      });
+    }
 
     res.json({
       success: true,
@@ -329,6 +341,6 @@ export const saveSubChat = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error("Save SubChat Error:", error);
-    res.status(500).json({ error: "Failed to persist the side-chat." });
+    res.status(500).json({error});
   }
 };

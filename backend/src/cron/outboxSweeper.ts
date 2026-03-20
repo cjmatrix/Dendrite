@@ -3,6 +3,7 @@ import cron from "node-cron";
 import { OutboxEvent } from "../models/OutboxEvent";
 import embeddingCodeDesc from "../queue/embeddingQueue";
 import addSummaryQueue from "../queue/summaryQueue";
+import addStateQueue from "../queue/stateQueue";
 
 cron.schedule("*/5 * * * *", async () => {
   const ONE_MINUTE_AGO = new Date(Date.now() - 60 * 1000);
@@ -31,6 +32,12 @@ cron.schedule("*/5 * * * *", async () => {
         await embeddingCodeDesc(job, job.payload.content);
       } else if (job.eventType === "CHAT_SUMMARY_CREATED") {
         await addSummaryQueue(job._id.toString(), job.payload.content.messages);
+      } else if (job.eventType === "CHAT_STATE_UPDATED") {
+        await addStateQueue(
+          job._id.toString(),
+          job.payload.content.messages,
+          job.payload.metadata?.previousSummary,
+        );
       }
 
       await OutboxEvent.findByIdAndUpdate(job._id, { $inc: { retryCount: 1 } });

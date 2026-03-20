@@ -22,8 +22,7 @@ interface Message {
   role: "user" | "model" | "system";
   content: string;
   hasSubChat?: boolean;
-  subChatY?: number;
-  subChatId?:string
+  subChats?: Array<{ subChatId: string; relY: number }>;
 }
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -55,21 +54,23 @@ const MessageBubble = React.memo(({ msg, onOpenSubChat }: { msg: Message, onOpen
               {msg.content}
             </div>
 
-            {/* Sticky Note for User Message */}
-            {msg.hasSubChat && (
+            {/* Sticky Notes for User Message */}
+            {msg.hasSubChat && msg.subChats?.map((sc) => (
               <button 
-                onClick={() => onOpenSubChat(msg._id!)}
+                key={sc.subChatId}
+                onClick={() => onOpenSubChat(msg._id!, sc.subChatId)}
                 className="absolute left-full ml-4 p-1.5 rounded-lg bg-blue-600/20 border border-blue-500/30 text-blue-400 hover:bg-blue-600 hover:text-white transition-all group shadow-xl backdrop-blur-sm z-10"
-                style={{ top: (msg.subChatY || 0) }}
+                style={{ top: sc.relY }}
                 title="View sticky deep-dive"
               >
                 <StickyNote size={14} className="group-hover:scale-110 transition-transform" />
               </button>
-            )}
+            ))}
           </div>
         ) : (
           <div className="flex w-full gap-4 max-w-[95%] md:max-w-[100%]">
             <DendritesLogo
+            
               className="mt-1 hidden sm:flex shrink-0"
             />
 
@@ -92,17 +93,18 @@ const MessageBubble = React.memo(({ msg, onOpenSubChat }: { msg: Message, onOpen
                 </ReactMarkdown>
               </div>
               
-              {/* Sticky Note Icon - Positioned horizontally to selection */}
-              {msg.hasSubChat && (
+              {/* Sticky Note Icons - Positioned horizontally to selection */}
+              {msg.hasSubChat && msg.subChats?.map((sc) => (
                 <button 
-                  onClick={() => onOpenSubChat(msg._id, msg.subChatId?.toString()!)}
+                  key={sc.subChatId}
+                  onClick={() => onOpenSubChat(msg._id!, sc.subChatId)}
                   className="absolute right-full mr-4 p-1.5 rounded-lg bg-blue-600/20 border border-blue-500/30 text-blue-400 hover:bg-blue-600 hover:text-white transition-all group shadow-xl backdrop-blur-sm z-10"
-                  style={{ top: (msg.subChatY || 0)}} // Offset for header
+                  style={{ top: sc.relY }}
                   title="View sticky deep-dive"
                 >
                   <StickyNote size={14} className="group-hover:scale-110 transition-transform" />
                 </button>
-              )}
+              ))}
             </div>
           </div>
         )}
@@ -133,17 +135,14 @@ const VirtuosoFooter = ({ context }: any) => {
       {streamingText && (
         <div className="flex w-full gap-4 max-w-[95%] md:max-w-[85%] streaming-bubble mt-6">
           <DendritesLogo
-            isRotate={true}
+            isLoading={true}
             className="mt-1 hidden sm:flex shrink-0"
           />
 
           <div className="flex-1 flex flex-col min-w-0">
             <div className="flex items-center gap-2 mb-1.5">
-              <span className="text-[13px] font-semibold text-gray-200">
-                AI ASSISTANT
-              </span>
-              <span className="text-[12px] text-gray-500 font-medium">
-                typing...
+              <span className="text-[13px] font-semibold text-gray-200 uppercase tracking-wider">
+                Dendrites AI
               </span>
             </div>
             <div className="markdown-body text-[16px] leading-relaxed text-gray-300 w-full overflow-hidden">
@@ -166,30 +165,23 @@ const VirtuosoFooter = ({ context }: any) => {
       {isStreaming && !streamingText && (
         <div className="flex w-full gap-4 max-w-[95%] md:max-w-[85%] streaming-bubble mt-6">
           <DendritesLogo
-            isRotate={true}
+            isLoading={true}
             className="mt-1 hidden sm:flex shrink-0"
           />
-
-          <div className="flex-1 flex flex-col min-w-0">
-            <div className="flex items-center gap-2 mb-1.5">
-              <span className="text-[13px] font-semibold text-gray-200">
-                AI ASSISTANT
+          <div className="flex-1 flex flex-col justify-center">
+            <div className="flex items-center gap-3">
+              <span className="text-[13px] font-bold text-gray-300 tracking-widest uppercase">
+                Thinking
+              </span>
+              <span className="flex gap-1.5">
+                <span className="w-1 h-1 bg-blue-400 rounded-full animate-bounce [animation-delay:-0.3s]" />
+                <span className="w-1 h-1 bg-blue-400 rounded-full animate-bounce [animation-delay:-0.15s]" />
+                <span className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" />
               </span>
             </div>
-            <div className="flex gap-1.5 py-2">
-              <span
-                className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"
-                style={{ animationDelay: "0ms" }}
-              />
-              <span
-                className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"
-                style={{ animationDelay: "150ms" }}
-              />
-              <span
-                className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"
-                style={{ animationDelay: "300ms" }}
-              />
-            </div>
+            <span className="text-[11px] text-gray-500 font-medium italic mt-0.5">
+              Mapping neural pathways...
+            </span>
           </div>
         </div>
       )}
@@ -407,6 +399,18 @@ const ChatWindow: React.FC = () => {
       
       setStreamingText("");
       setIsStreaming(false);
+
+      
+      setTimeout(() => {
+        virtuosoRef.current?.scrollToIndex({
+          index: "LAST",
+          align: "end",
+          behavior: "auto",
+        });
+      }, 100);
+      
+  
+      queryClient.invalidateQueries({ queryKey: ["chatMessages", id] });
     }
   };
 
@@ -535,7 +539,7 @@ const ChatWindow: React.FC = () => {
       </div>
 
       {/* Input Container - Floating with Gradient Overlay */}
-      <div className="absolute bottom-0 left-0 w-[85vw] pt-20 pb-6 px-4 md:px-8 border-none pointer-events-none bg-linear-to-t from-[var(--theme-bg-base)] via-[calc(var(--theme-bg-base)/95)] to-transparent">
+      <div className="absolute bottom-0 left-0 w-[85vw] pt-20 pb-6 px-4 md:px-8 border-none pointer-events-none bg-linear-to-t from-(--theme-bg-base) via-(--theme-bg-base)/95 to-transparent">
         <div className="max-w-4xl mx-auto relative pointer-events-auto">
           <div className="flex items-center bg-[var(--theme-bg-elevated)]/90 backdrop-blur-xl border border-white/10 rounded-2xl px-3 md:px-4 py-3 md:py-3.5 focus-within:border-blue-500/50 focus-within:bg-[var(--theme-bg-elevated)] transition-all shadow-2xl">
             <button className="p-2 hover:bg-white/5 rounded-xl text-gray-400 hover:text-gray-200 transition-colors hidden md:block group">
@@ -644,7 +648,7 @@ const ChatWindow: React.FC = () => {
           sourceMessageId={selection.messageId}
           chatId={id}
           relativeY={selection.relativeY}
-          subChatId={selection?.subChatId}
+          subChatId={selection?.subChatId ?? undefined}
         />
       )}
     </div>

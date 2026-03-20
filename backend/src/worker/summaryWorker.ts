@@ -22,6 +22,7 @@ const summaryWorker = new Worker<SummaryJobData>(
         throw new Error(`Outbox event not found: ${summaryOutboxEventId}`);
       }
 
+      // GRANULAR EMBEDDINGS (Long-Term Archive)
       const rawCompressedNodes =
         await generateCompressedChat(messageToCompress);
 

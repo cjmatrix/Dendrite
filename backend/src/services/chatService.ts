@@ -13,6 +13,7 @@ import generateCodeDescription from "../utils/AIDescription";
 import { generateEmbedding } from "../utils/embedding";
 import CONTEXT_WINDOW from "../constants/contextWindow";
 import addSummaryQueue from "../queue/summaryQueue";
+import addStateQueue from "../queue/stateQueue";
 
 export const createChatService = async (
   userId: string,
@@ -67,22 +68,31 @@ export const getChatMessagesService = async (
     .limit(limit)
     .lean();
 
- 
   const messageIds = messages.map(m => m._id);
   const subChats = await SubChat.find({ 
     anchorMessageId: { $in: messageIds },
     chatId: new mongoose.Types.ObjectId(chatId)
   }).select('anchorMessageId relativeY').lean();
 
-  const subChatMap = new Map(subChats.map(sc => [sc.anchorMessageId.toString(),{relY: sc.relativeY,subChatId:sc._id}]));
+
+  const subChatMap = new Map<string, any[]>();
+  subChats.forEach(sc => {
+    const key = sc.anchorMessageId.toString();
+    if (!subChatMap.has(key)) {
+      subChatMap.set(key, []);
+    }
+    subChatMap.get(key)!.push({
+      subChatId: sc._id,
+      relY: sc.relativeY ?? 0
+    });
+  });
 
   const messagesWithFlags = messages.map(m => {
-    const subMap = subChatMap.get(m._id.toString());
+    const subChatsForMsg = subChatMap.get(m._id.toString()) || [];
     return {
       ...m,
-      hasSubChat: subMap?.relY !== undefined,
-      subChatY: subMap?.relY ?? 0,
-      subChatId:subMap?.subChatId
+      hasSubChat: subChatsForMsg.length > 0,
+      subChats: subChatsForMsg
     };
   });
 
@@ -148,7 +158,20 @@ export const prepareMessageService = async (
     searchSimilarCode(codeQueryVector, descQueryVector, userId, chatId),
     searchSimiliarChatChunk(descQueryVector, userId, chatId),
   ]);
-  console.log(chatContextStats);
+
+  // --- DIAGNOSTIC LOGS ---
+  console.log(`\n🔍 [RAG DIAGNOSTICS]`);
+  console.log(`📡 User Message: "${userMessage}"`);
+  console.log(`🧠 Long-Term Facts Found: ${chatContextStats.length}`);
+  chatContextStats.slice(0, 3).forEach((f, i) => {
+    console.log(`   [Fact ${i + 1}] Score: ${f.score.toFixed(3)} | Content: ${f.fact.fact.substring(0, 100)}...`);
+  });
+  console.log(`💻 Code Snippets Found: ${rawSimilarCode.length}`);
+  console.log(`------------------------\n`);
+  console.log(`------------------------\n`);
+  console.log(`------------------------\n`);
+  console.log(`------------------------\n`);
+  // -----------------------
   const deduplicatedSimilarCode = rawSimilarCode.filter((item) => {
     return (
       typeof item.content !== "string" &&
@@ -156,12 +179,17 @@ export const prepareMessageService = async (
       !recentMessagesText.includes(item.content.code)
     );
   });
-
+  
   const deduplicatedChatContext = chatContextStats.filter((item) => {
     return item.fact?.fact && !recentMessagesText.includes(item.fact.fact);
   });
 
   let dynamicSystemInstruction = systemInstruction;
+
+  if (chat.summary) {
+    console.log(chat.summary,"📡📡📡📡📡📡📡📡📡📡")
+    dynamicSystemInstruction += `\n\n--- [CONVERSATION STATE / MIDDLE-LAYER MEMORY] ---\nThis is a summary of the conversation so far to maintain continuity:\n${chat.summary}`;
+  }
 
   if (deduplicatedSimilarCode.length > 0) {
     const contextText = deduplicatedSimilarCode
@@ -171,7 +199,7 @@ export const prepareMessageService = async (
       )
       .join("\n\n");
 
-    dynamicSystemInstruction += `\n\nHere is some context from the user's previously written code that may be relevant to their query. Use it if applicable:\n\n${contextText}`;
+    dynamicSystemInstruction += `\n\n--- [RELEVANT ARCHIVED CODE SNIPPETS] ---\nThe following code blocks from previous turns might be useful:\n\n${contextText}`;
   }
 
   if (deduplicatedChatContext.length > 0) {
@@ -179,7 +207,7 @@ export const prepareMessageService = async (
       .map((item, index) => `[Fact ${index + 1}]: ${item.fact.fact}`)
       .join("\n\n");
 
-    dynamicSystemInstruction += `\n\nHere are some relevant facts from the user's previous chats:\n\n${factText}`;
+    dynamicSystemInstruction += `\n\n--- [RELEVANT ARCHIVED FACTS] ---\nThese are granular details from deep in the conversation history:\n\n${factText}`;
   }
 
   if (mode === "visual") {
@@ -270,6 +298,7 @@ export const saveModelReply = async (
     }
 
     let summaryOutboxEvent = null;
+    let stateOutboxEvent = null;
     if (messageToCompress.length > 0) {
       const outboxDocs = [
         {
@@ -285,9 +314,23 @@ export const saveModelReply = async (
           },
           status: "pending",
         },
+        {
+          eventType: "CHAT_STATE_UPDATED",
+          payload: {
+            sourceId: chat._id,
+            sourceType: "chat_state",
+            userId,
+            content: {
+              messages: messageToCompress,
+            },
+            metadata: { chatId, previousSummary: chat.summary },
+          },
+          status: "pending",
+        },
       ];
       const savedOutbox = await OutboxEvent.insertMany(outboxDocs, { session });
       summaryOutboxEvent = savedOutbox[0];
+      stateOutboxEvent = savedOutbox[1];
     }
 
     await session.commitTransaction();
@@ -306,11 +349,19 @@ export const saveModelReply = async (
       );
     }
 
-    if (summaryOutboxEvent) {
+    if (summaryOutboxEvent && stateOutboxEvent) {
+     //longterm retrival facts
       addSummaryQueue(summaryOutboxEvent._id.toString(), messageToCompress);
 
+      // middleterm recursive chunk
+      addStateQueue(
+        stateOutboxEvent._id.toString(),
+        messageToCompress,
+        chat.summary,
+      );
+
       console.log(
-        `🚀 Triggered Semantic Compression for Chat ${chat._id}! Outbox ID: ${summaryOutboxEvent._id}`,
+        `🚀 Triggered Dual-Memory Compression for Chat ${chat._id}! Outbox IDs: ${summaryOutboxEvent._id}, ${stateOutboxEvent._id}`,
       );
     }
   } catch (error) {

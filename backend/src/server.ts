@@ -9,6 +9,7 @@ import chatRoutes from "./routes/chatRoutes";
 import "./worker/embeddingWorker";
 import "./worker/descriptionWorker";
 import "./worker/summaryWorker";
+import "./worker/stateWorker";
 import "./cron/outboxSweeper";
 import "./cron/descriptionSweeper";
 dotenv.config();

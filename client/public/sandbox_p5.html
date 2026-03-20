@@ -49,11 +49,11 @@ window.addEventListener("message", (event) => {
 
     try {
         if (currentP5) {
-            currentP5.remove(); // Safely teardown old p5 instance, clears event listeners & canvas
+            currentP5.remove(); 
             currentP5 = null;
         }
         
-        // Remove any residual canvas tags if p5 didn't clean them up
+      
         document.querySelectorAll('canvas').forEach(c => c.remove());
         document.getElementById("errorOverlay").innerText = "";
 

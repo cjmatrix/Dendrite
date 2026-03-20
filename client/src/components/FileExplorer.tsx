@@ -263,7 +263,7 @@ export default function FileExplorer() {
     <div
       ref={sidebarRef}
       style={{ width: `${width}px` }}
-      className="relative h-screen bg-neutral-950 border-r border-zinc-900 flex-shrink-0 flex flex-col pt-2"
+      className="relative h-screen bg-[#0d0d0d] border-r border-white/5 flex-shrink-0 flex flex-col pt-2"
     >
       {/* Header with action icons */}
       <div className="flex items-center justify-between px-4 mb-2">

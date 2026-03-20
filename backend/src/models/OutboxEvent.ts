@@ -29,6 +29,7 @@ const outboxEventSchema = new Schema<IOutboxEvent>(
         "PDF_CHUNK_DELETED",
         "CHAT_SUMMARY_CREATED",
         "CHAT_SUMMARY_UPDATED",
+        "CHAT_STATE_UPDATED"
       ],
     },
     payload: {
@@ -36,7 +37,7 @@ const outboxEventSchema = new Schema<IOutboxEvent>(
       sourceType: {
         type: String,
         required: true,
-        enum: ["code_block", "pdf_chunk", "chat_summary"],
+        enum: ["code_block", "pdf_chunk", "chat_summary","chat_state"],
       },
       userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
       content: { type: Schema.Types.Mixed, required: true },

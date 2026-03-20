@@ -37,7 +37,10 @@ export const QuickChatModal: React.FC<QuickChatModalProps> = ({
   const [isExpanded, setIsExpanded] = useState(() => {
     return localStorage.getItem("quickChatExpanded") === "true";
   });
-  
+
+  const [isPinned,setIsPinned]=useState(false);
+
+  console.log(chatId,sourceMessageId,subChatId)
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -45,7 +48,7 @@ export const QuickChatModal: React.FC<QuickChatModalProps> = ({
   }, [isExpanded]);
   const queryClient = useQueryClient();
   console.log(subChatId,"heree")
-  // Fetch existing sub-chat history if it exists (Pinned/Sticky chat)
+ 
   const { data: existingSubChat, isLoading: isHistoryLoading } = useQuery({
     queryKey: ["subchat", chatId, sourceMessageId,subChatId],
     queryFn: async () => {
@@ -56,7 +59,7 @@ export const QuickChatModal: React.FC<QuickChatModalProps> = ({
   });
 
   useEffect(() => {
-    // While loading a new history, clear the old one to avoid "flicker" or "leak"
+   
     if (isHistoryLoading) {
       setSubMessages([]);
       return;
@@ -81,18 +84,20 @@ export const QuickChatModal: React.FC<QuickChatModalProps> = ({
     }
   }, [subMessages, streamingText]);
 
-  // Mutation to persist/stick the chat
+  
   const stickToChatMutation = useMutation({
     mutationFn: async () => {
       await api.post(`/chats/${chatId}/subchat`, {
+        subChatId:subChatId,
         anchorMessageId: sourceMessageId,
         highlightedText: selectedText,
         messages: subMessages,
         relativeY: relativeY || existingSubChat?.relativeY || 0
       });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["subchat", chatId, sourceMessageId] });
+    onSuccess: (res) => {
+      setIsPinned(true);
+      queryClient.invalidateQueries({ queryKey: ["subchat", chatId, sourceMessageId,subChatId] });
       queryClient.invalidateQueries({ queryKey: ["chatMessages", chatId] });
     }
   });
@@ -188,7 +193,7 @@ export const QuickChatModal: React.FC<QuickChatModalProps> = ({
   disabled={stickToChatMutation.isPending || subMessages.length === 0}
 >
   <Pin size={14} className={existingSubChat ? "fill-blue-400" : ""} />
-  {existingSubChat ? "Pinned to Chat" : "Stick to Chat"}
+  {existingSubChat||isPinned ? "Pinned to Chat" : "Stick to Chat"}
 </button>
             <button 
               onClick={() => setIsExpanded(!isExpanded)} 

@@ -6,10 +6,10 @@ const summaryQueue = new Queue("summaryQueue", {
 });
 
 export default async function addSummaryQueue(
-  summaryOutboxEventId:string,
-  messageToCompress:any[],
+  summaryOutboxEventId: string,
+  messageToCompress: any[],
 ) {
-  await summaryQueue.add("process-summary",{
+  await summaryQueue.add("process-summary", {
     summaryOutboxEventId,
     messageToCompress,
   });
