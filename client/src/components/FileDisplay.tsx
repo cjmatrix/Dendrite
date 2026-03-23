@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../store/store';
-import { Folder, MessageSquare, ChevronRight, FileText, Image as ImageIcon, BookOpen, MessageCircle, Plus, FolderPlus, Edit, Trash, Check } from 'lucide-react';
+import { Folder, MessageSquare, ChevronRight, MessageCircle, FolderPlus, Edit, Trash, Check, Sparkles, Brain, Component, Database, Cpu } from 'lucide-react';
 import type { FileNode, FileType } from '../types/types';
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "../api/axios";
@@ -218,28 +218,36 @@ export default function FileDisplay() {
 
   return (
     <div 
-      className="h-full bg-(--theme-bg-surface) text-gray-200 flex flex-col pt-8 px-8 overflow-y-auto"
+      className="h-full bg-[radial-gradient(ellipse_at_top,var(--tw-gradient-stops))] from-zinc-900 via-(--theme-bg-surface) to-(--theme-bg-base) text-gray-200 flex flex-col pt-8 px-8 overflow-y-auto"
       onContextMenu={handleBackgroundContextMenu}
     >
-      {/* Breadcrumb Header */}
-      <div className="flex items-center mb-8 bg-zinc-900/50 p-3 px-5 rounded-xl border border-zinc-800/50" onContextMenu={e => e.stopPropagation()}>
-        <h2 className="text-lg font-medium flex items-center gap-2 text-gray-300">
-          {path.map((node, index) => (
-            <React.Fragment key={index}>
-              <span 
-                onClick={() => navigate(node.id === 'root' ? '/explorer' : `/explorer/${node.id}`)}
-                className={`cursor-pointer hover:text-white transition-colors ${index === path.length - 1 ? 'text-gray-100 font-semibold' : 'text-gray-500'}`}
-              >
-                {node.name}
-              </span>
-              {index < path.length - 1 && <ChevronRight size={16} className="text-zinc-600" strokeWidth={2.5} />}
-            </React.Fragment>
-          ))}
-        </h2>
+      {/* Premium Header */}
+      <div className="flex items-center justify-between mb-10 bg-zinc-900/40 p-4 px-6 rounded-2xl border border-white/5 shadow-xl backdrop-blur-md" onContextMenu={e => e.stopPropagation()}>
+        <div className="flex items-center gap-4">
+          <div className="p-2.5 bg-linear-to-br from-indigo-500/20 to-purple-600/20 rounded-xl border border-indigo-500/20 shadow-[0_0_15px_-5px_rgba(99,102,241,0.4)]">
+            <Cpu size={22} className="text-indigo-400" />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-[10px] font-bold tracking-widest text-indigo-400/80 uppercase mb-0.5">Dendrites Workspace</span>
+            <h2 className="text-xl font-semibold flex items-center gap-2 text-gray-300 tracking-tight">
+              {path.map((node, index) => (
+                <React.Fragment key={index}>
+                  <span 
+                    onClick={() => navigate(node.id === 'root' ? '/explorer' : `/explorer/${node.id}`)}
+                    className={`cursor-pointer hover:text-white transition-colors ${index === path.length - 1 ? 'text-white drop-shadow-md' : 'text-zinc-500'}`}
+                  >
+                    {node.name}
+                  </span>
+                  {index < path.length - 1 && <ChevronRight size={18} className="text-zinc-700 mx-1" strokeWidth={2.5} />}
+                </React.Fragment>
+              ))}
+            </h2>
+          </div>
+        </div>
       </div>
 
       {/* Grid view */}
-      <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-x-4 gap-y-8 pb-10">
+      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-x-6 gap-y-10 pb-12 px-2">
         
         {/* Inline Create Input Card */}
         {isCreating && (
@@ -278,18 +286,38 @@ export default function FileDisplay() {
            currentFolder.children.map(child => {
             const isFolder = child.type === 'folder';
             
-            // Badge logic for system folders
-            let color = "text-indigo-400 fill-indigo-500/5 text-opacity-80";
+            // Premium Badge logic for system folders
+            let color = "text-indigo-400 fill-indigo-500/10 text-opacity-80";
             let suffix = null;
             let suffixBg = "";
+            let IconComponent = Folder;
+            let iconSize = 64;
             
             if (isFolder && child.isSystemFolder) {
                switch(child.name) {
-                  case "Documents": color = "text-blue-400 text-opacity-90 fill-blue-500/10"; suffix = <FileText size={14} className="text-blue-100" strokeWidth={3} />; suffixBg = "bg-blue-600"; break;
-                  case "Media": color = "text-rose-400 text-opacity-90 fill-rose-500/10"; suffix = <ImageIcon size={14} className="text-rose-100" strokeWidth={3} />; suffixBg = "bg-rose-600"; break;
-                  case "Research": color = "text-amber-400 text-opacity-90 fill-amber-500/10"; suffix = <BookOpen size={14} className="text-amber-100" strokeWidth={3} />; suffixBg = "bg-amber-600"; break;
-                  case "Chats": color = "text-emerald-400 text-opacity-90 fill-emerald-500/10"; suffix = <MessageCircle size={14} className="text-emerald-100" strokeWidth={3} />; suffixBg = "bg-emerald-600"; break;
-                  default: color = "text-indigo-400"; break;
+                  case "Documents": 
+                    color = "text-blue-400 text-opacity-90 fill-blue-500/10"; 
+                    suffix = <Database size={14} className="text-blue-100" strokeWidth={2.5} />; 
+                    suffixBg = "bg-blue-600"; 
+                    break;
+                  case "Media": 
+                    color = "text-rose-400 text-opacity-90 fill-rose-500/10"; 
+                    suffix = <Component size={14} className="text-rose-100" strokeWidth={2.5} />; 
+                    suffixBg = "bg-rose-600"; 
+                    break;
+                  case "Research": 
+                    color = "text-amber-400 text-opacity-90 fill-amber-500/10"; 
+                    suffix = <Brain size={14} className="text-amber-100" strokeWidth={2.5} />; 
+                    suffixBg = "bg-amber-600"; 
+                    break;
+                  case "Chats": 
+                    color = "text-emerald-400 text-opacity-90 fill-emerald-500/10"; 
+                    suffix = <MessageCircle size={14} className="text-emerald-100" strokeWidth={2.5} />; 
+                    suffixBg = "bg-emerald-600"; 
+                    break;
+                  default: 
+                    color = "text-indigo-400"; 
+                    break;
                }
             }
             
@@ -298,27 +326,30 @@ export default function FileDisplay() {
             return (
               <div 
                 key={child.id} 
-                className="flex flex-col items-center gap-3 p-3 rounded-xl hover:bg-zinc-900/60 cursor-pointer transition-all border border-transparent hover:border-zinc-800"
+                className="group flex flex-col items-center gap-4 p-4 rounded-2xl hover:bg-white/3 cursor-pointer transition-all duration-300 border border-transparent hover:border-white/10 hover:shadow-2xl hover:-translate-y-1 relative"
                 onClick={() => !isBeingRenamed && (isFolder ? navigate(`/explorer/${child.id}`) : navigate(`/${child.id}`))}
                 onContextMenu={(e) => handleNodeContextMenu(e, child)}
               >
                 <div className="relative flex items-center justify-center p-2">
                   {isFolder ? (
                     <>
-                      <Folder size={64} className={color} strokeWidth={1} />
+                      <IconComponent size={iconSize} className={color + " transition-transform duration-300 group-hover:scale-105"} strokeWidth={1} />
                       {suffix && (
-                        <div className={`absolute bottom-1 right-1 p-[3px] rounded-lg shadow-md border border-black/80 ${suffixBg} z-10`}>
+                        <div className={`absolute -bottom-1 -right-1 p-1.5 rounded-xl shadow-lg border border-white/20 ${suffixBg} z-10 animate-in zoom-in duration-300`}>
                            {suffix}
                         </div>
                       )}
                     </>
                   ) : (
-                    <MessageSquare size={54} className="text-emerald-400/90 fill-emerald-500/10" strokeWidth={1} />
+                    <div className="relative flex items-center justify-center p-3.5 rounded-[1.25rem] bg-linear-to-br from-emerald-500/10 to-teal-600/10 border border-emerald-500/20 transition-all duration-300 group-hover:scale-105">
+                      <Sparkles size={16} className="absolute -top-1.5 -right-1.5 text-emerald-400 opacity-80 animate-pulse" />
+                      <MessageSquare size={44} className="text-emerald-400" strokeWidth={1.5} />
+                    </div>
                   )}
                 </div>
                 
                 {isBeingRenamed ? (
-                  <div className="flex items-center gap-1 w-full" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center gap-1 w-full bg-black/40 rounded-lg p-1" onClick={(e) => e.stopPropagation()}>
                       <input
                         autoFocus
                         className="bg-(--theme-bg-base) border border-indigo-500/50 focus:border-indigo-500 rounded text-[13px] text-gray-200 outline-none px-2 py-1 flex-1 min-w-0 transition-colors text-center"

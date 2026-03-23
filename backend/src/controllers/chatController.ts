@@ -13,9 +13,12 @@ import ai from "../config/AIConfig";
 import mongoose from "mongoose";
 import { Chat } from "../models/Chat";
 import { SubChat } from "../models/SubChat";
+import { redisConnection } from "../config/redis";
 import { logAIQuery } from "../utils/logger";
 import { Message } from "../models/Message";
 import CONTEXT_WINDOW from "../constants/contextWindow";
+import { getTavilySearchContext } from "../services/searchCacheService";
+import { generateEmbedding } from "../utils/embedding";
 
 export const createChat = async (req: Request, res: Response) => {
   if (!req.user) {
@@ -137,24 +140,68 @@ export const sendMessage = async (req: Request, res: Response) => {
   const id = req.params.id as string;
   const { message, mode } = req.body;
 
+
+
   if (!message || !message.trim()) {
     res.status(400).json({ message: "Message is required" });
     return;
   }
+
+
+  const [codeQueryVector, descQueryVector] = await Promise.all([
+    generateEmbedding(message, "CODE_RETRIEVAL_QUERY"),
+    generateEmbedding(message, "RETRIEVAL_QUERY"),
+  ]);
 
   const { contents } = await prepareMessageService(
     id,
     req.user._id.toString(),
     message,
     mode,
+    codeQueryVector,
+    descQueryVector
   );
+ 
+  let internetContext = "";
+  try {
+    const routingPrompt = `Determine if the following user query requires an internet search to be answered accurately. 
+Respond ONLY with "YES" if it requires knowledge of recent events, real-time facts, current weather, news, specific web sources, or things outside typical LLM pre-training data.
+Respond ONLY with "NO" if it is a general reasoning, coding, writing, or conceptual question that can be answered without internet access.
+User query: "${message}"`;
+
+    const routerResponse = await ai.models.generateContent({
+      model: "gemini-2.5-flash-lite",
+      contents: [{ role: "user", parts: [{ text: routingPrompt }] }],
+    });
+    
+    const needsSearch = routerResponse.text?.trim().toUpperCase() === "YES";
+
+
+    if (needsSearch) {
+      console.log(`[Router] internet search needed for query: "${message}"`);
+      internetContext = await getTavilySearchContext(message, descQueryVector);
+    } else {
+      console.log(`[Router] no internet search needed for query: "${message}"`);
+    }
+  } catch (error) {
+    console.error("Routing/Search error:", error);
+
+  }
+
+ 
+  if (internetContext) {
+    const lastMessage = contents[contents.length - 1];
+    if (lastMessage && lastMessage.role === "user") {
+      lastMessage.parts[0].text += internetContext;
+    }
+  }
 
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
 
   const stream = await ai.models.generateContentStream({
-    model: "gemini-2.5-flash",
+    model: "gemini-3-flash-preview",
     contents,
   });
 
@@ -187,7 +234,15 @@ export const sendMessage = async (req: Request, res: Response) => {
 };
 
 const getAnchorContext = async (chatId: string, anchorMessageId: string) => {
+  const cacheKey = `anchor_ctx:${anchorMessageId}`;
+  
   try {
+    const cachedData = await redisConnection.get(cacheKey);
+    if (cachedData) {
+      return JSON.parse(cachedData);
+    }
+
+
     const anchorMsg = await Message.findById(anchorMessageId);
     if (!anchorMsg) return [];
 
@@ -199,7 +254,12 @@ const getAnchorContext = async (chatId: string, anchorMessageId: string) => {
       .limit(5)
       .lean();
 
-    return contextMessages.reverse();
+    const result = contextMessages.reverse();
+
+   
+    await redisConnection.setex(cacheKey, 7200, JSON.stringify(result));
+
+    return result;
   } catch (err) {
     console.error("getAnchorContext error:", err);
     return [];
@@ -251,7 +311,7 @@ Your ONLY job is to participate in a side-conversation explaining or expanding o
   res.setHeader("Connection", "keep-alive");
 
   const stream = await ai.models.generateContentStream({
-    model: "gemini-2.5-flash-lite",
+    model: "gemini-2.5-flash",
     contents,
   });
 

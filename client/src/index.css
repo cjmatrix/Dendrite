@@ -56,6 +56,13 @@
   .animate-spin-slow {
     animation: spin 2s linear infinite;
   }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 }
 
 @keyframes spin {

@@ -1,13 +1,14 @@
-import { useRef, useState, useEffect } from "react";
-import { Plus, FolderPlus, MessageSquare, Check, Folder } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 
+import { useRef, useState, useEffect } from "react";
+import { Plus, FolderPlus, MessageSquare, Check, Folder, ChevronLeft, Sparkles, Brain } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import type { FileNode, FileType } from "../types/types";
 import { FileItem } from "./FileItem";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../api/axios";
 import { useAppDispatch, useAppSelector } from "../store/store";
 import { setTree, setActiveSidebarRootId } from "../store/explorerSlice";
+import DendritesLogo from "./DendritesLogo";
 
 export default function FileExplorer() {
   const queryClient = useQueryClient();
@@ -94,7 +95,7 @@ export default function FileExplorer() {
 
   
 
-  const [width, setWidth] = useState(256);
+  const [width, setWidth] = useState(380);
 
   const [isResizing, setIsResizing] = useState(false);
 
@@ -263,43 +264,54 @@ export default function FileExplorer() {
     <div
       ref={sidebarRef}
       style={{ width: `${width}px` }}
-      className="relative h-screen bg-[#0d0d0d] border-r border-white/5 flex-shrink-0 flex flex-col pt-2"
+      className="relative h-screen bg-zinc-950/20 border-r border-zinc-800/90 shrink-0 flex flex-col pt-0 z-20 shadow-2xl backdrop-blur-3xl"
     >
-      {/* Header with action icons */}
-      <div className="flex items-center justify-between px-4 mb-2">
-        <h2 className="text-[10px] font-bold text-gray-500 uppercase flex items-center gap-2">
+      {/* Logo at the very top */}
+      <div className="h-13 flex items-center gap-2.5 px-5 py-4 border-b border-zinc-800/40 bg-zinc-900/20 backdrop-blur-md">
+        <DendritesLogo size={28} />
+        <span className="text-[18px] font-black tracking-tight bg-clip-text text-transparent bg-linear-to-r from-neutral-200 to-sky-200/40 drop-shadow-sm select-none">
+          Dendrites
+        </span>
+      </div>
+
+      {/* Header with action icons and prominent folder/project title */}
+      <div className="flex items-center justify-between px-4 pt-4 pb-2">
+        <h2 className="flex flex-col gap-0.5">
           {activeSidebarRootId && (
             <button
                onClick={() => dispatch(setActiveSidebarRootId(null))}
-               className="hover:text-indigo-400 transition-colors cursor-pointer mr-1"
+               className="flex items-center gap-1 text-[9.5px] font-bold uppercase tracking-wider text-zinc-500 hover:text-cyan-400 transition-colors w-fit"
                title="Back to Root"
             >
-               &larr; BACK
+               <ChevronLeft size={12} strokeWidth={3} /> BACK
             </button>
           )}
-          <span className="truncate max-w-[120px]">{activeSidebarRootId ? displayTree.name : "Explorer"}</span>
+          <span className="truncate max-w-[160px] text-[10px] font-extrabold uppercase tracking-[0.15em] text-zinc-400/80">
+            {activeSidebarRootId ? displayTree.name : "WORKSPACE"}
+          </span>
         </h2>
-        <div className="flex items-center gap-0.5">
+        <div className="flex items-center gap-1 bg-zinc-900/60 p-1 rounded-lg border border-zinc-800/50 shadow-inner">
           <button
             onClick={() => startRootCreate("chat")}
-            className="p-1 text-gray-500 hover:text-gray-200 hover:bg-zinc-900 rounded transition-colors"
+            className="p-1.5 text-zinc-400 hover:text-cyan-400 hover:bg-zinc-800 rounded-md transition-all active:scale-95"
             title="New Chat"
           >
-            <Plus size={16} />
+            <Plus size={14} strokeWidth={2.5} />
           </button>
+          <div className="w-px h-3.5 bg-zinc-700/50 mx-0.5"></div>
           <button
             onClick={() => startRootCreate("folder")}
-            className="p-1 text-gray-500 hover:text-gray-200 hover:bg-zinc-900 rounded transition-colors"
+            className="p-1.5 text-zinc-400 hover:text-cyan-400 hover:bg-zinc-800 rounded-md transition-all active:scale-95"
             title="New Folder"
           >
-            <FolderPlus size={16} />
+            <FolderPlus size={14} strokeWidth={2.5} />
           </button>
         </div>
       </div>
 
       {/* File tree + blank area (right-clickable) */}
       <div
-        className="flex-1 overflow-y-auto px-2"
+        className="flex-1 overflow-y-auto px-4 py-2 scrollbar-thin scrollbar-thumb-zinc-800 hover:scrollbar-thumb-zinc-700 scrollbar-track-transparent space-y-[2px]"
         onContextMenu={handleBlankContextMenu}
       >
         {displayTree.children?.map((child) => (
@@ -308,22 +320,16 @@ export default function FileExplorer() {
 
         {/* Root-level inline input */}
         {rootCreating && (
-          <div className="flex items-center gap-1 py-1 px-2 ml-4">
-            {rootCreating === "folder" ? (
-              <FolderPlus size={16} className="text-indigo-400 flex-shrink-0" />
-            ) : (
-              <MessageSquare
-                size={16}
-                className="text-emerald-400 flex-shrink-0"
-              />
-            )}
+          <div className="mx-3 mb-3 px-3 py-2 bg-zinc-900/50 border border-zinc-800/50 rounded-xl animate-in slide-in-from-top-4 duration-300">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[9px] font-black text-cyan-500/80 uppercase tracking-widest px-1">Initialising {rootCreating}...</span>
+            <Sparkles size={10} className="text-cyan-400 animate-pulse" />
+          </div>
+          <div className="flex items-center gap-2">
             <input
               autoFocus
-              placeholder={
-                rootCreating === "folder" ? "Folder name" : "Chat name"
-              }
-              className="bg-[var(--theme-bg-surface)] border border-indigo-500/50 focus:border-indigo-500 rounded text-[15px] text-gray-200 outline-none px-2 py-0.5 w-[140px] transition-colors"
-              value={rootNewName}
+              className="flex-1 bg-black/40 border border-zinc-700/50 focus:border-cyan-500/50 rounded-lg text-[12.5px] font-medium text-white outline-none px-2.5 py-1.5 transition-all shadow-inner placeholder:text-zinc-600"
+              placeholder={`Enter ${rootCreating} name...`}
               onChange={(e) => setRootNewName(e.target.value)}
               onBlur={() => {
                 setRootCreating(null);
@@ -342,12 +348,13 @@ export default function FileExplorer() {
                 e.preventDefault();
                 handleRootCreate();
               }}
-              className="p-1 text-gray-500 hover:text-emerald-400 hover:bg-zinc-800 rounded transition-colors"
+              className="p-1 text-emerald-400 hover:text-white hover:bg-emerald-600/80 rounded transition-colors"
             >
-              <Check size={14} />
+              <Check size={16} />
             </button>
           </div>
-        )}
+        </div>
+      )}
       </div>
 
       {/* Blank-area context menu */}
@@ -362,7 +369,7 @@ export default function FileExplorer() {
             className="fixed z-50 bg-[var(--theme-bg-surface)] border border-zinc-800 shadow-2xl rounded-xl py-1.5 w-48 text-sm text-gray-200 overflow-hidden"
           >
             <button
-              className="w-full text-left px-3 py-1.5 hover:bg-indigo-600 hover:text-white flex items-center gap-2 transition-colors"
+              className="w-full text-left px-3 py-1.5 hover:bg-cyan-600 hover:text-white flex items-center gap-2 transition-colors"
               onClick={(e) => {
                 e.stopPropagation();
                 startRootCreate("chat");
@@ -372,7 +379,7 @@ export default function FileExplorer() {
               <MessageSquare size={14} /> New Chat
             </button>
             <button
-              className="w-full text-left px-3 py-1.5 hover:bg-indigo-600 hover:text-white flex items-center gap-2 transition-colors"
+              className="w-full text-left px-3 py-1.5 hover:bg-cyan-600 hover:text-white flex items-center gap-2 transition-colors"
               onClick={(e) => {
                 e.stopPropagation();
                 startRootCreate("folder");
@@ -386,18 +393,25 @@ export default function FileExplorer() {
       )}
 
       {/* Bottom Action Bar */}
-      <div className="p-3 border-t border-zinc-900 mt-auto">
+      <div className="px-4 py-4 bg-zinc-900/40 border-t border-zinc-800/50 backdrop-blur-md relative z-10 before:absolute before:inset-0 before:bg-linear-to-t before:from-[#09090b] before:to-transparent before:-z-10">
+        <button 
+          onClick={() => navigate('/recall')}
+          className="group w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-linear-to-r from-purple-600/10 to-indigo-600/10 hover:from-purple-500/20 hover:to-indigo-500/20 text-purple-400 hover:text-purple-300 transition-all border border-purple-500/20 hover:border-purple-400/50 text-[12px] font-bold shadow-[0_4px_20px_-10px_rgba(168,85,247,0.3)] hover:shadow-[0_4px_20px_-8px_rgba(168,85,247,0.5)] active:scale-[0.98] mb-2"
+        >
+          <Brain size={14} strokeWidth={2.5} className="text-purple-500 group-hover:drop-shadow-[0_0_8px_rgba(168,85,247,0.8)] transition-all" />
+          Active Recall
+        </button>
         <button 
           onClick={() => navigate('/explorer')}
-          className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-lg bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-400 hover:text-indigo-300 transition-colors border border-indigo-500/20 text-sm font-medium"
+          className="group w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-linear-to-r from-cyan-600/10 to-sky-600/10 hover:from-cyan-500/20 hover:to-sky-500/20 text-cyan-400 hover:text-cyan-300 transition-all border border-cyan-500/20 hover:border-cyan-400/50 text-[12px] font-bold shadow-[0_4px_20px_-10px_rgba(6,182,212,0.3)] hover:shadow-[0_4px_20px_-8px_rgba(6,182,212,0.5)] active:scale-[0.98]"
         >
-          <Folder size={16} />
-          Open Explorer
+          <Folder size={14} strokeWidth={2.5} className="text-cyan-500 group-hover:drop-shadow-[0_0_8px_rgba(6,182,212,0.8)] transition-all" />
+          Full Explorer Center
         </button>
       </div>
 
       <div
-        className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-indigo-500 bg-zinc-800 z-10 transition-colors duration-200"
+        className="absolute top-0 right-0 w-[4px] h-full cursor-col-resize hover:bg-cyan-500/50 z-30 transition-colors duration-300 delay-100"
         onMouseDown={startResizing}
       />
     </div>

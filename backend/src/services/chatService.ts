@@ -132,6 +132,8 @@ export const prepareMessageService = async (
   userId: string,
   userMessage: string,
   mode?: string,
+  codeQueryVector?: number[],
+  descQueryVector?: number[]
 ) => {
   const chat = await Chat.findOne({ _id: chatId, userId });
 
@@ -149,14 +151,13 @@ export const prepareMessageService = async (
 
   const recentMessagesText = recentMessages.map((m) => m.content).join("\n");
 
-  const [codeQueryVector, descQueryVector] = await Promise.all([
-    generateEmbedding(userMessage, "CODE_RETRIEVAL_QUERY"),
-    generateEmbedding(userMessage, "RETRIEVAL_QUERY"),
-  ]);
+  // Use provided vectors or safely generate them if not passed for some reason
+  const finalCodeQueryVector = codeQueryVector || await generateEmbedding(userMessage, "CODE_RETRIEVAL_QUERY");
+  const finalDescQueryVector = descQueryVector || await generateEmbedding(userMessage, "RETRIEVAL_QUERY");
 
   const [rawSimilarCode, chatContextStats] = await Promise.all([
-    searchSimilarCode(codeQueryVector, descQueryVector, userId, chatId),
-    searchSimiliarChatChunk(descQueryVector, userId, chatId),
+    searchSimilarCode(finalCodeQueryVector, finalDescQueryVector, userId, chatId),
+    searchSimiliarChatChunk(finalDescQueryVector, userId, chatId),
   ]);
 
   // --- DIAGNOSTIC LOGS ---

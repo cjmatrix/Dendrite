@@ -9,6 +9,7 @@ export const qdrantClient = new QdrantClient({
 
 export const COLLECTION_NAME = "code_blocks";
 export const SUMMARY_COLLECTION_NAME = "chat_summaries";
+export const SEARCH_CACHE_COLLECTION = "search_cache";
 
 export async function initQdrant() {
   try {
@@ -41,6 +42,24 @@ export async function initQdrant() {
       console.log(`✅ Qdrant collection '${SUMMARY_COLLECTION_NAME}' created.`);
     } else {
       console.log(`✅ Qdrant collection '${SUMMARY_COLLECTION_NAME}' ready.`);
+    }
+
+    const searchCacheExists = collections.collections.some(
+      (c) => c.name === SEARCH_CACHE_COLLECTION,
+    );
+    if (!searchCacheExists) {
+      // Create collection for search caching
+      await qdrantClient.createCollection(SEARCH_CACHE_COLLECTION, {
+        vectors: { size: 3072, distance: "Cosine" },
+      });
+      // Create a payload index on 'createdAt' for fast cron sweeps
+      await qdrantClient.createPayloadIndex(SEARCH_CACHE_COLLECTION, {
+        field_name: "createdAt",
+        field_schema: "integer",
+      });
+      console.log(`✅ Qdrant collection '${SEARCH_CACHE_COLLECTION}' created.`);
+    } else {
+      console.log(`✅ Qdrant collection '${SEARCH_CACHE_COLLECTION}' ready.`);
     }
   } catch (error) {
     console.error("❌ Failed to initialize Qdrant collections:", error);

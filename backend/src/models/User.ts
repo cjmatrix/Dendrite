@@ -14,6 +14,7 @@ export interface IUser extends Document {
     saveHistory: boolean;
   };
   refreshTokens: string[];
+  fcmToken: string[];
   comparePassword(candidatePassword: string): Promise<boolean>;
 }
 
@@ -32,21 +33,26 @@ const UserSchema = new Schema<IUser>({
     saveHistory: { type: Boolean, default: true } 
   },
 
-  refreshTokens: { type: [String], default: [] }
+  refreshTokens: { type: [String], default: [] },
+  fcmToken:{
+    type:[String],
+    default:[]
+  }
+
 }, { 
   timestamps: true 
 });
 
-// Pre-save hook to hash password before saving
+
 UserSchema.pre('save', async function() {
   if (!this.isModified('password')) return;
   
-  // Mongoose will automatically catch errors thrown in an async hook and pass them to the next error handler
+  
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password as string, salt);
 });
 
-// Method to compare passwords
+
 UserSchema.methods.comparePassword = async function(candidatePassword: string): Promise<boolean> {
   return bcrypt.compare(candidatePassword, this.password as string);
 };

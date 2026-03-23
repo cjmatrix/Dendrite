@@ -16,7 +16,7 @@ export const createFolderService = async(userId: string, name: string,parentId:s
 
 export const getFoldersService = async(userId: string) => {
 
-    const folders = await Folder.find({ userId }).sort({ createdAt: 1 }).lean();
+    const folders = await Folder.find({ userId }).sort({ createdAt: 1, _id: 1 }).lean();
 
 
     const folderMap = new Map();

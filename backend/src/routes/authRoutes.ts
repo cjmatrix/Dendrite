@@ -10,5 +10,6 @@ router.post('/refresh', AuthController.refresh);
 router.post('/logout', AuthController.logout);
 
 router.get('/me', userProtect, AuthController.getMe);
+router.post('/fcm-token', userProtect, AuthController.saveFCMToken);
 
 export default router;

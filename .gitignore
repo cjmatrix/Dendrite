@@ -24,3 +24,5 @@ Thumbs.db
 *.swp
 *.swo
 qdrant_storage/
+
+serviceAccountKey.json 

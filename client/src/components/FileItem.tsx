@@ -17,8 +17,8 @@ import {
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "../api/axios";
 import { useNavigate } from "react-router-dom";
-import { setActiveSidebarRootId, setTree } from "../store/explorerSlice";
-import { useAppDispatch, useAppSelector } from "../store/store";
+import { setActiveSidebarRootId } from "../store/explorerSlice";
+import { useAppDispatch } from "../store/store";
 
 interface FileItemProps {
   node: FileNode;
@@ -34,7 +34,6 @@ export const FileItem: React.FC<FileItemProps> = ({ node }) => {
   const isFolder = node.type === "folder";
   const queryClient = useQueryClient();
   const dispatch=useAppDispatch();
-  const {tree}:{tree:FileNode}=useAppSelector(state=>state.explorer)
   // --- Folder mutations with optimistic updates ---
 
   const { mutate: createFolderMutate } = useMutation({
@@ -308,60 +307,60 @@ export const FileItem: React.FC<FileItemProps> = ({ node }) => {
   };
 
   return (
-    <div className="select-none" onContextMenu={handleContextMenu}>
-      <div className="group flex items-center justify-between py-1 px-2 hover:bg-zinc-900 cursor-pointer text-gray-200 rounded-md transition-colors">
+    <div className="select-none relative" onContextMenu={handleContextMenu}>
+      <div className="group/item flex items-center justify-between py-1.25 px-2 mb-[1px] hover:bg-zinc-800/60 cursor-pointer text-zinc-400 hover:text-zinc-100 rounded-lg transition-all duration-200 border border-transparent hover:border-white/5">
         <div
-          className={`${!isFolder && " -ml-4"} flex items-center gap-2 flex-1`}
+          className={`${!isFolder && " -ml-3"} flex items-center gap-2 flex-1 min-w-0`}
           onClick={isFolder ? handleToggle : () => handleOpenWindow(node)}
         >
           {isFolder ? (
-            <span className={`text-gray-500 transition-transform duration-200 ${isOpen ? "rotate-0" : "-rotate-90"}`}>
-               <ChevronDown size={16} />
+            <span className={`text-zinc-600 group-hover/item:text-zinc-400 transition-all duration-300 shrink-0 ${isOpen ? "rotate-0 text-cyan-500/80" : "-rotate-90"}`}>
+               <ChevronDown size={13} strokeWidth={3} />
             </span>
           ) : (
-            <span className="w-4" />
+            <span className="w-3" />
           )}
 
           {isFolder ? (
             node.isSystemFolder ? (() => {
               const getSystemStyle = () => {
                 switch(node.name) {
-                  case "Documents": return { color: "text-blue-400 text-opacity-90 fill-blue-500/10", suffix: <FileText size={8} className="text-blue-100" strokeWidth={3} />, suffixBg: "bg-blue-600" };
-                  case "Media": return { color: "text-rose-400 text-opacity-90 fill-rose-500/10", suffix: <ImageIcon size={8} className="text-rose-100" strokeWidth={3} />, suffixBg: "bg-rose-600" };
-                  case "Research": return { color: "text-amber-400 text-opacity-90 fill-amber-500/10", suffix: <BookOpen size={8} className="text-amber-100" strokeWidth={3} />, suffixBg: "bg-amber-600" };
-                  case "Chats": return { color: "text-emerald-400 text-opacity-90 fill-emerald-500/10", suffix: <MessageCircle size={8} className="text-emerald-100" strokeWidth={3} />, suffixBg: "bg-emerald-600" };
-                  default: return { color: "text-indigo-400", suffix: null, suffixBg: "" };
+                  case "Documents": return { color: "text-blue-400 text-opacity-90 fill-blue-500/10", suffix: <FileText size={7} className="text-blue-100" strokeWidth={3} />, suffixBg: "bg-blue-600" };
+                  case "Media": return { color: "text-rose-400 text-opacity-90 fill-rose-500/10", suffix: <ImageIcon size={7} className="text-rose-100" strokeWidth={3} />, suffixBg: "bg-rose-600" };
+                  case "Research": return { color: "text-amber-400 text-opacity-90 fill-amber-500/10", suffix: <BookOpen size={7} className="text-amber-100" strokeWidth={3} />, suffixBg: "bg-amber-600" };
+                  case "Chats": return { color: "text-emerald-400 text-opacity-90 fill-emerald-500/10", suffix: <MessageCircle size={7} className="text-emerald-100" strokeWidth={3} />, suffixBg: "bg-emerald-600" };
+                  default: return { color: "text-cyan-400", suffix: null, suffixBg: "" };
                 }
               };
               const { color, suffix, suffixBg } = getSystemStyle();
               return (
-                <div className="relative flex items-center justify-center transition-transform group-hover:scale-110 duration-200">
-                  <Folder size={20} className={color} strokeWidth={2} />
+                <div className="relative flex items-center justify-center transition-transform group-hover/item:scale-110 duration-200">
+                  <Folder size={16} className={color} strokeWidth={2} />
                   {suffix && (
-                    <div className={`absolute -bottom-[2px] -right-[2px] p-[2px] rounded-md shadow-[0_1px_2px_rgba(0,0,0,0.5)] border border-black/80 ${suffixBg} z-10 scale-90`}>
+                    <div className={`absolute -bottom-[2px] -right-[2px] p-[2px] rounded-md shadow-[0_1px_2px_rgba(0,0,0,0.5)] border border-black/80 ${suffixBg} z-10 scale-[0.85]`}>
                       {suffix}
                     </div>
                   )}
                 </div>
               );
             })() : (
-              <div className="relative flex items-center justify-center transition-transform group-hover:scale-110 duration-200">
-                <Folder size={20} className="text-indigo-400 fill-indigo-500/5 text-opacity-80" strokeWidth={1.8} />
+              <div className="relative flex items-center justify-center transition-transform group-hover/item:scale-110 duration-200">
+                <Folder size={16} className="text-cyan-500 fill-cyan-500/10 text-opacity-90" strokeWidth={2} />
               </div>
             )
           ) : (
-            <div className="relative flex items-center justify-center pl-1 pr-0.5 transition-transform group-hover:scale-110 duration-200">
-              <MessageSquare size={17} className="text-emerald-400/90 fill-emerald-500/10" strokeWidth={1.8} />
+            <div className="relative flex items-center justify-center px-0.5 transition-transform group-hover/item:scale-110 duration-200">
+              <MessageSquare size={15} className="text-emerald-400/90 fill-emerald-500/10" strokeWidth={2} />
             </div>
           )}
           {isRenaming ? (
             <div
-              className="flex items-center gap-1"
+              className="flex items-center gap-1.5"
               onClick={(e) => e.stopPropagation()}
             >
               <input
                 autoFocus
-                className="bg-[var(--theme-bg-surface)] border border-indigo-500/50 focus:border-indigo-500 rounded text-[15px] text-gray-200 outline-none px-2 py-0.5 w-[140px] transition-colors"
+                className="bg-black/40 border border-cyan-500/50 focus:border-cyan-400 rounded-md text-[13px] font-medium text-gray-200 outline-none px-2 py-0.5 w-[130px] transition-all shadow-inner focus:shadow-[0_0_10px_-2px_rgba(6,182,212,0.3)] placeholder:text-zinc-600"
                 value={renameItemName}
                 onChange={(e) => setRenameItemName(e.target.value)}
                 onBlur={() => setIsRenaming(null)}
@@ -372,60 +371,61 @@ export const FileItem: React.FC<FileItemProps> = ({ node }) => {
                   e.preventDefault();
                   handleRename();
                 }}
-                className="p-1 text-gray-500 hover:text-emerald-400 hover:bg-[var(--theme-bg-elevated)] rounded transition-colors"
+                className="p-1 text-zinc-500 hover:text-emerald-400 hover:bg-zinc-800 rounded-md transition-all active:scale-95"
               >
-                <Check size={14} />
+                <Check size={14} strokeWidth={2.5} />
               </button>
             </div>
           ) : (
-            <div className={`text-[15px] truncate w-full transition-colors group-hover:text-white`}>
+            <div className={`text-[13px] tracking-wide truncate w-full transition-colors group-hover/item:text-white font-medium`}>
               {node.name}
             </div>
           )}
         </div>
 
         {isFolder && (
-          <div className="flex opacity-0 group-hover:opacity-100 items-center gap-1 transition-opacity duration-200">
+          <div className="flex opacity-0 group-hover/item:opacity-100 items-center gap-0.5 transition-opacity duration-200">
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 setIsCreating("chat");
               }}
-              className="p-1 hover:bg-white/10 rounded-md text-gray-500 hover:text-emerald-400 transition-colors"
+              className="p-1 hover:bg-zinc-700/60 rounded-md text-zinc-500 hover:text-emerald-400 transition-colors active:scale-95"
             >
-              <Plus size={14} />
+              <Plus size={14} strokeWidth={2.5} />
             </button>
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 setIsCreating("folder");
               }}
-              className="p-1 hover:bg-white/10 rounded-md text-gray-500 hover:text-indigo-400 transition-colors"
+              className="p-1 hover:bg-zinc-700/60 rounded-md text-zinc-500 hover:text-cyan-400 transition-colors active:scale-95"
             >
-              <FolderPlus size={14} />
+              <FolderPlus size={14} strokeWidth={2.5} />
             </button>
           </div>
         )}
       </div>
 
       {isCreating && (
-        <div className="ml-6 flex items-center gap-1 py-1 px-2 animate-in fade-in slide-in-from-left-2 duration-200">
+        <div className="ml-[22px] flex items-center gap-1.5 py-1.5 px-2 animate-in fade-in slide-in-from-left-2 duration-200 bg-black/30 rounded-lg border border-zinc-800/80 mb-1 backdrop-blur-md">
           <input
             autoFocus
-            className="bg-[var(--theme-bg-surface)] border border-indigo-500/50 focus:border-indigo-500 rounded text-[15px] text-gray-200 outline-none px-2 py-0.5 w-[140px] transition-colors"
+            className="bg-transparent border-none text-[13px] font-medium text-gray-200 outline-none px-1 py-0.5 w-[130px] transition-all placeholder:text-zinc-600"
             value={newItemName}
             onChange={(e) => setNewItemName(e.target.value)}
             onBlur={() => setIsCreating(null)}
             onKeyDown={(e) => e.key === "Enter" && handleCreate()}
+            placeholder="Name..."
           />
           <button
             onMouseDown={(e) => {
               e.preventDefault();
               handleCreate();
             }}
-            className="p-1 text-gray-500 hover:text-emerald-400 hover:bg-[var(--theme-bg-elevated)] rounded transition-colors"
+            className="p-1 shrink-0 text-zinc-500 hover:text-emerald-400 hover:bg-zinc-800 rounded-md transition-all active:scale-95"
           >
-            <Check size={14} />
+            <Check size={14} strokeWidth={2.5} />
           </button>
         </div>
       )}
@@ -433,7 +433,7 @@ export const FileItem: React.FC<FileItemProps> = ({ node }) => {
       {isFolder && (
         <div className={`grid transition-all duration-300 ease-in-out ${isOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
           <div className="overflow-hidden">
-            <div className="ml-4 border-l border-zinc-800/50 hover:border-zinc-700/50 transition-colors">
+            <div className="ml-[18px] pl-1.5 border-l border-zinc-800/80 hover:border-zinc-700/80 transition-colors mt-0.5 mb-1.5 space-y-[2px]">
               {node.children?.map((child) => (
                 <FileItem key={child.id} node={child} />
               ))}
@@ -455,7 +455,7 @@ export const FileItem: React.FC<FileItemProps> = ({ node }) => {
             className="fixed z-50 bg-[var(--theme-bg-surface)] border border-zinc-800 shadow-2xl rounded-xl py-1.5 w-48 text-sm text-gray-200 overflow-hidden"
           >
             <button
-              className="w-full text-left px-3 py-1.5 hover:bg-indigo-600 hover:text-white flex items-center gap-2 transition-colors"
+              className="w-full text-left px-3 py-1.5 hover:bg-cyan-600 hover:text-white flex items-center gap-2 transition-colors"
               onClick={(e) => {
                 e.stopPropagation();
                 setIsCreating("chat");
@@ -466,7 +466,7 @@ export const FileItem: React.FC<FileItemProps> = ({ node }) => {
               <MessageSquare size={14} /> New Chat
             </button>
             <button
-              className="w-full text-left px-3 py-1.5 hover:bg-indigo-600 hover:text-white flex items-center gap-2 transition-colors"
+              className="w-full text-left px-3 py-1.5 hover:bg-cyan-600 hover:text-white flex items-center gap-2 transition-colors"
               onClick={(e) => {
                 e.stopPropagation();
                 setIsCreating("folder");
@@ -477,7 +477,7 @@ export const FileItem: React.FC<FileItemProps> = ({ node }) => {
               <FolderPlus size={14} /> New Folder
             </button>
              <button
-              className="w-full text-left px-3 py-1.5 hover:bg-indigo-600 hover:text-white flex items-center gap-2 transition-colors"
+              className="w-full text-left px-3 py-1.5 hover:bg-cyan-600 hover:text-white flex items-center gap-2 transition-colors"
               onClick={(e) => {
                 e.stopPropagation();
                 handleRootSetting();
@@ -489,7 +489,7 @@ export const FileItem: React.FC<FileItemProps> = ({ node }) => {
             </button>
             {!node.isSystemFolder && (
               <button
-                className="w-full text-left px-3 py-1.5 hover:bg-indigo-600 hover:text-white flex items-center gap-2 transition-colors"
+                className="w-full text-left px-3 py-1.5 hover:bg-cyan-600 hover:text-white flex items-center gap-2 transition-colors"
                 onClick={(e) => {
                   e.stopPropagation();
                   setIsRenaming("folder");

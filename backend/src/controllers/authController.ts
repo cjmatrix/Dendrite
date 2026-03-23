@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { AuthService } from '../services/authService';
 import { AppError } from '../utils/AppError';
+import { User } from '../models/User';
 
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -85,5 +86,23 @@ export const AuthController = {
     
     const user = await AuthService.getMe(req.user._id.toString());
     res.status(200).json({ user });
+  },
+
+  async saveFCMToken(req: Request, res: Response) {
+    if (!req.user) throw new AppError('Unauthorized', 401);
+
+    const { fcmToken } = req.body;
+    if (!fcmToken) throw new AppError('fcmToken is required', 400);
+
+    const user = await User.findById(req.user._id);
+    if (!user) throw new AppError('User not found', 404);
+
+    if (!user.fcmToken) user.fcmToken = [];
+    if (!user.fcmToken.includes(fcmToken)) {
+      user.fcmToken.push(fcmToken);
+      await user.save();
+    }
+
+    res.status(200).json({ success: true, message: 'FCM token saved' });
   }
 };

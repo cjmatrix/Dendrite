@@ -1,6 +1,6 @@
 import React, { useState, useRef, useMemo, useCallback } from "react";
-import { Paperclip, Share, MoreVertical, ArrowUp, Image, Sparkles, ChevronDown, Check, StickyNote } from "lucide-react";
-import { useParams } from "react-router-dom";
+import { Paperclip, Share, MoreVertical, ArrowUp, Image, Sparkles, ChevronDown, Check, StickyNote, Folder, Home, ChevronRight, Brain } from "lucide-react";
+import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { Virtuoso } from "react-virtuoso";
 import type { VirtuosoHandle } from "react-virtuoso";
@@ -10,12 +10,16 @@ import "../styles/markdown.css";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
-import { useAppSelector } from "../store/store";
+import { useAppSelector, useAppDispatch } from "../store/store";
 import type { FileNode } from "../types/types";
+import { setActiveSidebarRootId } from "../store/explorerSlice";
 import DendritesLogo from "./DendritesLogo";
 import { markdownComponents } from "./markdown/MarkdownComponents";
 import { StreamingContext } from "../contexts/StreamingContext";
 import { QuickChatModal } from "./QuickChatModal.tsx";
+import { streamingFetch } from "../api/streamingFetch";
+import { requestFirebaseNotificationPermission } from "../firebase";
+import { getMarkdownFromSelection } from "../utils/markdownUtils";
 
 interface Message {
   _id?: string;
@@ -28,7 +32,7 @@ interface Message {
 const API_URL = import.meta.env.VITE_API_URL;
 
 
-const MessageBubble = React.memo(({ msg, onOpenSubChat }: { msg: Message, onOpenSubChat: (msgId: string,subChatId:string) => void }) => {
+const MessageBubble = React.memo(({ msg, onOpenSubChat, onCreateRecall }: { msg: Message, onOpenSubChat: (msgId: string,subChatId:string) => void, onCreateRecall: (msgId: string) => void }) => {
     const isUser = msg.role === "user";
     const time = new Date().toLocaleTimeString([], {
       hour: "2-digit",
@@ -38,7 +42,7 @@ const MessageBubble = React.memo(({ msg, onOpenSubChat }: { msg: Message, onOpen
     return (
       <div
         data-message-id={msg._id}
-        className={` flex w-full message-bubble-container ${isUser ? "justify-end" : "justify-start"}`}
+        className={` flex w-full message-bubble-container group/bubble relative ${isUser ? "justify-end" : "justify-start"}`}
       >
         {isUser ? (
           <div className="flex flex-col items-end max-w-[85%] md:max-w-[70%] relative">
@@ -66,9 +70,19 @@ const MessageBubble = React.memo(({ msg, onOpenSubChat }: { msg: Message, onOpen
                 <StickyNote size={14} className="group-hover:scale-110 transition-transform" />
               </button>
             ))}
+            {/* Recall Button for User Message */}
+            <div className="absolute top-0 right-full mr-2 opacity-0 group-hover/bubble:opacity-100 transition-opacity">
+              <button
+                onClick={() => onCreateRecall(msg._id!)}
+                className="p-1.5 rounded-lg bg-zinc-800 text-purple-400 hover:bg-purple-600 hover:text-white transition-colors"
+                title="Save as Recall Card"
+              >
+                <Brain size={14} />
+              </button>
+            </div>
           </div>
         ) : (
-          <div className="flex w-full gap-4 max-w-[95%] md:max-w-[100%]">
+          <div className="flex w-full gap-4 max-w-[95%] md:max-w-[100%] group/bubble relative">
             <DendritesLogo
             
               className="mt-1 hidden sm:flex shrink-0"
@@ -105,6 +119,17 @@ const MessageBubble = React.memo(({ msg, onOpenSubChat }: { msg: Message, onOpen
                   <StickyNote size={14} className="group-hover:scale-110 transition-transform" />
                 </button>
               ))}
+
+              {/* Recall Button for AI Message */}
+              <div className="absolute top-0 left-full ml-2 opacity-0 group-hover/bubble:opacity-100 transition-opacity">
+                <button
+                  onClick={() => onCreateRecall(msg._id!)}
+                  className="p-1.5 rounded-lg bg-zinc-800 text-purple-400 hover:bg-purple-600 hover:text-white transition-colors shadow-md"
+                  title="Save as Recall Card"
+                >
+                  <Brain size={14} />
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -130,7 +155,7 @@ const VirtuosoHeader = ({ context }: any) => {
 const VirtuosoFooter = ({ context }: any) => {
   const { isStreaming, streamingText } = context;
   return (
-    <div className={` ${isStreaming ?"pb-[80vh]":"pb-32 "} ${isStreaming?"md:pb-[80vh]":"pb-32 "} max-w-4xl mx-auto w-full px-4 md:px-8`}>
+    <div className={` ${isStreaming ?"pb-[80vh]":"pb-32 "} ${isStreaming?"md:pb-[80vh]":"pb-32 "} max-w-4xl mx-auto w-full px-4 md:px-8 `}>
       {/* Streaming response — grows in real time */}
       {streamingText && (
         <div className="flex w-full gap-4 max-w-[95%] md:max-w-[85%] streaming-bubble mt-6">
@@ -207,7 +232,10 @@ const ChatWindow: React.FC = () => {
     visible: boolean;
     subChatId:string | null
   } | null>(null);
+  const navigate = useNavigate();
+  const dispatch = useAppDispatch();
   const [isQuickChatOpen, setIsQuickChatOpen] = useState(false);
+  const [isRecalling, setIsRecalling] = useState(false);
 
   const queryClient = useQueryClient();
   const virtuosoRef = useRef<VirtuosoHandle>(null);
@@ -215,11 +243,11 @@ const ChatWindow: React.FC = () => {
   const { tree } = useAppSelector((state) => state.explorer);
 
   const breadCrumbs = useMemo(() => {
-    const path: string[] = [];
+    const path: { id: string; name: string }[] = [];
 
     function findPath(node: FileNode): boolean {
-      if (node.type === "folder") {
-        path.push(node.name);
+      if (node.type === "folder" && node.id !== "root") {
+        path.push({ id: node.id, name: node.name });
       }
 
       if (node.id === id) {
@@ -230,7 +258,7 @@ const ChatWindow: React.FC = () => {
         if (findPath(child)) return true;
       }
 
-      if (node.type === "folder") {
+      if (node.type === "folder" && node.id !== "root") {
         path.pop();
       }
       return false;
@@ -272,13 +300,9 @@ const ChatWindow: React.FC = () => {
 
   const { messages, firstItemIndex } = useMemo(() => {
     if (!messagesData) return { messages: [], firstItemIndex: 10000 };
-    // pages is an array: [newestBatch, olderBatch, oldestBatch]
-    // inside each batch, messages are chronological [old, new, newest]
+    
     const allPagesReversed = [...messagesData.pages].reverse();
     const mergedMessages = allPagesReversed.flatMap((p: any) => p.messages);
-
-    // Calculate how many items were fetched from older pages
-    // pages[0] is the newest batch. pages[1...N] are the older batches.
     let prepended = 0;
     for (let i = 1; i < messagesData.pages.length; i++) {
       prepended += messagesData.pages[i].messages?.length || 0;
@@ -326,11 +350,10 @@ const ChatWindow: React.FC = () => {
     });
 
     try {
-      const response = await fetch(`${API_URL}/chats/${id}/message`, {
+      const response = await streamingFetch(`${API_URL}/chats/${id}/message`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: userMessage, mode }),
-        credentials: "include",
       });
 
       if (!response.ok || !response.body) {
@@ -421,7 +444,7 @@ const ChatWindow: React.FC = () => {
     if (selectedText && selectedText.length > 0) {
       const range = sel?.getRangeAt(0);
       const rect = range?.getBoundingClientRect();  
-
+      
       console.log(sel)
       let messageId = "";
       let bubbleElement: HTMLElement | null = null;
@@ -468,27 +491,80 @@ const ChatWindow: React.FC = () => {
     setIsQuickChatOpen(true);
   }, []);
 
+  const handleCreateRecall = async (selectedPlainText: string, msgId: string) => {
+    try {
+      if(isRecalling) return;
+      setIsRecalling(true);
+      
+      // Request permission only when they actually use the feature!
+      await requestFirebaseNotificationPermission();
+
+      // Look up the raw markdown from the message list
+      const originalMessage = messages.find(m => m._id === msgId);
+      const rawMarkdown = originalMessage ? originalMessage.content : selectedPlainText;
+      
+      // Attempt to capture the markdown fragment (bold, italics, etc.)
+      const markdownFragment = getMarkdownFromSelection(rawMarkdown, selectedPlainText);
+
+      await api.post(`/recall/save`, {
+        content: markdownFragment || null,
+        chatId: id,
+        msgId: msgId
+      });
+      // Optionally show a toast here
+      setSelection(null);
+    } catch (error) {
+      console.error("Failed to save recall card", error);
+    } finally {
+      setIsRecalling(false);
+    }
+  };
+
   return (
     <div 
       className="flex flex-col h-screen bg-[var(--theme-bg-base)] text-gray-200 font-sans w-full relative overflow-hidden"
       onMouseUp={handleTextSelection}
     >
       {/* Top Header */}
-      <div className="h-14 border-b border-white/5 flex items-center justify-between px-6 bg-[var(--theme-bg-base)] shrink-0 z-10">
-        <div className="flex items-center text-sm font-medium">
-          {breadCrumbs.map((crumb, index) => (
-            <span key={index} className="flex items-center">
-              <span className="text-gray-500">{crumb}</span>
-              <span className="mx-2 text-gray-600">/</span>
-            </span>
+      <div className="h-16 border-b border-white/5 flex items-center justify-between px-6 bg-(--theme-bg-base)/80 backdrop-blur-xl shrink-0 z-20">
+        <div className="flex items-center text-sm font-medium gap-1 min-w-0 overflow-x-auto no-scrollbar py-1">
+          <button 
+            onClick={() => {
+              dispatch(setActiveSidebarRootId(null));
+              navigate("/explorer"); 
+            }}
+            className="flex items-center p-2 hover:bg-zinc-800/80 rounded-lg transition-all cursor-pointer group hover:scale-105 active:scale-95"
+          >
+             <Home size={15} className="text-zinc-500 group-hover:text-amber-200/90 transition-colors" />
+          </button>
+          <ChevronRight size={14} className="text-zinc-700 mx-0.5 shrink-0" />
+          
+          {breadCrumbs.map((crumb) => (
+            <React.Fragment key={crumb.id}>
+              <button 
+                onClick={() => {
+                  dispatch(setActiveSidebarRootId(crumb.id));
+                }}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 hover:bg-zinc-800/80 rounded-lg transition-all cursor-pointer group whitespace-nowrap hover:scale-[1.02] active:scale-[0.98]"
+              >
+                <Folder size={14} className="text-zinc-600 group-hover:text-amber-200/90 transition-colors" />
+                <span className="text-zinc-500 group-hover:text-zinc-200 transition-colors font-semibold">{crumb.name}</span>
+              </button>
+              <ChevronRight size={14} className="text-zinc-700 mx-0.5 shrink-0" />
+            </React.Fragment>
           ))}
-          <span className="text-gray-200">{chat?.title || "New Chat"}</span>
+          
+          <div className="ml-1 px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-xl shadow-[0_0_20px_-10px_rgba(245,158,11,0.4)] animate-in fade-in zoom-in duration-300">
+            <span className="text-amber-200/90 font-bold tracking-tight text-[13px]">
+              {chat?.title || "New Chat"}
+            </span>
+          </div>
         </div>
-        <div className="flex items-center gap-4 text-gray-400">
-          <button className="hover:text-gray-200 transition-colors">
+        <div className="flex items-center gap-2 text-zinc-400 shrink-0 ml-4">
+          <button className="p-2 hover:bg-zinc-800/80 hover:text-amber-200/90 rounded-lg transition-all cursor-pointer hover:scale-105 active:scale-95">
             <Share size={18} />
           </button>
-          <button className="hover:text-gray-200 transition-colors">
+          <button className="p-2 hover:bg-zinc-800/80 hover:text-amber-200/90 rounded-lg transition-all cursor-pointer hover:scale-105 active:scale-95">
             <MoreVertical size={18} />
           </button>
         </div>
@@ -527,7 +603,7 @@ const ChatWindow: React.FC = () => {
             }}
             itemContent={(_, msg) => (
               <div className={`max-w-4xl mx-auto w-full px-4 md:px-8 pb-0`}>
-                <MessageBubble msg={msg} onOpenSubChat={handleOpenSubChat} />
+                <MessageBubble msg={msg} onOpenSubChat={handleOpenSubChat} onCreateRecall={(msgId) => handleCreateRecall('', msgId)} />
               </div>
             )}
             components={{
@@ -540,7 +616,7 @@ const ChatWindow: React.FC = () => {
 
       {/* Input Container - Floating with Gradient Overlay */}
       <div className="absolute bottom-0 left-0 w-[85vw] pt-20 pb-6 px-4 md:px-8 border-none pointer-events-none bg-linear-to-t from-(--theme-bg-base) via-(--theme-bg-base)/95 to-transparent">
-        <div className="max-w-4xl mx-auto relative pointer-events-auto">
+        <div className="max-w-4xl mx-auto relative pointer-events-auto ">
           <div className="flex items-center bg-[var(--theme-bg-elevated)]/90 backdrop-blur-xl border border-white/10 rounded-2xl px-3 md:px-4 py-3 md:py-3.5 focus-within:border-blue-500/50 focus-within:bg-[var(--theme-bg-elevated)] transition-all shadow-2xl">
             <button className="p-2 hover:bg-white/5 rounded-xl text-gray-400 hover:text-gray-200 transition-colors hidden md:block group">
               <Paperclip
@@ -589,11 +665,17 @@ const ChatWindow: React.FC = () => {
               )}
             </div>
 
-            <input
-              type="text"
+            <textarea
               placeholder="Ask follow-up or research next steps..."
-              className="flex-1 bg-transparent border-none outline-none px-3 text-[16px] text-gray-200 placeholder:text-gray-500"
+              className="flex-1 bg-transparent border-none outline-none px-3 text-[16px] text-gray-200 placeholder:text-gray-500 resize-none max-h-48 py-1 overflow-y-auto no-scrollbar"
               value={input}
+              rows={1}
+              ref={(el) => {
+                if (el) {
+                  el.style.height = "auto";
+                  el.style.height = el.scrollHeight + "px";
+                }
+              }}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
@@ -624,16 +706,28 @@ const ChatWindow: React.FC = () => {
         </div>
       </div>
 
-      {/* Floating Quick Chat Trigger */}
+      {/* Floating Actions Trigger */}
       {selection && selection.visible && (
-        <button
-          className="fixed z-99 -translate-x-1/2 -translate-y-full mb-4 px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-lg shadow-xl hover:bg-blue-500 transition-all flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2 duration-200"
+        <div 
+          className="fixed z-99 -translate-x-1/2 -translate-y-full mb-4 flex gap-2 animate-in fade-in slide-in-from-bottom-2 duration-200"
           style={{ top: selection.y - 10, left: selection.x }}
-          onClick={() => setIsQuickChatOpen(true)}
         >
-          <Sparkles size={14} />
-          Quick Chat
-        </button>
+          <button
+            className="px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-lg shadow-xl hover:bg-blue-500 transition-all flex items-center gap-2"
+            onClick={() => setIsQuickChatOpen(true)}
+          >
+            <Sparkles size={14} />
+            Quick Chat
+          </button>
+          <button
+            className="px-3 py-1.5 bg-purple-600 text-white text-xs font-bold rounded-lg shadow-xl hover:bg-purple-500 transition-all flex items-center gap-2"
+            onClick={() => handleCreateRecall(selection.text, selection.messageId)}
+            disabled={isRecalling}
+          >
+            <Brain size={14} />
+            {isRecalling ? "Saving..." : "Recall"}
+          </button>
+        </div>
       )}
 
       {/* Quick Chat Modal */}

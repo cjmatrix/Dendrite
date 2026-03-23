@@ -34,7 +34,7 @@ function ChatPage() {
       {/* Sidebar */}
       <div
         className={`
-        fixed md:relative z-40
+        fixed md:sticky md:top-0 md:h-screen md:self-start z-40
         transition-transform duration-300 ease-in-out
         ${sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
       `}
@@ -43,7 +43,7 @@ function ChatPage() {
       </div>
 
       {/* Main content */}
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 overflow-y-auto h-screen custom-scrollbar">
         <Outlet />
       </div>
     </div>

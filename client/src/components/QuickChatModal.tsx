@@ -7,6 +7,7 @@ import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import { markdownComponents } from "./markdown/MarkdownComponents";
+import { streamingFetch } from "../api/streamingFetch";
 
 interface QuickChatModalProps {
   isOpen: boolean;
@@ -104,7 +105,7 @@ export const QuickChatModal: React.FC<QuickChatModalProps> = ({
 
   const streamChatMutation = useMutation({
     mutationFn: async ({ userPrompt }: { userPrompt: string }) => {
-      const response = await fetch(`${API_URL}/chats/${chatId}/quick-chat`, {
+      const response = await streamingFetch(`${API_URL}/chats/${chatId}/quick-chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -113,7 +114,6 @@ export const QuickChatModal: React.FC<QuickChatModalProps> = ({
           highlightedText: selectedText,
           quickChatHistory: subMessages.concat({ role: "user", content: userPrompt }),
         }),
-        credentials: "include",
       });
 
       if (!response.ok || !response.body) throw new Error("Stream failed");
