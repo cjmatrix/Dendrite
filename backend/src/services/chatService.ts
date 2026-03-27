@@ -14,6 +14,8 @@ import { generateEmbedding } from "../utils/embedding";
 import CONTEXT_WINDOW from "../constants/contextWindow";
 import addSummaryQueue from "../queue/summaryQueue";
 import addStateQueue from "../queue/stateQueue";
+import { hashCode } from "../utils/stripComments";
+import { redisConnection } from "../config/redis";
 
 export const createChatService = async (
   userId: string,
@@ -236,15 +238,17 @@ CRUCIAL: You MUST include a functional Pause/Resume button in your sketch. You c
 
 export function extractCodeBlocks(text: string) {
   const regex = /```(\w+)?\n([\s\S]*?)```/g;
-  const blocks: { language: string; code: string }[] = [];
+  const blocks: { language: string; code: string; hash: string }[] = [];
 
   let match;
   while ((match = regex.exec(text)) !== null) {
     const lang = (match[1] || "text").toLowerCase();
+    const code = match[2].trim();
 
     blocks.push({
       language: lang,
-      code: match[2].trim(),
+      code,
+      hash: hashCode(code), 
     });
   }
   return blocks;
@@ -288,15 +292,48 @@ export const saveModelReply = async (
     let savedBlocks: any[] = [];
 
     if (codeBlocks.length > 0) {
-      const docs = codeBlocks.map((block) => ({
-        userId,
-        chatId,
-        code: block.code,
-        language: block.language,
-        description: "",
-      }));
-      savedBlocks = await CodeBlock.insertMany(docs, { session });
-    }
+      // --- DEDUPLICATION: Only process truly new code blocks ---
+      const newBlockDocs: any[] = [];
+
+      for (const block of codeBlocks) {
+        const redisKey = `code_dedup:${block.hash}`;
+
+       
+        const cachedDesc = await redisConnection.get(redisKey);
+        if (cachedDesc) {
+          console.log(`[CodeDedup] Redis hit for hash ${block.hash.slice(0, 8)}... — skipping API calls.`);
+          continue;
+        }
+
+        
+        const existingBlock = await CodeBlock.findOne({ hash: block.hash }).lean();
+        if (existingBlock) {
+          console.log(`[CodeDedup] DB hit for hash ${block.hash.slice(0, 8)}... — skipping API calls.`);
+          // Backfill Redis to avoid future DB lookups
+          if (existingBlock.description) {
+            await redisConnection.setex(redisKey, 86400, existingBlock.description);
+          }
+          continue;
+        }
+
+       
+        newBlockDocs.push({
+          userId,
+          chatId,
+          code: block.code,
+          language: block.language,
+          hash: block.hash,
+          description: "",
+        });
+      }
+
+      if (newBlockDocs.length > 0) {
+        savedBlocks = await CodeBlock.insertMany(newBlockDocs, { session });
+        console.log(`[CodeDedup] ${newBlockDocs.length} new / ${codeBlocks.length - newBlockDocs.length} duplicate blocks in this reply.`);
+      } else {
+        console.log(`[CodeDedup] All ${codeBlocks.length} code block(s) were duplicates — zero API calls needed.`);
+      }
+    } 
 
     let summaryOutboxEvent = null;
     let stateOutboxEvent = null;
@@ -343,10 +380,11 @@ export const saveModelReply = async (
         chatId: b.chatId,
         code: b.code,
         language: b.language,
+        hash: b.hash,
       }));
       await addDescriptionQueue(queuePayload);
       console.log(
-        `🚀 Sent ${codeBlocks.length} code blocks to description-queue background worker!`,
+        `🚀 Sent ${savedBlocks.length} NEW code blocks to description-queue background worker!`,
       );
     }
 

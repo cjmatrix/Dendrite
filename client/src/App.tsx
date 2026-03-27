@@ -13,6 +13,7 @@ import ChatWindow from "./components/ChatWindow";
 import EmptyChatState from "./components/EmptyChatState";
 import FileDisplay from "./components/FileDisplay";
 import RecallPage from "./pages/RecallPage";
+import KnowledgeGraphPage from "./pages/KnowledgeGraphPage";
 import { useQueryClient } from "@tanstack/react-query";
 
 const router = createBrowserRouter([
@@ -47,6 +48,10 @@ const router = createBrowserRouter([
           {
             path: "recall",
             element: <RecallPage />
+          },
+          {
+            path: "graph/:folderId",
+            element: <KnowledgeGraphPage />
           },
           {
             path:"/:id",
@@ -98,6 +103,10 @@ function App() {
               boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.4)",
             },
           });
+          
+          // Dispatch global event for animations (Tracer/Count)
+          queryClient.invalidateQueries({ queryKey: ["recallCount"] });
+          window.dispatchEvent(new CustomEvent('recall:notification-pushed'));
         }
       
         listenForMessages();

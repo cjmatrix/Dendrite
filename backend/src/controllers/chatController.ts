@@ -78,7 +78,7 @@ export const getChatMessages = async (req: Request, res: Response) => {
 
   const id = req.params.id as string;
   const cursor = (req.query.cursor as string) || null;
-  const limit = parseInt((req.query.limit as string) || "10", 10);
+  const limit =10;
 
   const messages = await getChatMessagesService(id, limit, cursor);
 
@@ -251,7 +251,7 @@ const getAnchorContext = async (chatId: string, anchorMessageId: string) => {
       createdAt: { $lte: anchorMsg.createdAt },
     })
       .sort({ createdAt: -1 })
-      .limit(5)
+      .limit(4)
       .lean();
 
     const result = contextMessages.reverse();

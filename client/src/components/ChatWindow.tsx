@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo, useCallback } from "react";
+import React, { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { Paperclip, Share, MoreVertical, ArrowUp, Image, Sparkles, ChevronDown, Check, StickyNote, Folder, Home, ChevronRight, Brain } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
@@ -19,14 +19,14 @@ import { StreamingContext } from "../contexts/StreamingContext";
 import { QuickChatModal } from "./QuickChatModal.tsx";
 import { streamingFetch } from "../api/streamingFetch";
 import { requestFirebaseNotificationPermission } from "../firebase";
-import { getMarkdownFromSelection } from "../utils/markdownUtils";
+import { getMarkdownFromDOMSelection } from "../utils/markdownUtils";
 
 interface Message {
   _id?: string;
   role: "user" | "model" | "system";
   content: string;
   hasSubChat?: boolean;
-  subChats?: Array<{ subChatId: string; relY: number }>;
+  subChats?: Array<{ subChatId: string; relY: number }>
 }
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -225,6 +225,7 @@ const ChatWindow: React.FC = () => {
   
   const [selection, setSelection] = useState<{
     text: string;
+    markdown: string;
     x: number;
     y: number;
     relativeY?: number;
@@ -239,6 +240,18 @@ const ChatWindow: React.FC = () => {
 
   const queryClient = useQueryClient();
   const virtuosoRef = useRef<VirtuosoHandle>(null);
+  const [atBottom, setAtBottom] = useState(true);
+  const [isTracerActive, setIsTracerActive] = useState(false);
+
+  // Trigger animation ONLY on Firebase push notification
+  useEffect(() => {
+    const handleNotification = () => {
+      setIsTracerActive(true);
+      setTimeout(() => setIsTracerActive(false), 12500); // 3 loops
+    };
+    window.addEventListener('recall:notification-pushed', handleNotification);
+    return () => window.removeEventListener('recall:notification-pushed', handleNotification);
+  }, []);
 
   const { tree } = useAppSelector((state) => state.explorer);
 
@@ -445,7 +458,6 @@ const ChatWindow: React.FC = () => {
       const range = sel?.getRangeAt(0);
       const rect = range?.getBoundingClientRect();  
       
-      console.log(sel)
       let messageId = "";
       let bubbleElement: HTMLElement | null = null;
       let curr: any = sel?.anchorNode;
@@ -457,13 +469,19 @@ const ChatWindow: React.FC = () => {
         }
         curr = curr.parentElement;
       }
-      console.log(messageId)
+
       if (rect && messageId && bubbleElement) {
         const bubbleRect = bubbleElement.getBoundingClientRect();
         const relativeY = rect.top - bubbleRect.top;
 
+        // Capture markdown from DOM RIGHT NOW while the selection is still alive.
+        // This is the key improvement: Turndown converts the selected HTML nodes
+        // (tables, code blocks, formatting) back into proper markdown.
+        const capturedMarkdown = getMarkdownFromDOMSelection() || selectedText;
+
         setSelection({
           text: selectedText,
+          markdown: capturedMarkdown,
           x: rect.left + rect.width / 2,
           y: rect.top + window.scrollY,
           relativeY,
@@ -482,6 +500,7 @@ const ChatWindow: React.FC = () => {
     console.log(messageId,subChatId)
     setSelection({
       text: "", // Modal will fetch it
+      markdown: "",
       x: window.innerWidth / 2,
       y: window.innerHeight / 2,
       messageId,
@@ -491,7 +510,7 @@ const ChatWindow: React.FC = () => {
     setIsQuickChatOpen(true);
   }, []);
 
-  const handleCreateRecall = async (selectedPlainText: string, msgId: string) => {
+  const handleCreateRecall = async (markdownContent: string | null, msgId: string) => {
     try {
       if(isRecalling) return;
       setIsRecalling(true);
@@ -499,19 +518,16 @@ const ChatWindow: React.FC = () => {
       // Request permission only when they actually use the feature!
       await requestFirebaseNotificationPermission();
 
-      // Look up the raw markdown from the message list
-      const originalMessage = messages.find(m => m._id === msgId);
-      const rawMarkdown = originalMessage ? originalMessage.content : selectedPlainText;
-      
-      // Attempt to capture the markdown fragment (bold, italics, etc.)
-      const markdownFragment = getMarkdownFromSelection(rawMarkdown, selectedPlainText);
-
       await api.post(`/recall/save`, {
-        content: markdownFragment || null,
+        // markdownContent is either the pre-captured DOM→markdown (from text selection)
+        // or null (from the Brain icon on a whole message – backend will use full msg content)
+        content: markdownContent || null,
         chatId: id,
         msgId: msgId
       });
-      // Optionally show a toast here
+      // Invalidate queries so the badge count at least updates background data
+      queryClient.invalidateQueries({ queryKey: ["recallCount"] });
+      
       setSelection(null);
     } catch (error) {
       console.error("Failed to save recall card", error);
@@ -525,6 +541,9 @@ const ChatWindow: React.FC = () => {
       className="flex flex-col h-screen bg-[var(--theme-bg-base)] text-gray-200 font-sans w-full relative overflow-hidden"
       onMouseUp={handleTextSelection}
     >
+      {/* Animated Edge Tracer - Only active when notification (recall save) comes */}
+      <div className={`violet-edge-tracer ${isTracerActive ? 'active-tracer' : ''}`}></div>
+
       {/* Top Header */}
       <div className="h-16 border-b border-white/5 flex items-center justify-between px-6 bg-(--theme-bg-base)/80 backdrop-blur-xl shrink-0 z-20">
         <div className="flex items-center text-sm font-medium gap-1 min-w-0 overflow-x-auto no-scrollbar py-1">
@@ -594,7 +613,8 @@ const ChatWindow: React.FC = () => {
             initialTopMostItemIndex={messages.length > 0 ? messages.length - 2 : 0}
             computeItemKey={(index, item) => item._id || String(index)}
             followOutput={false}
-            increaseViewportBy={{ top: 800, bottom: 800 }}
+            increaseViewportBy={{ top: 4000, bottom: 4000 }}
+            atBottomStateChange={(bottom) => setAtBottom(bottom)}
             context={{ isFetchingNextPage, isStreaming, streamingText }}
             startReached={() => {
               if (hasNextPage && !isFetchingNextPage) {
@@ -603,7 +623,7 @@ const ChatWindow: React.FC = () => {
             }}
             itemContent={(_, msg) => (
               <div className={`max-w-4xl mx-auto w-full px-4 md:px-8 pb-0`}>
-                <MessageBubble msg={msg} onOpenSubChat={handleOpenSubChat} onCreateRecall={(msgId) => handleCreateRecall('', msgId)} />
+                <MessageBubble msg={msg} onOpenSubChat={handleOpenSubChat} onCreateRecall={(msgId) => handleCreateRecall(null, msgId)} />
               </div>
             )}
             components={{
@@ -611,6 +631,17 @@ const ChatWindow: React.FC = () => {
               Footer: VirtuosoFooter
             }}
           />
+        )}
+
+        {/* Scroll to Bottom Button */}
+        {!atBottom && messages.length > 0 && (
+          <button
+            onClick={() => virtuosoRef.current?.scrollToIndex({ index: messages.length - 1, align: 'end', behavior: 'smooth' })}
+            className="absolute bottom-24 right-8 z-30 p-2.5 rounded-full bg-zinc-800/90 border border-white/10 text-white shadow-2xl hover:bg-zinc-700 transition-all hover:scale-110 active:scale-95 group"
+            title="Scroll to bottom"
+          >
+            <ChevronDown size={20} strokeWidth={2.5} className="group-hover:translate-y-0.5 transition-transform" />
+          </button>
         )}
       </div>
 
@@ -721,7 +752,7 @@ const ChatWindow: React.FC = () => {
           </button>
           <button
             className="px-3 py-1.5 bg-purple-600 text-white text-xs font-bold rounded-lg shadow-xl hover:bg-purple-500 transition-all flex items-center gap-2"
-            onClick={() => handleCreateRecall(selection.text, selection.messageId)}
+            onClick={() => handleCreateRecall(selection.markdown, selection.messageId)}
             disabled={isRecalling}
           >
             <Brain size={14} />

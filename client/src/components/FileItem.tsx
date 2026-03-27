@@ -13,6 +13,7 @@ import {
   Image as ImageIcon,
   BookOpen,
   MessageCircle,
+  GitBranch,
 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "../api/axios";
@@ -34,7 +35,9 @@ export const FileItem: React.FC<FileItemProps> = ({ node }) => {
   const isFolder = node.type === "folder";
   const queryClient = useQueryClient();
   const dispatch=useAppDispatch();
-  // --- Folder mutations with optimistic updates ---
+
+
+
 
   const { mutate: createFolderMutate } = useMutation({
     mutationFn: async ({
@@ -144,7 +147,7 @@ export const FileItem: React.FC<FileItemProps> = ({ node }) => {
     },
   });
 
-  // --- Chat mutations with optimistic updates ---
+ 
 
   const { mutate: createChatMutate } = useMutation({
     mutationFn: async ({
@@ -486,6 +489,16 @@ export const FileItem: React.FC<FileItemProps> = ({ node }) => {
               }}
             >
               <FolderPlus size={14} /> Open With Folder
+            </button>
+            <button
+              className="w-full text-left px-3 py-1.5 hover:bg-amber-600 hover:text-white flex items-center gap-2 transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/graph/${node.id}`);
+                setContextMenu(null);
+              }}
+            >
+              <GitBranch size={14} /> Knowledge Graph
             </button>
             {!node.isSystemFolder && (
               <button

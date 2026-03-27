@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { Message } from "../models/Message";
 import { createCard, updateCard, getDueCards, deleteCard, clearAllCards } from "../services/recallService"
+import Recall from "../models/Recall";
 
 
 export const creatingCard=async(req: any,res: any)=>{
@@ -42,4 +43,13 @@ export const deletingCard = async (req: any, res: any) => {
 export const clearingCards = async (req: any, res: any) => {
     await clearAllCards(req.user._id);
     res.status(200).json({ success: true, message: "All cards cleared" });
+}
+
+export const countingCards = async (req: any, res: any) => {
+    const now = new Date();
+    const count = await Recall.countDocuments({ 
+        userId: req.user._id,
+        nextReview: { $lte: now } // ONLY count those that are due for review
+    });
+    res.status(200).json({ success: true, count });
 }

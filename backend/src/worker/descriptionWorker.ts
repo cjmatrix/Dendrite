@@ -13,6 +13,7 @@ interface DescriptionJobData {
     chatId: string;
     code: string;
     language: string;
+    hash: string; // Functional hash of comment-stripped code
   }[];
 }
 
@@ -25,16 +26,17 @@ const descriptionWorker = new Worker<DescriptionJobData>(
 
   
     for (const block of blocks) {
-      const redisKey = `desc:${block._id}`;
+      // Use the functional hash as the cache key — same code = same key, regardless of _id
+      const redisKey = `code_dedup:${block.hash}`;
       const cachedDescription = await redisConnection.get(redisKey);
       
       if (cachedDescription) {
+        console.log(`[DescWorker] Hash cache hit for ${block.hash.slice(0, 8)}... — skipping Gemini call.`);
         finalResults[block._id] = cachedDescription;
       } else {
         toProcessBlocks.push(block);
       }
     }
-
 
     if (toProcessBlocks.length > 0) {
       try {
@@ -44,10 +46,13 @@ const descriptionWorker = new Worker<DescriptionJobData>(
           toProcessBlocks.map(b => ({ id: b._id, code: b.code, language: b.language }))
         );
 
-     
         for (const res of batchResults) {
           finalResults[res.id] = res.description;
-          await redisConnection.setex(`desc:${res.id}`, 3600, res.description);
+          // Cache using the hash key (24h TTL) so future duplicates skip Gemini entirely
+          const originalBlock = toProcessBlocks.find(b => b._id === res.id);
+          if (originalBlock) {
+            await redisConnection.setex(`code_dedup:${originalBlock.hash}`, 86400, res.description);
+          }
         }
       } catch (error: any) {
         console.error(`❌ Batch Description generation failed:`, error.message);

@@ -6,7 +6,7 @@ import { v4 as uuid } from "uuid";
 
 
 const CACHE_TTL_SECONDS = 12 * 60 * 60;
-const SEMANTIC_THRESHOLD = 0.95;
+const SEMANTIC_THRESHOLD = 0.89;
 
 export async function getTavilySearchContext(query: string, precomputedVector?: number[]): Promise<string> {
   const tvly = tavily({ apiKey: process.env.TAVILY_API_KEY });
@@ -43,7 +43,7 @@ export async function getTavilySearchContext(query: string, precomputedVector?: 
     });
 
     if (semanticResults.length > 0 && semanticResults[0].score >= SEMANTIC_THRESHOLD) {
-      console.log(`[Cache Hit] Qdrant Semantic Match (score: ${semanticResults[0].score.toFixed(3)}) for query: "${query}"`);
+      console.log(`[Cache Hit] Qdrant Semantic Match (score: ${semanticResults[0].score?.toFixed(3)}) for query: "${query}"`);
       const payloadContent = semanticResults[0].payload?.context as string;
       
    
@@ -59,6 +59,7 @@ export async function getTavilySearchContext(query: string, precomputedVector?: 
       maxResults: 3,
     });
 
+    console.log(searchResponse,"here")
     let contextString = "";
     if (searchResponse && searchResponse.results && searchResponse.results.length > 0) {
       contextString = `\n\n--- INTERNET SEARCH RESULTS ---\n${searchResponse.results
@@ -66,17 +67,17 @@ export async function getTavilySearchContext(query: string, precomputedVector?: 
         .join("\n\n")}\n--- END SEARCH RESULTS ---\n\nPlease utilize the above internet search results to inform your answer if relevant.`;
     }
 
-    // Only cache if there's actually a meaningful context returned
+   
     if (contextString) {
-      // Save to Redis
+     
       await redisConnection.setex(redisCacheKey, CACHE_TTL_SECONDS, contextString);
 
-      // Save to Qdrant Semantic Cache
+      
       await qdrantClient.upsert(SEARCH_CACHE_COLLECTION, {
         points: [
           {
             id: uuid(),
-            vector: queryVector, // store the embedding of this query
+            vector: queryVector,
             payload: {
               context: contextString,
               createdAt: Date.now(),

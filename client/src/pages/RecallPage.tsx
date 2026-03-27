@@ -23,7 +23,8 @@ export default function RecallPage() {
 
   const reviewMutation = useMutation({
     mutationFn: async ({ cardId, rating }: { cardId: string; rating: number }) => {
-      return await api.post(`/recall/update/${cardId}`, { rating });
+    await api.post(`/recall/update/${cardId}`, { rating });
+    return  queryClient.invalidateQueries({queryKey:["recallCount"]})
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["dueCards"] });
@@ -33,7 +34,8 @@ export default function RecallPage() {
  
   const deleteMutation = useMutation({
     mutationFn: async (cardId: string) => {
-      return await api.delete(`/recall/${cardId}`);
+     await api.delete(`/recall/${cardId}`);
+     return  queryClient.invalidateQueries({queryKey:["recallCount"]})
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["dueCards"] });
@@ -43,7 +45,8 @@ export default function RecallPage() {
 
   const clearAllMutation = useMutation({
     mutationFn: async () => {
-      return await api.delete("/recall/clear");
+       await api.delete("/recall/clear");
+       return  queryClient.invalidateQueries({queryKey:["recallCount"]})
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["dueCards"] });

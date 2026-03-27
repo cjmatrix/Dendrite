@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { X, ArrowUp, Sparkles, Pin, Maximize2, Minimize2 } from "lucide-react";
+import { X, ArrowUp, Sparkles, Pin, Maximize2, Minimize2, Brain } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../api/axios";
 import ReactMarkdown from "react-markdown";
@@ -8,6 +8,8 @@ import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import { markdownComponents } from "./markdown/MarkdownComponents";
 import { streamingFetch } from "../api/streamingFetch";
+import { getMarkdownFromDOMSelection } from "../utils/markdownUtils";
+import { requestFirebaseNotificationPermission } from "../firebase";
 
 interface QuickChatModalProps {
   isOpen: boolean;
@@ -40,6 +42,16 @@ export const QuickChatModal: React.FC<QuickChatModalProps> = ({
   });
 
   const [isPinned,setIsPinned]=useState(false);
+  const [isRecalling, setIsRecalling] = useState(false);
+
+ 
+  const [recallSelection, setRecallSelection] = useState<{
+    markdown: string;
+    x: number;
+    y: number;
+    msgIndex: number;
+    visible: boolean;
+  } | null>(null);
 
   console.log(chatId,sourceMessageId,subChatId)
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -166,6 +178,73 @@ export const QuickChatModal: React.FC<QuickChatModalProps> = ({
     streamChatMutation.mutate({ userPrompt });
   };
 
+  // ── Recall: text selection inside subchat messages ──
+  const handleSubChatTextSelection = () => {
+    const sel = window.getSelection();
+    const selectedStr = sel?.toString().trim();
+
+    if (selectedStr && selectedStr.length > 0) {
+      const range = sel?.getRangeAt(0);
+      const rect = range?.getBoundingClientRect();
+
+      // Make sure the selection is inside the subchat messages area
+      let insideModal = false;
+      let curr: any = sel?.anchorNode;
+      let msgIndex = -1;
+      while (curr && curr !== document.body) {
+        // Check for data-subchat-msg-index (set on each AI message bubble)
+        if (curr.dataset?.subchatMsgIndex !== undefined) {
+          msgIndex = parseInt(curr.dataset.subchatMsgIndex, 10);
+        }
+        if (curr.dataset?.subchatMessages !== undefined) {
+          insideModal = true;
+          break;
+        }
+        curr = curr.parentElement;
+      }
+
+      if (rect && insideModal && msgIndex >= 0) {
+        const capturedMarkdown = getMarkdownFromDOMSelection() || selectedStr;
+
+        setRecallSelection({
+          markdown: capturedMarkdown,
+          x: rect.left + rect.width / 2,
+          y: rect.top + window.scrollY,
+          msgIndex,
+          visible: true,
+        });
+      }
+    } else {
+      setTimeout(() => setRecallSelection((prev) => (prev ? { ...prev, visible: false } : null)), 200);
+    }
+  };
+
+  const handleCreateRecall = async (markdownContent: string | null, msgIndex?: number) => {
+    try {
+      if (isRecalling) return;
+      setIsRecalling(true);
+      await requestFirebaseNotificationPermission();
+
+      // If markdownContent is null, fall back to the full message content
+      let content = markdownContent;
+      if (!content && msgIndex !== undefined && subMessages[msgIndex]) {
+        content = subMessages[msgIndex].content;
+      }
+
+      await api.post(`/recall/save`, {
+        content: content || null,
+        chatId: chatId,
+        msgId: sourceMessageId, // anchor to the parent message
+      });
+
+      setRecallSelection(null);
+    } catch (error) {
+      console.error("Failed to save recall card from subchat", error);
+    } finally {
+      setIsRecalling(false);
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -219,7 +298,12 @@ export const QuickChatModal: React.FC<QuickChatModalProps> = ({
         )}
 
         {/* Messages Area */}
-        <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 flex flex-col gap-6">
+        <div
+          ref={scrollRef}
+          data-subchat-messages=""
+          className="flex-1 overflow-y-auto p-4 flex flex-col gap-6"
+          onMouseUp={handleSubChatTextSelection}
+        >
           {subMessages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center py-10">
               <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center mb-4 border border-white/5">
@@ -230,8 +314,12 @@ export const QuickChatModal: React.FC<QuickChatModalProps> = ({
               </p>
             </div>
           ) : (
-            subMessages.map((msg, idx) => (
-              <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+            subMessages.map((msg: any, idx: number) => (
+              <div
+                key={idx}
+                data-subchat-msg-index={idx}
+                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} group/subchat-bubble relative`}
+              >
                 <div className={`max-w-[85%] px-4 py-3 rounded-2xl text-[15px] leading-relaxed ${
                   msg.role === 'user' 
                     ? 'bg-blue-600 text-white rounded-tr-sm shadow-lg shadow-blue-900/20' 
@@ -251,6 +339,19 @@ export const QuickChatModal: React.FC<QuickChatModalProps> = ({
                     </div>
                   )}
                 </div>
+
+                {/* Recall Brain icon on AI messages */}
+                {msg.role === "model" && (
+                  <div className="absolute top-1 left-full ml-1.5 opacity-0 group-hover/subchat-bubble:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => handleCreateRecall(null, idx)}
+                      className="p-1 rounded-lg bg-zinc-800 text-purple-400 hover:bg-purple-600 hover:text-white transition-colors shadow-md"
+                      title="Save as Recall Card"
+                    >
+                      <Brain size={12} />
+                    </button>
+                  </div>
+                )}
               </div>
             ))
           )}
@@ -280,6 +381,23 @@ export const QuickChatModal: React.FC<QuickChatModalProps> = ({
              </div>
           )}
         </div>
+
+        {/* Floating Recall Button — appears on text selection */}
+        {recallSelection && recallSelection.visible && (
+          <div
+            className="fixed z-[200] -translate-x-1/2 -translate-y-full flex gap-2 animate-in fade-in slide-in-from-bottom-2 duration-200"
+            style={{ top: recallSelection.y - 10, left: recallSelection.x }}
+          >
+            <button
+              className="px-3 py-1.5 bg-purple-600 text-white text-xs font-bold rounded-lg shadow-xl hover:bg-purple-500 transition-all flex items-center gap-2"
+              onClick={() => handleCreateRecall(recallSelection.markdown, recallSelection.msgIndex)}
+              disabled={isRecalling}
+            >
+              <Brain size={14} />
+              {isRecalling ? "Saving..." : "Recall"}
+            </button>
+          </div>
+        )}
 
         {/* Input Area */}
         <div className="p-4 border-t border-white/10 bg-(--theme-bg-base)">

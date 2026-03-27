@@ -43,7 +43,7 @@ export const markdownComponents = {
         <SyntaxHighlighter
           style={vscDarkPlus as any}
           language={match[1]}
-          PreTag="div"
+          PreTag="pre"
           customStyle={{
             margin: 0,
             padding: "1.25rem",
@@ -294,6 +294,7 @@ export const markdownComponents = {
 
       return (
         <div
+          data-callout-type={calloutType}
           className={`my-5 p-4 rounded-xl border-l-[3px] ${style.bg} ${style.border} text-gray-300 text-[15.5px] shadow-sm`}
           {...props}
         >

@@ -31,9 +31,30 @@ export default function FileExplorer() {
     },
   });
 
+  const { data: recallCountData } = useQuery({
+    queryKey: ["recallCount"],
+    queryFn: async () => {
+      const res = await api.get("/recall/count");
+      return res.data.count;
+    },
+    
+  });
+
+  const [shouldAnimate, setShouldAnimate] = useState(false);
+
+  useEffect(() => {
+    const triggerAnimation = () => {
+      setShouldAnimate(true);
+      setTimeout(() => setShouldAnimate(false), 1250);
+    };
+
+    window.addEventListener('recall:notification-pushed', triggerAnimation);
+    return () => window.removeEventListener('recall:notification-pushed', triggerAnimation);
+  }, []);
+
   const dispatch = useAppDispatch();
 
- //handling root folder open with folder
+
   const findNode = (node: FileNode, targetId: string): FileNode | null => {
     if (node.id === targetId) return node;
     if (!node.children) return null;
@@ -357,7 +378,7 @@ export default function FileExplorer() {
       )}
       </div>
 
-      {/* Blank-area context menu */}
+     
       {blankContextMenu && (
         <>
           <div
@@ -394,13 +415,26 @@ export default function FileExplorer() {
 
       {/* Bottom Action Bar */}
       <div className="px-4 py-4 bg-zinc-900/40 border-t border-zinc-800/50 backdrop-blur-md relative z-10 before:absolute before:inset-0 before:bg-linear-to-t before:from-[#09090b] before:to-transparent before:-z-10">
+        
+        {/* Total Recall Count Label */}
+       
+
         <button 
           onClick={() => navigate('/recall')}
-          className="group w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-linear-to-r from-purple-600/10 to-indigo-600/10 hover:from-purple-500/20 hover:to-indigo-500/20 text-purple-400 hover:text-purple-300 transition-all border border-purple-500/20 hover:border-purple-400/50 text-[12px] font-bold shadow-[0_4px_20px_-10px_rgba(168,85,247,0.3)] hover:shadow-[0_4px_20px_-8px_rgba(168,85,247,0.5)] active:scale-[0.98] mb-2"
+          className=" relative group w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-linear-to-r from-purple-600/10 to-indigo-600/10 hover:from-purple-500/20 hover:to-indigo-500/20 text-purple-400 hover:text-purple-300 transition-all border border-purple-500/20 hover:border-purple-400/50 text-[12px] font-bold shadow-[0_4px_20px_-10px_rgba(168,85,247,0.3)] hover:shadow-[0_4px_20px_-8px_rgba(168,85,247,0.5)] active:scale-[0.98] mb-2"
         >
           <Brain size={14} strokeWidth={2.5} className="text-purple-500 group-hover:drop-shadow-[0_0_8px_rgba(168,85,247,0.8)] transition-all" />
-          Active Recall
+          <p>Active Recall</p>
+           <div className=" absolute right-4 top-2 flex items-center justify-between px-1 mb-2">
+          <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/20 ${shouldAnimate ? 'animate-bounce-pop border-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.4)]' : ''}`}>
+            <span className="text-[11px] font-black text-purple-300 tabular-nums">
+              {recallCountData ?? 0}
+            </span>
+            <div className={`w-1 h-1 rounded-full bg-purple-500 ${shouldAnimate ? 'animate-pulse scale-150' : ''}`} />
+          </div>
+        </div>
         </button>
+        
         <button 
           onClick={() => navigate('/explorer')}
           className="group w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-linear-to-r from-cyan-600/10 to-sky-600/10 hover:from-cyan-500/20 hover:to-sky-500/20 text-cyan-400 hover:text-cyan-300 transition-all border border-cyan-500/20 hover:border-cyan-400/50 text-[12px] font-bold shadow-[0_4px_20px_-10px_rgba(6,182,212,0.3)] hover:shadow-[0_4px_20px_-8px_rgba(6,182,212,0.5)] active:scale-[0.98]"
