@@ -3,7 +3,8 @@ import type { FileNode } from '../types/types';
 
 interface ExplorerState {
   tree: FileNode,
-   activeSidebarRootId:string| null
+  activeSidebarRootId: string | null,
+  isExplorerModalOpen: boolean
 }
 
 const initialState: ExplorerState = {
@@ -14,7 +15,8 @@ const initialState: ExplorerState = {
     isExpanded: true,
     children: [],
   },
-  activeSidebarRootId: localStorage.getItem("dendrites_active_folder") || null
+  activeSidebarRootId: localStorage.getItem("dendrites_active_folder") || null,
+  isExplorerModalOpen: false
 };
 
 const explorerSlice = createSlice({
@@ -31,9 +33,16 @@ const explorerSlice = createSlice({
       } else {
         localStorage.removeItem("dendrites_active_folder");
       }
+    },
+    toggleExplorerModal: (state, action: PayloadAction<boolean | undefined>) => {
+      if (action.payload !== undefined) {
+        state.isExplorerModalOpen = action.payload;
+      } else {
+        state.isExplorerModalOpen = !state.isExplorerModalOpen;
+      }
     }
   },
 });
 
-export const { setTree ,setActiveSidebarRootId} = explorerSlice.actions;
+export const { setTree, setActiveSidebarRootId, toggleExplorerModal } = explorerSlice.actions;
 export default explorerSlice.reducer;

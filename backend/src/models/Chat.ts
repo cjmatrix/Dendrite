@@ -23,12 +23,12 @@ const ChatSchema = new Schema(
       trim: true,
     },
 
-    contextParents: [
-      {
-        type: Schema.Types.ObjectId,
-        ref: "Chat",
-      },
-    ],
+    contextParent: {
+      type: Schema.Types.ObjectId,
+      ref: "Chat",
+      default: null,
+      index: true,
+    },
 
     summary: {
       type: String,

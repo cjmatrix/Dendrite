@@ -13,7 +13,7 @@ interface DescriptionJobData {
     chatId: string;
     code: string;
     language: string;
-    hash: string; // Functional hash of comment-stripped code
+    hash: string;
   }[];
 }
 
@@ -26,7 +26,7 @@ const descriptionWorker = new Worker<DescriptionJobData>(
 
   
     for (const block of blocks) {
-      // Use the functional hash as the cache key — same code = same key, regardless of _id
+     
       const redisKey = `code_dedup:${block.hash}`;
       const cachedDescription = await redisConnection.get(redisKey);
       
@@ -37,7 +37,7 @@ const descriptionWorker = new Worker<DescriptionJobData>(
         toProcessBlocks.push(block);
       }
     }
-
+    console.log(finalResults)
     if (toProcessBlocks.length > 0) {
       try {
         console.log(`🤖 Batching description generation for ${toProcessBlocks.length} blocks...`);
@@ -48,7 +48,7 @@ const descriptionWorker = new Worker<DescriptionJobData>(
 
         for (const res of batchResults) {
           finalResults[res.id] = res.description;
-          // Cache using the hash key (24h TTL) so future duplicates skip Gemini entirely
+         
           const originalBlock = toProcessBlocks.find(b => b._id === res.id);
           if (originalBlock) {
             await redisConnection.setex(`code_dedup:${originalBlock.hash}`, 86400, res.description);
@@ -60,13 +60,13 @@ const descriptionWorker = new Worker<DescriptionJobData>(
       }
     }
 
-    // 3. Prepare Updates and Outbox Events
+  
     const codeBlockUpdates = [];
     const outboxEventsToPush = [];
 
     for (const block of blocks) {
       const description = finalResults[block._id];
-      if (!description) continue; // Skip if somehow AI didn't return a description for this ID
+      if (!description) continue; 
 
       codeBlockUpdates.push({
         updateOne: {
@@ -91,7 +91,7 @@ const descriptionWorker = new Worker<DescriptionJobData>(
       });
     }
 
-    // 4. Bulk Write to DB
+ 
     if (codeBlockUpdates.length > 0) {
       const session = await mongoose.startSession();
       session.startTransaction();
@@ -106,7 +106,7 @@ const descriptionWorker = new Worker<DescriptionJobData>(
 
         await session.commitTransaction();
 
-        // 5. Trigger Embeddings
+     
         for (const event of savedOutboxEvents) {
           try {
             await embeddingCodeDesc(event, event.payload.content);

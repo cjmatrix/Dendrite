@@ -380,8 +380,19 @@ export const FileItem: React.FC<FileItemProps> = ({ node }) => {
               </button>
             </div>
           ) : (
-            <div className={`text-[13px] tracking-wide truncate w-full transition-colors group-hover/item:text-white font-medium`}>
-              {node.name}
+            <div className="flex flex-1 items-center justify-between min-w-0 pr-2">
+              <div className={`text-[13px] tracking-wide truncate transition-colors group-hover/item:text-white font-medium`}>
+                {node.name}
+              </div>
+              {!isFolder && (node.contextParents?.length || 0) > 0 && (
+                <div 
+                  className="flex items-center text-amber-500/90 bg-amber-500/10 px-1.5 py-0.5 rounded ml-2 flex-shrink-0 border border-amber-500/20"
+                  title={`${node.contextParents?.length} Inherited Contexts`}
+                >
+                  <GitBranch size={10} className="mr-1" />
+                  <span className="text-[9px] font-bold uppercase tracking-wider">{node.contextParents?.length}</span>
+                </div>
+              )}
             </div>
           )}
         </div>

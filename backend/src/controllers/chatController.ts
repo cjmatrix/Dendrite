@@ -9,7 +9,7 @@ import {
   prepareMessageService,
   saveModelReply,
 } from "../services/chatService";
-import ai from "../config/AIConfig";
+import ai, { aiInstances, getRotatedAI, rotateAIKey } from "../config/AIConfig";
 import mongoose from "mongoose";
 import { Chat } from "../models/Chat";
 import { SubChat } from "../models/SubChat";
@@ -80,7 +80,7 @@ export const getChatMessages = async (req: Request, res: Response) => {
   const cursor = (req.query.cursor as string) || null;
   const limit =10;
 
-  const messages = await getChatMessagesService(id, limit, cursor);
+  const messages = await getChatMessagesService(id, req.user._id.toString(), limit, cursor);
 
   // Next cursor is the ID of the oldest message returned, or null if there are no more
   const nextCursor =
@@ -153,7 +153,7 @@ export const sendMessage = async (req: Request, res: Response) => {
     generateEmbedding(message, "RETRIEVAL_QUERY"),
   ]);
 
-  const { contents } = await prepareMessageService(
+  const { contents, userMessageId } = await prepareMessageService(
     id,
     req.user._id.toString(),
     message,
@@ -169,12 +169,27 @@ Respond ONLY with "YES" if it requires knowledge of recent events, real-time fac
 Respond ONLY with "NO" if it is a general reasoning, coding, writing, or conceptual question that can be answered without internet access.
 User query: "${message}"`;
 
-    const routerResponse = await ai.models.generateContent({
-      model: "gemini-2.5-flash-lite",
-      contents: [{ role: "user", parts: [{ text: routingPrompt }] }],
-    });
+    let routerResponse;
+    let routerAttempts = 0;
+    while (routerAttempts < aiInstances.length) {
+      try {
+        const activeAi = getRotatedAI();
+        routerResponse = await activeAi.models.generateContent({
+          model: "gemini-2.5-flash-lite",
+          contents: [{ role: "user", parts: [{ text: routingPrompt }] }],
+        });
+        break;
+      } catch (error: any) {
+        if (error.status === 429 || error.message?.includes("quota") || error.message?.includes("RESOURCE_EXHAUSTED")) {
+          rotateAIKey();
+          routerAttempts++;
+          continue;
+        }
+        throw error;
+      }
+    }
     
-    const needsSearch = routerResponse.text?.trim().toUpperCase() === "YES";
+    const needsSearch = routerResponse?.text?.trim().toUpperCase() === "YES";
 
 
     if (needsSearch) {
@@ -200,10 +215,36 @@ User query: "${message}"`;
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
 
-  const stream = await ai.models.generateContentStream({
-    model: "gemini-3-flash-preview",
-    contents,
-  });
+  let stream;
+  let attempts = 0;
+  
+  while (attempts < aiInstances.length) {
+    try {
+      const activeAi = getRotatedAI();
+      stream = await activeAi.models.generateContentStream({
+        model: "gemini-2.5-flash",
+        contents,
+      });
+      break;
+    } catch (error: any) {
+      if (error.status === 429 || error.message?.includes("quota") || error.message?.includes("RESOURCE_EXHAUSTED")) {
+        rotateAIKey();
+        attempts++;
+        continue;
+      }
+      res.write(`data: ${JSON.stringify({ text: "\n\n**System Error:** " + error.message })}\n\n`);
+      res.write("data: [DONE]\n\n");
+      res.end();
+      return;
+    }
+  }
+
+  if (!stream) {
+    res.write(`data: ${JSON.stringify({ text: "\n\n**Quota Exhausted:** All your provided Gemini API keys have exceeded their free-tier limits. Please wait, or add a new key." })}\n\n`);
+    res.write("data: [DONE]\n\n");
+    res.end();
+    return;
+  }
 
   let fullReply = "";
   let finalUsageMetadata: any = null;
@@ -219,9 +260,12 @@ User query: "${message}"`;
   }
 
   try {
-    await saveModelReply(id, req.user._id.toString(), fullReply);
+    const { modelMessageId } = await saveModelReply(id, req.user._id.toString(), fullReply);
 
-    // Log token usage if we captured it
+   
+    res.write(`data: ${JSON.stringify({ type: "metadata", userMessageId, modelMessageId })}\n\n`);
+
+
     if (finalUsageMetadata) {
       logAIQuery(message, finalUsageMetadata);
     }
@@ -285,17 +329,18 @@ export const streamQuickChat = async (req: Request, res: Response) => {
     .join("\n\n");
 
   
-  const systemPrompt = `You are an in-line AI Assistant analyzing a specific highlight from an ongoing conversation.
-
---- HISTORICAL CONVERSATION CONTEXT ---
-The following 10 messages took place right before the user highlighted the text. Use this to understand the topic:
+  const systemPrompt = `You are a surgical AI Assistant specialized in analyzing highlights within a side-modal.
+---
+HISTORICAL CONTEXT (for background only):
 ${historicalString}
 
---- THE USER'S HIGHLIGHT ---
-The user highlighted this exact text from the final message above:
+USER'S HIGHLIGHT (your primary focus):
 "${highlightedText}"
-
-Your ONLY job is to participate in a side-conversation explaining or expanding on that specific highlighted text. DO NOT answer questions irrelevant to the highlight. Remember that your conversation is a temporary pop-up modal, keep answers somewhat direct.`;
+---
+RESPONSE GUIDELINES:
+- DEFAULT: Be brief. Use crisp bullet points and short, punchy sentences in default but you can identify user need and have the flexibility to generate response.
+- ONLY provide an expansive/detailed explanation if the user specifically asks to explanation in detailed manner or any other specific style according to user query".
+.`;
 
   const contents = [
     { role: "user", parts: [{ text: systemPrompt }] },
@@ -310,10 +355,36 @@ Your ONLY job is to participate in a side-conversation explaining or expanding o
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
 
-  const stream = await ai.models.generateContentStream({
-    model: "gemini-2.5-flash",
-    contents,
-  });
+  let stream;
+  let attempts = 0;
+
+  while (attempts < aiInstances.length) {
+    try {
+      const activeAi = getRotatedAI();
+      stream = await activeAi.models.generateContentStream({
+        model: "gemini-2.5-flash",
+        contents,
+      });
+      break;
+    } catch (error: any) {
+      if (error.status === 429 || error.message?.includes("quota") || error.message?.includes("RESOURCE_EXHAUSTED")) {
+        rotateAIKey();
+        attempts++;
+        continue;
+      }
+      res.write(`data: ${JSON.stringify({ text: "\n\n**System Error:** " + error.message })}\n\n`);
+      res.write("data: [DONE]\n\n");
+      res.end();
+      return;
+    }
+  }
+
+  if (!stream) {
+    res.write(`data: ${JSON.stringify({ text: "\n\n**Quota Exhausted:** All your provided Gemini API keys have exceeded their free-tier limits. Please wait, or add a new key." })}\n\n`);
+    res.write("data: [DONE]\n\n");
+    res.end();
+    return;
+  }
 
   for await (const chunk of stream) {
     const text = chunk.text || "";

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo, useCallback, useEffect } from "react";
-import { Paperclip, Share, MoreVertical, ArrowUp, Image, Sparkles, ChevronDown, Check, StickyNote, Folder, Home, ChevronRight, Brain } from "lucide-react";
+import { Paperclip, Share, MoreVertical, ArrowUp, Image, Sparkles, ChevronDown, Check, StickyNote, Folder, Home, ChevronRight, Brain, Link, X, GitBranch } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { Virtuoso } from "react-virtuoso";
@@ -20,6 +20,7 @@ import { QuickChatModal } from "./QuickChatModal.tsx";
 import { streamingFetch } from "../api/streamingFetch";
 import { requestFirebaseNotificationPermission } from "../firebase";
 import { getMarkdownFromDOMSelection } from "../utils/markdownUtils";
+import FileDisplay from "./FileDisplay";
 
 interface Message {
   _id?: string;
@@ -242,6 +243,7 @@ const ChatWindow: React.FC = () => {
   const virtuosoRef = useRef<VirtuosoHandle>(null);
   const [atBottom, setAtBottom] = useState(true);
   const [isTracerActive, setIsTracerActive] = useState(false);
+  const [isInheritModalOpen, setIsInheritModalOpen] = useState(false);
 
   // Trigger animation ONLY on Firebase push notification
   useEffect(() => {
@@ -346,7 +348,10 @@ const ChatWindow: React.FC = () => {
     setIsStreaming(true);
     setStreamingText("");
 
+    const userTempId = `temp-${Date.now()}`;
+
     queryClient.setQueryData(["chatMessages", id], (old: any) => {
+      console.log(old)
       if (!old || !old.pages || old.pages.length === 0) return old;
       
       const newPages = [...old.pages];
@@ -355,7 +360,7 @@ const ChatWindow: React.FC = () => {
         ...newPages[0],
         messages: [
           ...newPages[0].messages,
-          { role: "user", content: userMessage, _id: `temp-${Date.now()}` },
+          { role: "user", content: userMessage, _id: userTempId },
         ],
       };
       
@@ -376,32 +381,42 @@ const ChatWindow: React.FC = () => {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let fullReply = "";
+      let metadataIds: { userMessageId?: string; modelMessageId?: string } | null = null;
+      
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split("\n");
 
-        const chunk = decoder.decode(value, { stream: true });
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              const data = line.slice(6);
 
-        const lines = chunk.split("\n");
+              if (data === "[DONE]") break;
 
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            const data = line.slice(6);
+              try {
+                const parsed = JSON.parse(data);
 
-            if (data === "[DONE]") break;
+                // Check for metadata event containing the real database IDs
+                if (parsed.type === "metadata") {
+                  metadataIds = parsed;
+                  continue;
+                }
 
-            try {
-              const parsed = JSON.parse(data);
-              fullReply += parsed.text;
-              setStreamingText(fullReply);
-              await new Promise((r) => setTimeout(r, 100));
-            } catch {
-             
+                fullReply += parsed.text;
+                setStreamingText(fullReply);
+                await new Promise((r) => setTimeout(r, 100));
+              } catch {
+               // ignore partial json limits
+              }
             }
           }
         }
-      }
+
+        // Store metadata securely onto a dataset for the finally block
+        (window as any)._latestChatMetadata = metadataIds;
     } catch (error) {
       console.error("Streaming error:", error);
     } finally {
@@ -418,25 +433,35 @@ const ChatWindow: React.FC = () => {
       queryClient.setQueryData(["chatMessages", id], (old: any) => {
         if (!old || !old.pages || old.pages.length === 0) return old;
         
+        const metadataIds = (window as any)._latestChatMetadata;
+        (window as any)._latestChatMetadata = null; // cleanup
+        
         const newPages = [...old.pages];
-        // Ensure we actually have a response string before appending blank blocks
+        let newMessages = [...newPages[0].messages];
+        
+       
         if (finalAIResponse.trim()) {
-           newPages[0] = {
-             ...newPages[0],
-             messages: [
-               ...newPages[0].messages,
-               { role: "model", content: finalAIResponse, _id: `temp-ai-${Date.now()}` },
-             ],
-           };
+           newMessages.push({ 
+             role: "model", 
+             content: finalAIResponse, 
+             _id: metadataIds?.modelMessageId || `temp-ai-${Date.now()}` 
+           });
         }
         
+        // Retrospectively update the temporary user message with its real DB ID
+        if (metadataIds?.userMessageId) {
+           newMessages = newMessages.map(m => 
+             m._id === userTempId ? { ...m, _id: metadataIds.userMessageId } : m
+           );
+        }
+        
+        newPages[0] = { ...newPages[0], messages: newMessages };
         return { ...old, pages: newPages };
       });
       
       setStreamingText("");
       setIsStreaming(false);
 
-      
       setTimeout(() => {
         virtuosoRef.current?.scrollToIndex({
           index: "LAST",
@@ -444,9 +469,6 @@ const ChatWindow: React.FC = () => {
           behavior: "auto",
         });
       }, 100);
-      
-  
-      queryClient.invalidateQueries({ queryKey: ["chatMessages", id] });
     }
   };
 
@@ -596,12 +618,37 @@ const ChatWindow: React.FC = () => {
             Loading messages...
           </div>
         ) : messages.length === 0 && !isStreaming ? (
-          <div className="flex items-center gap-4 mt-8 px-8 max-w-4xl mx-auto w-full">
-            <DendritesLogo className="shrink-0" />
+          <div className="flex flex-col items-center mt-20 px-8 max-w-4xl mx-auto w-full text-center">
+            <DendritesLogo size={80} className="mb-6 opacity-80" />
 
-            <h1 className="text-lg font-medium text-gray-200">
-              Welcome to Dendrite. How can I help with your research today?
+            <h1 className="text-3xl font-bold text-white mb-3 tracking-tight">
+              Welcome to Dendrites
             </h1>
+            <p className="text-zinc-500 text-lg mb-10 max-w-md mx-auto">
+              How can I help with your research or development today?
+            </p>
+
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <button 
+                onClick={() => setIsInheritModalOpen(true)}
+                className="group flex items-center gap-3 px-6 py-3.5 bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 rounded-2xl transition-all hover:scale-105 active:scale-95 shadow-[0_0_20px_-10px_rgba(245,158,11,0.5)]"
+              >
+                <div className="p-2 bg-amber-500/20 rounded-xl group-hover:bg-amber-500/40 transition-colors">
+                  <GitBranch size={18} className="text-amber-400" />
+                </div>
+                <div className="text-left">
+                  <div className="text-[14px] font-bold text-amber-200/90 leading-tight">Inherit Experience</div>
+                  <div className="text-[11px] text-amber-500/70 font-medium">Link this chat to a parent context</div>
+                </div>
+              </button>
+
+              <div className="hidden sm:block h-10 w-px bg-zinc-800 mx-2"></div>
+              
+              <div className="flex flex-col items-start gap-1">
+                 <span className="text-[11px] text-zinc-600 font-bold uppercase tracking-widest px-1">Quick Start</span>
+                 <p className="text-[13px] text-zinc-500 italic px-1">Just type below to start a fresh thread</p>
+              </div>
+            </div>
           </div>
         ) : (
           
@@ -775,6 +822,63 @@ const ChatWindow: React.FC = () => {
           relativeY={selection.relativeY}
           subChatId={selection?.subChatId ?? undefined}
         />
+      )}
+
+      {/* Inherit Context Modal */}
+      {isInheritModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 sm:p-10 backdrop-blur-sm bg-black/60 animate-in fade-in duration-300">
+          <div className="bg-(--theme-bg-surface) border border-zinc-800 w-full max-w-5xl h-[80vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="p-6 border-b border-white/5 flex items-center justify-between bg-zinc-900/30">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-amber-500/10 rounded-2xl border border-amber-500/20">
+                  <GitBranch size={24} className="text-amber-400" />
+                </div>
+                <div>
+                   <h2 className="text-xl font-bold text-white leading-tight">Choose Parent Experience</h2>
+                   <p className="text-sm text-zinc-500">Select a chat to inherit its context and history</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setIsInheritModalOpen(false)}
+                className="p-2.5 hover:bg-white/5 rounded-xl text-zinc-500 hover:text-white transition-all"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Body - The File Explorer */}
+            <div className="flex-1 overflow-hidden relative">
+               <FileDisplay 
+                 isModal={true} 
+                 onSelect={async (node) => {
+                    if (node.type === 'chat') {
+                       try {
+                        console.log(node)
+                         await api.patch(`/branch/inherit/${id}`, { contextParentId: node.id });
+                         queryClient.invalidateQueries({ queryKey: ["chat", id] });
+                         setIsInheritModalOpen(false);
+                         // Trigger a toast or local feedback here if available
+                       } catch (err) {
+                         console.error("Failed to link context:", err);
+                       }
+                    }
+                 }} 
+               />
+            </div>
+            
+            {/* Modal Footer */}
+            <div className="p-6 bg-zinc-900/50 border-t border-white/5 flex justify-end items-center gap-4">
+              <span className="text-xs text-zinc-600 font-medium italic">Click any chat item above to instantly link it as the parent</span>
+              <button 
+                onClick={() => setIsInheritModalOpen(false)}
+                className="px-6 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-white text-sm font-bold rounded-xl transition-all"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

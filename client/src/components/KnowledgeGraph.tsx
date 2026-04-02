@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, useEffect, useRef } from "react";
 import dagre from "dagre";
 import {
   ReactFlow,
@@ -29,9 +29,8 @@ import type { FileNode } from "../types/types";
 
 const MAX_PARENTS = 5;
 
-/* ------------------------------------------------------------------ */
 /*  Custom Nodes                                                       */
-/* ------------------------------------------------------------------ */
+
 
 function ChatNode({ data }: NodeProps) {
   return (
@@ -99,9 +98,9 @@ const nodeTypes = {
   folderNode: FolderNode,
 };
 
-/* ------------------------------------------------------------------ */
+
 /*  Custom Edges                                                       */
-/* ------------------------------------------------------------------ */
+
 
 function RemovableEdge({
   id,
@@ -141,7 +140,7 @@ function RemovableEdge({
             onClick={() => {
               const edgeData = data as any;
               if (edgeData?.onCancel) {
-                edgeData.onCancel(id, edgeData.targetNodeId);
+                edgeData.onCancel(id, edgeData.targetNodeId, edgeData.sourceId);
               }
             }}
             className="p-0.5 ml-1 flex items-center justify-center rounded-full bg-red-500/10 hover:bg-red-500/30 text-red-500/80 hover:text-red-400 transition-colors"
@@ -158,9 +157,9 @@ const edgeTypes = {
   removable: RemovableEdge,
 };
 
-/* ------------------------------------------------------------------ */
+
 /*  Tree → ReactFlow Nodes/Edges                                       */
-/* ------------------------------------------------------------------ */
+
 
 function flattenTree(
   node: FileNode,
@@ -197,6 +196,44 @@ function flattenTree(
   const children = node.children || [];
   children.forEach((child) => {
     flattenTree(child, nodeId, nodes, edges);
+  });
+}
+
+function parseInheritanceEdges(
+  node: FileNode,
+  edges: Edge[],
+  handleCancelEdge: (edgeId: string, targetNodeId: string) => void
+) {
+  if (node.type === "chat" && node.contextParents) {
+    node.contextParents.forEach((parent) => {
+      edges.push({
+        id: `inherit-${parent.chatId}-${node.id}`,
+        source: parent.chatId,
+        target: node.id,
+        sourceHandle: parent.sourceHandle,
+        targetHandle: parent.targetHandle,
+        type: "removable",
+        animated: true,
+        style: { stroke: "#f59e0b", strokeWidth: 2.5 },
+        markerEnd: {
+          type: MarkerType.ArrowClosed,
+          color: "#f59e0b",
+          width: 18,
+          height: 18,
+        },
+        data: {
+          onCancel: handleCancelEdge,
+          targetNodeId: node.id,
+          sourceId: parent.chatId, // Store source
+          targetId: node.id,   // Store target
+        },
+      });
+    });
+  }
+
+  const children = node.children || [];
+  children.forEach((child) => {
+    parseInheritanceEdges(child, edges, handleCancelEdge);
   });
 }
 
@@ -239,14 +276,15 @@ function getLayoutedElements(nodes: Node[], edges: Edge[], direction = "TB") {
   return { nodes: newNodes, edges };
 }
 
-/* ------------------------------------------------------------------ */
+
 /*  Main Component                                                     */
-/* ------------------------------------------------------------------ */
+
 
 interface KnowledgeGraphProps {
   folderNode: FileNode;
   onClose: () => void;
-  onConnect: (sourceId: string, targetId: string) => void;
+  onConnect: (sourceId: string, targetId: string, sourceHandle: string, targetHandle: string) => void;
+  onDisconnect: (sourceId: string, targetId: string) => void;
 }
 
 export default function KnowledgeGraph(props: KnowledgeGraphProps) {
@@ -257,28 +295,31 @@ export default function KnowledgeGraph(props: KnowledgeGraphProps) {
   );
 }
 
-function KnowledgeGraphInner({ folderNode, onClose, onConnect }: KnowledgeGraphProps) {
+function KnowledgeGraphInner({ folderNode, onClose, onConnect, onDisconnect }: KnowledgeGraphProps) {
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const { screenToFlowPosition } = useReactFlow();
 
-  // Track how many "inheritance" edges each target has
+  // 1. Declare state hooks first
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [inheritanceCounts, setInheritanceCounts] = useState<Record<string, number>>({});
 
-  const { initialNodes, initialEdges } = useMemo(() => {
-    const n: Node[] = [];
-    const e: Edge[] = [];
-    flattenTree(folderNode, null, n, e);
-    
-    // Auto-layout the graph cleanly
-    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(n, e, "TB");
-    return { initialNodes: layoutedNodes, initialEdges: layoutedEdges };
-  }, [folderNode]);
+  // 2. Stabilize prop callbacks to prevent dependency chains that reset the graph
+  const onConnectRef = useRef(onConnect);
+  const onDisconnectRef = useRef(onDisconnect);
+  useEffect(() => {
+    onConnectRef.current = onConnect;
+    onDisconnectRef.current = onDisconnect;
+  }, [onConnect, onDisconnect]);
 
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
-
+  // 3. Declare callbacks that state hooks rely on
   const handleCancelEdge = useCallback(
-    (edgeId: string, targetNodeId: string) => {
+    (edgeId: string, targetNodeId: string, sourceId?: string) => {
+      // Use direct data passed from the edge instead of searching the state
+      if (sourceId && targetNodeId) {
+        onDisconnectRef.current(sourceId, targetNodeId);
+      }
+
       setEdges((eds) => eds.filter((e) => e.id !== edgeId));
       setInheritanceCounts((prev) => ({
         ...prev,
@@ -287,6 +328,32 @@ function KnowledgeGraphInner({ folderNode, onClose, onConnect }: KnowledgeGraphP
     },
     [setEdges]
   );
+
+  // 3. Compute derived state (layout/edges)
+  const { initialNodes, initialEdges, initialCounts } = useMemo(() => {
+    const n: Node[] = [];
+    const e: Edge[] = [];
+    const counts: Record<string, number> = {};
+
+    flattenTree(folderNode, null, n, e);
+    parseInheritanceEdges(folderNode, e, handleCancelEdge);
+    
+    e.forEach(edge => {
+      if (edge.id.startsWith("inherit-")) {
+        counts[edge.target] = (counts[edge.target] || 0) + 1;
+      }
+    });
+
+    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(n, e, "TB");
+    return { initialNodes: layoutedNodes, initialEdges: layoutedEdges, initialCounts: counts };
+  }, [folderNode, handleCancelEdge]);
+
+  // 4. Update core state when folderNode/tree changes
+  useEffect(() => {
+    setNodes(initialNodes);
+    setEdges(initialEdges);
+    setInheritanceCounts(initialCounts);
+  }, [initialNodes, initialEdges, initialCounts, setNodes, setEdges]);
 
   const handleConnect: OnConnect = useCallback(
     (params) => {
@@ -342,6 +409,8 @@ function KnowledgeGraphInner({ folderNode, onClose, onConnect }: KnowledgeGraphP
         data: {
           onCancel: handleCancelEdge,
           targetNodeId: params.target,
+          sourceId: params.source,
+          targetId: params.target,
         },
       };
 
@@ -361,9 +430,9 @@ function KnowledgeGraphInner({ folderNode, onClose, onConnect }: KnowledgeGraphP
       );
 
       // Notify parent
-      onConnect(params.source!, params.target!);
+      onConnectRef.current(params.source!, params.target!, params.sourceHandle!, params.targetHandle!);
     },
-    [nodes, edges, inheritanceCounts, onConnect, setEdges, setNodes, handleCancelEdge],
+    [nodes, edges, inheritanceCounts, setEdges, setNodes, handleCancelEdge],
   );
 
   const onConnectEnd = useCallback(

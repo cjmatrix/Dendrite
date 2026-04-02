@@ -4,6 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "concurrently \"npm run dev --prefix backend\" \"npm run dev --prefix client\"",
+    "dev:all": "npm run infra:start && concurrently \"npm run dev --prefix backend\" \"npm run dev --prefix client\"",
+    "infra:start": "docker start dentrites-qdrant || docker run -d --name dentrites-qdrant -p 6333:6333 -p 6334:6334 -v dentrites_qdrant_storage:/qdrant/storage qdrant/qdrant && (docker start infinity-jina || docker run -d --name infinity-jina -p 7997:7997 michaelf34/infinity:latest v2 --model-id jinaai/jina-embeddings-v2-base-code --device cpu)",
+    "infra:stop": "docker stop dentrites-qdrant infinity-jina",
     "install:all": "npm install --prefix backend && npm install --prefix client",
     "build": "npm run build --prefix client"
   },

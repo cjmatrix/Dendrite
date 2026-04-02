@@ -22,8 +22,8 @@ export async function initQdrant() {
     if (!codeExists) {
       await qdrantClient.createCollection(COLLECTION_NAME, {
         vectors: {
-          code: { size: 3072, distance: "Cosine" },
-          description: { size: 3072, distance: "Cosine" },
+          code: { size: 768, distance: "Cosine" },
+          description: { size: 768, distance: "Cosine" },
         },
       });
       console.log(`✅ Qdrant collection '${COLLECTION_NAME}' created.`);
@@ -37,7 +37,7 @@ export async function initQdrant() {
     );
     if (!summaryExists) {
       await qdrantClient.createCollection(SUMMARY_COLLECTION_NAME, {
-        vectors: { size: 3072, distance: "Cosine" }, // Single unnamed vector
+        vectors: { size: 768, distance: "Cosine" }, 
       });
       console.log(`✅ Qdrant collection '${SUMMARY_COLLECTION_NAME}' created.`);
     } else {
@@ -50,7 +50,7 @@ export async function initQdrant() {
     if (!searchCacheExists) {
       // Create collection for search caching
       await qdrantClient.createCollection(SEARCH_CACHE_COLLECTION, {
-        vectors: { size: 3072, distance: "Cosine" },
+        vectors: { size: 768, distance: "Cosine" },
       });
       // Create a payload index on 'createdAt' for fast cron sweeps
       await qdrantClient.createPayloadIndex(SEARCH_CACHE_COLLECTION, {
@@ -65,3 +65,4 @@ export async function initQdrant() {
     console.error("❌ Failed to initialize Qdrant collections:", error);
   }
 }
+//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

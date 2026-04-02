@@ -1,4 +1,4 @@
-import { Brain, Search, Loader, CheckCircle2, Award, Clock, Trash2 } from "lucide-react";
+import { Brain, Search, Loader, CheckCircle2, Award, Clock, Trash2, PenLine, ChevronDown, ChevronUp } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import "../styles/markdown.css";
 import remarkGfm from "remark-gfm";
@@ -7,11 +7,120 @@ import rehypeKatex from "rehype-katex";
 import { markdownComponents } from "../components/markdown/MarkdownComponents";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "../api/axios";
+import React, { useState } from "react";
+
+interface RecallCardProps {
+  card: any;
+  index: number;
+  onReview: (cardId: string, rating: number) => void;
+  onDelete: (cardId: string) => void;
+  isReviewPending: boolean;
+}
+
+const RecallCard: React.FC<RecallCardProps> = ({ card, index, onReview, onDelete, isReviewPending }) => {
+  const [isPracticeOpen, setIsPracticeOpen] = useState(false);
+  const [practiceText, setPracticeText] = useState("");
+
+  return (
+    <div 
+      className="w-full relative rounded-none sm:rounded-[32px] border-x-0 sm:border-x border-y border-zinc-800 bg-(--theme-bg-surface) shadow-2xl flex flex-col items-center pt-20 pb-10 px-4 md:px-12 animate-in slide-in-from-bottom-4 duration-500"
+    >
+      {/* Metadata Badges */}
+      <div className="absolute top-8 left-8 flex items-center gap-4">
+        <div className="flex items-center gap-2 text-xs font-semibold text-zinc-500 px-4 py-2 rounded-full bg-white/5 border border-white/5 backdrop-blur-md">
+           <Search size={14}/> CARD {index + 1}
+        </div>
+        <button 
+          onClick={() => onDelete(card._id)}
+          className="p-2 text-zinc-600 hover:text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all"
+          title="Delete Card"
+        >
+          <Trash2 size={16} />
+        </button>
+      </div>
+
+      <div className="absolute top-8 right-8 flex items-center gap-3">
+        <button
+          onClick={() => setIsPracticeOpen(!isPracticeOpen)}
+          className={`flex items-center gap-2 text-xs font-bold px-4 py-2 rounded-full border transition-all backdrop-blur-md ${
+            isPracticeOpen 
+              ? "bg-purple-500/20 border-purple-500/40 text-purple-400" 
+              : "bg-white/5 border-white/5 text-zinc-500 hover:text-zinc-300 hover:bg-white/10"
+          }`}
+        >
+          <PenLine size={14} />
+          <span>PRACTICE BY WRITING</span>
+          {isPracticeOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+        </button>
+
+        {card.stage === "learning" ? (
+           <div className="flex items-center gap-2 text-xs font-bold text-amber-500 px-4 py-2 rounded-full bg-amber-500/10 border border-amber-500/20 backdrop-blur-md">
+             <Clock size={14}/> LEARNING PHASE
+           </div>
+        ) : (
+           <div className="flex items-center gap-2 text-xs font-bold text-emerald-500 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 backdrop-blur-md">
+             <Award size={14}/> SPACED REVIEW
+           </div>
+        )}
+      </div>
+
+      {/* Practice Area */}
+      <div className={`w-full transition-all duration-500 ease-in-out overflow-hidden ${isPracticeOpen ? "max-h-[500px] mb-8 opacity-100" : "max-h-0 opacity-0"}`}>
+        <div className="w-full p-6 rounded-2xl bg-zinc-900/50 border border-purple-500/20 shadow-inner">
+          <label className="block text-[10px] font-bold text-purple-400/60 uppercase tracking-widest mb-3">Recall and write here</label>
+          <textarea
+            value={practiceText}
+            onChange={(e) => setPracticeText(e.target.value)}
+            placeholder="Type your recall here to test your memory..."
+            className="w-full h-40 bg-transparent border-none outline-none text-gray-200 placeholder:text-zinc-700 resize-none text-lg leading-relaxed"
+          />
+          <div className="mt-2 text-[10px] text-zinc-600 flex justify-between items-center">
+            <span>TIP: Writing helps reinforce neural connections.</span>
+            <span>{practiceText.length} characters</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Content Area - Full Expansion */}
+      <div className={`w-full bg-white/5 rounded-xl sm:rounded-[24px] p-5 md:p-10 border border-white/5 shadow-inner mb-10 flex flex-col items-start transition-all duration-500 ${isPracticeOpen ? "filter blur-sm opacity-20 pointer-events-none scale-95" : "hover:bg-white/[0.07]"}`}>
+          <div className="markdown-body w-full text-[17px] leading-relaxed text-gray-300/95">
+             <ReactMarkdown
+                remarkPlugins={[remarkGfm, remarkMath]}
+                rehypePlugins={[rehypeKatex]}
+                components={markdownComponents}
+              >
+                {card.content}
+              </ReactMarkdown>
+          </div>
+      </div>
+
+      <h3 className="text-zinc-500 font-bold tracking-[0.3em] uppercase text-[10px] mb-8 opacity-40">Evaluate your recall accuracy</h3>
+      
+      <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 w-full">
+        {[
+          { label: "Very Hard", val: 1, color: "rose" },
+          { label: "Hard", val: 2, color: "orange" },
+          { label: "Medium", val: 3, color: "amber" },
+          { label: "Good", val: 4, color: "emerald" },
+          { label: "Easy", val: 5, color: "cyan" }
+        ].map((btn) => (
+          <button 
+            key={btn.val}
+            disabled={isReviewPending}
+            onClick={() => onReview(card._id, btn.val)}
+            className={`flex-1 min-w-[125px] py-4 px-6 rounded-2xl font-bold bg-${btn.color}-500/10 text-${btn.color}-400 border border-${btn.color}-500/20 hover:bg-${btn.color}-500 hover:text-white transition-all transform active:scale-95 text-[11px] uppercase tracking-wider shadow-lg disabled:opacity-50`}
+          >
+            {btn.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 export default function RecallPage() {
   const queryClient = useQueryClient();
 
- 
   const { data: cards = [], isLoading } = useQuery({
     queryKey: ["dueCards"],
     queryFn: async () => {
@@ -23,25 +132,23 @@ export default function RecallPage() {
 
   const reviewMutation = useMutation({
     mutationFn: async ({ cardId, rating }: { cardId: string; rating: number }) => {
-    await api.post(`/recall/update/${cardId}`, { rating });
-    return  queryClient.invalidateQueries({queryKey:["recallCount"]})
+      await api.post(`/recall/update/${cardId}`, { rating });
+      return  queryClient.invalidateQueries({queryKey:["recallCount"]})
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["dueCards"] });
     },
   });
 
- 
   const deleteMutation = useMutation({
     mutationFn: async (cardId: string) => {
-     await api.delete(`/recall/${cardId}`);
-     return  queryClient.invalidateQueries({queryKey:["recallCount"]})
+      await api.delete(`/recall/${cardId}`);
+      return  queryClient.invalidateQueries({queryKey:["recallCount"]})
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["dueCards"] });
     },
   });
-
 
   const clearAllMutation = useMutation({
     mutationFn: async () => {
@@ -112,75 +219,19 @@ export default function RecallPage() {
         </div>
       </div>
 
-      {/* Recalls Vertical List */}
+   
       <div className="flex flex-col gap-10 pb-20">
         {cards.map((card: any, index: number) => (
-          <div 
+          <RecallCard 
             key={card._id}
-            className="w-full relative rounded-none sm:rounded-[32px] border-x-0 sm:border-x border-y border-zinc-800 bg-(--theme-bg-surface) shadow-2xl flex flex-col items-center pt-20 pb-10 px-4 md:px-12 animate-in slide-in-from-bottom-4 duration-500"
-          >
-            {/* Metadata Badges */}
-            <div className="absolute top-8 left-8 flex items-center gap-4">
-              <div className="flex items-center gap-2 text-xs font-semibold text-zinc-500 px-4 py-2 rounded-full bg-white/5 border border-white/5 backdrop-blur-md">
-                 <Search size={14}/> CARD {index + 1}
-              </div>
-              <button 
-                onClick={() => handleDelete(card._id)}
-                disabled={deleteMutation.isPending}
-                className="p-2 text-zinc-600 hover:text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all disabled:opacity-50"
-                title="Delete Card"
-              >
-                <Trash2 size={16} />
-              </button>
-            </div>
-
-            {card.stage === "learning" ? (
-               <div className="absolute top-8 right-8 flex items-center gap-2 text-xs font-bold text-amber-500 px-4 py-2 rounded-full bg-amber-500/10 border border-amber-500/20 backdrop-blur-md">
-                 <Clock size={14}/> LEARNING PHASE
-               </div>
-            ) : (
-               <div className="absolute top-8 right-8 flex items-center gap-2 text-xs font-bold text-emerald-500 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 backdrop-blur-md">
-                 <Award size={14}/> SPACED REVIEW
-               </div>
-            )}
-
-            {/* Content Area - Full Expansion */}
-            <div className="w-full bg-white/5 rounded-xl sm:rounded-[24px] p-5 md:p-10 border border-white/5 shadow-inner mb-10 flex flex-col items-start transition-colors hover:bg-white/[0.07]">
-                <div className="markdown-body w-full text-[17px] leading-relaxed text-gray-300/95">
-                   <ReactMarkdown
-                      remarkPlugins={[remarkGfm, remarkMath]}
-                      rehypePlugins={[rehypeKatex]}
-                      components={markdownComponents}
-                    >
-                      {card.content}
-                    </ReactMarkdown>
-                </div>
-            </div>
-
-            <h3 className="text-zinc-500 font-bold tracking-[0.3em] uppercase text-[10px] mb-8 opacity-40">Evaluate your recall accuracy</h3>
-            
-            <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 w-full">
-              {[
-                { label: "Very Hard", val: 1, color: "rose" },
-                { label: "Hard", val: 2, color: "orange" },
-                { label: "Medium", val: 3, color: "amber" },
-                { label: "Good", val: 4, color: "emerald" },
-                { label: "Easy", val: 5, color: "cyan" }
-              ].map((btn) => (
-                <button 
-                  key={btn.val}
-                  disabled={reviewMutation.isPending}
-                  onClick={() => handleReview(card._id, btn.val)}
-                  className={`flex-1 min-w-[125px] py-4 px-6 rounded-2xl font-bold bg-${btn.color}-500/10 text-${btn.color}-400 border border-${btn.color}-500/20 hover:bg-${btn.color}-500 hover:text-white transition-all transform active:scale-95 text-[11px] uppercase tracking-wider shadow-lg disabled:opacity-50`}
-                >
-                  {btn.label}
-                </button>
-              ))}
-            </div>
-          </div>
+            card={card}
+            index={index}
+            onReview={handleReview}
+            onDelete={handleDelete}
+            isReviewPending={reviewMutation.isPending}
+          />
         ))}
       </div>
-
     </div>
   );
 }

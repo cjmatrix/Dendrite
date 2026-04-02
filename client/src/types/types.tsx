@@ -7,4 +7,9 @@ export interface FileNode {
   children?: FileNode[];
   isExpanded: boolean;
   isSystemFolder?: boolean;
+  contextParents?: {
+    chatId: string;
+    sourceHandle: string;
+    targetHandle: string;
+  }[];
 }

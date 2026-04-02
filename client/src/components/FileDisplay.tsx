@@ -1,14 +1,25 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../store/store';
-import { Folder, MessageSquare, ChevronRight, MessageCircle, FolderPlus, Edit, Trash, Check, Sparkles, Brain, Component, Database, Cpu } from 'lucide-react';
+import { Folder, MessageSquare, ChevronRight, MessageCircle, FolderPlus, Edit, Trash, Check, Sparkles, Brain, Component, Database, Cpu, X } from 'lucide-react';
 import type { FileNode, FileType } from '../types/types';
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "../api/axios";
-import { setActiveSidebarRootId } from '../store/explorerSlice';
+import { setActiveSidebarRootId, toggleExplorerModal } from '../store/explorerSlice';
 
-export default function FileDisplay() {
-  const { folderId } = useParams();
+export default function FileDisplay({ 
+  isModal = false, 
+  onSelect 
+}: { 
+  isModal?: boolean, 
+  onSelect?: (node: FileNode) => void 
+}) {
+  const { folderId: routeFolderId } = useParams();
+  const [localFolderId, setLocalFolderId] = useState<string | null>(routeFolderId || 'root');
+  
+  // Use local state if we're a modal so we don't mess up the React Router history while chatting
+  const activeFolderId = isModal ? localFolderId : routeFolderId;
+
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const tree = useAppSelector(state => state.explorer.tree);
@@ -24,7 +35,7 @@ export default function FileDisplay() {
     let target = tree;
     let currentPath: FileNode[] = [{ ...tree, id: 'root', name: 'Root' }];
 
-    if (folderId && folderId !== 'root') {
+    if (activeFolderId && activeFolderId !== 'root') {
       const dfs = (node: FileNode, targetId: string, currentPathBranch: FileNode[]): { found: FileNode | null, path: FileNode[] } => {
         if (node.id === targetId) return { found: node, path: [...currentPathBranch, node] };
         if (!node.children) return { found: null, path: [] };
@@ -36,7 +47,7 @@ export default function FileDisplay() {
         return { found: null, path: [] };
       };
       
-      const result = dfs(tree, folderId, []);
+      const result = dfs(tree, activeFolderId, []);
       if (result.found) {
         target = result.found;
         currentPath = result.path;
@@ -52,7 +63,7 @@ export default function FileDisplay() {
     }
 
     return { currentFolder: target, path: currentPath };
-  }, [tree, folderId]);
+  }, [tree, activeFolderId]);
 
   // --- Folder mutations with optimistic updates ---
   const { mutate: createFolderMutate } = useMutation({
@@ -218,8 +229,8 @@ export default function FileDisplay() {
 
   return (
     <div 
-      className="h-full bg-[radial-gradient(ellipse_at_top,var(--tw-gradient-stops))] from-zinc-900 via-(--theme-bg-surface) to-(--theme-bg-base) text-gray-200 flex flex-col pt-8 px-8 overflow-y-auto"
-      onContextMenu={handleBackgroundContextMenu}
+      className={`h-full text-gray-200 flex flex-col ${isModal ? "p-0 bg-transparent" : "pt-8 px-8 bg-[radial-gradient(ellipse_at_top,var(--tw-gradient-stops))] from-zinc-900 via-(--theme-bg-surface) to-(--theme-bg-base) overflow-y-auto"}`}
+      onContextMenu={(isModal && !!onSelect) ? undefined : handleBackgroundContextMenu}
     >
       {/* Premium Header */}
       <div className="flex items-center justify-between mb-10 bg-zinc-900/40 p-4 px-6 rounded-2xl border border-white/5 shadow-xl backdrop-blur-md" onContextMenu={e => e.stopPropagation()}>
@@ -233,7 +244,13 @@ export default function FileDisplay() {
               {path.map((node, index) => (
                 <React.Fragment key={index}>
                   <span 
-                    onClick={() => navigate(node.id === 'root' ? '/explorer' : `/explorer/${node.id}`)}
+                    onClick={() => {
+                        if (isModal) {
+                           setLocalFolderId(node.id === 'root' ? 'root' : node.id);
+                        } else {
+                           navigate(node.id === 'root' ? '/explorer' : `/explorer/${node.id}`);
+                        }
+                    }}
                     className={`cursor-pointer hover:text-white transition-colors ${index === path.length - 1 ? 'text-white drop-shadow-md' : 'text-zinc-500'}`}
                   >
                     {node.name}
@@ -244,6 +261,17 @@ export default function FileDisplay() {
             </h2>
           </div>
         </div>
+        
+        {/* Only show the 'Close' X if this is the FULL Explorer Modal (not the Context modal which has its own wrapper) */}
+        {isModal && !onSelect && (
+          <button 
+            onClick={() => dispatch(toggleExplorerModal())}
+            className="p-2.5 hover:bg-white/5 rounded-xl text-zinc-500 hover:text-white transition-all ml-auto"
+            title="Close Explorer"
+          >
+            <X size={20} />
+          </button>
+        )}
       </div>
 
       {/* Grid view */}
@@ -327,23 +355,42 @@ export default function FileDisplay() {
               <div 
                 key={child.id} 
                 className="group flex flex-col items-center gap-4 p-4 rounded-2xl hover:bg-white/3 cursor-pointer transition-all duration-300 border border-transparent hover:border-white/10 hover:shadow-2xl hover:-translate-y-1 relative"
-                onClick={() => !isBeingRenamed && (isFolder ? navigate(`/explorer/${child.id}`) : navigate(`/${child.id}`))}
-                onContextMenu={(e) => handleNodeContextMenu(e, child)}
+                onClick={() => {
+                  if (isBeingRenamed) return;
+                  if (isFolder) {
+                    if (isModal) {
+                       setLocalFolderId(child.id);
+                    } else {
+                       navigate(`/explorer/${child.id}`);
+                    }
+                  } else {
+                    if (isModal && onSelect) {
+                      onSelect(child);
+                    } else if (isModal && !onSelect) {
+                      // It's the full explorer modal! Close it and jump to chat
+                      dispatch(toggleExplorerModal());
+                      navigate(`/${child.id}`);
+                    } else {
+                      navigate(`/${child.id}`);
+                    }
+                  }
+                }}
+                onContextMenu={(isModal && onSelect) ? undefined : (e) => handleNodeContextMenu(e, child)}
               >
                 <div className="relative flex items-center justify-center p-2">
                   {isFolder ? (
                     <>
                       <IconComponent size={iconSize} className={color + " transition-transform duration-300 group-hover:scale-105"} strokeWidth={1} />
                       {suffix && (
-                        <div className={`absolute -bottom-1 -right-1 p-1.5 rounded-xl shadow-lg border border-white/20 ${suffixBg} z-10 animate-in zoom-in duration-300`}>
+                        <div className={`absolute -bottom-1 -right-1 p-1 rounded-lg shadow-lg border border-white/20 ${suffixBg} z-10 animate-in zoom-in duration-300`}>
                            {suffix}
                         </div>
                       )}
                     </>
                   ) : (
-                    <div className="relative flex items-center justify-center p-3.5 rounded-[1.25rem] bg-linear-to-br from-emerald-500/10 to-teal-600/10 border border-emerald-500/20 transition-all duration-300 group-hover:scale-105">
-                      <Sparkles size={16} className="absolute -top-1.5 -right-1.5 text-emerald-400 opacity-80 animate-pulse" />
-                      <MessageSquare size={44} className="text-emerald-400" strokeWidth={1.5} />
+                    <div className={`relative flex items-center justify-center ${isModal ? "p-2.5" : "p-3.5"} rounded-[1.25rem] bg-linear-to-br from-emerald-500/10 to-teal-600/10 border border-emerald-500/20 transition-all duration-300 group-hover:scale-105`}>
+                      <Sparkles size={16} className={`absolute -top-1.5 -right-1.5 text-emerald-400 opacity-80 animate-pulse ${isModal ? "hidden" : ""}`} />
+                      <MessageSquare size={isModal ? 32 : 44} className="text-emerald-400" strokeWidth={1.5} />
                     </div>
                   )}
                 </div>
@@ -369,14 +416,14 @@ export default function FileDisplay() {
                       </button>
                   </div>
                 ) : (
-                  <span className="text-[13px] font-medium text-center truncate w-full px-1 text-zinc-300 drop-shadow-md">
+                  <span className={`text-[13px] font-medium text-center truncate w-full px-1 text-zinc-300 drop-shadow-md`}>
                      {child.name}
                   </span>
                 )}
               </div>
             );
           })
-        ) : (!isCreating) && (
+        ) : (!isCreating && !(isModal && onSelect)) && (
           <div className="col-span-full flex flex-col items-center justify-center mt-20 text-gray-500">
              <div className="bg-zinc-900/40 p-8 rounded-full mb-4 border border-zinc-800/50">
                 <Folder size={48} className="text-zinc-700" strokeWidth={1} />

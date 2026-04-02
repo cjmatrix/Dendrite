@@ -17,8 +17,7 @@ const recallWorker = new Worker<RecallJobData>(
     try {
       const now = new Date();
 
-      // Check if the recall card STILL exists and is STILL due 
-      // (in case they reviewed it early and the job wasn't canceled somehow)
+      
       const recall = await Recall.findOne({ 
         _id: cardId, 
         userId: userId,
@@ -30,7 +29,7 @@ const recallWorker = new Worker<RecallJobData>(
         return;
       }
 
-      // Check if user has an FCM token
+   
       const user = await User.findById(userId).select("fcmToken");
       
       if (!user || !user.fcmToken || user.fcmToken.length === 0) {
@@ -38,8 +37,7 @@ const recallWorker = new Worker<RecallJobData>(
         return;
       }
 
-      // At this exact moment, they have AT LEAST 1 card due (the current one)
-      // but maybe others hit their delay at the exact same minute. Let's send a neat push.
+     
       const message = {
         notification: {
           title: "Time for Active Recall!",
@@ -53,12 +51,12 @@ const recallWorker = new Worker<RecallJobData>(
       
     } catch (error: any) {
       console.log(`Failed to process recall notification for ${cardId}:`, error.message);
-      throw error; // Let BullMQ retry
+      throw error; 
     }
   },
   {
     connection: redisConfig,
-    concurrency: 5, // We can run a few pushes concurrently
+    concurrency: 5, 
   }
 );
 

@@ -3,6 +3,8 @@ import { useAppSelector } from "../store/store";
 import type { FileNode } from "../types/types";
 import KnowledgeGraph from "../components/KnowledgeGraph";
 import { GitBranch } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import api from "../api/axios";
 
 function findNodeById(node: FileNode, id: string): FileNode | null {
   if (node.id === id) return node;
@@ -14,12 +16,36 @@ function findNodeById(node: FileNode, id: string): FileNode | null {
   return null;
 }
 
+
+
 export default function KnowledgeGraphPage() {
   const { folderId } = useParams();
   const navigate = useNavigate();
   const { tree } = useAppSelector((state) => state.explorer);
 
   const folderNode = folderId ? findNodeById(tree, folderId) : null;
+
+  const queryClient = useQueryClient();
+
+  const graphMutation = useMutation({
+    mutationFn: async ({ sourceId, targetId, sourceHandle, targetHandle }: { sourceId: string; targetId: string; sourceHandle: string; targetHandle: string }) => {
+      return await api.post("/graph/inherit", { sourceId, targetId, sourceHandle, targetHandle });
+    },
+    onSuccess: (data) => {
+      console.log("Connected:", data.data);
+      queryClient.invalidateQueries({ queryKey: ["chats"] });
+    },
+  });
+
+  const disconnectMutation = useMutation({
+    mutationFn: async ({ sourceId, targetId }: { sourceId: string; targetId: string }) => {
+      return await api.post("/graph/disconnect", { sourceId, targetId });
+    },
+    onSuccess: (data) => {
+      console.log("Disconnected:", data.data);
+      queryClient.invalidateQueries({ queryKey: ["chats"] });
+    },
+  });
 
   if (!folderNode || folderNode.type !== "folder") {
     return (
@@ -41,9 +67,11 @@ export default function KnowledgeGraphPage() {
       <KnowledgeGraph
         folderNode={folderNode}
         onClose={() => navigate(-1)}
-        onConnect={(sourceId, targetId) => {
-          console.log(`[KnowledgeGraph] Inherit context: ${sourceId} → ${targetId}`);
-          // TODO: Call backend API to persist this inheritance link
+        onConnect={(sourceId, targetId, sourceHandle, targetHandle) => {
+          graphMutation.mutate({ sourceId, targetId, sourceHandle, targetHandle });
+        }}
+        onDisconnect={(sourceId, targetId) => {
+          disconnectMutation.mutate({ sourceId, targetId });
         }}
       />
     </div>

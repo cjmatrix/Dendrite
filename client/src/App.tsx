@@ -11,7 +11,6 @@ import toast, { Toaster } from "react-hot-toast";
 import "./App.css";
 import ChatWindow from "./components/ChatWindow";
 import EmptyChatState from "./components/EmptyChatState";
-import FileDisplay from "./components/FileDisplay";
 import RecallPage from "./pages/RecallPage";
 import KnowledgeGraphPage from "./pages/KnowledgeGraphPage";
 import { useQueryClient } from "@tanstack/react-query";
@@ -36,14 +35,6 @@ const router = createBrowserRouter([
           {
             index:true,
             element:<EmptyChatState></EmptyChatState>
-          },
-          {
-            path: "explorer",
-            element: <FileDisplay />
-          },
-          {
-            path: "explorer/:folderId",
-            element: <FileDisplay />
           },
           {
             path: "recall",

@@ -55,9 +55,16 @@ export const getChatByIdService = async (chatId: string, userId: string) => {
 
 export const getChatMessagesService = async (
   chatId: string,
+  userId: string,
   limit: number,
   cursor: string | null,
 ) => {
+  
+  const chat = await Chat.findOne({ _id: chatId, userId }).lean();
+  if (!chat) {
+    throw new AppError("Chat not found or unauthorized", 404);
+  }
+
   const query: any = { chatId };
   
   if (cursor) {
@@ -143,23 +150,71 @@ export const prepareMessageService = async (
     throw new AppError("Chat not found", 404);
   }
 
-  await Message.create({ chatId, userId, role: "user", content: userMessage });
+  const userMsg = await Message.create({ chatId, userId, role: "user", content: userMessage });
 
-  const recentMessages = await Message.find({ chatId })
+  // (most recent at the top)
+  let recentMessages = await Message.find({ chatId })
     .sort({ createdAt: -1 })
     .limit(CONTEXT_WINDOW)
     .lean();
+
+ 
+  const deficit = CONTEXT_WINDOW - recentMessages.length;
+
+ 
+  if (deficit > 0 && chat?.contextParent) {
+    const parentMessages = await Message.find({ chatId: chat.contextParent })
+      .sort({ createdAt: -1 })
+      .limit(deficit)
+      .lean();
+
+    // (older) + current messages (newer)
+    recentMessages = [...recentMessages, ...parentMessages];
+  }
+
+  // [oldest -> newest]
   recentMessages.reverse();
+
+  
 
   const recentMessagesText = recentMessages.map((m) => m.content).join("\n");
 
-  // Use provided vectors or safely generate them if not passed for some reason
+
   const finalCodeQueryVector = codeQueryVector || await generateEmbedding(userMessage, "CODE_RETRIEVAL_QUERY");
   const finalDescQueryVector = descQueryVector || await generateEmbedding(userMessage, "RETRIEVAL_QUERY");
 
+ 
+  const chatIdsToSearch: string[] = [chatId];
+  const inheritedSummaries: { title: string; summary: string }[] = [];
+
+  let currentParentId = chat.contextParent;
+  let depth = 0;
+  while (currentParentId && depth < 5) {
+    const pChat = await Chat.findOne({ _id: currentParentId, userId }).select("title summary contextParent").lean();
+    if (!pChat) break;
+
+    const parentIdStr = pChat._id.toString();
+    if (!chatIdsToSearch.includes(parentIdStr)) {
+      chatIdsToSearch.push(parentIdStr);
+      
+      if (pChat.summary) {
+        // Unshift so the oldest ancestors come first in the prompt
+        inheritedSummaries.unshift({
+          title: pChat.title || "Inherited Chat",
+          summary: pChat.summary,
+        });
+      }
+    }
+    
+    currentParentId = pChat.contextParent;
+    depth++;
+  }
+
+  console.log(`\n🌲 [BRANCH ARCHITECTURE] Searching across ${chatIdsToSearch.length} chats in full lineage:`, chatIdsToSearch);
+
   const [rawSimilarCode, chatContextStats] = await Promise.all([
-    searchSimilarCode(finalCodeQueryVector, finalDescQueryVector, userId, chatId),
-    searchSimiliarChatChunk(finalDescQueryVector, userId, chatId),
+    searchSimilarCode(finalCodeQueryVector, finalDescQueryVector, userId, chatIdsToSearch),
+    searchSimiliarChatChunk(finalDescQueryVector, userId, chatIdsToSearch),
   ]);
 
   // --- DIAGNOSTIC LOGS ---
@@ -189,9 +244,16 @@ export const prepareMessageService = async (
 
   let dynamicSystemInstruction = systemInstruction;
 
+  if (inheritedSummaries.length > 0) {
+    dynamicSystemInstruction += `\n\n--- [INHERITED KNOWLEDGE FROM PARENT CONTEXT] ---\nThe following summaries provide background context from parent chats this conversation explicitly inherits from:`;
+    inheritedSummaries.forEach((s) => {
+      dynamicSystemInstruction += `\n\n[Context from "${s.title}"]:\n${s.summary}`;
+    });
+  }
+
   if (chat.summary) {
     console.log(chat.summary,"📡📡📡📡📡📡📡📡📡📡")
-    dynamicSystemInstruction += `\n\n--- [CONVERSATION STATE / MIDDLE-LAYER MEMORY] ---\nThis is a summary of the conversation so far to maintain continuity:\n${chat.summary}`;
+    dynamicSystemInstruction += `\n\n--- [ACTIVE CONVERSATION STATE / MIDDLE-LAYER MEMORY] ---\nThis is the active middle-layer summary for your currently ongoing conversation:\n${chat.summary}`;
   }
 
   if (deduplicatedSimilarCode.length > 0) {
@@ -219,7 +281,7 @@ export const prepareMessageService = async (
 - If the user asks a FOLLOW-UP question, asks for an EXPLANATION, or discusses the behavior of the current visual, you MUST answer politely with normal conversational text and explanations, and DO NOT output a \`\`\`p5\`\`\` block unless they explicitly ask for a code change.
 
 Assume your code will be executed in a blank environment. You should write standard global p5 code (e.g., function setup() { createCanvas(600, 400); } function draw() { ... }).
-CRUCIAL: You MUST include a functional Pause/Resume button in your sketch. You can use p5's \`createButton()\` or draw it manually using \`rect()\`. IF you use \`createButton()\`, you MUST explicitly call \`.position(x, y)\` (e.g., \`button.position(10, 10)\`) to place it safely over the canvas, otherwise it will corrupt the HTML flex layout and overlap elements! The button MUST successfully toggle between \`noLoop()\` to pause and \`loop()\` to resume the animation. Make everything interactive and look beautiful using modern colors!`;
+CRUCIAL: You MUST include a functional Pause/Resume button and also Next and Previous buttons with explanation of each steps in your sketch. You can use p5's \`createButton()\` or draw it manually using \`rect()\`. IF you use \`createButton()\`, you MUST explicitly call \`.position(x, y)\` (e.g., \`button.position(10, 10)\`) to place it safely over the canvas, otherwise it will corrupt the HTML flex layout and overlap elements! The button MUST successfully toggle between \`noLoop()\` to pause and \`loop()\` to resume the animation. Make everything interactive and look beautiful using modern colors!`;
   }
 
   const contents = [
@@ -233,7 +295,7 @@ CRUCIAL: You MUST include a functional Pause/Resume button in your sketch. You c
     })),
   ];
 
-  return { chat, contents };
+  return { chat, contents, userMessageId: userMsg._id.toString() };
 };
 
 export function extractCodeBlocks(text: string) {
@@ -268,11 +330,13 @@ export const saveModelReply = async (
   const session = await mongoose.startSession();
   session.startTransaction();
 
+  let modelMessageId: string | null = null;
   try {
-    await Message.create(
+    const [modelMsg] = await Message.create(
       [{ chatId, userId, role: "model", content: modelReply }],
       { session },
     );
+    modelMessageId = modelMsg._id.toString();
 
     let messageToCompress: any[] = [];
     const messageCount = await Message.countDocuments({ chatId }).session(
@@ -410,5 +474,5 @@ export const saveModelReply = async (
     session.endSession();
   }
 
-  return chat;
+  return { chat, modelMessageId };
 };

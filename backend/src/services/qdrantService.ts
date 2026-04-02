@@ -5,13 +5,13 @@ import {
 } from "../config/qdrant";
 import { generateEmbedding } from "../utils/embedding";
 
-const SIMILARITY_THRESHOLD = 0.7;
+const SIMILARITY_THRESHOLD = 0.62;
 
 export async function searchSimilarCode(
   codeQueryVector: number[],
   descQueryVector: number[],
   userId: string,
-  chatId: string,
+  chatIds: string[],
   topK: number = 3,
 ) {
   try {
@@ -25,7 +25,7 @@ export async function searchSimilarCode(
         },
         {
           key: "chatId",
-          match: { value: String(chatId) },
+          match: { any: chatIds.map(String) },
         },
       ],
     };
@@ -44,7 +44,7 @@ export async function searchSimilarCode(
         with_payload: true,
       }),
     ]);
-
+    console.log(JSON.stringify(codeResults,null,2),JSON.stringify(descriptionResults,null,2))
     const scoreMap = new Map();
 
     for (let result of [...codeResults, ...descriptionResults]) {
@@ -108,7 +108,7 @@ export async function searchSimilarCode(
 export async function searchSimiliarChatChunk(
   chunkQueryVector: number[],
   userId: string,
-  chatId: string,
+  chatIds: string[],
   topK: number = 5,
 ) {
   try {
@@ -123,13 +123,13 @@ export async function searchSimiliarChatChunk(
           },
           {
             key: "chatId",
-            match: { value: String(chatId) },
+            match: { any: chatIds.map(String) },
           },
         ],
       },
       with_payload: true,
     });
-
+    console.log(JSON.stringify(searchResults,null,2))
     const relevantResults = searchResults.filter(
       (result) => result.score >= SIMILARITY_THRESHOLD,
     );

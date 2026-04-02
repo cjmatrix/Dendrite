@@ -7,7 +7,7 @@ import { FileItem } from "./FileItem";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../api/axios";
 import { useAppDispatch, useAppSelector } from "../store/store";
-import { setTree, setActiveSidebarRootId } from "../store/explorerSlice";
+import { setTree, setActiveSidebarRootId, toggleExplorerModal } from "../store/explorerSlice";
 import DendritesLogo from "./DendritesLogo";
 
 export default function FileExplorer() {
@@ -83,6 +83,7 @@ export default function FileExplorer() {
           type: "chat",
           isExpanded: false,
           children: [],
+          contextParents: chat.contextParents || [],
         };
         if (chat.folderId) {
           const addToFolder = (nodes: FileNode[]): boolean => {
@@ -436,7 +437,7 @@ export default function FileExplorer() {
         </button>
         
         <button 
-          onClick={() => navigate('/explorer')}
+          onClick={() => dispatch(toggleExplorerModal())}
           className="group w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-linear-to-r from-cyan-600/10 to-sky-600/10 hover:from-cyan-500/20 hover:to-sky-500/20 text-cyan-400 hover:text-cyan-300 transition-all border border-cyan-500/20 hover:border-cyan-400/50 text-[12px] font-bold shadow-[0_4px_20px_-10px_rgba(6,182,212,0.3)] hover:shadow-[0_4px_20px_-8px_rgba(6,182,212,0.5)] active:scale-[0.98]"
         >
           <Folder size={14} strokeWidth={2.5} className="text-cyan-500 group-hover:drop-shadow-[0_0_8px_rgba(6,182,212,0.8)] transition-all" />

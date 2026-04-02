@@ -46,20 +46,20 @@ ${snippetsText}`;
   try {
     let rawJson = JSON.parse(response.text || "{}");
     
-    // Robust parsing: Check if AI wrapped it in a 'result' field (sometimes as a stringified object)
+ 
     if (rawJson.result) {
       if (typeof rawJson.result === "string") {
         try {
           rawJson = JSON.parse(rawJson.result);
         } catch {
-          // Fallback if it wasn't valid JSON after all
+        
         }
       } else {
         rawJson = rawJson.result;
       }
     }
     
-    // Map the IDs back to descriptions
+ 
     return blocks.map(b => ({
       id: b.id,
       description: rawJson[b.id] || "No description generated."

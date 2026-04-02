@@ -41,7 +41,7 @@ export async function getTavilySearchContext(query: string, precomputedVector?: 
         ],
       },
     });
-
+    
     if (semanticResults.length > 0 && semanticResults[0].score >= SEMANTIC_THRESHOLD) {
       console.log(`[Cache Hit] Qdrant Semantic Match (score: ${semanticResults[0].score?.toFixed(3)}) for query: "${query}"`);
       const payloadContent = semanticResults[0].payload?.context as string;
@@ -51,15 +51,15 @@ export async function getTavilySearchContext(query: string, precomputedVector?: 
       return payloadContent;
     }
 
-    console.log(`[Cache Miss] Calling Tavily API for query: "${query}"`);
+    console.log(`[Cache Miss] Calling Tavily API for query: "${query}"`, semanticResults[0]?.score);
 
   
-    const searchResponse = await tvly.search(rawQuery, {
+    const searchResponse = await tvly.search(rawQuery, {  
       searchDepth: "basic",
       maxResults: 3,
     });
 
-    console.log(searchResponse,"here")
+    // console.log(searchResponse,"here")
     let contextString = "";
     if (searchResponse && searchResponse.results && searchResponse.results.length > 0) {
       contextString = `\n\n--- INTERNET SEARCH RESULTS ---\n${searchResponse.results

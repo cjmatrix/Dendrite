@@ -6,7 +6,8 @@ import dotenv from "dotenv";
 import authRoutes from "./routes/authRoutes";
 import folderRoutes from "./routes/folderRoutes";
 import chatRoutes from "./routes/chatRoutes";
-import recallRoutes from "./routes/recallRoutes"
+import recallRoutes from "./routes/recallRoutes";
+import branchRoutes from "./routes/branchRoutes";
 import "./worker/embeddingWorker";
 import "./worker/descriptionWorker";
 import "./worker/summaryWorker";
@@ -15,6 +16,7 @@ import "./worker/recallWorker";
 import "./cron/outboxSweeper";
 import "./cron/descriptionSweeper";
 import "./cron/searchCacheSweeper";
+
 dotenv.config();
 
 const app = express();
@@ -33,7 +35,8 @@ import { errorHandler } from "./middleware/errorHandler";
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/folders", folderRoutes);
 app.use("/api/v1/chats", chatRoutes);
-app.use("/api/v1/recall",recallRoutes);
+app.use("/api/v1/recall", recallRoutes);
+app.use("/api/v1/branch", branchRoutes);
 app.get("/", (req, res) => {
   res.send("API is running...");
 });

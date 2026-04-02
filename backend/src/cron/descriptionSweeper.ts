@@ -29,6 +29,7 @@ cron.schedule("*/10 * * * *", async () => {
       chatId: b.chatId.toString(),
       code: b.code,
       language: b.language,
+      hash: b.hash,
     }));
 
 
