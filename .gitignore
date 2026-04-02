@@ -26,3 +26,5 @@ Thumbs.db
 qdrant_storage/
 
 serviceAccountKey.json 
+infinity_clean/
+.infinity_cache/
