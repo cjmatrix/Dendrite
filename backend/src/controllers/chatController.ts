@@ -19,6 +19,318 @@ import { Message } from "../models/Message";
 import CONTEXT_WINDOW from "../constants/contextWindow";
 import { getTavilySearchContext } from "../services/searchCacheService";
 import { generateEmbedding } from "../utils/embedding";
+import multer from "multer";
+import cloudinary from "../config/cloudinary";
+import Busboy from "busboy";
+import fs from "fs";
+import path from "path";
+import os from "os";
+import fsp from "fs/promises";
+import FileType from "file-type";
+import { AppError } from "../utils/AppError";
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 8 * 1024 * 1024 },
+});
+
+export const uploadChatImageMiddleware = upload.single("image");
+
+const PDF_TEMP_DIR = path.join(os.tmpdir(), "dendrites-file-uploads");
+if (!fs.existsSync(PDF_TEMP_DIR)) {
+  fs.mkdirSync(PDF_TEMP_DIR, { recursive: true });
+}
+
+const ALLOWED_IMAGE_MIMES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+  "image/avif",
+]);
+const allowedDocumentMimeTypes = new Set([
+  "application/pdf",
+  "text/plain",
+  "text/markdown",
+  "text/csv",
+  "application/json",
+  "application/xml",
+  "text/xml",
+  "application/yaml",
+  "text/yaml",
+  "application/x-yaml",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-powerpoint",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "application/rtf",
+]);
+
+const allowedDocumentExtensions = new Set([
+  ".pdf",
+  ".txt",
+  ".md",
+  ".csv",
+  ".json",
+  ".xml",
+  ".yaml",
+  ".yml",
+  ".doc",
+  ".docx",
+  ".xls",
+  ".xlsx",
+  ".ppt",
+  ".pptx",
+  ".rtf",
+  ".py",
+  ".js",
+  ".ts",
+  ".tsx",
+  ".jsx",
+  ".java",
+  ".c",
+  ".cpp",
+  ".h",
+  ".hpp",
+  ".go",
+  ".rs",
+  ".php",
+  ".rb",
+  ".sh",
+  ".sql",
+  ".html",
+  ".css",
+]);
+
+const uploadBufferToCloudinary = async (buffer: Buffer, mimetype: string) => {
+  return await new Promise<{ secure_url: string }>((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        folder: "dendrites/chat-images",
+        resource_type: "image",
+      },
+      (error, result) => {
+        if (error || !result) {
+          reject(error || new Error("Cloudinary upload failed"));
+          return;
+        }
+        resolve({ secure_url: result.secure_url });
+      },
+    );
+
+    stream.end(buffer);
+  });
+};
+
+const uploadPdfToCloudinary = async (filePath: string) => {
+  return await new Promise<{ secure_url: string }>((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        folder: "dendrites/docs",
+        resource_type: "raw",
+      },
+      (error, result) => {
+        if (error || !result) {
+          reject(error || new Error("Cloudinary upload failed"));
+          return;
+        }
+        resolve({ secure_url: result.secure_url });
+      },
+    );
+
+    fs.createReadStream(filePath).on("error", reject).pipe(stream);
+  });
+};
+
+export const uploadChatImage = async (req: Request, res: Response) => {
+  if (!req.user) {
+    res.status(401).json({ message: "Unauthorized" });
+    return;
+  }
+
+  if (!req.file) {
+    res.status(400).json({ message: "Image file is required" });
+    return;
+  }
+
+  if (!req.file.mimetype.startsWith("image/")) {
+    res.status(400).json({ message: "Only image files are allowed" });
+    return;
+  }
+
+  if (
+    !process.env.CLOUDINARY_CLOUD_NAME ||
+    !process.env.CLOUDINARY_API_KEY ||
+    !process.env.CLOUDINARY_API_SECRET
+  ) {
+    res.status(500).json({ message: "Cloudinary is not configured" });
+    return;
+  }
+   const detected = await FileType.fromBuffer(req.file.buffer);
+
+  if (!detected || !ALLOWED_IMAGE_MIMES.has(detected.mime)) {
+    res.status(415).json({
+      message: "Unsupported file type. Only JPEG, PNG, GIF, WebP, and AVIF are allowed.",
+    });
+    return;
+  }
+
+  try {
+    const result = await uploadBufferToCloudinary(
+      req.file.buffer,
+      detected.mime,
+    );
+
+    res.status(201).json({
+      success: true,
+      data: {
+        url: result.secure_url,
+      },
+    });
+  } catch (error: any) {
+    console.error("Image upload failed:", error);
+    res.status(500).json({ message: "Failed to upload image" });
+  }
+};
+
+export const uploadChatPdf = async (req: Request, res: Response) => {
+  if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+  if (
+    !process.env.CLOUDINARY_CLOUD_NAME ||
+    !process.env.CLOUDINARY_API_KEY ||
+    !process.env.CLOUDINARY_API_SECRET
+  ) {
+    return res.status(500).json({ message: "Cloudinary is not configured" });
+  }
+
+  const busboy = Busboy({
+    headers: req.headers,
+    limits: { fileSize: 100 * 1024 * 1024 },
+  });
+
+  let filePath = "";
+  let responseSent = false;
+
+  const sendJson = (status: number, payload: any) => {
+    if (responseSent) return;
+    responseSent = true;
+    res.status(status).json(payload);
+  };
+
+  busboy.on("file", (_fieldname, file, info) => {
+    const { filename } = info;
+    const safeName = path.basename(filename || "document");
+    filePath = path.join(PDF_TEMP_DIR, `${Date.now()}-${safeName}`);
+
+    // Accumulate enough bytes for reliable detection
+    const headerChunks: Buffer[] = [];
+    const HEADER_BYTES = 4200;
+    let headerCollected = false;
+    let mimeValid: boolean | null = null; 
+    let writeStream: fs.WriteStream | null = null;
+
+    file.on("limit", () => {
+      sendJson(413, { message: "File too large. Max allowed is 100MB." });
+      file.resume(); 
+    });
+
+    file.on("data", async (chunk: Buffer) => {
+      // Phase 1: accumulate header bytes
+      if (!headerCollected) {
+        headerChunks.push(chunk);
+        const total = Buffer.concat(headerChunks);
+
+        if (total.length >= HEADER_BYTES || file.readableEnded) {
+          headerCollected = true;
+          let detected;
+          try{
+             detected = await FileType.fromBuffer(total);
+          }
+          catch(err){
+            sendJson(415, {
+              message:
+                "Unsupported file type. Allowed: PDF, text, markdown, csv, json, xml, yaml, office docs, and common code files.",
+            });
+          }
+          const detectedMime = detected?.mime ?? "application/octet-stream";
+          const detectedExt = detected?.ext ?? "";
+
+          const isAllowedMime =
+            allowedDocumentMimeTypes.has(detectedMime) ||
+            detectedMime.startsWith("text/");
+          const isAllowedByExt =
+            detectedMime === "application/octet-stream" &&
+            allowedDocumentExtensions.has(detectedExt);
+
+          if (!isAllowedMime && !isAllowedByExt) {
+            mimeValid = false;
+            sendJson(415, {
+              message:
+                "Unsupported file type. Allowed: PDF, text, markdown, csv, json, xml, yaml, office docs, and common code files.",
+            });
+            file.resume(); 
+            return;
+          }
+
+          mimeValid = true;
+
+          // Only open writeStream after validation passes
+          writeStream = fs.createWriteStream(filePath);
+          writeStream.on("error", (err) => {
+            console.error("Write error:", err);
+            sendJson(500, { message: "Failed to save uploaded file" });
+          });
+
+          // Flush accumulated header bytes first
+          writeStream.write(total);
+        }
+
+        return; 
+      }
+
+      
+      if (mimeValid === true && writeStream) {
+        writeStream.write(chunk);
+      }
+    });
+
+    file.on("end", () => {
+      
+      writeStream?.end();
+    });
+  });
+
+  busboy.on("finish", async () => {
+    if (responseSent || !filePath) {
+      if (!responseSent) sendJson(400, { message: "No file uploaded" });
+      return;
+    }
+
+    try {
+      const result = await uploadPdfToCloudinary(filePath);
+      sendJson(201, { success: true, data: { url: result.secure_url } });
+    } catch (error) {
+      console.error("Document upload failed:", error);
+      sendJson(500, { message: "Failed to upload file" });
+    } finally {
+      try {
+        await fsp.unlink(filePath);
+      } catch {
+     
+      }
+    }
+  });
+
+  busboy.on("error", (error) => {
+    console.error("Busboy error:", error);
+    sendJson(500, { message: "Failed to process upload" });
+  });
+
+  req.pipe(busboy);
+};
 
 export const createChat = async (req: Request, res: Response) => {
   if (!req.user) {
@@ -78,9 +390,14 @@ export const getChatMessages = async (req: Request, res: Response) => {
 
   const id = req.params.id as string;
   const cursor = (req.query.cursor as string) || null;
-  const limit =10;
+  const limit = 10;
 
-  const messages = await getChatMessagesService(id, req.user._id.toString(), limit, cursor);
+  const messages = await getChatMessagesService(
+    id,
+    req.user._id.toString(),
+    limit,
+    cursor,
+  );
 
   // Next cursor is the ID of the oldest message returned, or null if there are no more
   const nextCursor =
@@ -138,36 +455,40 @@ export const sendMessage = async (req: Request, res: Response) => {
   }
 
   const id = req.params.id as string;
-  const { message, mode } = req.body;
+  const { message, mode, imageUrl } = req.body;
 
+  const normalizedMessage = typeof message === "string" ? message.trim() : "";
+  const normalizedImageUrl =
+    typeof imageUrl === "string" ? imageUrl.trim() : "";
 
-
-  if (!message || !message.trim()) {
-    res.status(400).json({ message: "Message is required" });
+  if (!normalizedMessage && !normalizedImageUrl) {
+    res.status(400).json({ message: "Message or image is required" });
     return;
   }
 
+  const queryText = normalizedMessage || "Analyze the uploaded image";
 
   const [codeQueryVector, descQueryVector] = await Promise.all([
-    generateEmbedding(message, "CODE_RETRIEVAL_QUERY"),
-    generateEmbedding(message, "RETRIEVAL_QUERY"),
+    generateEmbedding(queryText, "CODE_RETRIEVAL_QUERY"),
+    generateEmbedding(queryText, "RETRIEVAL_QUERY"),
   ]);
 
   const { contents, userMessageId } = await prepareMessageService(
     id,
     req.user._id.toString(),
-    message,
+    normalizedMessage,
     mode,
     codeQueryVector,
-    descQueryVector
+    descQueryVector,
+    normalizedImageUrl || undefined,
   );
- 
+
   let internetContext = "";
   try {
     const routingPrompt = `Determine if the following user query requires an internet search to be answered accurately. 
-Respond ONLY with "YES" if it requires knowledge of recent events, real-time facts, current weather, news, specific web sources, or things outside typical LLM pre-training data.
-Respond ONLY with "NO" if it is a general reasoning, coding, writing, or conceptual question that can be answered without internet access.
-User query: "${message}"`;
+  Respond ONLY with "YES" if it requires knowledge of recent events, real-time facts, current weather, news, specific web sources, or things outside typical LLM pre-training data.
+  Respond ONLY with "NO" if it is a general reasoning, coding, writing, or conceptual question that can be answered without internet access.
+  User query: "${queryText}"`;
 
     let routerResponse;
     let routerAttempts = 0;
@@ -175,12 +496,16 @@ User query: "${message}"`;
       try {
         const activeAi = getRotatedAI();
         routerResponse = await activeAi.models.generateContent({
-          model: "gemini-2.5-flash-lite",
+          model: "gemini-2.5-flash",
           contents: [{ role: "user", parts: [{ text: routingPrompt }] }],
         });
         break;
       } catch (error: any) {
-        if (error.status === 429 || error.message?.includes("quota") || error.message?.includes("RESOURCE_EXHAUSTED")) {
+        if (
+          error.status === 429 ||
+          error.message?.includes("quota") ||
+          error.message?.includes("RESOURCE_EXHAUSTED")
+        ) {
           rotateAIKey();
           routerAttempts++;
           continue;
@@ -188,26 +513,55 @@ User query: "${message}"`;
         throw error;
       }
     }
-    
+
     const needsSearch = routerResponse?.text?.trim().toUpperCase() === "YES";
 
-
     if (needsSearch) {
-      console.log(`[Router] internet search needed for query: "${message}"`);
-      internetContext = await getTavilySearchContext(message, descQueryVector);
+      console.log(`[Router] internet search needed for query: "${queryText}"`);
+      internetContext = await getTavilySearchContext(
+        queryText,
+        descQueryVector,
+      );
     } else {
-      console.log(`[Router] no internet search needed for query: "${message}"`);
+      console.log(
+        `[Router] no internet search needed for query: "${queryText}"`,
+      );
     }
   } catch (error) {
     console.error("Routing/Search error:", error);
-
   }
 
- 
   if (internetContext) {
-    const lastMessage = contents[contents.length - 1];
-    if (lastMessage && lastMessage.role === "user") {
-      lastMessage.parts[0].text += internetContext;
+    // Find the last text item in contents and append search results
+    for (let i = contents.length - 1; i >= 0; i--) {
+      if (contents[i].text && typeof contents[i].text === "string") {
+        contents[i].text += internetContext;
+        break;
+      }
+    }
+  }
+
+  if (normalizedImageUrl) {
+    // Convert image URL to base64 for Gemini API
+    const urlToBase64 = async (url: string): Promise<string> => {
+      try {
+        const response = await fetch(url);
+        const buffer = await response.arrayBuffer();
+        return Buffer.from(buffer).toString("base64");
+      } catch (error) {
+        console.error("Error converting image URL to base64:", error);
+        return "";
+      }
+    };
+
+    const base64Data = await urlToBase64(normalizedImageUrl);
+    if (base64Data) {
+      contents.push({
+        inlineData: {
+          mimeType: "image/jpeg",
+          data: base64Data,
+        },
+      });
     }
   }
 
@@ -217,7 +571,7 @@ User query: "${message}"`;
 
   let stream;
   let attempts = 0;
-  
+
   while (attempts < aiInstances.length) {
     try {
       const activeAi = getRotatedAI();
@@ -227,12 +581,18 @@ User query: "${message}"`;
       });
       break;
     } catch (error: any) {
-      if (error.status === 429 || error.message?.includes("quota") || error.message?.includes("RESOURCE_EXHAUSTED")) {
+      if (
+        error.status === 429 ||
+        error.message?.includes("quota") ||
+        error.message?.includes("RESOURCE_EXHAUSTED")
+      ) {
         rotateAIKey();
         attempts++;
         continue;
       }
-      res.write(`data: ${JSON.stringify({ text: "\n\n**System Error:** " + error.message })}\n\n`);
+      res.write(
+        `data: ${JSON.stringify({ text: "\n\n**System Error:** " + error.message })}\n\n`,
+      );
       res.write("data: [DONE]\n\n");
       res.end();
       return;
@@ -240,7 +600,9 @@ User query: "${message}"`;
   }
 
   if (!stream) {
-    res.write(`data: ${JSON.stringify({ text: "\n\n**Quota Exhausted:** All your provided Gemini API keys have exceeded their free-tier limits. Please wait, or add a new key." })}\n\n`);
+    res.write(
+      `data: ${JSON.stringify({ text: "\n\n**Quota Exhausted:** All your provided Gemini API keys have exceeded their free-tier limits. Please wait, or add a new key." })}\n\n`,
+    );
     res.write("data: [DONE]\n\n");
     res.end();
     return;
@@ -260,11 +622,15 @@ User query: "${message}"`;
   }
 
   try {
-    const { modelMessageId } = await saveModelReply(id, req.user._id.toString(), fullReply);
+    const { modelMessageId } = await saveModelReply(
+      id,
+      req.user._id.toString(),
+      fullReply,
+    );
 
-   
-    res.write(`data: ${JSON.stringify({ type: "metadata", userMessageId, modelMessageId })}\n\n`);
-
+    res.write(
+      `data: ${JSON.stringify({ type: "metadata", userMessageId, modelMessageId })}\n\n`,
+    );
 
     if (finalUsageMetadata) {
       logAIQuery(message, finalUsageMetadata);
@@ -279,13 +645,12 @@ User query: "${message}"`;
 
 const getAnchorContext = async (chatId: string, anchorMessageId: string) => {
   const cacheKey = `anchor_ctx:${anchorMessageId}`;
-  
+
   try {
     const cachedData = await redisConnection.get(cacheKey);
     if (cachedData) {
       return JSON.parse(cachedData);
     }
-
 
     const anchorMsg = await Message.findById(anchorMessageId);
     if (!anchorMsg) return [];
@@ -300,7 +665,6 @@ const getAnchorContext = async (chatId: string, anchorMessageId: string) => {
 
     const result = contextMessages.reverse();
 
-   
     await redisConnection.setex(cacheKey, 7200, JSON.stringify(result));
 
     return result;
@@ -313,7 +677,7 @@ const getAnchorContext = async (chatId: string, anchorMessageId: string) => {
 export const streamQuickChat = async (req: Request, res: Response) => {
   const { chatId, anchorMessageId, highlightedText, quickChatHistory } =
     req.body;
- 
+
   if (!req.user) {
     res.status(401).json({ message: "Unauthorized" });
     return;
@@ -321,14 +685,12 @@ export const streamQuickChat = async (req: Request, res: Response) => {
 
   const recentHistory = (quickChatHistory || []).slice(-CONTEXT_WINDOW);
 
-
   const backgroundContext = await getAnchorContext(chatId, anchorMessageId);
- 
+
   const historicalString = backgroundContext
     .map((msg: any) => `[${msg.role}]: ${msg.content}`)
     .join("\n\n");
 
-  
   const systemPrompt = `You are a surgical AI Assistant specialized in analyzing highlights within a side-modal.
 ---
 HISTORICAL CONTEXT (for background only):
@@ -350,7 +712,6 @@ RESPONSE GUIDELINES:
     })),
   ];
 
-  
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
@@ -367,12 +728,18 @@ RESPONSE GUIDELINES:
       });
       break;
     } catch (error: any) {
-      if (error.status === 429 || error.message?.includes("quota") || error.message?.includes("RESOURCE_EXHAUSTED")) {
+      if (
+        error.status === 429 ||
+        error.message?.includes("quota") ||
+        error.message?.includes("RESOURCE_EXHAUSTED")
+      ) {
         rotateAIKey();
         attempts++;
         continue;
       }
-      res.write(`data: ${JSON.stringify({ text: "\n\n**System Error:** " + error.message })}\n\n`);
+      res.write(
+        `data: ${JSON.stringify({ text: "\n\n**System Error:** " + error.message })}\n\n`,
+      );
       res.write("data: [DONE]\n\n");
       res.end();
       return;
@@ -380,7 +747,9 @@ RESPONSE GUIDELINES:
   }
 
   if (!stream) {
-    res.write(`data: ${JSON.stringify({ text: "\n\n**Quota Exhausted:** All your provided Gemini API keys have exceeded their free-tier limits. Please wait, or add a new key." })}\n\n`);
+    res.write(
+      `data: ${JSON.stringify({ text: "\n\n**Quota Exhausted:** All your provided Gemini API keys have exceeded their free-tier limits. Please wait, or add a new key." })}\n\n`,
+    );
     res.write("data: [DONE]\n\n");
     res.end();
     return;
@@ -441,7 +810,7 @@ export const saveSubChat = async (req: Request, res: Response) => {
     }
     return msg;
   });
-  console.log(subChatId   )
+  console.log(subChatId);
   try {
     let subChat;
     if (subChatId) {
@@ -455,7 +824,7 @@ export const saveSubChat = async (req: Request, res: Response) => {
         { new: true },
       );
     } else {
-      console.log("heyyyyy")
+      console.log("heyyyyy");
       subChat = await SubChat.create({
         chatId,
         anchorMessageId,
@@ -472,6 +841,6 @@ export const saveSubChat = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error("Save SubChat Error:", error);
-    res.status(500).json({error});
+    res.status(500).json({ error });
   }
 };

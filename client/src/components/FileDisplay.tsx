@@ -354,7 +354,7 @@ export default function FileDisplay({
             return (
               <div 
                 key={child.id} 
-                className="group flex flex-col items-center gap-4 p-4 rounded-2xl hover:bg-white/3 cursor-pointer transition-all duration-300 border border-transparent hover:border-white/10 hover:shadow-2xl hover:-translate-y-1 relative"
+                className="group flex flex-col items-center gap-4 p-4 rounded-2xl hover:bg-white/5 cursor-pointer transition-colors duration-150 border border-transparent hover:border-white/10 relative"
                 onClick={() => {
                   if (isBeingRenamed) return;
                   if (isFolder) {
@@ -380,16 +380,16 @@ export default function FileDisplay({
                 <div className="relative flex items-center justify-center p-2">
                   {isFolder ? (
                     <>
-                      <IconComponent size={iconSize} className={color + " transition-transform duration-300 group-hover:scale-105"} strokeWidth={1} />
+                      <IconComponent size={iconSize} className={color} strokeWidth={1} />
                       {suffix && (
-                        <div className={`absolute -bottom-1 -right-1 p-1 rounded-lg shadow-lg border border-white/20 ${suffixBg} z-10 animate-in zoom-in duration-300`}>
+                        <div className={`absolute -bottom-1 -right-1 p-1 rounded-lg border border-white/20 ${suffixBg} z-10`}>
                            {suffix}
                         </div>
                       )}
                     </>
                   ) : (
-                    <div className={`relative flex items-center justify-center ${isModal ? "p-2.5" : "p-3.5"} rounded-[1.25rem] bg-linear-to-br from-emerald-500/10 to-teal-600/10 border border-emerald-500/20 transition-all duration-300 group-hover:scale-105`}>
-                      <Sparkles size={16} className={`absolute -top-1.5 -right-1.5 text-emerald-400 opacity-80 animate-pulse ${isModal ? "hidden" : ""}`} />
+                    <div className={`relative flex items-center justify-center ${isModal ? "p-2.5" : "p-3.5"} rounded-[1.25rem] bg-linear-to-br from-emerald-500/10 to-teal-600/10 border border-emerald-500/20`}>
+                      <Sparkles size={16} className={`absolute -top-1.5 -right-1.5 text-emerald-400 opacity-80 ${isModal ? "hidden" : ""}`} />
                       <MessageSquare size={isModal ? 32 : 44} className="text-emerald-400" strokeWidth={1.5} />
                     </div>
                   )}

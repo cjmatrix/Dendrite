@@ -4,7 +4,7 @@ dotenv.config();
 
 export const qdrantClient = new QdrantClient({
   url: process.env.QDRANT_URL || "http://localhost:6333",
-  apiKey: process.env.QDRANT_API_KEY, // Optional, depending on your setup
+  apiKey: process.env.QDRANT_API_KEY, 
 });
 
 export const COLLECTION_NAME = "code_blocks";
@@ -22,8 +22,8 @@ export async function initQdrant() {
     if (!codeExists) {
       await qdrantClient.createCollection(COLLECTION_NAME, {
         vectors: {
-          code: { size: 768, distance: "Cosine" },
-          description: { size: 768, distance: "Cosine" },
+          code: { size:768, distance: "Cosine" },
+          description: { size:768, distance: "Cosine" },
         },
       });
       console.log(`✅ Qdrant collection '${COLLECTION_NAME}' created.`);
@@ -48,11 +48,11 @@ export async function initQdrant() {
       (c) => c.name === SEARCH_CACHE_COLLECTION,
     );
     if (!searchCacheExists) {
-      // Create collection for search caching
+     
       await qdrantClient.createCollection(SEARCH_CACHE_COLLECTION, {
         vectors: { size: 768, distance: "Cosine" },
       });
-      // Create a payload index on 'createdAt' for fast cron sweeps
+    
       await qdrantClient.createPayloadIndex(SEARCH_CACHE_COLLECTION, {
         field_name: "createdAt",
         field_schema: "integer",
@@ -65,4 +65,3 @@ export async function initQdrant() {
     console.error("❌ Failed to initialize Qdrant collections:", error);
   }
 }
-//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

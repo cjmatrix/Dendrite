@@ -8,11 +8,20 @@ type EmbeddingTaskType =
   | "CLASSIFICATION"
   | "CLUSTERING";
 
+
+ import { VoyageAIClient } from "voyageai";
+
+const voyageClient = new VoyageAIClient({
+  apiKey: process.env.VOYAGE_API_KEY,
+});
+
+
 export async function generateEmbedding(
   text: string,
   taskType: EmbeddingTaskType = "RETRIEVAL_DOCUMENT",
 ): Promise<number[]> {
-  try {
+
+    try {
     const response = await fetch("http://localhost:7997/embeddings", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -37,6 +46,24 @@ export async function generateEmbedding(
     console.error("🔥 Jina Local Embedding failed:", error.message);
     throw error;
   }
+
+  // try {
+  //   const response = await voyageClient.embed({
+  //     input: [text],
+  //     model: "voyage-3.5-lite",
+  //     inputType: "document"
+  //   });
+
+  //   const embedding = response.data?.[0]?.embedding;
+  //   if (!embedding || embedding.length === 0) {
+  //     throw new Error("No embedding returned from Voyage API");
+  //   }
+
+  //   return embedding;
+  // } catch (error) {
+  //   console.error("Voyage Embedding Error:", error);
+  //   throw error;
+  // }
 }
 
 

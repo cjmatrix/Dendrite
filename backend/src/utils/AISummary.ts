@@ -23,7 +23,7 @@ Messages to compress:
 ${textMessages}`;
 
   const response = await ai.models.generateContent({
-    model: "gemini-2.5-flash-lite",
+    model: "gemini-2.5-flash",
     contents: [
       {
         role: "user",
@@ -63,7 +63,7 @@ RULES:
 Updated Summary:`;
 
   const response = await ai.models.generateContent({
-    model: "gemini-2.5-flash-lite",
+    model: "gemini-2.5-flash",
     contents: [
       {
         role: "user",

@@ -1,31 +1,29 @@
 import React, { useState, useRef, useMemo, useCallback, useEffect } from "react";
-import { Paperclip, Share, MoreVertical, ArrowUp, Image, Sparkles, ChevronDown, Check, StickyNote, Folder, Home, ChevronRight, Brain, Link, X, GitBranch } from "lucide-react";
+import { Paperclip, Share, MoreVertical, ArrowUp, Image, Sparkles, ChevronDown, Check, StickyNote, Folder, Home, ChevronRight, Brain, X, GitBranch } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { Virtuoso } from "react-virtuoso";
 import type { VirtuosoHandle } from "react-virtuoso";
 import api from "../api/axios";
-import ReactMarkdown from "react-markdown";
 import "../styles/markdown.css";
-import remarkGfm from "remark-gfm";
-import remarkMath from "remark-math";
-import rehypeKatex from "rehype-katex";
 import { useAppSelector, useAppDispatch } from "../store/store";
 import type { FileNode } from "../types/types";
 import { setActiveSidebarRootId } from "../store/explorerSlice";
 import DendritesLogo from "./DendritesLogo";
-import { markdownComponents } from "./markdown/MarkdownComponents";
+import { MessageContent } from "./MessageContent";
 import { StreamingContext } from "../contexts/StreamingContext";
 import { QuickChatModal } from "./QuickChatModal.tsx";
 import { streamingFetch } from "../api/streamingFetch";
 import { requestFirebaseNotificationPermission } from "../firebase";
 import { getMarkdownFromDOMSelection } from "../utils/markdownUtils";
 import FileDisplay from "./FileDisplay";
+import { useDebouncedValue } from "../hooks/useDebouncedValue";
 
 interface Message {
   _id?: string;
   role: "user" | "model" | "system";
   content: string;
+  imageUrl?: string;
   hasSubChat?: boolean;
   subChats?: Array<{ subChatId: string; relY: number }>
 }
@@ -56,6 +54,13 @@ const MessageBubble = React.memo(({ msg, onOpenSubChat, onCreateRecall }: { msg:
               </span>
             </div>
             <div className="px-5 py-3.5 rounded-2xl rounded-tr-sm bg-(--theme-bg-surface) border border-zinc-800 text-[16px] leading-relaxed whitespace-pre-wrap text-gray-200 shadow-sm">
+              {msg.imageUrl && (
+                <img
+                  src={msg.imageUrl}
+                  alt="Uploaded"
+                  className="mb-3 rounded-xl border border-zinc-700 max-h-72 object-contain"
+                />
+              )}
               {msg.content}
             </div>
 
@@ -98,15 +103,7 @@ const MessageBubble = React.memo(({ msg, onOpenSubChat, onCreateRecall }: { msg:
                   {time}
                 </span>
               </div>
-              <div className="markdown-body text-[16px] leading-relaxed text-gray-300 w-full overflow-hidden">
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm, remarkMath]}
-                  rehypePlugins={[rehypeKatex]}
-                  components={markdownComponents}
-                >
-                  {msg.content}
-                </ReactMarkdown>
-              </div>
+              <MessageContent content={msg.content} />
               
               {/* Sticky Note Icons - Positioned horizontally to selection */}
               {msg.hasSubChat && msg.subChats?.map((sc) => (
@@ -173,13 +170,7 @@ const VirtuosoFooter = ({ context }: any) => {
             </div>
             <div className="markdown-body text-[16px] leading-relaxed text-gray-300 w-full overflow-hidden">
               <StreamingContext.Provider value={true}>
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm, remarkMath]}
-                  rehypePlugins={[rehypeKatex]}
-                  components={markdownComponents}
-                >
-                  {streamingText}
-                </ReactMarkdown>
+                <MessageContent content={streamingText} />
               </StreamingContext.Provider>
               <span className="inline-block w-2 h-4 bg-blue-400 ml-1 rounded-sm streaming-cursor align-middle" />
             </div>
@@ -223,7 +214,7 @@ const ChatWindow: React.FC = () => {
   const [mode, setMode] = useState<"general" | "visual">("general");
   const [isModeOpen, setIsModeOpen] = useState(false);
   
-  
+  console.log("rendering chatwinodw")
   const [selection, setSelection] = useState<{
     text: string;
     markdown: string;
@@ -244,7 +235,13 @@ const ChatWindow: React.FC = () => {
   const [atBottom, setAtBottom] = useState(true);
   const [isTracerActive, setIsTracerActive] = useState(false);
   const [isInheritModalOpen, setIsInheritModalOpen] = useState(false);
-
+  const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<{ name: string; url: string } | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Debounce streaming text to reduce markdown re-renders during streaming
+  const debouncedStreamingText = useDebouncedValue(streamingText, 150);
   // Trigger animation ONLY on Firebase push notification
   useEffect(() => {
     const handleNotification = () => {
@@ -329,11 +326,116 @@ const ChatWindow: React.FC = () => {
     };
   }, [messagesData]);
 
+  const allowedDocumentMimeTypes = new Set([
+    "application/pdf",
+    "text/plain",
+    "text/markdown",
+    "text/csv",
+    "application/json",
+    "application/xml",
+    "text/xml",
+    "application/yaml",
+    "text/yaml",
+    "application/x-yaml",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.ms-powerpoint",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    "application/rtf",
+    "application/octet-stream",
+  ]);
+
+  const allowedDocumentExtensions = new Set([
+    ".pdf",
+    ".txt",
+    ".md",
+    ".csv",
+    ".json",
+    ".xml",
+    ".yaml",
+    ".yml",
+    ".doc",
+    ".docx",
+    ".xls",
+    ".xlsx",
+    ".ppt",
+    ".pptx",
+    ".rtf",
+    ".py",
+    ".js",
+    ".ts",
+    ".tsx",
+    ".jsx",
+    ".java",
+    ".c",
+    ".cpp",
+    ".h",
+    ".hpp",
+    ".go",
+    ".rs",
+    ".php",
+    ".rb",
+    ".sh",
+    ".sql",
+    ".html",
+    ".css",
+  ]);
+
+  const handleFileSelect = async (file: File | null) => {
+    if (!file) return;
+    const isImage = file.type.startsWith("image/");
+    const ext = file.name.includes(".")
+      ? `.${file.name.split(".").pop()?.toLowerCase()}`
+      : "";
+    const isDocument =
+      allowedDocumentMimeTypes.has(file.type) || allowedDocumentExtensions.has(ext);
+
+    if (!isImage && !isDocument) {
+      alert("Please choose a valid image or supported document/code file.");
+      return;
+    }
+
+    setIsUploadingImage(true);
+    try {
+      const formData = new FormData();
+      formData.append(isImage ? "image" : "file", file);
+
+      const endpoint = isImage ? "/chats/upload-image" : "/chats/upload-file";
+      const res = await api.post(endpoint, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      const uploadedUrl = res?.data?.data?.url;
+      if (!uploadedUrl) {
+        throw new Error("No URL returned from upload API");
+      }
+      if (isImage) {
+        setSelectedImageUrl(uploadedUrl);
+        setSelectedFile(null);
+      } else {
+        setSelectedFile({ name: file.name, url: uploadedUrl });
+        setSelectedImageUrl(null);
+      }
+    } catch (error) {
+      console.error("File upload failed", error);
+      alert("File upload failed. Please try again.");
+    } finally {
+      setIsUploadingImage(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
   const handleSend = async () => {
-    if (!input.trim() || isStreaming) return;
+    if ((!input.trim() && !selectedImageUrl) || isStreaming || isUploadingImage) return;
 
     const userMessage = input.trim();
+    const currentImageUrl = selectedImageUrl;
     setInput("");
+    setSelectedImageUrl(null);
     
     // Explicitly snap user down to the bottom to see their sent message and the incoming stream
     // Using a slightly longer timeout (100ms) to ensure React has completely painted the DOM with the new message
@@ -360,7 +462,12 @@ const ChatWindow: React.FC = () => {
         ...newPages[0],
         messages: [
           ...newPages[0].messages,
-          { role: "user", content: userMessage, _id: userTempId },
+          {
+            role: "user",
+            content: userMessage || "Analyze this image",
+            imageUrl: currentImageUrl || undefined,
+            _id: userTempId,
+          },
         ],
       };
       
@@ -371,7 +478,7 @@ const ChatWindow: React.FC = () => {
       const response = await streamingFetch(`${API_URL}/chats/${id}/message`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: userMessage, mode }),
+        body: JSON.stringify({ message: userMessage, mode, imageUrl: currentImageUrl }),
       });
 
       if (!response.ok || !response.body) {
@@ -407,7 +514,7 @@ const ChatWindow: React.FC = () => {
 
                 fullReply += parsed.text;
                 setStreamingText(fullReply);
-                await new Promise((r) => setTimeout(r, 100));
+                // await new Promise((r) => setTimeout(r, 100));
               } catch {
                // ignore partial json limits
               }
@@ -448,7 +555,7 @@ const ChatWindow: React.FC = () => {
            });
         }
         
-        // Retrospectively update the temporary user message with its real DB ID
+        //  update the temporary user message with its real DB ID
         if (metadataIds?.userMessageId) {
            newMessages = newMessages.map(m => 
              m._id === userTempId ? { ...m, _id: metadataIds.userMessageId } : m
@@ -496,9 +603,7 @@ const ChatWindow: React.FC = () => {
         const bubbleRect = bubbleElement.getBoundingClientRect();
         const relativeY = rect.top - bubbleRect.top;
 
-        // Capture markdown from DOM RIGHT NOW while the selection is still alive.
-        // This is the key improvement: Turndown converts the selected HTML nodes
-        // (tables, code blocks, formatting) back into proper markdown.
+       
         const capturedMarkdown = getMarkdownFromDOMSelection() || selectedText;
 
         setSelection({
@@ -518,8 +623,8 @@ const ChatWindow: React.FC = () => {
     }
   };
 
-  const handleOpenSubChat = useCallback((messageId: string,subChatId:string) => {
-    console.log(messageId,subChatId)
+  const handleOpenSubChat = useCallback((messageId: string, subChatId: string) => {
+    console.log(messageId, subChatId);
     setSelection({
       text: "", // Modal will fetch it
       markdown: "",
@@ -527,36 +632,38 @@ const ChatWindow: React.FC = () => {
       y: window.innerHeight / 2,
       messageId,
       visible: false,
-      subChatId:subChatId
+      subChatId: subChatId,
     });
     setIsQuickChatOpen(true);
   }, []);
 
-  const handleCreateRecall = async (markdownContent: string | null, msgId: string) => {
-    try {
-      if(isRecalling) return;
-      setIsRecalling(true);
-      
-      // Request permission only when they actually use the feature!
-      await requestFirebaseNotificationPermission();
+  const handleCreateRecall = useCallback(
+    async (markdownContent: string | null, msgId: string) => {
+      try {
+        if (isRecalling) return;
+        setIsRecalling(true);
 
-      await api.post(`/recall/save`, {
-        // markdownContent is either the pre-captured DOM→markdown (from text selection)
-        // or null (from the Brain icon on a whole message – backend will use full msg content)
-        content: markdownContent || null,
-        chatId: id,
-        msgId: msgId
-      });
-      // Invalidate queries so the badge count at least updates background data
-      queryClient.invalidateQueries({ queryKey: ["recallCount"] });
       
-      setSelection(null);
-    } catch (error) {
-      console.error("Failed to save recall card", error);
-    } finally {
-      setIsRecalling(false);
-    }
-  };
+        await requestFirebaseNotificationPermission();
+
+        await api.post(`/recall/save`, {
+         
+          content: markdownContent || null,
+          chatId: id,
+          msgId: msgId,
+        });
+        // Invalidate queries so the badge count at least updates background data
+        queryClient.invalidateQueries({ queryKey: ["recallCount"] });
+
+        setSelection(null);
+      } catch (error) {
+        console.error("Failed to save recall card", error);
+      } finally {
+        setIsRecalling(false);
+      }
+    },
+    [id, queryClient, isRecalling]
+  );
 
   return (
     <div 
@@ -662,7 +769,7 @@ const ChatWindow: React.FC = () => {
             followOutput={false}
             increaseViewportBy={{ top: 4000, bottom: 4000 }}
             atBottomStateChange={(bottom) => setAtBottom(bottom)}
-            context={{ isFetchingNextPage, isStreaming, streamingText }}
+            context={{ isFetchingNextPage, isStreaming, streamingText: debouncedStreamingText }}
             startReached={() => {
               if (hasNextPage && !isFetchingNextPage) {
                 fetchNextPage();
@@ -693,10 +800,58 @@ const ChatWindow: React.FC = () => {
       </div>
 
       {/* Input Container - Floating with Gradient Overlay */}
-      <div className="absolute bottom-0 left-0 w-[85vw] pt-20 pb-6 px-4 md:px-8 border-none pointer-events-none bg-linear-to-t from-(--theme-bg-base) via-(--theme-bg-base)/95 to-transparent">
+      <div className="absolute bottom-0 left-0 right-0 pt-20 pb-6 px-4 md:px-8 border-none pointer-events-none bg-linear-to-t from-(--theme-bg-base) via-(--theme-bg-base)/95 to-transparent">
         <div className="max-w-4xl mx-auto relative pointer-events-auto ">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,.pdf,.txt,.md,.csv,.json,.xml,.yaml,.yml,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.rtf,.py,.js,.ts,.tsx,.jsx,.java,.c,.cpp,.h,.hpp,.go,.rs,.php,.rb,.sh,.sql,.html,.css"
+            className="hidden"
+            onChange={(e) => handleFileSelect(e.target.files?.[0] || null)}
+          />
+
+          {selectedImageUrl && (
+            <div className="mb-2 inline-flex items-center gap-2 rounded-xl border border-zinc-700 bg-zinc-900/70 px-2 py-2">
+              <img src={selectedImageUrl} alt="Selected upload" className="h-12 w-12 rounded-lg object-cover" />
+              <span className="text-xs text-zinc-300">Image attached</span>
+              <button
+                onClick={() => setSelectedImageUrl(null)}
+                className="p-1 rounded-md hover:bg-white/10 text-zinc-300"
+                title="Remove image"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          )}
+
+          {selectedFile && (
+            <div className="mb-2 inline-flex items-center gap-2 rounded-xl border border-zinc-700 bg-zinc-900/70 px-2 py-2">
+              <span className="text-xs text-zinc-300">File attached: {selectedFile.name}</span>
+              <a
+                href={selectedFile.url}
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs text-blue-400 hover:underline"
+              >
+                View
+              </a>
+              <button
+                onClick={() => setSelectedFile(null)}
+                className="p-1 rounded-md hover:bg-white/10 text-zinc-300"
+                title="Remove file"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          )}
+
           <div className="flex items-center bg-[var(--theme-bg-elevated)]/90 backdrop-blur-xl border border-white/10 rounded-2xl px-3 md:px-4 py-3 md:py-3.5 focus-within:border-blue-500/50 focus-within:bg-[var(--theme-bg-elevated)] transition-all shadow-2xl">
-            <button className="p-2 hover:bg-white/5 rounded-xl text-gray-400 hover:text-gray-200 transition-colors hidden md:block group">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="p-2 hover:bg-white/5 rounded-xl text-gray-400 hover:text-gray-200 transition-colors hidden md:block group"
+              disabled={isUploadingImage || isStreaming}
+              title="Upload image or file"
+            >
               <Paperclip
                 size={20}
                 className="group-hover:rotate-12 transition-transform"
@@ -704,7 +859,7 @@ const ChatWindow: React.FC = () => {
             </button>
             
             {/* Mode Selector */}
-            <div className="relative z-50">
+            <div className="relative z-50 ">
               <button 
                 onClick={() => setIsModeOpen(!isModeOpen)}
                 className="flex items-center gap-1.5 px-3 py-1.5 ml-1 rounded-lg text-xs font-semibold bg-white/5 hover:bg-white/10 text-gray-300 transition-colors border border-white/5 shadow-sm"
@@ -745,7 +900,7 @@ const ChatWindow: React.FC = () => {
 
             <textarea
               placeholder="Ask follow-up or research next steps..."
-              className="flex-1 bg-transparent border-none outline-none px-3 text-[16px] text-gray-200 placeholder:text-gray-500 resize-none max-h-48 py-1 overflow-y-auto no-scrollbar"
+              className="flex-1  bg-transparent border-none outline-none px-3 text-[16px] text-gray-200 placeholder:text-gray-500 resize-none max-h-48 py-1 overflow-y-auto no-scrollbar"
               value={input}
               rows={1}
               ref={(el) => {
@@ -770,9 +925,9 @@ const ChatWindow: React.FC = () => {
               </span>
               <button
                 onClick={handleSend}
-                disabled={isStreaming || !input.trim()}
+                disabled={isStreaming || isUploadingImage || (!input.trim() && !selectedImageUrl)}
                 className={`p-2 rounded-xl transition-all flex items-center justify-center ${
-                  input.trim() && !isStreaming
+                  (input.trim() || selectedImageUrl) && !isStreaming && !isUploadingImage
                     ? "bg-blue-600 text-white hover:bg-blue-500 shadow-md shadow-blue-500/20"
                     : "bg-white/5 text-gray-500 cursor-not-allowed"
                 }`}

@@ -1,0 +1,1 @@
+export  const MAX_IMAGE_BYTES:number = 5 * 1024 * 1024;

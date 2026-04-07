@@ -1,6 +1,6 @@
 
 import { useRef, useState, useEffect } from "react";
-import { Plus, FolderPlus, MessageSquare, Check, Folder, ChevronLeft, Sparkles, Brain } from "lucide-react";
+import { Plus, FolderPlus, MessageSquare, Check, Folder, ChevronLeft, Sparkles, Brain, Menu } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { FileNode, FileType } from "../types/types";
 import { FileItem } from "./FileItem";
@@ -22,7 +22,7 @@ export default function FileExplorer() {
       return res.data.data;
     },
   });
-
+  console.log("explorer rendrering")
   const { data: chats } = useQuery({
     queryKey: ["chats"],
     queryFn: async () => {
@@ -118,6 +118,7 @@ export default function FileExplorer() {
   
 
   const [width, setWidth] = useState(380);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   const [isResizing, setIsResizing] = useState(false);
 
@@ -132,12 +133,13 @@ export default function FileExplorer() {
   const sidebarRef = useRef<HTMLDivElement>(null);
 
   const startResizing = (e: React.MouseEvent) => {
+    if (isCollapsed) return; // don't resize when collapsed
     e.preventDefault();
     setIsResizing(true);
   };
 
   const resize = (e: MouseEvent) => {
-    if (isResizing && sidebarRef.current) {
+    if (isResizing && sidebarRef.current && !isCollapsed) {
       const newWidth =
         e.clientX - sidebarRef.current.getBoundingClientRect().left;
 
@@ -283,11 +285,30 @@ export default function FileExplorer() {
   };
 
   return (
+    <div className=" flex ">
+      <div
+        className="relative h-[100vh] z-40 flex items-center justify-center bg-neutral-950/70 border-2 border-zinc-900 "
+        style={{ width: 50 }}
+      >
+        <button
+          onClick={() => setIsCollapsed((s) => !s)}
+          className=" absolute top-2 w-8 h-8 rounded-md text-zinc-200 flex items-center justify-center bg"
+          title={isCollapsed ? "Open Explorer" : "Collapse Explorer"}
+        >
+          {isCollapsed ? <Menu size={16} /> : <ChevronLeft size={16} />}
+        </button>
+      </div>    
+    
     <div
       ref={sidebarRef}
-      style={{ width: `${width}px` }}
-      className="relative h-screen bg-zinc-950/20 border-r border-zinc-800/90 shrink-0 flex flex-col pt-0 z-20 shadow-2xl backdrop-blur-3xl"
+      style={{ width: `${isCollapsed ? 0 : width}px` }}
+      className="relative h-screen  bg-neutral-950/70 border-r border-zinc-800/90 shrink-0 flex flex-col pt-0 z-20 shadow-2xl backdrop-blur-3xl"
     >
+      {/* Collapse / Expand handle (20px wide) */}
+   
+
+      { !isCollapsed && (
+        <>
       {/* Logo at the very top */}
       <div className="h-13 flex items-center gap-2.5 px-5 py-4 border-b border-zinc-800/40 bg-zinc-900/20 backdrop-blur-md">
         <DendritesLogo size={28} />
@@ -445,10 +466,14 @@ export default function FileExplorer() {
         </button>
       </div>
 
+        </>
+      )}
+
       <div
         className="absolute top-0 right-0 w-[4px] h-full cursor-col-resize hover:bg-cyan-500/50 z-30 transition-colors duration-300 delay-100"
         onMouseDown={startResizing}
       />
+    </div>
     </div>
   );
 }

@@ -55,13 +55,13 @@ const DendritesLogo: React.FC<DendritesLogoProps> = ({
             fill="url(#sphereBody)" 
             stroke="rgba(34, 211, 238, 0.4)" 
             strokeWidth="0.5"
-            className="animate-shimmer"
+            className={isLoading ? "animate-shimmer" : ""}
           />
           {/* Specular Highlight */}
           <circle 
             cx="50" cy="50" r="46" 
             fill="url(#sphereHighlight)" 
-            className="animate-spin-slow opacity-40" 
+            className={isLoading ? "animate-spin-slow opacity-40" : "opacity-40"} 
             style={{ transformOrigin: '50px 50px' }}
           />
         </g>
@@ -77,12 +77,12 @@ const DendritesLogo: React.FC<DendritesLogoProps> = ({
             strokeWidth="1.5" 
             strokeDasharray="30 150" 
             strokeLinecap="round"
-            className="animate-spin-fast opacity-60" 
+            className={isLoading ? "animate-spin-fast opacity-60" : "opacity-60"} 
           />
           {/* Outer dotted ring */}
-          <circle cx="50" cy="50" r="48" stroke="url(#neuralGradient)" strokeWidth="0.5" strokeDasharray="4 4" className="animate-spin-slow opacity-20" />
+          <circle cx="50" cy="50" r="48" stroke="url(#neuralGradient)" strokeWidth="0.5" strokeDasharray="4 4" className={isLoading ? "animate-spin-slow opacity-20" : "opacity-20"} />
           {/* Pulse wave */}
-          <circle cx="50" cy="50" r="40" stroke="url(#neuralGradient)" strokeWidth="1" className="animate-[ping_2s_linear_infinite] opacity-15" />
+          <circle cx="50" cy="50" r="40" stroke="url(#neuralGradient)" strokeWidth="1" className={isLoading ? "animate-[ping_2s_linear_infinite] opacity-15" : "opacity-15"} />
         </g>
 
         {/* Brain/Neural Cluster Container */}
@@ -94,24 +94,24 @@ const DendritesLogo: React.FC<DendritesLogoProps> = ({
         >
           {/* Orbiting Particle */}
           <g className={`origin-center transition-opacity duration-700 ${isLoading ? "opacity-100 animate-spin-fast" : "opacity-0"}`} style={{ transformOrigin: '50px 50px' }}>
-            <circle cx="50" cy="10" r="3" fill="#22d3ee" filter="url(#nodeGlow)" className="animate-pulse" />
+            <circle cx="50" cy="10" r="3" fill="#22d3ee" filter="url(#nodeGlow)" className={isLoading ? "animate-pulse" : ""} />
           </g>
 
           {/* Main Branches */}
           <g className="opacity-80">
-            <path d="M 50 50 L 50 20 L 40 10" stroke="url(#neuralGradient)" strokeWidth="3" strokeLinecap="round" opacity="0.9" />
+            <path d="M 50 50 L 50 20 L 40 10" stroke="url(#neuralGradient)" strokeWidth="5" strokeLinecap="round" opacity="0.9" />
             <circle cx="40" cy="10" r="2.5" fill="#22d3ee" filter="url(#nodeGlow)" className={isLoading ? "animate-synapse-fire" : ""} />
             
-            <path d="M 50 50 L 75 40 L 85 45" stroke="url(#neuralGradient)" strokeWidth="3" strokeLinecap="round" opacity="0.8" />
+            <path d="M 50 50 L 75 40 L 85 45" stroke="url(#neuralGradient)" strokeWidth="5" strokeLinecap="round" opacity="0.8" />
             <circle cx="85" cy="45" r="2" fill="#0ea5e9" filter="url(#nodeGlow)" className={isLoading ? "animate-synapse-fire [animation-delay:200ms]" : ""} />
             
-            <path d="M 50 50 L 65 75 L 60 85" stroke="url(#neuralGradient)" strokeWidth="3" strokeLinecap="round" opacity="0.7" />
-            <circle cx="60" cy="85" r="3" fill="#3b82f6" filter="url(#nodeGlow)" className={isLoading ? "animate-synapse-fire [animation-delay:400ms]" : "animate-pulse"} />
+            <path d="M 50 50 L 65 75 L 60 85" stroke="url(#neuralGradient)" strokeWidth="5" strokeLinecap="round" opacity="0.7" />
+            <circle cx="60" cy="85" r="3" fill="#3b82f6" filter="url(#nodeGlow)" className={isLoading ? "animate-synapse-fire [animation-delay:400ms]" : ""} />
             
-            <path d="M 50 50 L 25 65 L 15 60" stroke="url(#neuralGradient)" strokeWidth="3" strokeLinecap="round" opacity="0.9" />
+            <path d="M 50 50 L 25 65 L 15 60" stroke="url(#neuralGradient)" strokeWidth="5" strokeLinecap="round" opacity="0.9" />
             <circle cx="15" cy="60" r="2" fill="#22d3ee" filter="url(#nodeGlow)" className={isLoading ? "animate-synapse-fire [animation-delay:600ms]" : ""} />
             
-            <path d="M 50 50 L 20 40 L 10 45" stroke="url(#neuralGradient)" strokeWidth="3" strokeLinecap="round" opacity="0.6" />
+            <path d="M 50 50 L 20 40 L 10 45" stroke="url(#neuralGradient)" strokeWidth="5" strokeLinecap="round" opacity="0.6" />
             <circle cx="10" cy="45" r="1.5" fill="#22d3ee" filter="url(#nodeGlow)" className={isLoading ? "animate-synapse-fire [animation-delay:800ms]" : ""} />
 
             <path d="M 50 35 L 60 25" stroke="#22d3ee" strokeWidth="1.5" strokeLinecap="round" opacity="0.4" />
@@ -121,15 +121,15 @@ const DendritesLogo: React.FC<DendritesLogoProps> = ({
 
           {/* Central Nucleus */}
           <g>
-             <circle cx="50" cy="50" r="10" fill="url(#neuralGradient)" opacity="0.2" className="animate-pulse" />
+             <circle cx="50" cy="50" r="10" fill="url(#neuralGradient)" opacity="0.2" className={isLoading ? "animate-pulse" : ""} />
              <circle 
               cx="50" 
               cy="50" 
               r="6" 
               fill="url(#neuralGradient)" 
-              className={`transition-all duration-700 ${isLoading ? "animate-nucleus-breathing-fast shadow-[0_0_20px_#22d3ee]" : "animate-nucleus-breathing"}`} 
+              className={`transition-all duration-700 ${isLoading ? "animate-nucleus-breathing-fast shadow-[0_0_20px_#22d3ee]" : isRotate ? "animate-nucleus-breathing" : ""}`} 
              />
-             <circle cx="50" cy="50" r="2" fill="white" className="animate-ping opacity-60" style={{ animationDuration: '2s' }} />
+             <circle cx="50" cy="50" r="2" fill="white" className={isLoading ? "animate-ping opacity-60" : "opacity-60"} style={{ animationDuration: '2s' }} />
           </g>
         </g>
       </svg>

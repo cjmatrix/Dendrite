@@ -25,7 +25,7 @@ interface FileItemProps {
   node: FileNode;
 }
 
-export const FileItem: React.FC<FileItemProps> = ({ node }) => {
+export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
   const [isOpen, setIsOpen] = useState(node.isExpanded);
   const [isCreating, setIsCreating] = useState<FileType | null>(null);
   const [isRenaming, setIsRenaming] = useState<FileType | null>(null);
@@ -422,10 +422,10 @@ export const FileItem: React.FC<FileItemProps> = ({ node }) => {
       </div>
 
       {isCreating && (
-        <div className="ml-[22px] flex items-center gap-1.5 py-1.5 px-2 animate-in fade-in slide-in-from-left-2 duration-200 bg-black/30 rounded-lg border border-zinc-800/80 mb-1 backdrop-blur-md">
+        <div className="ml-[22px] flex items-center gap-1.5 py-1.5 px-2 bg-black/30 rounded-lg border border-zinc-800/80 mb-1">
           <input
             autoFocus
-            className="bg-transparent border-none text-[13px] font-medium text-gray-200 outline-none px-1 py-0.5 w-[130px] transition-all placeholder:text-zinc-600"
+            className="bg-black/40 border border-cyan-500/50 focus:border-cyan-400 rounded-md text-[13px] font-medium text-gray-200 outline-none px-2 py-0.5 w-[130px] transition-all shadow-inner focus:shadow-[0_0_10px_-2px_rgba(6,182,212,0.3)] placeholder:text-zinc-600"
             value={newItemName}
             onChange={(e) => setNewItemName(e.target.value)}
             onBlur={() => setIsCreating(null)}
@@ -541,4 +541,4 @@ export const FileItem: React.FC<FileItemProps> = ({ node }) => {
       )}
     </div>
   );
-};
+});

@@ -3,9 +3,16 @@ import axios from 'axios';
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1',
   withCredentials: true, // Crucial for sending cookies (access/refresh tokens)
-  headers: {
-    'Content-Type': 'application/json',
-  },
+});
+
+// Set JSON header by default, but allow FormData to override for multipart uploads
+api.defaults.headers.post['Content-Type'] = 'application/json';
+api.interceptors.request.use((config) => {
+  // If data is FormData, don't set Content-Type (let browser set multipart/form-data with boundary)
+  if (config.data instanceof FormData) {
+    delete config.headers['Content-Type'];
+  }
+  return config;
 });
 
 // --- Silent Refresh Interceptor ---

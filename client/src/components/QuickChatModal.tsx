@@ -108,7 +108,7 @@ export const QuickChatModal: React.FC<QuickChatModalProps> = ({
         relativeY: relativeY || existingSubChat?.relativeY || 0
       });
     },
-    onSuccess: (res) => {
+    onSuccess: () => {
       setIsPinned(true);
       queryClient.invalidateQueries({ queryKey: ["subchat", chatId, sourceMessageId,subChatId] });
       queryClient.invalidateQueries({ queryKey: ["chatMessages", chatId] });

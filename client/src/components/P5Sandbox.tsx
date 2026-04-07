@@ -23,15 +23,15 @@ export default function P5Sandbox({ p5CodeString }: P5SandboxProps) {
 
   const toggleFullscreen = () => setIsFullscreen(!isFullscreen);
 
-  // When expanding, we pull the element out of the markdown flow and cover the entire viewport
-  const containerClasses = isFullscreen
-    ? "fixed inset-0 z-50 bg-zinc-950/95 flex justify-center items-center p-4 sm:p-8 backdrop-blur-md"
-    : "w-full flex justify-center my-6 relative group";
 
-  // The inner wrapper holds the iframe and the absolute positioned expand buttons
+  const containerClasses = isFullscreen
+    ? "fixed inset-0 z-50 bg-zinc-950/55 flex justify-center items-center p-4 sm:p-8 backdrop-blur-md"
+    : "w-full flex justify-center my-10 relative group";
+
+ 
   const iframeWrapperClasses = isFullscreen
     ? "relative w-full h-[90vh] max-w-7xl mx-auto shadow-[0_0_50px_rgba(0,0,0,0.5)] flex bg-zinc-900/40 rounded-2xl overflow-hidden border border-zinc-700/80"
-    : "relative w-full max-w-2xl h-[400px] border border-zinc-700/50 rounded-xl bg-zinc-900/40 shadow-xl overflow-hidden";
+    : "relative w-[115%] -ml-[7.5%] max-w-[92vw] h-[700px] border border-zinc-700/50 rounded-xl bg-zinc-900/40 shadow-xl overflow-hidden self-center ";
 
   return (
     <div className={containerClasses}>

@@ -5,6 +5,8 @@ import {
 } from "../config/qdrant";
 import { generateEmbedding } from "../utils/embedding";
 
+// Similarity threshold for filtering Qdrant results (Cosine similarity).
+// Configurable via environment variable `SIMILARITY_THRESHOLD` (e.g. 0.75).
 const SIMILARITY_THRESHOLD = 0.62;
 
 export async function searchSimilarCode(

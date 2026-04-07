@@ -2,6 +2,7 @@
 import { Folder } from "../models/Folders"
 import { Chat } from "../models/Chat"
 import { AppError } from "../utils/AppError"
+import { COLLECTION_NAME, qdrantClient, SUMMARY_COLLECTION_NAME } from "../config/qdrant";
 export const createFolderService = async(userId: string, name: string,parentId:string|null) => {
 
     const folder= await Folder.findOne({userId:userId,name:name,parentId:parentId});
@@ -77,33 +78,59 @@ export const updateFolderService = async(folderId: string, userId: string, updat
     return folder;
 }
 
-export const deleteFolderService = async(folderId: string, userId: string) => {
+export const deleteFolderService = async (folderId: string, userId: string) => {
+  const folder = await Folder.findOne({ _id: folderId, userId });
+  if (!folder) {
+    throw new AppError("Folder not found", 404);
+  }
+  if (folder.isSystemFolder) {
+    throw new AppError("System folders are restricted and cannot be deleted", 403);
+  }
 
-    const folder = await Folder.findOne({ _id: folderId, userId });
-    if (!folder) {
-        throw new AppError("Folder not found", 404);
+
+  const idsToDelete: string[] = [folderId];
+  const queue: string[] = [folderId];
+  const seen = new Set<string>([folderId]);
+  let head = 0;
+  while (head < queue.length) {
+    const parent = queue[head++];
+    const children = await Folder.find({ parentId: parent }).select("_id").lean();
+    for (const c of children) {
+      const id = c._id.toString();
+      if (!seen.has(id)) {
+        seen.add(id);
+        idsToDelete.push(id);
+        queue.push(id);
+      }
     }
+  }
 
-    if (folder.isSystemFolder) {
-        throw new AppError("System folders are restricted and cannot be deleted", 403);
-    }
-
- 
-    const idsToDelete= [folderId];
-
-    const childIdToDelete=async(parentId:string)=>{
-        const children=await Folder.find({parentId});
-        for(const child of children){
-            idsToDelete.push(child._id.toString());
-            childIdToDelete(child._id.toString())
-        }
-    }
-    
-    childIdToDelete(folderId)
+  const chats = await Chat.find({ folderId: { $in: idsToDelete }, userId }).select("_id").lean();
+  const chatIds = chats.map((c) => c._id.toString());
 
   
-    await Chat.deleteMany({ folderId: { $in: idsToDelete }, userId });
-    await Folder.deleteMany({ _id: { $in: idsToDelete }, userId });
+  if (chatIds.length > 0) {
+    const filter = {
+      must: [
+        { key: "userId", match: { value: String(userId) } },
+        { key: "chatId", match: { any: chatIds } }, 
+      ],
+    };
 
-    return { deletedCount: idsToDelete.length };
-}
+    try {
+      await qdrantClient.delete(COLLECTION_NAME, { filter });
+      await qdrantClient.delete(SUMMARY_COLLECTION_NAME, { filter });
+      console.log(`✅ Deleted Qdrant vectors for ${chatIds.length} chats in folders: ${idsToDelete.length} folders`);
+    } catch (err: any) {
+      console.error("❌ Qdrant delete failed:", err?.message ?? err);
+      throw err
+    }
+  } else {
+    console.log("No chats found for those folders — skipping Qdrant delete.");
+  }
+
+  await Chat.deleteMany({ folderId: { $in: idsToDelete }, userId });
+  await Folder.deleteMany({ _id: { $in: idsToDelete }, userId });
+
+  return { deletedFolderCount: idsToDelete.length, deletedChatCount: chatIds.length };
+};

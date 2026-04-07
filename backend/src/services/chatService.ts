@@ -16,6 +16,7 @@ import addSummaryQueue from "../queue/summaryQueue";
 import addStateQueue from "../queue/stateQueue";
 import { hashCode } from "../utils/stripComments";
 import { redisConnection } from "../config/redis";
+import { COLLECTION_NAME, qdrantClient, SUMMARY_COLLECTION_NAME } from "../config/qdrant";
 
 export const createChatService = async (
   userId: string,
@@ -127,6 +128,30 @@ export const updateChatService = async (
 };
 
 export const deleteChatService = async (chatId: string, userId: string) => {
+  
+   const filter = {
+      must: [
+        {
+          key: "userId",
+          match: { value: String(userId) },
+        },
+        {
+          key: "chatId",
+          match: { value:chatId},
+        },
+      ],
+    };
+
+    await qdrantClient.delete(COLLECTION_NAME,{
+      filter
+    })
+
+    await qdrantClient.delete(SUMMARY_COLLECTION_NAME,{
+      filter
+    })
+
+      console.log("Deleted Vectors")
+
   const chat = await Chat.findOneAndDelete({ _id: chatId, userId });
 
   if (!chat) {
@@ -142,7 +167,8 @@ export const prepareMessageService = async (
   userMessage: string,
   mode?: string,
   codeQueryVector?: number[],
-  descQueryVector?: number[]
+  descQueryVector?: number[],
+  imageUrl?: string,
 ) => {
   const chat = await Chat.findOne({ _id: chatId, userId });
 
@@ -150,7 +176,14 @@ export const prepareMessageService = async (
     throw new AppError("Chat not found", 404);
   }
 
-  const userMsg = await Message.create({ chatId, userId, role: "user", content: userMessage });
+  const normalizedMessage = (userMessage || "").trim() || "Analyze this image";
+  const userMsg = await Message.create({
+    chatId,
+    userId,
+    role: "user",
+    content: normalizedMessage,
+    imageUrl: imageUrl || undefined,
+  });
 
   // (most recent at the top)
   let recentMessages = await Message.find({ chatId })
@@ -177,11 +210,13 @@ export const prepareMessageService = async (
 
   
 
-  const recentMessagesText = recentMessages.map((m) => m.content).join("\n");
+  const recentMessagesText = recentMessages
+    .map((m: any) => `${m.content}${m.imageUrl ? `\nAttached image URL: ${m.imageUrl}` : ""}`)
+    .join("\n");
 
 
-  const finalCodeQueryVector = codeQueryVector || await generateEmbedding(userMessage, "CODE_RETRIEVAL_QUERY");
-  const finalDescQueryVector = descQueryVector || await generateEmbedding(userMessage, "RETRIEVAL_QUERY");
+  const finalCodeQueryVector = codeQueryVector || await generateEmbedding(normalizedMessage, "CODE_RETRIEVAL_QUERY");
+  const finalDescQueryVector = descQueryVector || await generateEmbedding(normalizedMessage, "RETRIEVAL_QUERY");
 
  
   const chatIdsToSearch: string[] = [chatId];
@@ -219,7 +254,7 @@ export const prepareMessageService = async (
 
   // --- DIAGNOSTIC LOGS ---
   console.log(`\n🔍 [RAG DIAGNOSTICS]`);
-  console.log(`📡 User Message: "${userMessage}"`);
+  console.log(`📡 User Message: "${normalizedMessage}"`);
   console.log(`🧠 Long-Term Facts Found: ${chatContextStats.length}`);
   chatContextStats.slice(0, 3).forEach((f, i) => {
     console.log(`   [Fact ${i + 1}] Score: ${f.score.toFixed(3)} | Content: ${f.fact.fact.substring(0, 100)}...`);
@@ -283,17 +318,52 @@ export const prepareMessageService = async (
 Assume your code will be executed in a blank environment. You should write standard global p5 code (e.g., function setup() { createCanvas(600, 400); } function draw() { ... }).
 CRUCIAL: You MUST include a functional Pause/Resume button and also Next and Previous buttons with explanation of each steps in your sketch. You can use p5's \`createButton()\` or draw it manually using \`rect()\`. IF you use \`createButton()\`, you MUST explicitly call \`.position(x, y)\` (e.g., \`button.position(10, 10)\`) to place it safely over the canvas, otherwise it will corrupt the HTML flex layout and overlap elements! The button MUST successfully toggle between \`noLoop()\` to pause and \`loop()\` to resume the animation. Make everything interactive and look beautiful using modern colors!`;
   }
+  else{
+    dynamicSystemInstruction += `\n\nIMPORTANT: The user is currently in GENERAL mode. Do NOT produce any raw p5 code blocks or runnable visualization code. Under no circumstances output a fenced code block labeled \`p5\` or any JavaScript code intended to be executed as a visualization. If the user asks about a previous visualization, provide only a high-level textual description or pseudo-code, and NEVER include runnable p5 code unless the user explicitly switches to Visual Mode.`;
+  }
 
-  const contents = [
-    {
-      role: "user",
-      parts: [{ text: dynamicSystemInstruction }],
-    },
-    ...recentMessages.map((msg) => ({
-      role: msg.role === "model" ? "model" : "user",
-      parts: [{ text: msg.content }],
-    })),
+  // Helper function  image URL to base64
+  const urlToBase64 = async (url: string): Promise<string> => {
+    try {
+      const response = await fetch(url);
+      const buffer = await response.arrayBuffer();
+      return Buffer.from(buffer).toString("base64");
+    } catch (error) {
+      console.error("Error converting image URL to base64:", error);
+      return "";
+    }
+  };
+
+  // Build contents array - flat structure for Gemini API
+  const contents: any[] = [
+    { text: dynamicSystemInstruction },
   ];
+
+
+  for (const msg of recentMessages) {
+    if (msg.role === "model") {
+      contents.push({ text: msg.content });
+    } else {
+      
+      contents.push({ text: msg.content });
+   
+      if (msg.imageUrl) {
+        try {
+          const base64Data = await urlToBase64(msg.imageUrl);
+          if (base64Data) {
+            contents.push({
+              inlineData: {
+                mimeType: "image/jpeg",
+                data: base64Data,
+              },
+            });
+          }
+        } catch (error) {
+          console.error("Error processing image:", error);
+        }
+      }
+    }
+  }
 
   return { chat, contents, userMessageId: userMsg._id.toString() };
 };
