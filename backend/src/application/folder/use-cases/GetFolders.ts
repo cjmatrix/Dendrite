@@ -1,0 +1,38 @@
+import { IFolderRepository } from '../../../domain/folder/repositories/IFolderRepository';
+
+export class GetFolders {
+  constructor(private folderRepository: IFolderRepository) {}
+
+  async execute(userId: string) {
+    const folders = await this.folderRepository.findAllByUserId(userId);
+
+    const folderMap = new Map();
+    const roots: any[] = [];
+
+    for (const folder of folders) {
+      folderMap.set(folder._id.toString(), {
+        id: folder._id,
+        name: folder.name,
+        type: 'folder',
+        parentId: folder.parentId,
+        children: [],
+        isExpanded: folder.isExpanded,
+        isSystemFolder: folder.isSystemFolder
+      });
+    }
+
+    for (const folder of folders) {
+      const node = folderMap.get(folder._id.toString());
+      if (folder.parentId) {
+        const parent = folderMap.get(folder.parentId.toString());
+        if (parent) {
+          parent.children.push(node);
+        }
+      } else {
+        roots.push(node);
+      }
+    }
+
+    return roots;
+  }
+}

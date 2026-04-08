@@ -1,15 +1,23 @@
 import { Request, Response } from 'express';
-import { createFolderService, getFoldersService, updateFolderService, deleteFolderService } from '../services/folderService';
-export const createFolder = async(req: Request, res: Response) => {
+import { MongoFolderRepository } from '../infrastructure/folder/repositories/MongoFolderRepository';
+import { CreateFolder } from '../application/folder/use-cases/CreateFolder';
+import { GetFolders } from '../application/folder/use-cases/GetFolders';
+import { UpdateFolder } from '../application/folder/use-cases/UpdateFolder';
+import { DeleteFolder } from '../application/folder/use-cases/DeleteFolder';
+import { QdrantVectorRepository } from '../infrastructure/vector/repositories/QdrantVectorRepository';
 
+const folderRepository = new MongoFolderRepository();
+
+export const createFolder = async(req: Request, res: Response) => {
     if (!req.user) {
         res.status(401).json({ message: 'Unauthorized' });
         return;
     }
 
     const {name,parentId}=req.body;
-
-    const data= await createFolderService(req.user._id.toString(),name,parentId)
+    
+    const createFolderUseCase = new CreateFolder(folderRepository);
+    const data = await createFolderUseCase.execute(req.user._id.toString(), name, parentId);
   
     res.status(201).json({
         success:true,
@@ -18,13 +26,13 @@ export const createFolder = async(req: Request, res: Response) => {
 }
 
 export const getFolders = async(req: Request, res: Response) => {
-
     if (!req.user) {
         res.status(401).json({ message: 'Unauthorized' });
         return;
     }
 
-    const data = await getFoldersService(req.user._id.toString());
+    const getFoldersUseCase = new GetFolders(folderRepository);
+    const data = await getFoldersUseCase.execute(req.user._id.toString());
 
     res.status(200).json({
         success: true,
@@ -33,7 +41,6 @@ export const getFolders = async(req: Request, res: Response) => {
 }
 
 export const updateFolder = async(req: Request, res: Response) => {
-
     if (!req.user) {
         res.status(401).json({ message: 'Unauthorized' });
         return;
@@ -42,7 +49,8 @@ export const updateFolder = async(req: Request, res: Response) => {
     const id = req.params.id as string;
     const { name, isExpanded } = req.body;
 
-    const data = await updateFolderService(id, req.user._id.toString(), { name, isExpanded });
+    const updateFolderUseCase = new UpdateFolder(folderRepository);
+    const data = await updateFolderUseCase.execute(id, req.user._id.toString(), { name, isExpanded });
 
     res.status(200).json({
         success: true,
@@ -51,7 +59,6 @@ export const updateFolder = async(req: Request, res: Response) => {
 }
 
 export const deleteFolder = async(req: Request, res: Response) => {
-
     if (!req.user) {
         res.status(401).json({ message: 'Unauthorized' });
         return;
@@ -59,7 +66,8 @@ export const deleteFolder = async(req: Request, res: Response) => {
 
     const id = req.params.id as string;
 
-    const data = await deleteFolderService(id, req.user._id.toString());
+    const deleteFolderUseCase = new DeleteFolder(folderRepository, new QdrantVectorRepository());
+    const data = await deleteFolderUseCase.execute(id, req.user._id.toString());
 
     res.status(200).json({
         success: true,

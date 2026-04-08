@@ -1,9 +1,11 @@
 import { redisConnection } from "../config/redis";
-import { qdrantClient, SEARCH_CACHE_COLLECTION } from "../config/qdrant";
+
 import { generateEmbedding } from "../utils/embedding";
 import { tavily } from "@tavily/core";
 import { v4 as uuid } from "uuid";
 
+
+import { QdrantVectorRepository } from '../infrastructure/vector/repositories/QdrantVectorRepository';
 
 const CACHE_TTL_SECONDS = 12 * 60 * 60;
 const SEMANTIC_THRESHOLD = 0.89;
@@ -28,19 +30,8 @@ export async function getTavilySearchContext(query: string, precomputedVector?: 
 
     const twelveHoursAgo = Date.now() - (12 * 60 * 60 * 1000);
 
-    const semanticResults = await qdrantClient.search(SEARCH_CACHE_COLLECTION, {
-      vector: queryVector,
-      limit: 1,
-      with_payload: true,
-      filter: {
-        must: [
-          {
-            key: "createdAt",
-            range: { gte: twelveHoursAgo },
-          },
-        ],
-      },
-    });
+    const vectorRepo = new QdrantVectorRepository();
+    const semanticResults = await vectorRepo.searchSemanticCache(queryVector, twelveHoursAgo);
     
     if (semanticResults.length > 0 && semanticResults[0].score >= SEMANTIC_THRESHOLD) {
       console.log(`[Cache Hit] Qdrant Semantic Match (score: ${semanticResults[0].score?.toFixed(3)}) for query: "${query}"`);
@@ -73,18 +64,10 @@ export async function getTavilySearchContext(query: string, precomputedVector?: 
       await redisConnection.setex(redisCacheKey, CACHE_TTL_SECONDS, contextString);
 
       
-      await qdrantClient.upsert(SEARCH_CACHE_COLLECTION, {
-        points: [
-          {
-            id: uuid(),
-            vector: queryVector,
-            payload: {
-              context: contextString,
-              createdAt: Date.now(),
-              originalQuery: rawQuery,
-            },
-          },
-        ],
+      await vectorRepo.upsertSearchCache(uuid(), queryVector, {
+        context: contextString,
+        createdAt: Date.now(),
+        originalQuery: rawQuery,
       });
     }
 

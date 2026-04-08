@@ -1,14 +1,19 @@
 import { Request, Response } from "express";
-import {
-  createChatService,
-  getChatsService,
-  getChatByIdService,
-  getChatMessagesService,
-  updateChatService,
-  deleteChatService,
-  prepareMessageService,
-  saveModelReply,
-} from "../services/chatService";
+import { MongoChatRepository } from "../infrastructure/chat/repositories/MongoChatRepository";
+import { MongoMessageRepository } from "../infrastructure/chat/repositories/MongoMessageRepository";
+import { MongoSubChatRepository } from "../infrastructure/chat/repositories/MongoSubChatRepository";
+
+import { QdrantVectorRepository } from "../infrastructure/vector/repositories/QdrantVectorRepository";
+import { CreateChat } from "../application/chat/use-cases/CreateChat";
+import { GetChats } from "../application/chat/use-cases/GetChats";
+import { GetChatById } from "../application/chat/use-cases/GetChatById";
+import { GetChatMessages } from "../application/chat/use-cases/GetChatMessages";
+import { UpdateChat } from "../application/chat/use-cases/UpdateChat";
+import { DeleteChat } from "../application/chat/use-cases/DeleteChat";
+import { PrepareMessage } from "../application/chat/use-cases/PrepareMessage";
+import { SaveModelReply } from "../application/chat/use-cases/SaveModelReply";
+import { SaveSubChat } from "../application/chat/use-cases/SaveSubChat";
+import { GetSubChat as GetSubChatUseCase } from "../application/chat/use-cases/GetSubChat";
 import ai, { aiInstances, getRotatedAI, rotateAIKey } from "../config/AIConfig";
 import mongoose from "mongoose";
 import { Chat } from "../models/Chat";
@@ -340,7 +345,10 @@ export const createChat = async (req: Request, res: Response) => {
 
   const { title, folderId } = req.body;
 
-  const data = await createChatService(
+  const chatRepo = new MongoChatRepository();
+  const createChatUseCase = new CreateChat(chatRepo);
+
+  const data = await createChatUseCase.execute(
     req.user._id.toString(),
     title,
     folderId,
@@ -358,7 +366,9 @@ export const getChats = async (req: Request, res: Response) => {
     return;
   }
 
-  const data = await getChatsService(req.user._id.toString());
+  const chatRepo = new MongoChatRepository();
+  const getChatsUseCase = new GetChats(chatRepo);
+  const data = await getChatsUseCase.execute(req.user._id.toString());
 
   res.status(200).json({
     success: true,
@@ -374,7 +384,9 @@ export const getChatById = async (req: Request, res: Response) => {
 
   const id = req.params.id as string;
 
-  const data = await getChatByIdService(id, req.user._id.toString());
+  const chatRepo = new MongoChatRepository();
+  const getChatByIdUseCase = new GetChatById(chatRepo);
+  const data = await getChatByIdUseCase.execute(id, req.user._id.toString());
 
   res.status(200).json({
     success: true,
@@ -392,7 +404,13 @@ export const getChatMessages = async (req: Request, res: Response) => {
   const cursor = (req.query.cursor as string) || null;
   const limit = 10;
 
-  const messages = await getChatMessagesService(
+  const chatRepo = new MongoChatRepository();
+  const messageRepo = new MongoMessageRepository();
+  const subChatRepo = new MongoSubChatRepository();
+  
+  const getChatMessagesUseCase = new GetChatMessages(chatRepo, messageRepo, subChatRepo);
+
+  const messages = await getChatMessagesUseCase.execute(
     id,
     req.user._id.toString(),
     limit,
@@ -421,7 +439,10 @@ export const updateChat = async (req: Request, res: Response) => {
   const id = req.params.id as string;
   const { title, folderId } = req.body;
 
-  const data = await updateChatService(id, req.user._id.toString(), {
+  const chatRepo = new MongoChatRepository();
+  const updateChatUseCase = new UpdateChat(chatRepo);
+
+  const data = await updateChatUseCase.execute(id, req.user._id.toString(), {
     title,
     folderId,
   });
@@ -440,7 +461,10 @@ export const deleteChat = async (req: Request, res: Response) => {
 
   const id = req.params.id as string;
 
-  const data = await deleteChatService(id, req.user._id.toString());
+  const chatRepo = new MongoChatRepository();
+  const deleteChatUseCase = new DeleteChat(chatRepo, new QdrantVectorRepository());
+
+  const data = await deleteChatUseCase.execute(id, req.user._id.toString());
 
   res.status(200).json({
     success: true,
@@ -473,7 +497,8 @@ export const sendMessage = async (req: Request, res: Response) => {
     generateEmbedding(queryText, "RETRIEVAL_QUERY"),
   ]);
 
-  const { contents, userMessageId } = await prepareMessageService(
+  const prepareMessageUseCase = new PrepareMessage(new QdrantVectorRepository());
+  const { contents, userMessageId } = await prepareMessageUseCase.execute(
     id,
     req.user._id.toString(),
     normalizedMessage,
@@ -622,7 +647,8 @@ export const sendMessage = async (req: Request, res: Response) => {
   }
 
   try {
-    const { modelMessageId } = await saveModelReply(
+    const saveModelReplyUseCase = new SaveModelReply();
+    const { modelMessageId } = await saveModelReplyUseCase.execute(
       id,
       req.user._id.toString(),
       fullReply,
@@ -777,15 +803,18 @@ export const getSubChat = async (req: Request, res: Response) => {
   }
 
   try {
-    const subChat = await SubChat.findOne({
-      chatId,
-      _id: subChatId,
-      userId: req.user._id,
-    }).lean();
+    const subChatRepo = new MongoSubChatRepository();
+    const getSubChatUseCase = new GetSubChatUseCase(subChatRepo);
+
+    const subChat = await getSubChatUseCase.execute(
+      chatId as string,
+      subChatId as string,
+      req.user._id.toString()
+    );
 
     res.json({
       success: true,
-      data: subChat || null,
+      data: subChat,
     });
   } catch (error) {
     console.error("Get SubChat Error:", error);
@@ -803,37 +832,19 @@ export const saveSubChat = async (req: Request, res: Response) => {
     return;
   }
 
-  const sanitizedMessages = messages.map((msg: any) => {
-    if (msg._id && typeof msg._id === "string" && msg._id.startsWith("temp-")) {
-      const { _id, ...cleanMessage } = msg;
-      return cleanMessage;
-    }
-    return msg;
-  });
-  console.log(subChatId);
   try {
-    let subChat;
-    if (subChatId) {
-      subChat = await SubChat.findOneAndUpdate(
-        { _id: subChatId, userId: req.user._id },
-        {
-          highlightedText,
-          messages: sanitizedMessages,
-          relativeY,
-        },
-        { new: true },
-      );
-    } else {
-      console.log("heyyyyy");
-      subChat = await SubChat.create({
-        chatId,
-        anchorMessageId,
-        userId: req.user._id,
-        highlightedText,
-        messages: sanitizedMessages,
-        relativeY,
-      });
-    }
+    const subChatRepo = new MongoSubChatRepository();
+    const saveSubChatUseCase = new SaveSubChat(subChatRepo);
+
+    const subChat = await saveSubChatUseCase.execute(
+      chatId as string,
+      req.user._id.toString(),
+      subChatId,
+      anchorMessageId,
+      highlightedText,
+      messages,
+      relativeY
+    );
 
     res.json({
       success: true,

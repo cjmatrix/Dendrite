@@ -1,35 +1,22 @@
 import { Request, Response } from "express";
-import { Chat } from "../models/Chat";
+import { MongoChatRepository } from "../infrastructure/chat/repositories/MongoChatRepository";
+import { InheritContext } from "../application/branch/use-cases/InheritContext";
+import { AppError } from "../utils/AppError";
+
+const chatRepository = new MongoChatRepository();
 
 export const inheritContext = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { id } = req.params; // The current chat ID
-    const { contextParentId } = req.body; // The parent chat ID to inherit from
+  const id = req.params.id as string;
+  const { contextParentId } = req.body;
 
-    if (!req.user || !req.user._id) {
-      res.status(401).json({ message: "Unauthorized" });
-      return;
-    }
-
-    if (!id || !contextParentId) {
-      res.status(400).json({ error: "Missing chat ID or parent ID" });
-      return;
-    }
-
-    const updatedChat = await Chat.findOneAndUpdate(
-      { _id: id, userId: req.user._id },
-      { $set: { contextParent: contextParentId } },
-      { new: true }
-    );
-
-    if (!updatedChat) {
-      res.status(404).json({ error: "Chat not found or unauthorized" });
-      return;
-    }
-
-    res.status(200).json({ success: true, data: updatedChat });
-  } catch (error: any) {
-    console.error("Error inheriting context:", error.message);
-    res.status(500).json({ error: "Internal server error" });
+  if (!req.user || !req.user._id) {
+    throw new AppError("Unauthorized", 401);
   }
+
+  const inheritContextUseCase = new InheritContext(chatRepository);
+  const updatedChat = await inheritContextUseCase.execute(id, req.user._id.toString(), contextParentId);
+
+  res.status(200).json({ success: true, data: updatedChat });
 };
+
+

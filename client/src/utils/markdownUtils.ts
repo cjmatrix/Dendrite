@@ -2,10 +2,6 @@ import TurndownService from "turndown";
 // @ts-ignore – turndown-plugin-gfm has no types
 import { gfm } from "turndown-plugin-gfm";
 
-// ─────────────────────────────────────────────────────────
-//  Turndown instance — converts rendered HTML → Markdown
-// ─────────────────────────────────────────────────────────
-
 const turndown = new TurndownService({
   headingStyle: "atx",
   codeBlockStyle: "fenced",
@@ -138,9 +134,7 @@ turndown.addRule("katexHtmlHide", {
 });
 
 
-// ─────────────────────────────────────────────────────────
-//  Helpers
-// ─────────────────────────────────────────────────────────
+
 
 /**
  * Extracts the raw LaTeX source from a KaTeX-rendered element.
@@ -227,10 +221,6 @@ function preprocessFragment(container: HTMLElement): void {
   svgs.forEach((svg) => svg.remove());
 }
 
-
-// ─────────────────────────────────────────────────────────
-//  Public API
-// ─────────────────────────────────────────────────────────
 
 /**
  * Extracts the HTML fragment from the current browser selection,

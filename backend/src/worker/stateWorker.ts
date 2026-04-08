@@ -1,8 +1,8 @@
 import { Worker, Job } from "bullmq";
 import { redisConfig, redisConnection } from "../config/redis";
-import { generateRecursiveSummary } from "../utils/AISummary";
-import { OutboxEvent } from "../models/OutboxEvent";
-import { Chat } from "../models/Chat";
+import { MongoOutboxEventRepository } from "../infrastructure/outbox/repositories/MongoOutboxEventRepository";
+import { MongoChatRepository } from "../infrastructure/chat/repositories/MongoChatRepository";
+import { ProcessStateJob } from "../application/worker/use-cases/ProcessStateJob";
 
 interface StateJobData {
   stateOutboxEventId: string;
@@ -14,52 +14,12 @@ const stateWorker = new Worker<StateJobData>(
   "stateQueue",
   async (job: Job<StateJobData>) => {
     const { stateOutboxEventId, messageToCompress, previousSummary } = job.data;
+    
+    const outboxRepo = new MongoOutboxEventRepository();
+    const chatRepo = new MongoChatRepository();
+    const processStateUseCase = new ProcessStateJob(outboxRepo, chatRepo, redisConnection);
 
-    try {
-      const outboxEvent = await OutboxEvent.findById(stateOutboxEventId);
-      if (!outboxEvent) {
-        throw new Error(`Outbox event not found: ${stateOutboxEventId}`);
-      }
-
-      const cacheKey = `llm_summary:${stateOutboxEventId}`;
-      let updatedSummary = await redisConnection.get(cacheKey);
-
-      if (!updatedSummary) {
-        console.log(`🧠 Calling LLM for new state summary (${stateOutboxEventId})`);
-        
-      
-        updatedSummary = await generateRecursiveSummary(
-          previousSummary || null,
-          messageToCompress,
-        );
-
-      
-        await redisConnection.setex(cacheKey, 24 * 60 * 60, updatedSummary);
-      } else {
-        console.log(`♻️ Found existing LLM summary in Redis for ${stateOutboxEventId}, skipping Gemini API call.`);
-      }
-
-      await Chat.findByIdAndUpdate(outboxEvent.payload.sourceId, {
-        summary: updatedSummary,
-      });
-
-      console.log(
-        `✅ Updated Recursive Summary for chat ${outboxEvent.payload.sourceId}`,
-      );
-
-      await OutboxEvent.findByIdAndUpdate(stateOutboxEventId, {
-        status: "processed",
-        processedAt: new Date(),
-      });
-    } catch (error: any) {
-      await OutboxEvent.findByIdAndUpdate(stateOutboxEventId, {
-        status: "failed",
-        error: error.message,
-        $inc: { retryCount: 1 },
-      });
-      console.log(error.message);
-      throw error;
-    }
+    await processStateUseCase.execute(stateOutboxEventId, messageToCompress, previousSummary);
   },
   {
     connection: redisConfig,

@@ -1,7 +1,12 @@
 import { Request, Response } from 'express';
-import { AuthService } from '../services/authService';
 import { AppError } from '../utils/AppError';
 import { User } from '../models/User';
+import { MongoUserRepository } from '../infrastructure/auth/repositories/MongoUserRepository';
+import { RegisterUser } from '../application/auth/use-cases/RegisterUser';
+import { LoginUser } from '../application/auth/use-cases/LoginUser';
+import { RefreshTokenUser } from '../application/auth/use-cases/RefreshTokenUser';
+import { LogoutUser } from '../application/auth/use-cases/LogoutUser';
+import { GetMe } from '../application/auth/use-cases/GetMe';
 
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -10,6 +15,8 @@ const cookieOptions = {
   secure: isProduction,
   sameSite: 'strict' as const,
 };
+
+const userRepository = new MongoUserRepository();
 
 export const AuthController = {
   async register(req: Request, res: Response) {
@@ -23,7 +30,8 @@ export const AuthController = {
       throw new AppError('Passwords do not match', 400);
     }
 
-    const { user, accessToken, refreshToken } = await AuthService.register({ name, email, password });
+    const registerUser = new RegisterUser(userRepository);
+    const { user, accessToken, refreshToken } = await registerUser.execute({ name, email, password });
 
     res.cookie('accessToken', accessToken, { ...cookieOptions, maxAge: 15 * 60 * 1000 }); // 15 mins
     res.cookie('refreshToken', refreshToken, { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 * 1000 }); // 7 days
@@ -38,7 +46,8 @@ export const AuthController = {
       throw new AppError('Email and password are required', 400);
     }
 
-    const { user, accessToken, refreshToken } = await AuthService.login({ email, password });
+    const loginUser = new LoginUser(userRepository);
+    const { user, accessToken, refreshToken } = await loginUser.execute({ email, password });
 
     res.cookie('accessToken', accessToken, { ...cookieOptions, maxAge: 15 * 60 * 1000 });
     res.cookie('refreshToken', refreshToken, { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 * 1000 });
@@ -53,7 +62,8 @@ export const AuthController = {
     }
 
     try {
-      const { accessToken, refreshToken } = await AuthService.refresh(cookies.refreshToken);
+      const refreshTokenUser = new RefreshTokenUser(userRepository);
+      const { accessToken, refreshToken } = await refreshTokenUser.execute(cookies.refreshToken);
 
       res.cookie('accessToken', accessToken, { ...cookieOptions, maxAge: 15 * 60 * 1000 });
       res.cookie('refreshToken', refreshToken, { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 * 1000 });
@@ -73,7 +83,9 @@ export const AuthController = {
         return res.sendStatus(204); // No content
     }
 
-    await AuthService.logout(cookies.refreshToken);
+    const logoutUser = new LogoutUser(userRepository);
+    await logoutUser.execute(cookies.refreshToken);
+    
     res.clearCookie('accessToken', cookieOptions);
     res.clearCookie('refreshToken', cookieOptions);
     res.status(200).json({ message: 'Logged out successfully' });
@@ -84,7 +96,8 @@ export const AuthController = {
       throw new AppError('Unauthorized', 401);
     }
     
-    const user = await AuthService.getMe(req.user._id.toString());
+    const getMeUseCase = new GetMe(userRepository);
+    const user = await getMeUseCase.execute(req.user._id.toString());
     res.status(200).json({ user });
   },
 
@@ -94,15 +107,16 @@ export const AuthController = {
     const { fcmToken } = req.body;
     if (!fcmToken) throw new AppError('fcmToken is required', 400);
 
-    const user = await User.findById(req.user._id);
+    const user = await userRepository.findById(req.user._id.toString());
     if (!user) throw new AppError('User not found', 404);
 
     if (!user.fcmToken) user.fcmToken = [];
     if (!user.fcmToken.includes(fcmToken)) {
       user.fcmToken.push(fcmToken);
-      await user.save();
+      await userRepository.save(user);
     }
 
     res.status(200).json({ success: true, message: 'FCM token saved' });
   }
 };
+

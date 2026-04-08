@@ -1,10 +1,9 @@
 import { Worker, Job } from "bullmq";
 import { redisConfig, redisConnection } from "../config/redis";
-import { CodeBlock } from "../models/CodeBlock";
-import { OutboxEvent } from "../models/OutboxEvent";
-import { generateBatchCodeDescriptions } from "../utils/AIDescription";
 import embeddingCodeDesc from "../queue/embeddingQueue";
-import mongoose from "mongoose";
+import { MongoCodeBlockRepository } from "../infrastructure/chat/repositories/MongoCodeBlockRepository";
+import { MongoOutboxEventRepository } from "../infrastructure/outbox/repositories/MongoOutboxEventRepository";
+import { ProcessDescriptionJob } from "../application/worker/use-cases/ProcessDescriptionJob";
 
 interface DescriptionJobData {
   blocks: {
@@ -21,110 +20,16 @@ const descriptionWorker = new Worker<DescriptionJobData>(
   "description-queue",
   async (job: Job<DescriptionJobData>) => {
     const { blocks } = job.data;
-    const finalResults: { [key: string]: string } = {};
-    const toProcessBlocks: typeof blocks = [];
+    const codeBlockRepo = new MongoCodeBlockRepository();
+    const outboxRepo = new MongoOutboxEventRepository();
+    const processDescUseCase = new ProcessDescriptionJob(
+      codeBlockRepo,
+      outboxRepo,
+      redisConnection,
+      embeddingCodeDesc
+    );
 
-  
-    for (const block of blocks) {
-     
-      const redisKey = `code_dedup:${block.hash}`;
-      const cachedDescription = await redisConnection.get(redisKey);
-      
-      if (cachedDescription) {
-        console.log(`[DescWorker] Hash cache hit for ${block.hash.slice(0, 8)}... — skipping Gemini call.`);
-        finalResults[block._id] = cachedDescription;
-      } else {
-        toProcessBlocks.push(block);
-      }
-    }
-    console.log(finalResults)
-    if (toProcessBlocks.length > 0) {
-      try {
-        console.log(`🤖 Batching description generation for ${toProcessBlocks.length} blocks...`);
-        
-        const batchResults = await generateBatchCodeDescriptions(
-          toProcessBlocks.map(b => ({ id: b._id, code: b.code, language: b.language }))
-        );
-
-        for (const res of batchResults) {
-          finalResults[res.id] = res.description;
-         
-          const originalBlock = toProcessBlocks.find(b => b._id === res.id);
-          if (originalBlock) {
-            await redisConnection.setex(`code_dedup:${originalBlock.hash}`, 86400, res.description);
-          }
-        }
-      } catch (error: any) {
-        console.error(`❌ Batch Description generation failed:`, error.message);
-        throw error;
-      }
-    }
-
-  
-    const codeBlockUpdates = [];
-    const outboxEventsToPush = [];
-
-    for (const block of blocks) {
-      const description = finalResults[block._id];
-      if (!description) continue; 
-
-      codeBlockUpdates.push({
-        updateOne: {
-          filter: { _id: block._id },
-          update: { $set: { description } },
-        },
-      });
-
-      outboxEventsToPush.push({
-        eventType: "CODE_BLOCK_CREATED",
-        payload: {
-          sourceId: block._id,
-          sourceType: "code_block",
-          userId: block.userId,
-          content: {
-            code: block.code,
-            description,
-          },
-          metadata: { language: block.language, chatId: block.chatId },
-        },
-        status: "pending",
-      });
-    }
-
- 
-    if (codeBlockUpdates.length > 0) {
-      const session = await mongoose.startSession();
-      session.startTransaction();
-
-      try {
-        await CodeBlock.bulkWrite(codeBlockUpdates, { session });
-
-        const savedOutboxEvents = await OutboxEvent.insertMany(
-          outboxEventsToPush,
-          { session },
-        );
-
-        await session.commitTransaction();
-
-     
-        for (const event of savedOutboxEvents) {
-          try {
-            await embeddingCodeDesc(event, event.payload.content);
-          } catch (e: any) {
-            console.error(
-              `Status: Failed to push to embedding queue for ${event.payload.sourceId}:`,
-              e.message,
-            );
-          }
-        }
-      } catch (txnError) {
-        console.log("❌❌ Code Block update or Outbox event creation failed ❌❌");
-        await session.abortTransaction();
-        throw txnError;
-      } finally {
-        session.endSession();
-      }
-    }
+    await processDescUseCase.execute(job.data.blocks);
   },
   {
     connection: redisConfig,

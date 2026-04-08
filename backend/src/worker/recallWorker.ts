@@ -1,8 +1,8 @@
 import { Worker, Job } from "bullmq";
 import { redisConfig } from "../config/redis";
-import admin from "../config/firebase";
-import Recall from "../models/Recall";
-import { User } from "../models/User";
+import { MongoRecallRepository } from "../infrastructure/recall/repositories/MongoRecallRepository";
+import { MongoUserRepository } from "../infrastructure/auth/repositories/MongoUserRepository";
+import { ProcessRecallJob } from "../application/worker/use-cases/ProcessRecallJob";
 
 interface RecallJobData {
   userId: string;
@@ -14,45 +14,11 @@ const recallWorker = new Worker<RecallJobData>(
   async (job: Job<RecallJobData>) => {
     const { userId, cardId } = job.data;
     
-    try {
-      const now = new Date();
+    const recallRepo = new MongoRecallRepository();
+    const userRepo = new MongoUserRepository();
+    const processRecallUseCase = new ProcessRecallJob(recallRepo, userRepo);
 
-      
-      const recall = await Recall.findOne({ 
-        _id: cardId, 
-        userId: userId,
-        nextReview: { $lte: now }
-      });
-
-      if (!recall) {
-        console.log(`Recall ${cardId} is no longer due or was deleted.`);
-        return;
-      }
-
-   
-      const user = await User.findById(userId).select("fcmToken");
-      
-      if (!user || !user.fcmToken || user.fcmToken.length === 0) {
-        console.log(`User ${userId} has no FCM token. Notification skipped.`);
-        return;
-      }
-
-     
-      const message = {
-        notification: {
-          title: "Time for Active Recall!",
-          body: "You have a card ready for review. Keep your brain sharp! 🧠",
-        },
-        tokens: user.fcmToken,
-      };
-
-      const response = await admin.messaging().sendEachForMulticast(message);
-      console.log(`Successfully sent recall notification to User: ${userId}`);
-      
-    } catch (error: any) {
-      console.log(`Failed to process recall notification for ${cardId}:`, error.message);
-      throw error; 
-    }
+    await processRecallUseCase.execute(userId, cardId);
   },
   {
     connection: redisConfig,
