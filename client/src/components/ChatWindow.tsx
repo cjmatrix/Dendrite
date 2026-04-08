@@ -241,7 +241,7 @@ const ChatWindow: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Debounce streaming text to reduce markdown re-renders during streaming
-  const debouncedStreamingText = useDebouncedValue(streamingText, 150);
+  const debouncedStreamingText = useDebouncedValue(streamingText, 50);
   // Trigger animation ONLY on Firebase push notification
   useEffect(() => {
     const handleNotification = () => {

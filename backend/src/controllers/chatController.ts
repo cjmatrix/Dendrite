@@ -576,7 +576,7 @@ export const sendMessage = async (req: Request, res: Response) => {
     try {
       const activeAi = getRotatedAI();
       stream = await activeAi.models.generateContentStream({
-        model: "gemini-2.5-flash",
+        model: "gemini-3-flash-preview",
         contents,
       });
       break;

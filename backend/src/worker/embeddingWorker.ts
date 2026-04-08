@@ -62,7 +62,7 @@ const embeddingWorker = new Worker<EmbeddingJobData>(
         $inc: { retryCount: 1 },
       });
       console.log(error.message);
-      throw error; // BullMQ will retry based on attempts config
+      throw error; // BullMQ will retry
     }
   },
   {
