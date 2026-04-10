@@ -1,13 +1,17 @@
-import { Chat } from '../../../models/Chat';
-import { Message } from '../../../models/Message';
 import { AppError } from '../../../utils/AppError';
 import { IVectorRepository } from '../../../domain/vector/repositories/IVectorRepository';
+import { IChatRepository } from '../../../domain/chat/repositories/IChatRepository';
+import { IMessageRepository } from '../../../domain/chat/repositories/IMessageRepository';
 import { generateEmbedding } from '../../../utils/embedding';
 import CONTEXT_WINDOW from '../../../constants/contextWindow';
 import { systemInstruction } from '../../../config/AIConfig';
 
 export class PrepareMessage {
-  constructor(private vectorRepository: IVectorRepository) {}
+  constructor(
+    private vectorRepository: IVectorRepository,
+    private chatRepository: IChatRepository,
+    private messageRepository: IMessageRepository
+  ) {}
 
   async execute(
     chatId: string,
@@ -18,14 +22,14 @@ export class PrepareMessage {
     descQueryVector?: number[],
     imageUrl?: string,
   ) {
-    const chat = await Chat.findOne({ _id: chatId, userId });
+    const chat = await this.chatRepository.findByIdAndUserId(chatId, userId);
 
     if (!chat) {
       throw new AppError("Chat not found", 404);
     }
 
     const normalizedMessage = (userMessage || "").trim() || "Analyze this image";
-    const userMsg = await Message.create({
+    const userMsg = await this.messageRepository.create({
       chatId,
       userId,
       role: "user",
@@ -34,18 +38,12 @@ export class PrepareMessage {
     });
 
     // (most recent at the top)
-    let recentMessages = await Message.find({ chatId })
-      .sort({ createdAt: -1 })
-      .limit(CONTEXT_WINDOW)
-      .lean();
+    let recentMessages = await this.messageRepository.findRecentByChatId(chatId, CONTEXT_WINDOW);
 
     const deficit = CONTEXT_WINDOW - recentMessages.length;
 
-    if (deficit > 0 && chat?.contextParent) {
-      const parentMessages = await Message.find({ chatId: chat.contextParent })
-        .sort({ createdAt: -1 })
-        .limit(deficit)
-        .lean();
+    if (deficit > 0 && chat.contextParent) {
+      const parentMessages = await this.messageRepository.findRecentByChatId(chat.contextParent, deficit);
 
       // (older) + current messages (newer)
       recentMessages = [...recentMessages, ...parentMessages];
@@ -68,7 +66,7 @@ export class PrepareMessage {
     let currentParentId = chat.contextParent;
     let depth = 0;
     while (currentParentId && depth < 5) {
-      const pChat = await Chat.findOne({ _id: currentParentId, userId }).select("title summary contextParent").lean();
+      const pChat = await this.chatRepository.findByIdAndUserId(currentParentId, userId);
       if (!pChat) break;
 
       const parentIdStr = pChat._id.toString();

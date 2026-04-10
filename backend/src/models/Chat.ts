@@ -39,6 +39,11 @@ const ChatSchema = new Schema(
       type: Number,
       default: 0,
     },
+
+    unsummarizedCount: {
+      type: Number,
+      default: 0,
+    },
   },
   {
     timestamps: true,

@@ -10,6 +10,10 @@ import addDescriptionQueue from '../../../queue/descriptionQueue';
 import addSummaryQueue from '../../../queue/summaryQueue';
 import addStateQueue from '../../../queue/stateQueue';
 import CONTEXT_WINDOW from '../../../constants/contextWindow';
+import { IChatRepository } from '../../../domain/chat/repositories/IChatRepository';
+import { IMessageRepository } from '../../../domain/chat/repositories/IMessageRepository';
+import { ICodeBlockRepository } from '../../../domain/chat/repositories/ICodeBlockRepository';
+import { IOutboxEventRepository } from '../../../domain/outbox/repositories/IOutboxEventRepository';
 
 export function extractCodeBlocks(text: string) {
   const regex = /```(\w+)?\n([\s\S]*?)```/g;
@@ -30,12 +34,19 @@ export function extractCodeBlocks(text: string) {
 }
 
 export class SaveModelReply {
+  constructor(
+    private chatRepository: IChatRepository,
+    private messageRepository: IMessageRepository,
+    private codeBlockRepository: ICodeBlockRepository,
+    private outboxRepository: IOutboxEventRepository
+  ) {}
+
   async execute(
     chatId: string,
     userId: string,
     modelReply: string,
   ) {
-    const chat = await Chat.findOne({ _id: chatId, userId });
+    const chat = await this.chatRepository.findByIdAndUserId(chatId, userId);
 
     if (!chat) {
       throw new AppError("Chat not found", 404);
@@ -46,24 +57,33 @@ export class SaveModelReply {
 
     let modelMessageId: string | null = null;
     try {
-      const [modelMsg] = await Message.create(
+      const [modelMsg] = await this.messageRepository.createMany(
         [{ chatId, userId, role: "model", content: modelReply }],
         { session },
       );
       modelMessageId = modelMsg._id.toString();
 
-      let messageToCompress: any[] = [];
-      const messageCount = await Message.countDocuments({ chatId }).session(
-        session,
+   
+      const updatedChat = await this.chatRepository.update(
+        chatId,
+        userId,
+        { $inc: { unsummarizedCount: 2 } },
+        { session }
       );
 
-      if (messageCount > 0 && messageCount % CONTEXT_WINDOW === 0) {
-        const recent = await Message.find({ chatId })
-          .sort({ createdAt: -1 })
-          .limit(CONTEXT_WINDOW)
-          .session(session)
-          .lean();
+      let messageToCompress: any[] = [];
+
+      if (updatedChat && updatedChat.unsummarizedCount >= CONTEXT_WINDOW) {
+        const recent = await this.messageRepository.findRecentByChatId(
+          chatId,
+          CONTEXT_WINDOW,
+          { session }
+        );
         messageToCompress = recent.reverse();
+        console.log("Message to compress /n hereee-------------------",messageToCompress)
+
+        // Reset the counter atomically
+        await this.chatRepository.update(chatId, userId, { unsummarizedCount: 0 }, { session });
       }
 
       const codeBlocks = extractCodeBlocks(modelReply);
@@ -82,10 +102,10 @@ export class SaveModelReply {
             continue;
           }
 
-          const existingBlock = await CodeBlock.findOne({ hash: block.hash }).lean();
+          const existingBlock = await this.codeBlockRepository.findByHash(block.hash);
           if (existingBlock) {
             console.log(`[CodeDedup] DB hit for hash ${block.hash.slice(0, 8)}... — skipping API calls.`);
-            // Backfill Redis to avoid future DB lookups
+            // Redis to avoid future DB lookups
             if (existingBlock.description) {
               await redisConnection.setex(redisKey, 86400, existingBlock.description);
             }
@@ -103,7 +123,7 @@ export class SaveModelReply {
         }
 
         if (newBlockDocs.length > 0) {
-          savedBlocks = await CodeBlock.insertMany(newBlockDocs, { session });
+          savedBlocks = await this.codeBlockRepository.insertMany(newBlockDocs, session);
           console.log(`[CodeDedup] ${newBlockDocs.length} new / ${codeBlocks.length - newBlockDocs.length} duplicate blocks in this reply.`);
         } else {
           console.log(`[CodeDedup] All ${codeBlocks.length} code block(s) were duplicates — zero API calls needed.`);
@@ -141,7 +161,7 @@ export class SaveModelReply {
             status: "pending",
           },
         ];
-        const savedOutbox = await OutboxEvent.insertMany(outboxDocs, { session });
+        const savedOutbox = await this.outboxRepository.insertMany(outboxDocs, session);
         summaryOutboxEvent = savedOutbox[0];
         stateOutboxEvent = savedOutbox[1];
       }
@@ -164,10 +184,10 @@ export class SaveModelReply {
       }
 
       if (summaryOutboxEvent && stateOutboxEvent) {
-       //longterm retrival facts
+       //Longterm retrival facts
         addSummaryQueue(summaryOutboxEvent._id.toString(), messageToCompress);
 
-        // middleterm recursive chunk
+        // Middleterm recursive chunk
         addStateQueue(
           stateOutboxEvent._id.toString(),
           messageToCompress,

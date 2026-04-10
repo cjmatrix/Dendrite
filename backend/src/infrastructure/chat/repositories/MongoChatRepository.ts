@@ -14,15 +14,23 @@ export class MongoChatRepository implements IChatRepository {
     return Chat.find({ userId }).select("-messages").sort({ createdAt: 1 }).lean();
   }
 
-  async findByIdAndUserId(chatId: string, userId: string): Promise<any | null> {
-    return Chat.findOne({ _id: chatId, userId }).lean();
+  async findByIdAndUserId(chatId: string, userId: string, options?: any): Promise<any | null> {
+    return Chat.findOne({ _id: chatId, userId }, null, options).lean();
   }
 
-  async update(chatId: string, userId: string, updates: any): Promise<any | null> {
-    return Chat.findOneAndUpdate({ _id: chatId, userId }, updates, { new: true });
+  async update(chatId: string, userId: string, updates: any, options?: any): Promise<any | null> {
+    return Chat.findOneAndUpdate({ _id: chatId, userId }, updates, { new: true, ...options });
   }
 
   async delete(chatId: string, userId: string): Promise<any | null> {
     return Chat.findOneAndDelete({ _id: chatId, userId });
+  }
+
+  async findByFolderIds(userId: string, folderIds: string[]): Promise<any[]> {
+    return Chat.find({ folderId: { $in: folderIds }, userId }).lean();
+  }
+
+  async deleteManyByFolderIds(userId: string, folderIds: string[]): Promise<any> {
+    return Chat.deleteMany({ folderId: { $in: folderIds }, userId });
   }
 }

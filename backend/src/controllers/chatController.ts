@@ -2,6 +2,8 @@ import { Request, Response } from "express";
 import { MongoChatRepository } from "../infrastructure/chat/repositories/MongoChatRepository";
 import { MongoMessageRepository } from "../infrastructure/chat/repositories/MongoMessageRepository";
 import { MongoSubChatRepository } from "../infrastructure/chat/repositories/MongoSubChatRepository";
+import { MongoCodeBlockRepository } from "../infrastructure/chat/repositories/MongoCodeBlockRepository";
+import { MongoOutboxEventRepository } from "../infrastructure/outbox/repositories/MongoOutboxEventRepository";
 
 import { QdrantVectorRepository } from "../infrastructure/vector/repositories/QdrantVectorRepository";
 import { CreateChat } from "../application/chat/use-cases/CreateChat";
@@ -337,6 +339,9 @@ export const uploadChatPdf = async (req: Request, res: Response) => {
   req.pipe(busboy);
 };
 
+
+
+
 export const createChat = async (req: Request, res: Response) => {
   if (!req.user) {
     res.status(401).json({ message: "Unauthorized" });
@@ -359,6 +364,10 @@ export const createChat = async (req: Request, res: Response) => {
     data,
   });
 };
+
+
+
+
 
 export const getChats = async (req: Request, res: Response) => {
   if (!req.user) {
@@ -497,7 +506,11 @@ export const sendMessage = async (req: Request, res: Response) => {
     generateEmbedding(queryText, "RETRIEVAL_QUERY"),
   ]);
 
-  const prepareMessageUseCase = new PrepareMessage(new QdrantVectorRepository());
+  const vectorRepo = new QdrantVectorRepository();
+  const chatRepo = new MongoChatRepository();
+  const messageRepo = new MongoMessageRepository();
+  
+  const prepareMessageUseCase = new PrepareMessage(vectorRepo, chatRepo, messageRepo);
   const { contents, userMessageId } = await prepareMessageUseCase.execute(
     id,
     req.user._id.toString(),
@@ -521,7 +534,7 @@ export const sendMessage = async (req: Request, res: Response) => {
       try {
         const activeAi = getRotatedAI();
         routerResponse = await activeAi.models.generateContent({
-          model: "gemini-2.5-flash",
+          model: "gemini-2.5-flash-lite",
           contents: [{ role: "user", parts: [{ text: routingPrompt }] }],
         });
         break;
@@ -646,8 +659,25 @@ export const sendMessage = async (req: Request, res: Response) => {
     res.write(`data: ${JSON.stringify({ text })}\n\n`);
   }
 
+  // Guard: If AI returned an empty response, don't save it
+  if (!fullReply.trim()) {
+    console.error(`⚠️ Empty AI response for chat ${id}`);
+
+    res.write(
+      `data: ${JSON.stringify({ text: "\n\n**Error:** The AI returned an empty response. Please try again." })}\n\n`,
+    );
+    res.write("data: [DONE]\n\n");
+    res.end();
+    return;
+  }
+
   try {
-    const saveModelReplyUseCase = new SaveModelReply();
+    const chatRepo = new MongoChatRepository();
+    const messageRepo = new MongoMessageRepository();
+    const codeBlockRepo = new MongoCodeBlockRepository();
+    const outboxRepo = new MongoOutboxEventRepository();
+
+    const saveModelReplyUseCase = new SaveModelReply(chatRepo, messageRepo, codeBlockRepo, outboxRepo);
     const { modelMessageId } = await saveModelReplyUseCase.execute(
       id,
       req.user._id.toString(),
@@ -678,16 +708,11 @@ const getAnchorContext = async (chatId: string, anchorMessageId: string) => {
       return JSON.parse(cachedData);
     }
 
-    const anchorMsg = await Message.findById(anchorMessageId);
+    const messageRepo = new MongoMessageRepository();
+    const anchorMsg = await messageRepo.findById(anchorMessageId);
     if (!anchorMsg) return [];
 
-    const contextMessages = await Message.find({
-      chatId,
-      createdAt: { $lte: anchorMsg.createdAt },
-    })
-      .sort({ createdAt: -1 })
-      .limit(4)
-      .lean();
+    const contextMessages = await messageRepo.findAnchorContext(chatId, anchorMsg.createdAt, 4);
 
     const result = contextMessages.reverse();
 
@@ -749,7 +774,7 @@ RESPONSE GUIDELINES:
     try {
       const activeAi = getRotatedAI();
       stream = await activeAi.models.generateContentStream({
-        model: "gemini-2.5-flash",
+        model: "gemini-3-flash-preview",
         contents,
       });
       break;

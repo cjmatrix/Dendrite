@@ -1,12 +1,13 @@
 import { IFolderRepository } from '../../../domain/folder/repositories/IFolderRepository';
 import { IVectorRepository } from '../../../domain/vector/repositories/IVectorRepository';
+import { IChatRepository } from '../../../domain/chat/repositories/IChatRepository';
 import { AppError } from '../../../utils/AppError';
-import { Chat } from '../../../models/Chat';
 
 export class DeleteFolder {
   constructor(
     private folderRepository: IFolderRepository,
-    private vectorRepository: IVectorRepository
+    private vectorRepository: IVectorRepository,
+    private chatRepository: IChatRepository
   ) {}
 
   async execute(folderId: string, userId: string) {
@@ -36,7 +37,7 @@ export class DeleteFolder {
       }
     }
 
-    const chats = await Chat.find({ folderId: { $in: idsToDelete }, userId }).select("_id").lean();
+    const chats = await this.chatRepository.findByFolderIds(userId, idsToDelete);
     const chatIds = chats.map((c) => c._id.toString());
 
     if (chatIds.length > 0) {
@@ -49,7 +50,7 @@ export class DeleteFolder {
       console.log("No chats found for those folders — skipping Qdrant delete.");
     }
 
-    await Chat.deleteMany({ folderId: { $in: idsToDelete }, userId });
+    await this.chatRepository.deleteManyByFolderIds(userId, idsToDelete);
     await this.folderRepository.deleteMany(idsToDelete, userId);
 
     return { deletedFolderCount: idsToDelete.length, deletedChatCount: chatIds.length };

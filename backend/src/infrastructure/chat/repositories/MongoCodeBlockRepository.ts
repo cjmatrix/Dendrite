@@ -15,4 +15,15 @@ export class MongoCodeBlockRepository implements ICodeBlockRepository {
     }
     return CodeBlock.bulkWrite(updates);
   }
+
+  async findByHash(hash: string): Promise<any | null> {
+    return CodeBlock.findOne({ hash }).lean();
+  }
+
+  async insertMany(blocks: any[], session?: any): Promise<any[]> {
+    if (session) {
+      return CodeBlock.insertMany(blocks, { session });
+    }
+    return CodeBlock.insertMany(blocks);
+  }
 }

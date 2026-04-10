@@ -58,6 +58,8 @@ export const updateFolder = async(req: Request, res: Response) => {
     })
 }
 
+import { MongoChatRepository } from '../infrastructure/chat/repositories/MongoChatRepository';
+
 export const deleteFolder = async(req: Request, res: Response) => {
     if (!req.user) {
         res.status(401).json({ message: 'Unauthorized' });
@@ -65,8 +67,9 @@ export const deleteFolder = async(req: Request, res: Response) => {
     }
 
     const id = req.params.id as string;
+    const chatRepository = new MongoChatRepository();
 
-    const deleteFolderUseCase = new DeleteFolder(folderRepository, new QdrantVectorRepository());
+    const deleteFolderUseCase = new DeleteFolder(folderRepository, new QdrantVectorRepository(), chatRepository);
     const data = await deleteFolderUseCase.execute(id, req.user._id.toString());
 
     res.status(200).json({
