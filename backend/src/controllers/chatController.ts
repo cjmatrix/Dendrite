@@ -568,6 +568,7 @@ export const sendMessage = async (req: Request, res: Response) => {
   } catch (error) {
     console.error("Routing/Search error:", error);
   }
+  console.log(internetContext)
 
   if (internetContext) {
     // Find the last text item in contents and append search results
@@ -614,7 +615,7 @@ export const sendMessage = async (req: Request, res: Response) => {
     try {
       const activeAi = getRotatedAI();
       stream = await activeAi.models.generateContentStream({
-        model: "gemini-3-flash-preview",
+        model: "gemini-2.5-flash",
         contents,
       });
       break;

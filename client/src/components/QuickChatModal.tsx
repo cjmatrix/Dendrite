@@ -1,15 +1,12 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { X, ArrowUp, Sparkles, Pin, Maximize2, Minimize2, Brain } from "lucide-react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import api from "../api/axios";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import { markdownComponents } from "./markdown/MarkdownComponents";
-import { streamingFetch } from "../api/streamingFetch";
-import { getMarkdownFromDOMSelection } from "../utils/markdownUtils";
-import { requestFirebaseNotificationPermission } from "../firebase";
+
+import { useQuickChat } from "../hooks/useQuickChat";
 
 interface QuickChatModalProps {
   isOpen: boolean;
@@ -18,11 +15,8 @@ interface QuickChatModalProps {
   sourceMessageId: string;
   chatId: string | undefined;
   relativeY?: number;
-  subChatId?:string
-
+  subChatId?: string;
 }
-
-const API_URL = import.meta.env.VITE_API_URL;
 
 export const QuickChatModal: React.FC<QuickChatModalProps> = ({
   isOpen,
@@ -31,230 +25,43 @@ export const QuickChatModal: React.FC<QuickChatModalProps> = ({
   sourceMessageId,
   chatId,
   relativeY,
-  subChatId
-
+  subChatId,
 }) => {
-  const [input, setInput] = useState("");
-  const [subMessages, setSubMessages] = useState<any[]>([]);
-  const [streamingText, setStreamingText] = useState("");
   const [isExpanded, setIsExpanded] = useState(() => {
     return localStorage.getItem("quickChatExpanded") === "true";
   });
 
-  const [isPinned,setIsPinned]=useState(false);
-  const [isRecalling, setIsRecalling] = useState(false);
-
- 
-  const [recallSelection, setRecallSelection] = useState<{
-    markdown: string;
-    x: number;
-    y: number;
-    msgIndex: number;
-    visible: boolean;
-  } | null>(null);
-
-  console.log(chatId,sourceMessageId,subChatId)
-  const scrollRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     localStorage.setItem("quickChatExpanded", String(isExpanded));
   }, [isExpanded]);
-  const queryClient = useQueryClient();
-  console.log(subChatId,"heree")
- 
-  const { data: existingSubChat, isLoading: isHistoryLoading } = useQuery({
-    queryKey: ["subchat", chatId, sourceMessageId,subChatId],
-    queryFn: async () => {
-      const resp = await api.get(`/chats/${chatId}/subchat?subChatId=${subChatId}`);
-      return resp.data.data;
-    },
-    enabled: !!chatId && !!sourceMessageId && isOpen &&!!subChatId,
-  });
 
-  useEffect(() => {
-   
-    if (isHistoryLoading) {
-      setSubMessages([]);
-      return;
-    }
-
-    if (existingSubChat?.messages) {
-      setSubMessages(existingSubChat.messages);
-    } else {
-      setSubMessages([]);
-    }
-  }, [existingSubChat, isHistoryLoading, sourceMessageId]);
-
-  useEffect(()=>{
-    if (!subMessages.length && selectedText) {
-       setInput(`Explain what is ${selectedText}`)
-    }
-  },[selectedText, subMessages.length])
-  
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [subMessages, streamingText]);
-
-  
-  const stickToChatMutation = useMutation({
-    mutationFn: async () => {
-      await api.post(`/chats/${chatId}/subchat`, {
-        subChatId:subChatId,
-        anchorMessageId: sourceMessageId,
-        highlightedText: selectedText,
-        messages: subMessages,
-        relativeY: relativeY || existingSubChat?.relativeY || 0
-      });
-    },
-    onSuccess: () => {
-      setIsPinned(true);
-      queryClient.invalidateQueries({ queryKey: ["subchat", chatId, sourceMessageId,subChatId] });
-      queryClient.invalidateQueries({ queryKey: ["chatMessages", chatId] });
-    }
-  });
-
-  const streamChatMutation = useMutation({
-    mutationFn: async ({ userPrompt }: { userPrompt: string }) => {
-      const response = await streamingFetch(`${API_URL}/chats/${chatId}/quick-chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chatId,
-          anchorMessageId: sourceMessageId,
-          highlightedText: selectedText,
-          quickChatHistory: subMessages.concat({ role: "user", content: userPrompt }),
-        }),
-      });
-
-      if (!response.ok || !response.body) throw new Error("Stream failed");
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let fullReply = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split("\n");
-
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            const data = line.slice(6);
-            if (data === "[DONE]") break;
-
-            try {
-              const parsed = JSON.parse(data);
-              fullReply += parsed.text;
-              setStreamingText(fullReply);
-            } catch {}
-          }
-        }
-      }
-      return fullReply;
-    },
-    onMutate: async ({ userPrompt }) => {
-      setStreamingText("");
-      setSubMessages((prev) => [...prev, { role: "user", content: userPrompt, _id: `temp-${Date.now()}` }]);
-    },
-    onSuccess: (finalReply) => {
-      setSubMessages((prev) => [
-        ...prev,
-        { role: "model", content: finalReply, _id: `temp-ai-${Date.now()}` },
-      ]);
-    },
-    onSettled: () => {
-      setStreamingText("");
-    }
-  });
-
-  const handleSend = () => {
-    if (!input.trim() || streamChatMutation.isPending) return;
-    const userPrompt = input.trim();
-    setInput("");
-    streamChatMutation.mutate({ userPrompt });
-  };
-
-  // ── Recall: text selection inside subchat messages ──
-  const handleSubChatTextSelection = () => {
-    const sel = window.getSelection();
-    const selectedStr = sel?.toString().trim();
-
-    if (selectedStr && selectedStr.length > 0) {
-      const range = sel?.getRangeAt(0);
-      const rect = range?.getBoundingClientRect();
-
-      // Make sure the selection is inside the subchat messages area
-      let insideModal = false;
-      let curr: any = sel?.anchorNode;
-      let msgIndex = -1;
-      while (curr && curr !== document.body) {
-        // Check for data-subchat-msg-index (set on each AI message bubble)
-        if (curr.dataset?.subchatMsgIndex !== undefined) {
-          msgIndex = parseInt(curr.dataset.subchatMsgIndex, 10);
-        }
-        if (curr.dataset?.subchatMessages !== undefined) {
-          insideModal = true;
-          break;
-        }
-        curr = curr.parentElement;
-      }
-
-      if (rect && insideModal && msgIndex >= 0) {
-        const capturedMarkdown = getMarkdownFromDOMSelection() || selectedStr;
-
-        setRecallSelection({
-          markdown: capturedMarkdown,
-          x: rect.left + rect.width / 2,
-          y: rect.top + window.scrollY,
-          msgIndex,
-          visible: true,
-        });
-      }
-    } else {
-      setTimeout(() => setRecallSelection((prev) => (prev ? { ...prev, visible: false } : null)), 200);
-    }
-  };
-
-  const handleCreateRecall = async (markdownContent: string | null, msgIndex?: number) => {
-    try {
-      if (isRecalling) return;
-      setIsRecalling(true);
-      await requestFirebaseNotificationPermission();
-
-      // If markdownContent is null, fall back to the full message content
-      let content = markdownContent;
-      if (!content && msgIndex !== undefined && subMessages[msgIndex]) {
-        content = subMessages[msgIndex].content;
-      }
-
-      await api.post(`/recall/save`, {
-        content: content || null,
-        chatId: chatId,
-        msgId: sourceMessageId, // anchor to the parent message
-      });
-
-      setRecallSelection(null);
-    } catch (error) {
-      console.error("Failed to save recall card from subchat", error);
-    } finally {
-      setIsRecalling(false);
-    }
-  };
+  const {
+    input,
+    setInput,
+    subMessages,
+    streamingText,
+    isPinned,
+    isRecalling,
+    recallSelection,
+    scrollRef,
+    existingSubChat,
+    stickToChatMutation,
+    streamChatMutation,
+    handleSend,
+    handleSubChatTextSelection,
+    handleCreateRecall,
+  } = useQuickChat({ chatId, sourceMessageId, selectedText, subChatId, relativeY, isOpen });
 
   if (!isOpen) return null;
 
   return (
     <>
       <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-100" onClick={onClose} />
-      
-      <div className={`fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[95vw] transition-all duration-300 ease-in-out bg-(--theme-bg-surface) border border-white/10 rounded-2xl shadow-2xl z-101 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 ${
+
+      <div className={`fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[95vw] transition-all duration-300 ease-in-out bg-[var(--theme-bg-base)] border border-white/10 rounded-2xl shadow-2xl z-101 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 ${
         isExpanded ? "max-w-6xl h-[92vh]" : "max-w-2xl h-[70vh]"
       }`}>
-        
+
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-(--theme-bg-base)">
           <div className="flex items-center gap-2">
@@ -262,20 +69,20 @@ export const QuickChatModal: React.FC<QuickChatModalProps> = ({
             <h3 className="text-sm font-semibold text-gray-200">Quick Context Chat</h3>
           </div>
           <div className="flex items-center gap-2">
-<button 
-  className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium transition-all border ${
-    existingSubChat 
-      ? "text-blue-400 bg-blue-500/10 border-blue-500/30 cursor-default" 
-      : "text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 border-transparent hover:border-blue-500/30"
-  }`}
-  onClick={() => !existingSubChat && stickToChatMutation.mutate()}
-  disabled={stickToChatMutation.isPending || subMessages.length === 0}
->
-  <Pin size={14} className={existingSubChat ? "fill-blue-400" : ""} />
-  {existingSubChat||isPinned ? "Pinned to Chat" : "Stick to Chat"}
-</button>
-            <button 
-              onClick={() => setIsExpanded(!isExpanded)} 
+            <button
+              className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium transition-all border ${
+                existingSubChat
+                  ? "text-blue-400 bg-blue-500/10 border-blue-500/30 cursor-default"
+                  : "text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 border-transparent hover:border-blue-500/30"
+              }`}
+              onClick={() => !existingSubChat && stickToChatMutation.mutate()}
+              disabled={stickToChatMutation.isPending || subMessages.length === 0}
+            >
+              <Pin size={14} className={existingSubChat ? "fill-blue-400" : ""} />
+              {existingSubChat || isPinned ? "Pinned to Chat" : "Stick to Chat"}
+            </button>
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
               className="text-gray-500 hover:text-gray-300 transition-colors p-1"
               title={isExpanded ? "Shrink" : "Expand"}
             >
@@ -321,17 +128,17 @@ export const QuickChatModal: React.FC<QuickChatModalProps> = ({
                 className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} group/subchat-bubble relative`}
               >
                 <div className={`max-w-[85%] px-4 py-3 rounded-2xl text-[15px] leading-relaxed ${
-                  msg.role === 'user' 
-                    ? 'bg-blue-600 text-white rounded-tr-sm shadow-lg shadow-blue-900/20' 
+                  msg.role === 'user'
+                    ? 'bg-blue-600 text-white rounded-tr-sm shadow-lg shadow-blue-900/20'
                     : 'bg-white/5 text-gray-200 rounded-tl-sm border border-white/5'
                 }`}>
                   {msg.role === 'user' ? (
                     msg.content
                   ) : (
                     <div className="markdown-body">
-                      <ReactMarkdown 
-                        remarkPlugins={[remarkGfm, remarkMath]} 
-                        rehypePlugins={[rehypeKatex]} 
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm, remarkMath]}
+                        rehypePlugins={[rehypeKatex]}
                         components={markdownComponents}
                       >
                         {msg.content}
@@ -358,31 +165,31 @@ export const QuickChatModal: React.FC<QuickChatModalProps> = ({
 
           {/* Streaming Bubble */}
           {(streamChatMutation.isPending || streamingText) && (
-             <div className="flex justify-start">
-               <div className="max-w-[85%] px-4 py-3 rounded-2xl text-[15px] leading-relaxed bg-white/5 text-gray-200 rounded-tl-sm border border-white/5">
-                 {streamingText ? (
-                   <div className="markdown-body">
-                     <ReactMarkdown 
-                       remarkPlugins={[remarkGfm, remarkMath]} 
-                       rehypePlugins={[rehypeKatex]} 
-                       components={markdownComponents}
-                     >
-                       {streamingText}
-                     </ReactMarkdown>
-                   </div>
-                 ) : (
-                   <span className="flex gap-1.5 items-center h-6">
-                     <span className="w-1.5 h-1.5 bg-blue-500/50 rounded-full animate-bounce"></span>
-                     <span className="w-1.5 h-1.5 bg-blue-500/50 rounded-full animate-bounce delay-100"></span>
-                     <span className="w-1.5 h-1.5 bg-blue-500/50 rounded-full animate-bounce delay-200"></span>
-                   </span>
-                 )}
-               </div>
-             </div>
+            <div className="flex justify-start">
+              <div className="max-w-[85%] px-4 py-3 rounded-2xl text-[15px] leading-relaxed bg-white/5 text-gray-200 rounded-tl-sm border border-white/5">
+                {streamingText ? (
+                  <div className="markdown-body">
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm, remarkMath]}
+                      rehypePlugins={[rehypeKatex]}
+                      components={markdownComponents}
+                    >
+                      {streamingText}
+                    </ReactMarkdown>
+                  </div>
+                ) : (
+                  <span className="flex gap-1.5 items-center h-6">
+                    <span className="w-1.5 h-1.5 bg-blue-500/50 rounded-full animate-bounce"></span>
+                    <span className="w-1.5 h-1.5 bg-blue-500/50 rounded-full animate-bounce delay-100"></span>
+                    <span className="w-1.5 h-1.5 bg-blue-500/50 rounded-full animate-bounce delay-200"></span>
+                  </span>
+                )}
+              </div>
+            </div>
           )}
         </div>
 
-        {/* Floating Recall Button — appears on text selection */}
+        {/* Floating Recall Button */}
         {recallSelection && recallSelection.visible && (
           <div
             className="fixed z-[200] -translate-x-1/2 -translate-y-full flex gap-2 animate-in fade-in slide-in-from-bottom-2 duration-200"

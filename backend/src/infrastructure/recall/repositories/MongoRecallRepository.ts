@@ -16,7 +16,7 @@ export class MongoRecallRepository implements IRecallRepository {
     return Recall.find({
       userId,
       nextReview: { $lte: date },
-    }).sort({ nextReview: 1 });
+    }).sort({ nextReview: -1 });
   }
 
   async findAllByUserId(userId: string): Promise<any[]> {

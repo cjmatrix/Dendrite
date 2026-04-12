@@ -8,7 +8,7 @@ export const store = configureStore({
     auth: authReducer,
     explorer: explorerReducer,
   },
-  // DevTools are enabled by default in RTK
+  
 });
 
 // Infer the `RootState` and `AppDispatch` types from the store itself

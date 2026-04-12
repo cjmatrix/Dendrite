@@ -37,7 +37,7 @@ export default function P5Sandbox({ p5CodeString }: P5SandboxProps) {
     <div className={containerClasses}>
       <div className={iframeWrapperClasses}>
       
-        {/* Fullscreen Toggle Button - appears on hover in standard mode, always visible in fullscreen mode */}
+        {/* Fullscreen Toggle Button*/}
         {!isStreaming && (
           <button 
             onClick={toggleFullscreen}

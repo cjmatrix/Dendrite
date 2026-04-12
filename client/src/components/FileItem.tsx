@@ -1,25 +1,15 @@
 import React, { useEffect, useState } from "react";
 import type { FileNode, FileType } from "../types/types";
 import {
-  Folder,
-  ChevronDown,
-  MessageSquare,
-  Plus,
-  FolderPlus,
-  Check,
-  Edit,
-  Trash,
-  FileText,
-  Image as ImageIcon,
-  BookOpen,
-  MessageCircle,
-  GitBranch,
+  Folder, ChevronDown, MessageSquare, Plus, FolderPlus, Check,
+  Edit, Trash, FileText, Image as ImageIcon, BookOpen, MessageCircle, GitBranch,
 } from "lucide-react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import api from "../api/axios";
 import { useNavigate } from "react-router-dom";
 import { setActiveSidebarRootId } from "../store/explorerSlice";
 import { useAppDispatch } from "../store/store";
+
+// Clean Architecture Hook
+import { useFileItemMutations } from "../hooks/useFileItemMutations";
 
 interface FileItemProps {
   node: FileNode;
@@ -32,217 +22,20 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
   const [newItemName, setNewItemName] = useState("");
   const [renameItemName, setRenameItemName] = useState("");
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
   const isFolder = node.type === "folder";
-  const queryClient = useQueryClient();
-  const dispatch=useAppDispatch();
 
+  // ── Clean Architecture (no direct api.* calls here) ──
+  const { createFolder, updateFolder, deleteFolder, createChat, updateChat, deleteChat } = useFileItemMutations();
 
-
-
-  const { mutate: createFolderMutate } = useMutation({
-    mutationFn: async ({
-      name,
-      parentId,
-    }: {
-      name: string;
-      parentId: string | null;
-    }) => {
-      await api.post("/folders/create", { name, parentId });
-    },
-    onMutate: async ({ name, parentId }) => {
-      await queryClient.cancelQueries({ queryKey: ["folders"] });
-      const previous = queryClient.getQueryData(["folders"]);
-      queryClient.setQueryData(["folders"], (old: any[]) => {
-        if (!old) return old;
-        const tempFolder = {
-          id: `temp-${Date.now()}`,
-          name,
-          type: "folder",
-          parentId,
-          children: [],
-          isExpanded: false,
-        };
-
-        const addChild = (nodes: any[]): any[] =>
-          nodes.map((n: any) =>
-            n.id === parentId
-              ? { ...n, children: [...(n.children || []), tempFolder] }
-              : { ...n, children: n.children ? addChild(n.children) : [] },
-          );
-        return parentId ? addChild(old) : [...old, tempFolder];
-      });
-      return { previous };
-    },
-    onError: (_err, _vars, context) => {
-      if (context?.previous)
-        queryClient.setQueryData(["folders"], context.previous);
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["folders"] });
-    },
-  });
-
-
-
-  const { mutate: updateFolder } = useMutation({
-    mutationFn: async ({
-      folderId,
-      updates,
-    }: {
-      folderId: string;
-      updates: { name?: string; isExpanded?: boolean };
-    }) => {
-      await api.patch(`/folders/${folderId}`, updates);
-    },
-    onMutate: async ({ folderId, updates }) => {
-      await queryClient.cancelQueries({ queryKey: ["folders"] });
-      const previous = queryClient.getQueryData(["folders"]);
-      queryClient.setQueryData(["folders"], (old: any[]) => {
-        if (!old) return old;
-        const updateNode = (nodes: any[]): any[] =>
-          nodes.map((n: any) =>
-            n.id === folderId
-              ? { ...n, ...updates }
-              : { ...n, children: n.children ? updateNode(n.children) : [] },
-          );
-        return updateNode(old);
-      });
-      return { previous };
-    },
-    onError: (_err, _vars, context) => {
-      if (context?.previous)
-        queryClient.setQueryData(["folders"], context.previous);
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["folders"] });
-    },
-  });
-
-  const { mutate: deleteFolderMutate } = useMutation({
-    mutationFn: async (folderId: string) => {
-      await api.delete(`/folders/${folderId}`);
-    },
-    onMutate: async (folderId) => {
-      await queryClient.cancelQueries({ queryKey: ["folders"] });
-      const previous = queryClient.getQueryData(["folders"]);
-      queryClient.setQueryData(["folders"], (old: any[]) => {
-        if (!old) return old;
-        const removeNode = (nodes: any[]): any[] =>
-          nodes
-            .filter((n: any) => n.id !== folderId)
-            .map((n: any) => ({
-              ...n,
-              children: n.children ? removeNode(n.children) : [],
-            }));
-        return removeNode(old);
-      });
-      return { previous };
-    },
-    onError: (_err, _vars, context) => {
-      if (context?.previous)
-        queryClient.setQueryData(["folders"], context.previous);
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["folders"] });
-    },
-  });
-
- 
-
-  const { mutate: createChatMutate } = useMutation({
-    mutationFn: async ({
-      title,
-      folderId,
-    }: {
-      title: string;
-      folderId: string | null;
-    }) => {
-      await api.post("/chats/create", { title, folderId });
-    },
-    onMutate: async ({ title, folderId }) => {
-      await queryClient.cancelQueries({ queryKey: ["chats"] });
-      const previous = queryClient.getQueryData(["chats"]);
-      queryClient.setQueryData(["chats"], (old: any[]) => {
-        if (!old) return old;
-        const tempChat = {
-          _id: `temp-${Date.now()}`,
-          title,
-          folderId,
-          type: "chat",
-        };
-        return [...old, tempChat];
-      });
-      return { previous };
-    },
-    onError: (_err, _vars, context) => {
-      if (context?.previous)
-        queryClient.setQueryData(["chats"], context.previous);
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["chats"] });
-    },
-  });
-
-  const { mutate: updateChat } = useMutation({
-    mutationFn: async ({
-      chatId,
-      updates,
-    }: {
-      chatId: string;
-      updates: { title?: string; folderId?: string | null };
-    }) => {
-      await api.patch(`/chats/${chatId}`, updates);
-    },
-    onMutate: async ({ chatId, updates }) => {
-      await queryClient.cancelQueries({ queryKey: ["chats"] });
-      const previous = queryClient.getQueryData(["chats"]);
-      queryClient.setQueryData(["chats"], (old: any[]) => {
-        if (!old) return old;
-        return old.map((c: any) =>
-          c._id === chatId ? { ...c, ...updates } : c,
-        );
-      });
-      return { previous };
-    },
-    onError: (_err, _vars, context) => {
-      if (context?.previous)
-        queryClient.setQueryData(["chats"], context.previous);
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["chats"] });
-    },
-  });
-
-  const { mutate: deleteChatMutate } = useMutation({
-    mutationFn: async (chatId: string) => {
-      await api.delete(`/chats/${chatId}`);
-    },
-    onMutate: async (chatId) => {
-      await queryClient.cancelQueries({ queryKey: ["chats"] });
-      const previous = queryClient.getQueryData(["chats"]);
-      queryClient.setQueryData(["chats"], (old: any[]) => {
-        if (!old) return old;
-        return old.filter((c: any) => c._id !== chatId);
-      });
-      return { previous };
-    },
-    onError: (_err, _vars, context) => {
-      if (context?.previous)
-        queryClient.setQueryData(["chats"], context.previous);
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["chats"] });
-    },
-  });
-
-  // --- Handlers ---
+  // ── Handlers ────────────────────────────────────────────────────────────
 
   const handleCreate = () => {
     if (newItemName.trim()) {
       if (isCreating === "folder") {
-        createFolderMutate({ name: newItemName, parentId: node.id });
+        createFolder({ name: newItemName, parentId: node.id });
       } else {
-        createChatMutate({ title: newItemName, folderId: node.id });
+        createChat({ title: newItemName, folderId: node.id });
       }
       setNewItemName("");
       setIsCreating(null);
@@ -271,21 +64,23 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
 
   const handleDelete = () => {
     if (isFolder) {
-      deleteFolderMutate(node.id);
+      deleteFolder(node.id);
     } else {
-      deleteChatMutate(node.id);
+      deleteChat(node.id);
     }
   };
 
-  const handleRootSetting=()=>{
-    dispatch(setActiveSidebarRootId(node.id));
-  
-  }
+  const handleOpenWindow = (node: FileNode) => {
+    if (node.type === "chat") navigate(`/${node.id}`);
+  };
 
-  const [contextMenu, setContextMenu] = useState<{
-    x: number;
-    y: number;
-  } | null>(null);
+  const handleRootSetting = () => {
+    dispatch(setActiveSidebarRootId(node.id));
+  };
+
+  // ── Context menu ─────────────────────────────────────────────────────────
+
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -295,19 +90,12 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
 
   useEffect(() => {
     if (!contextMenu) return;
-
     const close = () => setContextMenu(null);
-
     window.addEventListener("click", close);
-
     return () => window.removeEventListener("click", close);
   });
 
-  const handleOpenWindow = (node: FileNode) => {
-    if (node.type === "chat") {
-      navigate(`/${node.id}`);
-    }
-  };
+  // ── Render ───────────────────────────────────────────────────────────────
 
   return (
     <div className="select-none relative" onContextMenu={handleContextMenu}>
@@ -318,7 +106,7 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
         >
           {isFolder ? (
             <span className={`text-zinc-600 group-hover/item:text-zinc-400 transition-all duration-300 shrink-0 ${isOpen ? "rotate-0 text-cyan-500/80" : "-rotate-90"}`}>
-               <ChevronDown size={13} strokeWidth={3} />
+              <ChevronDown size={13} strokeWidth={3} />
             </span>
           ) : (
             <span className="w-3" />
@@ -327,7 +115,7 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
           {isFolder ? (
             node.isSystemFolder ? (() => {
               const getSystemStyle = () => {
-                switch(node.name) {
+                switch (node.name) {
                   case "Documents": return { color: "text-blue-400 text-opacity-90 fill-blue-500/10", suffix: <FileText size={7} className="text-blue-100" strokeWidth={3} />, suffixBg: "bg-blue-600" };
                   case "Media": return { color: "text-rose-400 text-opacity-90 fill-rose-500/10", suffix: <ImageIcon size={7} className="text-rose-100" strokeWidth={3} />, suffixBg: "bg-rose-600" };
                   case "Research": return { color: "text-amber-400 text-opacity-90 fill-amber-500/10", suffix: <BookOpen size={7} className="text-amber-100" strokeWidth={3} />, suffixBg: "bg-amber-600" };
@@ -356,11 +144,9 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
               <MessageSquare size={15} className="text-emerald-400/90 fill-emerald-500/10" strokeWidth={2} />
             </div>
           )}
+
           {isRenaming ? (
-            <div
-              className="flex items-center gap-1.5"
-              onClick={(e) => e.stopPropagation()}
-            >
+            <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
               <input
                 autoFocus
                 className="bg-black/40 border border-cyan-500/50 focus:border-cyan-400 rounded-md text-[13px] font-medium text-gray-200 outline-none px-2 py-0.5 w-[130px] transition-all shadow-inner focus:shadow-[0_0_10px_-2px_rgba(6,182,212,0.3)] placeholder:text-zinc-600"
@@ -370,10 +156,7 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
                 onKeyDown={(e) => e.key === "Enter" && handleRename()}
               />
               <button
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  handleRename();
-                }}
+                onMouseDown={(e) => { e.preventDefault(); handleRename(); }}
                 className="p-1 text-zinc-500 hover:text-emerald-400 hover:bg-zinc-800 rounded-md transition-all active:scale-95"
               >
                 <Check size={14} strokeWidth={2.5} />
@@ -381,11 +164,11 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
             </div>
           ) : (
             <div className="flex flex-1 items-center justify-between min-w-0 pr-2">
-              <div className={`text-[13px] tracking-wide truncate transition-colors group-hover/item:text-white font-medium`}>
+              <div className="text-[13px] tracking-wide truncate transition-colors group-hover/item:text-white font-medium">
                 {node.name}
               </div>
               {!isFolder && (node.contextParents?.length || 0) > 0 && (
-                <div 
+                <div
                   className="flex items-center text-amber-500/90 bg-amber-500/10 px-1.5 py-0.5 rounded ml-2 flex-shrink-0 border border-amber-500/20"
                   title={`${node.contextParents?.length} Inherited Contexts`}
                 >
@@ -400,19 +183,13 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
         {isFolder && (
           <div className="flex opacity-0 group-hover/item:opacity-100 items-center gap-0.5 transition-opacity duration-200">
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsCreating("chat");
-              }}
+              onClick={(e) => { e.stopPropagation(); setIsCreating("chat"); }}
               className="p-1 hover:bg-zinc-700/60 rounded-md text-zinc-500 hover:text-emerald-400 transition-colors active:scale-95"
             >
               <Plus size={14} strokeWidth={2.5} />
             </button>
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsCreating("folder");
-              }}
+              onClick={(e) => { e.stopPropagation(); setIsCreating("folder"); }}
               className="p-1 hover:bg-zinc-700/60 rounded-md text-zinc-500 hover:text-cyan-400 transition-colors active:scale-95"
             >
               <FolderPlus size={14} strokeWidth={2.5} />
@@ -433,19 +210,16 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
             placeholder="Name..."
           />
           <button
-            onMouseDown={(e) => {
-              e.preventDefault();
-              handleCreate();
-            }}
+            onMouseDown={(e) => { e.preventDefault(); handleCreate(); }}
             className="p-1 shrink-0 text-zinc-500 hover:text-emerald-400 hover:bg-zinc-800 rounded-md transition-all active:scale-95"
           >
             <Check size={14} strokeWidth={2.5} />
           </button>
         </div>
       )}
-      
+
       {isFolder && (
-        <div className={`grid transition-all duration-300 ease-in-out ${isOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
+        <div className={`grid transition-all duration-300 ease-in-out ${isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}>
           <div className="overflow-hidden">
             <div className="ml-[18px] pl-1.5 border-l border-zinc-800/80 hover:border-zinc-700/80 transition-colors mt-0.5 mb-1.5 space-y-[2px]">
               {node.children?.map((child) => (
@@ -456,70 +230,41 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
         </div>
       )}
 
-
       {contextMenu && (
         <>
-          <div
-            className=" fixed inset-0 z-40"
-            onClick={() => setContextMenu(null)}
-          ></div>
-
+          <div className="fixed inset-0 z-40" onClick={() => setContextMenu(null)}></div>
           <div
             style={{ top: contextMenu.y, left: contextMenu.x }}
             className="fixed z-50 bg-[var(--theme-bg-surface)] border border-zinc-800 shadow-2xl rounded-xl py-1.5 w-48 text-sm text-gray-200 overflow-hidden"
           >
             <button
               className="w-full text-left px-3 py-1.5 hover:bg-cyan-600 hover:text-white flex items-center gap-2 transition-colors"
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsCreating("chat");
-                setContextMenu(null);
-                setIsOpen(true);
-              }}
+              onClick={(e) => { e.stopPropagation(); setIsCreating("chat"); setContextMenu(null); setIsOpen(true); }}
             >
               <MessageSquare size={14} /> New Chat
             </button>
             <button
               className="w-full text-left px-3 py-1.5 hover:bg-cyan-600 hover:text-white flex items-center gap-2 transition-colors"
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsCreating("folder");
-                setContextMenu(null);
-                setIsOpen(true);
-              }}
+              onClick={(e) => { e.stopPropagation(); setIsCreating("folder"); setContextMenu(null); setIsOpen(true); }}
             >
               <FolderPlus size={14} /> New Folder
             </button>
-             <button
+            <button
               className="w-full text-left px-3 py-1.5 hover:bg-cyan-600 hover:text-white flex items-center gap-2 transition-colors"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleRootSetting();
-                setContextMenu(null);
-                setIsOpen(true);
-              }}
+              onClick={(e) => { e.stopPropagation(); handleRootSetting(); setContextMenu(null); setIsOpen(true); }}
             >
               <FolderPlus size={14} /> Open With Folder
             </button>
             <button
               className="w-full text-left px-3 py-1.5 hover:bg-amber-600 hover:text-white flex items-center gap-2 transition-colors"
-              onClick={(e) => {
-                e.stopPropagation();
-                navigate(`/graph/${node.id}`);
-                setContextMenu(null);
-              }}
+              onClick={(e) => { e.stopPropagation(); navigate(`/graph/${node.id}`); setContextMenu(null); }}
             >
               <GitBranch size={14} /> Knowledge Graph
             </button>
             {!node.isSystemFolder && (
               <button
                 className="w-full text-left px-3 py-1.5 hover:bg-cyan-600 hover:text-white flex items-center gap-2 transition-colors"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsRenaming("folder");
-                  setContextMenu(null);
-                  setRenameItemName(node.name);
-                }}
+                onClick={(e) => { e.stopPropagation(); setIsRenaming("folder"); setContextMenu(null); setRenameItemName(node.name); }}
               >
                 <Edit size={14} /> Rename
               </button>
@@ -527,11 +272,7 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
             {node.id !== "root" && !node.isSystemFolder && (
               <button
                 className="w-full text-left px-3 py-2 hover:bg-red-500/20 hover:text-red-300 flex items-center gap-2 text-red-400 transition-colors"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setContextMenu(null);
-                  handleDelete();
-                }}
+                onClick={(e) => { e.stopPropagation(); setContextMenu(null); handleDelete(); }}
               >
                 <Trash size={14} /> Delete
               </button>

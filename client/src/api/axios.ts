@@ -2,7 +2,7 @@ import axios from 'axios';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1',
-  withCredentials: true, // Crucial for sending cookies (access/refresh tokens)
+  withCredentials: true, 
 });
 
 // Set JSON header by default, but allow FormData to override for multipart uploads
@@ -15,10 +15,7 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// --- Silent Refresh Interceptor ---
-// When a request gets a 401, automatically call /auth/refresh and retry.
-// Uses a queue so that if multiple requests fail at the same time,
-// only ONE refresh call is made and the rest wait for it.
+
 
 let isRefreshing = false;
 let failedQueue: { resolve: (value?: unknown) => void; reject: (reason?: unknown) => void }[] = [];
@@ -35,7 +32,7 @@ const processQueue = (error: unknown | null) => {
 };
 
 api.interceptors.response.use(
-  (response) => response, // Success — pass through
+  (response) => response, 
   async (error) => {
     const originalRequest = error.config;
 
@@ -61,9 +58,9 @@ api.interceptors.response.use(
     isRefreshing = true;
 
     try {
-      await api.post('/auth/refresh'); // Cookies are sent/set automatically
+      await api.post('/auth/refresh');
       processQueue(null);
-      return api(originalRequest); // Retry the original request
+      return api(originalRequest); 
     } catch (refreshError) {
       processQueue(refreshError);
       // Refresh failed — token is invalid/expired, force logout

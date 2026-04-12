@@ -1,29 +1,36 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../store/store';
 import { Folder, MessageSquare, ChevronRight, MessageCircle, FolderPlus, Edit, Trash, Check, Sparkles, Brain, Component, Database, Cpu, X } from 'lucide-react';
 import type { FileNode, FileType } from '../types/types';
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import api from "../api/axios";
 import { setActiveSidebarRootId, toggleExplorerModal } from '../store/explorerSlice';
 
-export default function FileDisplay({ 
-  isModal = false, 
-  onSelect 
-}: { 
-  isModal?: boolean, 
-  onSelect?: (node: FileNode) => void 
+
+import { useFileItemMutations } from '../hooks/useFileItemMutations';
+import { useFileDisplayTree } from '../hooks/useFileDisplayTree';
+
+export default function FileDisplay({
+  isModal = false,
+  onSelect,
+  currentFolderId
+}: {
+  isModal?: boolean,
+  onSelect?: (node: FileNode) => void,
+  currentFolderId:string |undefined
 }) {
   const { folderId: routeFolderId } = useParams();
-  const [localFolderId, setLocalFolderId] = useState<string | null>(routeFolderId || 'root');
-  
-  // Use local state if we're a modal so we don't mess up the React Router history while chatting
+  const [localFolderId, setLocalFolderId] = useState<string | null>(currentFolderId || 'root');
+
+ console.log(isModal)
   const activeFolderId = isModal ? localFolderId : routeFolderId;
 
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const tree = useAppSelector(state => state.explorer.tree);
-  const queryClient = useQueryClient();
+
+  const { currentFolder, path } = useFileDisplayTree(tree, activeFolderId);
+  const { createFolder, updateFolder, deleteFolder, createChat, updateChat, deleteChat } = useFileItemMutations();
+
 
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; node: FileNode | null } | null>(null);
   const [isCreating, setIsCreating] = useState<FileType | null>(null);
@@ -31,152 +38,14 @@ export default function FileDisplay({
   const [newItemName, setNewItemName] = useState("");
   const [renameItemName, setRenameItemName] = useState("");
 
-  const { currentFolder, path } = useMemo(() => {
-    let target = tree;
-    let currentPath: FileNode[] = [{ ...tree, id: 'root', name: 'Root' }];
 
-    if (activeFolderId && activeFolderId !== 'root') {
-      const dfs = (node: FileNode, targetId: string, currentPathBranch: FileNode[]): { found: FileNode | null, path: FileNode[] } => {
-        if (node.id === targetId) return { found: node, path: [...currentPathBranch, node] };
-        if (!node.children) return { found: null, path: [] };
-        
-        for (const child of node.children) {
-          const res = dfs(child, targetId, [...currentPathBranch, node]);
-          if (res.found) return res;
-        }
-        return { found: null, path: [] };
-      };
-      
-      const result = dfs(tree, activeFolderId, []);
-      if (result.found) {
-        target = result.found;
-        currentPath = result.path;
-      }
-    }
-    
-    if (target.id === 'root') {
-        currentPath = [{ ...tree, id: 'root', name: 'Root' }];
-    } else {
-        if (currentPath[0]) {
-            currentPath[0] = { ...currentPath[0], name: 'Root' };
-        }
-    }
-
-    return { currentFolder: target, path: currentPath };
-  }, [tree, activeFolderId]);
-
-  // --- Folder mutations with optimistic updates ---
-  const { mutate: createFolderMutate } = useMutation({
-    mutationFn: async ({ name, parentId }: { name: string; parentId: string | null; }) => {
-      await api.post("/folders/create", { name, parentId });
-    },
-    onMutate: async ({ name, parentId }) => {
-      await queryClient.cancelQueries({ queryKey: ["folders"] });
-      const previous = queryClient.getQueryData(["folders"]);
-      queryClient.setQueryData(["folders"], (old: any[]) => {
-        if (!old) return old;
-        const tempFolder = { id: `temp-${Date.now()}`, name, type: "folder", parentId, children: [], isExpanded: false };
-        const addChild = (nodes: any[]): any[] => nodes.map((n: any) => n.id === parentId ? { ...n, children: [...(n.children || []), tempFolder] } : { ...n, children: n.children ? addChild(n.children) : [] });
-        return parentId ? addChild(old) : [...old, tempFolder];
-      });
-      return { previous };
-    },
-    onError: (_err, _vars, context) => { if (context?.previous) queryClient.setQueryData(["folders"], context.previous); },
-    onSettled: () => { queryClient.invalidateQueries({ queryKey: ["folders"] }); },
-  });
-
-  const { mutate: updateFolder } = useMutation({
-    mutationFn: async ({ folderId, updates }: { folderId: string; updates: { name?: string; isExpanded?: boolean }; }) => {
-      await api.patch(`/folders/${folderId}`, updates);
-    },
-    onMutate: async ({ folderId, updates }) => {
-      await queryClient.cancelQueries({ queryKey: ["folders"] });
-      const previous = queryClient.getQueryData(["folders"]);
-      queryClient.setQueryData(["folders"], (old: any[]) => {
-        if (!old) return old;
-        const updateNode = (nodes: any[]): any[] => nodes.map((n: any) => n.id === folderId ? { ...n, ...updates } : { ...n, children: n.children ? updateNode(n.children) : [] });
-        return updateNode(old);
-      });
-      return { previous };
-    },
-    onError: (_err, _vars, context) => { if (context?.previous) queryClient.setQueryData(["folders"], context.previous); },
-    onSettled: () => { queryClient.invalidateQueries({ queryKey: ["folders"] }); },
-  });
-
-  const { mutate: deleteFolderMutate } = useMutation({
-    mutationFn: async (folderId: string) => { await api.delete(`/folders/${folderId}`); },
-    onMutate: async (folderId) => {
-      await queryClient.cancelQueries({ queryKey: ["folders"] });
-      const previous = queryClient.getQueryData(["folders"]);
-      queryClient.setQueryData(["folders"], (old: any[]) => {
-        if (!old) return old;
-        const removeNode = (nodes: any[]): any[] => nodes.filter((n: any) => n.id !== folderId).map((n: any) => ({ ...n, children: n.children ? removeNode(n.children) : [] }));
-        return removeNode(old);
-      });
-      return { previous };
-    },
-    onError: (_err, _vars, context) => { if (context?.previous) queryClient.setQueryData(["folders"], context.previous); },
-    onSettled: () => { queryClient.invalidateQueries({ queryKey: ["folders"] }); },
-  });
-
-  // --- Chat mutations with optimistic updates ---
-  const { mutate: createChatMutate } = useMutation({
-    mutationFn: async ({ title, folderId }: { title: string; folderId: string | null; }) => {
-      await api.post("/chats/create", { title, folderId });
-    },
-    onMutate: async ({ title, folderId }) => {
-      await queryClient.cancelQueries({ queryKey: ["chats"] });
-      const previous = queryClient.getQueryData(["chats"]);
-      queryClient.setQueryData(["chats"], (old: any[]) => {
-        if (!old) return old;
-        return [...old, { _id: `temp-${Date.now()}`, title, folderId, type: "chat" }];
-      });
-      return { previous };
-    },
-    onError: (_err, _vars, context) => { if (context?.previous) queryClient.setQueryData(["chats"], context.previous); },
-    onSettled: () => { queryClient.invalidateQueries({ queryKey: ["chats"] }); },
-  });
-
-  const { mutate: updateChat } = useMutation({
-    mutationFn: async ({ chatId, updates }: { chatId: string; updates: { title?: string; folderId?: string | null }; }) => {
-      await api.patch(`/chats/${chatId}`, updates);
-    },
-    onMutate: async ({ chatId, updates }) => {
-      await queryClient.cancelQueries({ queryKey: ["chats"] });
-      const previous = queryClient.getQueryData(["chats"]);
-      queryClient.setQueryData(["chats"], (old: any[]) => {
-        if (!old) return old;
-        return old.map((c: any) => c._id === chatId ? { ...c, ...updates } : c);
-      });
-      return { previous };
-    },
-    onError: (_err, _vars, context) => { if (context?.previous) queryClient.setQueryData(["chats"], context.previous); },
-    onSettled: () => { queryClient.invalidateQueries({ queryKey: ["chats"] }); },
-  });
-
-  const { mutate: deleteChatMutate } = useMutation({
-    mutationFn: async (chatId: string) => { await api.delete(`/chats/${chatId}`); },
-    onMutate: async (chatId) => {
-      await queryClient.cancelQueries({ queryKey: ["chats"] });
-      const previous = queryClient.getQueryData(["chats"]);
-      queryClient.setQueryData(["chats"], (old: any[]) => {
-        if (!old) return old;
-        return old.filter((c: any) => c._id !== chatId);
-      });
-      return { previous };
-    },
-    onError: (_err, _vars, context) => { if (context?.previous) queryClient.setQueryData(["chats"], context.previous); },
-    onSettled: () => { queryClient.invalidateQueries({ queryKey: ["chats"] }); },
-  });
-
-  // --- Handlers ---
   const handleCreate = () => {
     if (newItemName.trim()) {
       const activeId = currentFolder.id === 'root' ? null : currentFolder.id;
       if (isCreating === "folder") {
-        createFolderMutate({ name: newItemName, parentId: activeId });
+        createFolder({ name: newItemName, parentId: activeId });
       } else {
-        createChatMutate({ title: newItemName, folderId: activeId });
+        createChat({ title: newItemName, folderId: activeId });
       }
       setNewItemName("");
       setIsCreating(null);
@@ -198,9 +67,9 @@ export default function FileDisplay({
   const handleDelete = () => {
     if (contextMenu?.node) {
       if (contextMenu.node.type === "folder") {
-        deleteFolderMutate(contextMenu.node.id);
+        deleteFolder(contextMenu.node.id);
       } else {
-        deleteChatMutate(contextMenu.node.id);
+        deleteChat(contextMenu.node.id);
       }
     }
     setContextMenu(null);
@@ -219,20 +88,18 @@ export default function FileDisplay({
 
   useEffect(() => {
     if (!contextMenu) return;
-    const close = () => { 
-        // Only close if we aren't actively renaming inline
-        if (!isRenaming) setContextMenu(null); 
-    };
+    const close = () => { if (!isRenaming) setContextMenu(null); };
     window.addEventListener("click", close);
     return () => window.removeEventListener("click", close);
   }, [contextMenu, isRenaming]);
 
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div 
+    <div
       className={`h-full text-gray-200 flex flex-col ${isModal ? "p-0 bg-transparent" : "pt-8 px-8 bg-[radial-gradient(ellipse_at_top,var(--tw-gradient-stops))] from-zinc-900 via-(--theme-bg-surface) to-(--theme-bg-base) overflow-y-auto"}`}
       onContextMenu={(isModal && !!onSelect) ? undefined : handleBackgroundContextMenu}
     >
-      {/* Premium Header */}
+      {/* Header */}
       <div className="flex items-center justify-between mb-10 bg-zinc-900/40 p-4 px-6 rounded-2xl border border-white/5 shadow-xl backdrop-blur-md" onContextMenu={e => e.stopPropagation()}>
         <div className="flex items-center gap-4">
           <div className="p-2.5 bg-linear-to-br from-indigo-500/20 to-purple-600/20 rounded-xl border border-indigo-500/20 shadow-[0_0_15px_-5px_rgba(99,102,241,0.4)]">
@@ -243,13 +110,13 @@ export default function FileDisplay({
             <h2 className="text-xl font-semibold flex items-center gap-2 text-gray-300 tracking-tight">
               {path.map((node, index) => (
                 <React.Fragment key={index}>
-                  <span 
+                  <span
                     onClick={() => {
-                        if (isModal) {
-                           setLocalFolderId(node.id === 'root' ? 'root' : node.id);
-                        } else {
-                           navigate(node.id === 'root' ? '/explorer' : `/explorer/${node.id}`);
-                        }
+                      if (isModal) {
+                        setLocalFolderId(node.id === 'root' ? 'root' : node.id);
+                      } else {
+                        navigate(node.id === 'root' ? '/explorer' : `/explorer/${node.id}`);
+                      }
                     }}
                     className={`cursor-pointer hover:text-white transition-colors ${index === path.length - 1 ? 'text-white drop-shadow-md' : 'text-zinc-500'}`}
                   >
@@ -261,10 +128,9 @@ export default function FileDisplay({
             </h2>
           </div>
         </div>
-        
-        {/* Only show the 'Close' X if this is the FULL Explorer Modal (not the Context modal which has its own wrapper) */}
+
         {isModal && !onSelect && (
-          <button 
+          <button
             onClick={() => dispatch(toggleExplorerModal())}
             className="p-2.5 hover:bg-white/5 rounded-xl text-zinc-500 hover:text-white transition-all ml-auto"
             title="Close Explorer"
@@ -274,10 +140,10 @@ export default function FileDisplay({
         )}
       </div>
 
-      {/* Grid view */}
+      {/* Grid */}
       <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-x-6 gap-y-10 pb-12 px-2">
-        
-        {/* Inline Create Input Card */}
+
+        {/* Inline Create Card */}
         {isCreating && (
           <div className="flex flex-col items-center gap-3 p-3 rounded-xl border border-indigo-500/50 bg-zinc-800/50 shadow-lg">
             <div className="relative flex items-center justify-center p-2">
@@ -298,10 +164,7 @@ export default function FileDisplay({
                 placeholder="Name..."
               />
               <button
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  handleCreate();
-                }}
+                onMouseDown={(e) => { e.preventDefault(); handleCreate(); }}
                 className="p-1 text-gray-400 hover:text-emerald-400 hover:bg-zinc-700/50 rounded transition-colors"
               >
                 <Check size={14} strokeWidth={3} />
@@ -311,68 +174,41 @@ export default function FileDisplay({
         )}
 
         {currentFolder.children && currentFolder.children.length > 0 ? (
-           currentFolder.children.map(child => {
+          currentFolder.children.map(child => {
             const isFolder = child.type === 'folder';
-            
-            // Premium Badge logic for system folders
+
+            // Badge styling for system folders
             let color = "text-indigo-400 fill-indigo-500/10 text-opacity-80";
             let suffix = null;
             let suffixBg = "";
-            let IconComponent = Folder;
-            let iconSize = 64;
-            
+            const IconComponent = Folder;
+            const iconSize = 64;
+
             if (isFolder && child.isSystemFolder) {
-               switch(child.name) {
-                  case "Documents": 
-                    color = "text-blue-400 text-opacity-90 fill-blue-500/10"; 
-                    suffix = <Database size={14} className="text-blue-100" strokeWidth={2.5} />; 
-                    suffixBg = "bg-blue-600"; 
-                    break;
-                  case "Media": 
-                    color = "text-rose-400 text-opacity-90 fill-rose-500/10"; 
-                    suffix = <Component size={14} className="text-rose-100" strokeWidth={2.5} />; 
-                    suffixBg = "bg-rose-600"; 
-                    break;
-                  case "Research": 
-                    color = "text-amber-400 text-opacity-90 fill-amber-500/10"; 
-                    suffix = <Brain size={14} className="text-amber-100" strokeWidth={2.5} />; 
-                    suffixBg = "bg-amber-600"; 
-                    break;
-                  case "Chats": 
-                    color = "text-emerald-400 text-opacity-90 fill-emerald-500/10"; 
-                    suffix = <MessageCircle size={14} className="text-emerald-100" strokeWidth={2.5} />; 
-                    suffixBg = "bg-emerald-600"; 
-                    break;
-                  default: 
-                    color = "text-indigo-400"; 
-                    break;
-               }
+              switch (child.name) {
+                case "Documents": color = "text-blue-400 text-opacity-90 fill-blue-500/10"; suffix = <Database size={14} className="text-blue-100" strokeWidth={2.5} />; suffixBg = "bg-blue-600"; break;
+                case "Media": color = "text-rose-400 text-opacity-90 fill-rose-500/10"; suffix = <Component size={14} className="text-rose-100" strokeWidth={2.5} />; suffixBg = "bg-rose-600"; break;
+                case "Research": color = "text-amber-400 text-opacity-90 fill-amber-500/10"; suffix = <Brain size={14} className="text-amber-100" strokeWidth={2.5} />; suffixBg = "bg-amber-600"; break;
+                case "Chats": color = "text-emerald-400 text-opacity-90 fill-emerald-500/10"; suffix = <MessageCircle size={14} className="text-emerald-100" strokeWidth={2.5} />; suffixBg = "bg-emerald-600"; break;
+                default: color = "text-indigo-400"; break;
+              }
             }
-            
+
             const isBeingRenamed = isRenaming === child.id;
-            
+
             return (
-              <div 
-                key={child.id} 
+              <div
+                key={child.id}
                 className="group flex flex-col items-center gap-4 p-4 rounded-2xl hover:bg-white/5 cursor-pointer transition-colors duration-150 border border-transparent hover:border-white/10 relative"
                 onClick={() => {
                   if (isBeingRenamed) return;
                   if (isFolder) {
-                    if (isModal) {
-                       setLocalFolderId(child.id);
-                    } else {
-                       navigate(`/explorer/${child.id}`);
-                    }
+                    if (isModal) { setLocalFolderId(child.id); }
+                    else { navigate(`/explorer/${child.id}`); }
                   } else {
-                    if (isModal && onSelect) {
-                      onSelect(child);
-                    } else if (isModal && !onSelect) {
-                      // It's the full explorer modal! Close it and jump to chat
-                      dispatch(toggleExplorerModal());
-                      navigate(`/${child.id}`);
-                    } else {
-                      navigate(`/${child.id}`);
-                    }
+                    if (isModal && onSelect) { onSelect(child); }
+                    else if (isModal && !onSelect) { dispatch(toggleExplorerModal()); navigate(`/${child.id}`); }
+                    else { navigate(`/${child.id}`); }
                   }
                 }}
                 onContextMenu={(isModal && onSelect) ? undefined : (e) => handleNodeContextMenu(e, child)}
@@ -383,7 +219,7 @@ export default function FileDisplay({
                       <IconComponent size={iconSize} className={color} strokeWidth={1} />
                       {suffix && (
                         <div className={`absolute -bottom-1 -right-1 p-1 rounded-lg border border-white/20 ${suffixBg} z-10`}>
-                           {suffix}
+                          {suffix}
                         </div>
                       )}
                     </>
@@ -394,30 +230,27 @@ export default function FileDisplay({
                     </div>
                   )}
                 </div>
-                
+
                 {isBeingRenamed ? (
                   <div className="flex items-center gap-1 w-full bg-black/40 rounded-lg p-1" onClick={(e) => e.stopPropagation()}>
-                      <input
-                        autoFocus
-                        className="bg-(--theme-bg-base) border border-indigo-500/50 focus:border-indigo-500 rounded text-[13px] text-gray-200 outline-none px-2 py-1 flex-1 min-w-0 transition-colors text-center"
-                        value={renameItemName}
-                        onChange={(e) => setRenameItemName(e.target.value)}
-                        onBlur={() => { setIsRenaming(null); setContextMenu(null); }}
-                        onKeyDown={(e) => e.key === "Enter" && handleRename(child)}
-                      />
-                      <button
-                        onMouseDown={(e) => {
-                          e.preventDefault();
-                          handleRename(child);
-                        }}
-                        className="p-1 flex-shrink-0 text-gray-400 hover:text-emerald-400 hover:bg-zinc-700/50 rounded transition-colors"
-                      >
-                        <Check size={14} strokeWidth={3} />
-                      </button>
+                    <input
+                      autoFocus
+                      className="bg-(--theme-bg-base) border border-indigo-500/50 focus:border-indigo-500 rounded text-[13px] text-gray-200 outline-none px-2 py-1 flex-1 min-w-0 transition-colors text-center"
+                      value={renameItemName}
+                      onChange={(e) => setRenameItemName(e.target.value)}
+                      onBlur={() => { setIsRenaming(null); setContextMenu(null); }}
+                      onKeyDown={(e) => e.key === "Enter" && handleRename(child)}
+                    />
+                    <button
+                      onMouseDown={(e) => { e.preventDefault(); handleRename(child); }}
+                      className="p-1 flex-shrink-0 text-gray-400 hover:text-emerald-400 hover:bg-zinc-700/50 rounded transition-colors"
+                    >
+                      <Check size={14} strokeWidth={3} />
+                    </button>
                   </div>
                 ) : (
-                  <span className={`text-[13px] font-medium text-center truncate w-full px-1 text-zinc-300 drop-shadow-md`}>
-                     {child.name}
+                  <span className="text-[13px] font-medium text-center  w-full px-1 text-zinc-300 drop-shadow-md">
+                    {child.name}
                   </span>
                 )}
               </div>
@@ -425,46 +258,41 @@ export default function FileDisplay({
           })
         ) : (!isCreating && !(isModal && onSelect)) && (
           <div className="col-span-full flex flex-col items-center justify-center mt-20 text-gray-500">
-             <div className="bg-zinc-900/40 p-8 rounded-full mb-4 border border-zinc-800/50">
-                <Folder size={48} className="text-zinc-700" strokeWidth={1} />
-             </div>
-             <p className="text-sm">This folder is empty</p>
-             <p className="text-xs mt-2 italic text-zinc-600">Right-click anywhere to create files</p>
+            <div className="bg-zinc-900/40 p-8 rounded-full mb-4 border border-zinc-800/50">
+              <Folder size={48} className="text-zinc-700" strokeWidth={1} />
+            </div>
+            <p className="text-sm">This folder is empty</p>
+            <p className="text-xs mt-2 italic text-zinc-600">Right-click anywhere to create files</p>
           </div>
         )}
       </div>
 
-      {/* Context Menu Modal Overlay */}
+      {/* Context Menu */}
       {contextMenu && (
         <>
           <div style={{ top: contextMenu.y, left: contextMenu.x }} className="fixed z-50 bg-[var(--theme-bg-surface)] border border-zinc-800 shadow-2xl rounded-xl py-1.5 w-52 text-sm text-gray-200 overflow-hidden">
             {contextMenu.node ? (
-              /* Context Menu For SPECIFIC Files / Folders */
               <>
                 <div className="px-3 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 border-b border-white/5 truncate">
                   {contextMenu.node.name}
                 </div>
-                
                 {contextMenu.node.type === "folder" && (
                   <button className="w-full text-left px-3 py-2 hover:bg-indigo-600 hover:text-white flex items-center gap-2 transition-colors" onClick={(e) => { e.stopPropagation(); dispatch(setActiveSidebarRootId(contextMenu.node!.id)); setContextMenu(null); }}>
                     <FolderPlus size={15} /> Open With Folder
                   </button>
                 )}
-                
                 {!contextMenu.node.isSystemFolder && (
                   <button className="w-full text-left px-3 py-2 hover:bg-indigo-600 hover:text-white flex items-center gap-2 transition-colors" onClick={(e) => { e.stopPropagation(); setIsRenaming(contextMenu.node!.id); setRenameItemName(contextMenu.node!.name); setContextMenu(null); }}>
                     <Edit size={15} /> Rename
                   </button>
                 )}
-                
                 {contextMenu.node.id !== "root" && !contextMenu.node.isSystemFolder && (
-                 <button className="w-full text-left px-3 py-2 hover:bg-red-500/20 hover:text-red-300 flex items-center gap-2 text-red-400 transition-colors" onClick={(e) => { e.stopPropagation(); handleDelete(); }}>
-                   <Trash size={15} /> Delete
-                 </button>
+                  <button className="w-full text-left px-3 py-2 hover:bg-red-500/20 hover:text-red-300 flex items-center gap-2 text-red-400 transition-colors" onClick={(e) => { e.stopPropagation(); handleDelete(); }}>
+                    <Trash size={15} /> Delete
+                  </button>
                 )}
               </>
             ) : (
-              /* Context Menu For BACKGROUND */
               <>
                 <button className="w-full text-left px-3 py-2 hover:bg-indigo-600 hover:text-white flex items-center gap-2 transition-colors" onClick={(e) => { e.stopPropagation(); setIsCreating("chat"); setContextMenu(null); }}>
                   <MessageSquare size={15} /> New Chat
