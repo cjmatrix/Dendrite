@@ -1,883 +1,682 @@
-import { Request, Response } from "express";
-import { MongoChatRepository } from "../infrastructure/chat/repositories/MongoChatRepository";
-import { MongoMessageRepository } from "../infrastructure/chat/repositories/MongoMessageRepository";
-import { MongoSubChatRepository } from "../infrastructure/chat/repositories/MongoSubChatRepository";
-import { MongoCodeBlockRepository } from "../infrastructure/chat/repositories/MongoCodeBlockRepository";
-import { MongoOutboxEventRepository } from "../infrastructure/outbox/repositories/MongoOutboxEventRepository";
+import { Request, Response } from 'express';
+import multer from 'multer';
+import Busboy from 'busboy';
+import fs from 'fs';
+import crypto from 'crypto';
+import mongoose from 'mongoose';
+import { BaseController } from './base/BaseController';
+import { DIContainer } from './container/DIContainer';
+import { AppError } from '../utils/AppError';
+import { FileUploadService } from '../services/FileUploadService';
+import { AIService } from '../services/AIService';
+import { embeddingService } from '../services/EmbeddingService';
+import { logAIQuery } from '../utils/logger';
+import { documentChunkingQueue } from '../queue/documentChunkingQueue';
+import { OutboxEvent } from '../models/OutboxEvent';
+import CONTEXT_WINDOW from '../constants/contextWindow';
 
-import { QdrantVectorRepository } from "../infrastructure/vector/repositories/QdrantVectorRepository";
-import { CreateChat } from "../application/chat/use-cases/CreateChat";
-import { GetChats } from "../application/chat/use-cases/GetChats";
-import { GetChatById } from "../application/chat/use-cases/GetChatById";
-import { GetChatMessages } from "../application/chat/use-cases/GetChatMessages";
-import { UpdateChat } from "../application/chat/use-cases/UpdateChat";
-import { DeleteChat } from "../application/chat/use-cases/DeleteChat";
-import { PrepareMessage } from "../application/chat/use-cases/PrepareMessage";
-import { SaveModelReply } from "../application/chat/use-cases/SaveModelReply";
-import { SaveSubChat } from "../application/chat/use-cases/SaveSubChat";
-import { GetSubChat as GetSubChatUseCase } from "../application/chat/use-cases/GetSubChat";
-import ai, { aiInstances, getRotatedAI, rotateAIKey } from "../config/AIConfig";
-import mongoose from "mongoose";
-import { Chat } from "../models/Chat";
-import { SubChat } from "../models/SubChat";
-import { redisConnection } from "../config/redis";
-import { logAIQuery } from "../utils/logger";
-import { Message } from "../models/Message";
-import CONTEXT_WINDOW from "../constants/contextWindow";
-import { getTavilySearchContext } from "../services/searchCacheService";
-import { generateEmbedding } from "../utils/embedding";
-import multer from "multer";
-import cloudinary from "../config/cloudinary";
-import Busboy from "busboy";
-import fs from "fs";
-import path from "path";
-import os from "os";
-import fsp from "fs/promises";
-import FileType from "file-type";
-import { AppError } from "../utils/AppError";
-
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 8 * 1024 * 1024 },
-});
-
-export const uploadChatImageMiddleware = upload.single("image");
-
-const PDF_TEMP_DIR = path.join(os.tmpdir(), "dendrites-file-uploads");
-if (!fs.existsSync(PDF_TEMP_DIR)) {
-  fs.mkdirSync(PDF_TEMP_DIR, { recursive: true });
-}
-
-const ALLOWED_IMAGE_MIMES = new Set([
-  "image/jpeg",
-  "image/png",
-  "image/gif",
-  "image/webp",
-  "image/avif",
-]);
-const allowedDocumentMimeTypes = new Set([
-  "application/pdf",
-  "text/plain",
-  "text/markdown",
-  "text/csv",
-  "application/json",
-  "application/xml",
-  "text/xml",
-  "application/yaml",
-  "text/yaml",
-  "application/x-yaml",
-  "application/msword",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "application/vnd.ms-excel",
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  "application/vnd.ms-powerpoint",
-  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-  "application/rtf",
-]);
-
-const allowedDocumentExtensions = new Set([
-  ".pdf",
-  ".txt",
-  ".md",
-  ".csv",
-  ".json",
-  ".xml",
-  ".yaml",
-  ".yml",
-  ".doc",
-  ".docx",
-  ".xls",
-  ".xlsx",
-  ".ppt",
-  ".pptx",
-  ".rtf",
-  ".py",
-  ".js",
-  ".ts",
-  ".tsx",
-  ".jsx",
-  ".java",
-  ".c",
-  ".cpp",
-  ".h",
-  ".hpp",
-  ".go",
-  ".rs",
-  ".php",
-  ".rb",
-  ".sh",
-  ".sql",
-  ".html",
-  ".css",
-]);
-
-const uploadBufferToCloudinary = async (buffer: Buffer, mimetype: string) => {
-  return await new Promise<{ secure_url: string }>((resolve, reject) => {
-    const stream = cloudinary.uploader.upload_stream(
-      {
-        folder: "dendrites/chat-images",
-        resource_type: "image",
-      },
-      (error, result) => {
-        if (error || !result) {
-          reject(error || new Error("Cloudinary upload failed"));
-          return;
-        }
-        resolve({ secure_url: result.secure_url });
-      },
-    );
-
-    stream.end(buffer);
-  });
-};
-
-const uploadPdfToCloudinary = async (filePath: string) => {
-  return await new Promise<{ secure_url: string }>((resolve, reject) => {
-    const stream = cloudinary.uploader.upload_stream(
-      {
-        folder: "dendrites/docs",
-        resource_type: "raw",
-      },
-      (error, result) => {
-        if (error || !result) {
-          reject(error || new Error("Cloudinary upload failed"));
-          return;
-        }
-        resolve({ secure_url: result.secure_url });
-      },
-    );
-
-    fs.createReadStream(filePath).on("error", reject).pipe(stream);
-  });
-};
-
-export const uploadChatImage = async (req: Request, res: Response) => {
-  if (!req.user) {
-    res.status(401).json({ message: "Unauthorized" });
-    return;
-  }
-
-  if (!req.file) {
-    res.status(400).json({ message: "Image file is required" });
-    return;
-  }
-
-  if (!req.file.mimetype.startsWith("image/")) {
-    res.status(400).json({ message: "Only image files are allowed" });
-    return;
-  }
-
-  if (
-    !process.env.CLOUDINARY_CLOUD_NAME ||
-    !process.env.CLOUDINARY_API_KEY ||
-    !process.env.CLOUDINARY_API_SECRET
-  ) {
-    res.status(500).json({ message: "Cloudinary is not configured" });
-    return;
-  }
-   const detected = await FileType.fromBuffer(req.file.buffer);
-
-  if (!detected || !ALLOWED_IMAGE_MIMES.has(detected.mime)) {
-    res.status(415).json({
-      message: "Unsupported file type. Only JPEG, PNG, GIF, WebP, and AVIF are allowed.",
-    });
-    return;
-  }
-
-  try {
-    const result = await uploadBufferToCloudinary(
-      req.file.buffer,
-      detected.mime,
-    );
-
-    res.status(201).json({
-      success: true,
-      data: {
-        url: result.secure_url,
-      },
-    });
-  } catch (error: any) {
-    console.error("Image upload failed:", error);
-    res.status(500).json({ message: "Failed to upload image" });
-  }
-};
-
-export const uploadChatPdf = async (req: Request, res: Response) => {
-  if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-
-  if (
-    !process.env.CLOUDINARY_CLOUD_NAME ||
-    !process.env.CLOUDINARY_API_KEY ||
-    !process.env.CLOUDINARY_API_SECRET
-  ) {
-    return res.status(500).json({ message: "Cloudinary is not configured" });
-  }
-
-  const busboy = Busboy({
-    headers: req.headers,
-    limits: { fileSize: 100 * 1024 * 1024 },
+export class ChatController extends BaseController {
+  private readonly upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 8 * 1024 * 1024 },
   });
 
-  let filePath = "";
-  let responseSent = false;
+  constructor() {
+    super();
+  }
 
-  const sendJson = (status: number, payload: any) => {
-    if (responseSent) return;
-    responseSent = true;
-    res.status(status).json(payload);
+  /**
+   * Middleware for uploading chat images
+   */
+  public get uploadChatImageMiddleware() {
+    return this.upload.single('image');
+  }
+
+  /**
+   * Upload a chat image to Cloudinary
+   * POST /api/chats/upload/image
+   */
+  public uploadChatImage = async (req: Request, res: Response): Promise<void> => {
+    try {
+      this.validateUserAuth(req);
+
+      if (!req.file) {
+        throw new AppError('Image file is required', 400);
+      }
+
+      if (!req.file.mimetype.startsWith('image/')) {
+        throw new AppError('Only image files are allowed', 400);
+      }
+
+      FileUploadService.validateCloudinaryConfig();
+
+      await FileUploadService.validateImageFile(req.file.buffer);
+
+      const result = await FileUploadService.uploadImageToCloudinary(
+        req.file.buffer,
+        req.file.mimetype,
+      );
+
+      this.sendSuccess(res, { url: result.secure_url }, 201, 'Image uploaded successfully');
+    } catch (error) {
+      this.sendError(res, error);
+    }
   };
 
-  busboy.on("file", (_fieldname, file, info) => {
-    const { filename } = info;
-    const safeName = path.basename(filename || "document");
-    filePath = path.join(PDF_TEMP_DIR, `${Date.now()}-${safeName}`);
+  /**
+   * Upload a chat PDF/document to Cloudinary
+   * POST /api/chats/upload/pdf
+   */
+  public uploadChatPdf = async (req: Request, res: Response): Promise<void> => {
+    try {
+      this.validateUserAuth(req);
+      
+      FileUploadService.validateCloudinaryConfig();
 
-    // Accumulate enough bytes for reliable detection
-    const headerChunks: Buffer[] = [];
-    const HEADER_BYTES = 4200;
-    let headerCollected = false;
-    let mimeValid: boolean | null = null; 
-    let writeStream: fs.WriteStream | null = null;
+      const busboy = Busboy({
+        headers: req.headers,
+        limits: { fileSize: 100 * 1024 * 1024 },
+      });
 
-    file.on("limit", () => {
-      sendJson(413, { message: "File too large. Max allowed is 100MB." });
-      file.resume(); 
-    });
+      let filePath = '';
+      let responseSent = false;
+      let chatId = '';
+      let fileName = '';
 
-    file.on("data", async (chunk: Buffer) => {
-      // Phase 1: accumulate header bytes
-      if (!headerCollected) {
-        headerChunks.push(chunk);
-        const total = Buffer.concat(headerChunks);
+      const sendJson = (status: number, payload: any) => {
+        if (responseSent) return;
+        responseSent = true;
+        res.status(status).json(payload);
+      };
 
-        if (total.length >= HEADER_BYTES || file.readableEnded) {
-          headerCollected = true;
-          let detected;
-          try{
-             detected = await FileType.fromBuffer(total);
+      let fileProcessPromise: Promise<void> | null = null;
+
+      // Capture form fields (chatId, fileName)
+      busboy.on('field', (fieldname, val) => {
+        if (fieldname === 'chatId') {
+          chatId = val;
+        } else if (fieldname === 'fileName') {
+          fileName = val;
+        }
+      });
+
+      busboy.on('file', (fieldname, file, info) => {
+        const { filename } = info;
+        filePath = FileUploadService.generateTempFilePath(filename);
+
+        fileProcessPromise = new Promise(async (resolve, reject) => {
+          const chunks: Buffer[] = [];
+          let headerLength = 0;
+          const HEADER_BYTES = 4200;
+          let isValidated = false;
+          let writeStream: fs.WriteStream | null = null;
+          let isProcessing = false;
+
+          const validateAndStartWriting = async (finalChunks: Buffer[]) => {
+            if (isProcessing || responseSent) return;
+            isProcessing = true;
+            
+            try {
+              const total = Buffer.concat(finalChunks);
+              await FileUploadService.validateDocumentFile(total, filename);
+              isValidated = true;
+
+              writeStream = fs.createWriteStream(filePath);
+              writeStream.on('error', (err) => {
+                console.error('Write stream error:', err);
+                if (!responseSent) sendJson(500, { message: 'Failed to save uploaded file' });
+                reject(err);
+              });
+
+              writeStream.write(total);
+              isProcessing = false;
+              file.resume();
+            } catch (error: any) {
+              if (!responseSent) sendJson(error.statusCode || 415, { message: error.message });
+              isProcessing = false;
+              file.resume();
+              reject(error);
+            }
+          };
+
+          file.on('data', (chunk: Buffer) => {
+            if (responseSent) return;
+
+            if (!isValidated) {
+              chunks.push(chunk);
+              headerLength += chunk.length;
+
+              if (headerLength >= HEADER_BYTES && !isProcessing) {
+                file.pause();
+                validateAndStartWriting(chunks).catch(reject);
+              }
+            } else if (writeStream) {
+              writeStream.write(chunk);
+            }
+          });
+
+          file.on('end', async () => {
+            if (responseSent) {
+              resolve();
+              return;
+            }
+
+            try {
+              if (!isValidated) {
+                await validateAndStartWriting(chunks);
+              }
+              
+              if (writeStream) {
+                writeStream.end(() => resolve());
+              } else {
+                resolve();
+              }
+            } catch (err) {
+              reject(err);
+            }
+          });
+
+          file.on('limit', () => {
+            if (!responseSent) sendJson(413, { message: 'File too large. Max allowed is 100MB.' });
+            file.resume();
+            resolve();
+          });
+        });
+      });
+
+      busboy.on('finish', async () => {
+        if (responseSent) return;
+        
+        try {
+          if (fileProcessPromise) {
+            await fileProcessPromise;
           }
-          catch(err){
-            sendJson(415, {
-              message:
-                "Unsupported file type. Allowed: PDF, text, markdown, csv, json, xml, yaml, office docs, and common code files.",
-            });
-          }
-          const detectedMime = detected?.mime ?? "application/octet-stream";
-          const detectedExt = detected?.ext ?? "";
 
-          const isAllowedMime =
-            allowedDocumentMimeTypes.has(detectedMime) ||
-            detectedMime.startsWith("text/");
-          const isAllowedByExt =
-            detectedMime === "application/octet-stream" &&
-            allowedDocumentExtensions.has(detectedExt);
-
-          if (!isAllowedMime && !isAllowedByExt) {
-            mimeValid = false;
-            sendJson(415, {
-              message:
-                "Unsupported file type. Allowed: PDF, text, markdown, csv, json, xml, yaml, office docs, and common code files.",
-            });
-            file.resume(); 
+          if (!filePath) {
+            sendJson(400, { message: 'No file uploaded' });
             return;
           }
 
-          mimeValid = true;
+          const result = await FileUploadService.uploadDocumentToCloudinary(filePath);
+          
+          // Get user info - use captured form field variables
+          const userId = (req as any).user?._id;
 
-          // Only open writeStream after validation passes
-          writeStream = fs.createWriteStream(filePath);
-          writeStream.on("error", (err) => {
-            console.error("Write error:", err);
-            sendJson(500, { message: "Failed to save uploaded file" });
+          if (!userId) {
+            sendJson(401, { message: 'User not authenticated' });
+            return;
+          }
+
+          if (!chatId) {
+            sendJson(400, { message: 'Chat ID is required' });
+            return;
+          }
+
+          // Use default filename if not provided
+          const documentFileName = fileName || 'document';
+
+          // Create outbox event in MongoDB
+          const outboxEvent = await OutboxEvent.create({
+            eventType: 'PDF_CHUNK_CREATED',
+            payload: {
+              sourceId: new mongoose.Types.ObjectId(), // Document ID placeholder
+              sourceType: 'pdf_chunk',
+              userId: new mongoose.Types.ObjectId(userId),
+              content: { fileName: documentFileName, uploadUrl: result.secure_url },
+              metadata: { chatId, fileSize: 0 },
+            },
+            status: 'pending',
           });
 
-          // Flush accumulated header bytes first
-          writeStream.write(total);
+          // Queue document chunking with outbox ID
+          await documentChunkingQueue.add(
+            'chunk-document',
+            {
+              outboxId: outboxEvent._id.toString(),
+              filePath,
+              userId,
+              chatId,
+              fileName: documentFileName,
+            },
+            {
+              priority: 10,
+              attempts: 3,
+              backoff: {
+                type: 'exponential',
+                delay: 2000,
+              },
+            }
+          );
+
+          console.log(`📎 Queued document chunking for: ${documentFileName} (outboxId: ${outboxEvent._id})`);
+          sendJson(201, { success: true, data: { url: result.secure_url } });
+          // Note: temp file cleanup will happen in ProcessDocumentChunking after chunking is complete
+        } catch (error: any) {
+          console.error('Document upload failed:', error);
+          if (!responseSent) {
+            const message = error.statusCode ? error.message : 'Failed to upload file To Cloudinary';
+            sendJson(error.statusCode || 500, { message });
+          }
+          // Clean up temp file on error
+          if (filePath) await FileUploadService.cleanupTempFile(filePath);
         }
+      });
 
-        return; 
-      }
+      busboy.on('error', (error) => {
+        console.error('Busboy error:', error);
+        sendJson(500, { message: 'Failed to process upload' });
+      });
 
-      
-      if (mimeValid === true && writeStream) {
-        writeStream.write(chunk);
-      }
-    });
-
-    file.on("end", () => {
-      
-      writeStream?.end();
-    });
-  });
-
-  busboy.on("finish", async () => {
-    if (responseSent || !filePath) {
-      if (!responseSent) sendJson(400, { message: "No file uploaded" });
-      return;
-    }
-
-    try {
-      const result = await uploadPdfToCloudinary(filePath);
-      sendJson(201, { success: true, data: { url: result.secure_url } });
+      req.pipe(busboy);
     } catch (error) {
-      console.error("Document upload failed:", error);
-      sendJson(500, { message: "Failed to upload file" });
-    } finally {
-      try {
-        await fsp.unlink(filePath);
-      } catch {
-     
-      }
+      this.sendError(res, error);
     }
-  });
+  };
 
-  busboy.on("error", (error) => {
-    console.error("Busboy error:", error);
-    sendJson(500, { message: "Failed to process upload" });
-  });
+  /**
+     Create a new chat
+     POST /api/chats
+   */
+  public createChat = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const userId = this.validateUserAuth(req);
+      const { title, folderId } = req.body;
 
-  req.pipe(busboy);
-};
-
-
-
-
-export const createChat = async (req: Request, res: Response) => {
-  if (!req.user) {
-    res.status(401).json({ message: "Unauthorized" });
-    return;
-  }
-
-  const { title, folderId } = req.body;
-
-  const chatRepo = new MongoChatRepository();
-  const createChatUseCase = new CreateChat(chatRepo);
-
-  const data = await createChatUseCase.execute(
-    req.user._id.toString(),
-    title,
-    folderId,
-  );
-
-  res.status(201).json({
-    success: true,
-    data,
-  });
-};
-
-
-
-
-
-export const getChats = async (req: Request, res: Response) => {
-  if (!req.user) {
-    res.status(401).json({ message: "Unauthorized" });
-    return;
-  }
-
-  const chatRepo = new MongoChatRepository();
-  const getChatsUseCase = new GetChats(chatRepo);
-  const data = await getChatsUseCase.execute(req.user._id.toString());
-
-  res.status(200).json({
-    success: true,
-    data,
-  });
-};
-
-export const getChatById = async (req: Request, res: Response) => {
-  if (!req.user) {
-    res.status(401).json({ message: "Unauthorized" });
-    return;
-  }
-
-  const id = req.params.id as string;
-
-  const chatRepo = new MongoChatRepository();
-  const getChatByIdUseCase = new GetChatById(chatRepo);
-  const data = await getChatByIdUseCase.execute(id, req.user._id.toString());
-
-  res.status(200).json({
-    success: true,
-    data,
-  });
-};
-
-export const getChatMessages = async (req: Request, res: Response) => {
-  if (!req.user) {
-    res.status(401).json({ message: "Unauthorized" });
-    return;
-  }
-
-  const id = req.params.id as string;
-  const cursor = (req.query.cursor as string) || null;
-  const limit = 10;
-
-  const chatRepo = new MongoChatRepository();
-  const messageRepo = new MongoMessageRepository();
-  const subChatRepo = new MongoSubChatRepository();
-  
-  const getChatMessagesUseCase = new GetChatMessages(chatRepo, messageRepo, subChatRepo);
-
-  const messages = await getChatMessagesUseCase.execute(
-    id,
-    req.user._id.toString(),
-    limit,
-    cursor,
-  );
-
-  // Next cursor is the ID of the oldest message returned, or null if there are no more
-  const nextCursor =
-    messages.length === limit ? messages[0]._id.toString() : null;
-
-  res.status(200).json({
-    success: true,
-    data: {
-      messages,
-      nextCursor,
-    },
-  });
-};
-
-export const updateChat = async (req: Request, res: Response) => {
-  if (!req.user) {
-    res.status(401).json({ message: "Unauthorized" });
-    return;
-  }
-
-  const id = req.params.id as string;
-  const { title, folderId } = req.body;
-
-  const chatRepo = new MongoChatRepository();
-  const updateChatUseCase = new UpdateChat(chatRepo);
-
-  const data = await updateChatUseCase.execute(id, req.user._id.toString(), {
-    title,
-    folderId,
-  });
-
-  res.status(200).json({
-    success: true,
-    data,
-  });
-};
-
-export const deleteChat = async (req: Request, res: Response) => {
-  if (!req.user) {
-    res.status(401).json({ message: "Unauthorized" });
-    return;
-  }
-
-  const id = req.params.id as string;
-
-  const chatRepo = new MongoChatRepository();
-  const deleteChatUseCase = new DeleteChat(chatRepo, new QdrantVectorRepository());
-
-  const data = await deleteChatUseCase.execute(id, req.user._id.toString());
-
-  res.status(200).json({
-    success: true,
-    data,
-  });
-};
-
-export const sendMessage = async (req: Request, res: Response) => {
-  if (!req.user) {
-    res.status(401).json({ message: "Unauthorized" });
-    return;
-  }
-
-  const id = req.params.id as string;
-  const { message, mode, imageUrl } = req.body;
-
-  const normalizedMessage = typeof message === "string" ? message.trim() : "";
-  const normalizedImageUrl =
-    typeof imageUrl === "string" ? imageUrl.trim() : "";
-
-  if (!normalizedMessage && !normalizedImageUrl) {
-    res.status(400).json({ message: "Message or image is required" });
-    return;
-  }
-
-  const queryText = normalizedMessage || "Analyze the uploaded image";
-
-  const [codeQueryVector, descQueryVector] = await Promise.all([
-    generateEmbedding(queryText, "CODE_RETRIEVAL_QUERY"),
-    generateEmbedding(queryText, "RETRIEVAL_QUERY"),
-  ]);
-
-  const vectorRepo = new QdrantVectorRepository();
-  const chatRepo = new MongoChatRepository();
-  const messageRepo = new MongoMessageRepository();
-  
-  const prepareMessageUseCase = new PrepareMessage(vectorRepo, chatRepo, messageRepo);
-  const { contents, userMessageId } = await prepareMessageUseCase.execute(
-    id,
-    req.user._id.toString(),
-    normalizedMessage,
-    mode,
-    codeQueryVector,
-    descQueryVector,
-    normalizedImageUrl || undefined,
-  );
-
-  let internetContext = "";
-  try {
-    const routingPrompt = `Determine if the following user query requires an internet search to be answered accurately. 
-  Respond ONLY with "YES" if it requires knowledge of recent events, real-time facts, current weather, news, specific web sources, or things outside typical LLM pre-training data.
-  Respond ONLY with "NO" if it is a general reasoning, coding, writing, or conceptual question that can be answered without internet access.
-  User query: "${queryText}"`;
-
-    let routerResponse;
-    let routerAttempts = 0;
-    while (routerAttempts < aiInstances.length) {
-      try {
-        const activeAi = getRotatedAI();
-        routerResponse = await activeAi.models.generateContent({
-          model: "gemini-2.5-flash-lite",
-          contents: [{ role: "user", parts: [{ text: routingPrompt }] }],
-        });
-        break;
-      } catch (error: any) {
-        if (
-          error.status === 429 ||
-          error.message?.includes("quota") ||
-          error.message?.includes("RESOURCE_EXHAUSTED")
-        ) {
-          rotateAIKey();
-          routerAttempts++;
-          continue;
-        }
-        throw error;
+      if (!title || typeof title !== 'string') {
+        throw new AppError('Chat title is required and must be a string', 400);
       }
+
+      const createChatUseCase = DIContainer.getCreateChatUseCase();
+      const data = await createChatUseCase.execute(userId, title, folderId);
+
+      this.sendSuccess(res, data, 201, 'Chat created successfully');
+    } catch (error) {
+      this.sendError(res, error);
     }
+  };
 
-    const needsSearch = routerResponse?.text?.trim().toUpperCase() === "YES";
+  /**
+   * Get all chats for the authenticated user
+   * GET /api/chats
+   */
+  public getChats = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const userId = this.validateUserAuth(req);
 
-    if (needsSearch) {
-      console.log(`[Router] internet search needed for query: "${queryText}"`);
-      internetContext = await getTavilySearchContext(
-        queryText,
+      const getChatsUseCase = DIContainer.getGetChatsUseCase();
+      const data = await getChatsUseCase.execute(userId);
+
+      this.sendSuccess(res, data);
+    } catch (error) {
+      this.sendError(res, error);
+    }
+  };
+
+  /**
+   * Get a specific chat by ID
+   * GET /api/chats/:id
+   */
+  public getChatById = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const userId = this.validateUserAuth(req);
+      const id = this.getRouteParam(req, 'id');
+
+      const getChatByIdUseCase = DIContainer.getGetChatByIdUseCase();
+      const data = await getChatByIdUseCase.execute(id, userId);
+
+      this.sendSuccess(res, data);
+    } catch (error) {
+      this.sendError(res, error);
+    }
+  };
+
+  /**
+   * Get messages for a specific chat
+   * GET /api/chats/:id/messages
+   */
+  public getChatMessages = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const userId = this.validateUserAuth(req);
+      const id = this.getRouteParam(req, 'id');
+      const cursor = this.getQueryParam(req, 'cursor');
+      const limit = 10;
+
+      const getChatMessagesUseCase = DIContainer.getGetChatMessagesUseCase();
+      const messages = await getChatMessagesUseCase.execute(id, userId, limit, cursor || null);
+
+      const nextCursor = messages.length === limit ? messages[0]._id.toString() : null;
+
+      this.sendSuccess(res, { messages, nextCursor });
+    } catch (error) {
+      this.sendError(res, error);
+    }
+  };
+
+  /**
+   * Update a chat
+   * PATCH /api/chats/:id
+   */
+  public updateChat = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const userId = this.validateUserAuth(req);
+      const id = this.getRouteParam(req, 'id');
+      const { title, folderId } = req.body;
+
+      if (!title && folderId === undefined) {
+        throw new AppError('At least one field (title or folderId) is required', 400);
+      }
+
+      const updateChatUseCase = DIContainer.getUpdateChatUseCase();
+      const data = await updateChatUseCase.execute(id, userId, { title, folderId });
+
+      this.sendSuccess(res, data, 200, 'Chat updated successfully');
+    } catch (error) {
+      this.sendError(res, error);
+    }
+  };
+
+  /**
+   * Delete a chat
+   * DELETE /api/chats/:id
+   */
+  public deleteChat = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const userId = this.validateUserAuth(req);
+      const id = this.getRouteParam(req, 'id');
+
+      const deleteChatUseCase = DIContainer.getDeleteChatUseCase();
+      const data = await deleteChatUseCase.execute(id, userId);
+
+      this.sendSuccess(res, data, 200, 'Chat deleted successfully');
+    } catch (error) {
+      this.sendError(res, error);
+    }
+  };
+
+  /**
+   * Send a message and get AI streaming response
+   * POST /api/chats/:id/send-message
+   */
+  public sendMessage = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const userId = this.validateUserAuth(req);
+      const id = this.getRouteParam(req, 'id');
+      const { message, mode, imageUrl, fileUrl, fileName } = req.body;
+
+      const normalizedMessage = typeof message === 'string' ? message.trim() : '';
+      const normalizedImageUrl = typeof imageUrl === 'string' ? imageUrl.trim() : '';
+      const normalizedFileUrl = typeof fileUrl === 'string' ? fileUrl.trim() : '';
+      const normalizedFileName = typeof fileName === 'string' ? fileName.trim() : '';
+
+      if (!normalizedMessage && !normalizedImageUrl && !normalizedFileUrl) {
+        throw new AppError('Message, image, or file is required', 400);
+      }
+
+      const queryText = normalizedMessage || (normalizedFileName ? `Analyze uploaded file: ${normalizedFileName}` : 'Analyze the uploaded image');
+
+      // Generate embeddings for retrieval
+      const [codeQueryVector, descQueryVector] = await Promise.all([
+        embeddingService.embed(queryText, 'CODE_RETRIEVAL_QUERY'),
+        embeddingService.embed(queryText, 'RETRIEVAL_QUERY'),
+      ]);
+
+      // Prepare message and get context
+      const prepareMessageUseCase = DIContainer.getPrepareMessageUseCase();
+      const { contents, userMessageId } = await prepareMessageUseCase.execute(
+        id,
+        userId,
+        normalizedMessage,
+        mode,
+        codeQueryVector,
         descQueryVector,
+        normalizedImageUrl || undefined,
+        normalizedFileUrl || undefined,
+        normalizedFileName || undefined,
       );
-    } else {
-      console.log(
-        `[Router] no internet search needed for query: "${queryText}"`,
-      );
-    }
-  } catch (error) {
-    console.error("Routing/Search error:", error);
-  }
-  console.log(internetContext)
 
-  if (internetContext) {
-    // Find the last text item in contents and append search results
-    for (let i = contents.length - 1; i >= 0; i--) {
-      if (contents[i].text && typeof contents[i].text === "string") {
-        contents[i].text += internetContext;
-        break;
+      // Get internet context if needed
+      let internetContext = await AIService.getInternetContext(queryText, descQueryVector);
+
+      if (internetContext) {
+        for (let i = contents.length - 1; i >= 0; i--) {
+          if (contents[i].text && typeof contents[i].text === 'string') {
+            contents[i].text += internetContext;
+            break;
+          }
+        }
       }
-    }
-  }
 
-  if (normalizedImageUrl) {
-    // Convert image URL to base64 for Gemini API
-    const urlToBase64 = async (url: string): Promise<string> => {
+      // Add image if provided
+      if (normalizedImageUrl) {
+        const base64Data = await AIService.urlToBase64(normalizedImageUrl);
+        if (base64Data) {
+          contents.push({
+            inlineData: {
+              mimeType: 'image/jpeg',
+              data: base64Data,
+            },
+          });
+        }
+      }
+
+      // Set up streaming response
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+
+      let stream;
       try {
-        const response = await fetch(url);
-        const buffer = await response.arrayBuffer();
-        return Buffer.from(buffer).toString("base64");
-      } catch (error) {
-        console.error("Error converting image URL to base64:", error);
-        return "";
+        stream = await AIService.streamAIContent(contents);
+      } catch (error: any) {
+        res.write(
+          `data: ${JSON.stringify({ text: '\n\n**Quota Exhausted:** All your provided Gemini API keys have exceeded their free-tier limits. Please wait, or add a new key.' })}\n\n`,
+        );
+        res.write('data: [DONE]\n\n');
+        res.end();
+        return;
       }
-    };
 
-    const base64Data = await urlToBase64(normalizedImageUrl);
-    if (base64Data) {
-      contents.push({
-        inlineData: {
-          mimeType: "image/jpeg",
-          data: base64Data,
-        },
-      });
-    }
-  }
+      let fullReply = '';
+      let finalUsageMetadata: any = null;
+      res.flushHeaders();
 
-  res.setHeader("Content-Type", "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache");
-  res.setHeader("Connection", "keep-alive");
+      for await (const chunk of stream) {
+        const text = chunk.text || '';
+        fullReply += text;
+        if (chunk.usageMetadata) {
+          finalUsageMetadata = chunk.usageMetadata;
+        }
+        res.write(`data: ${JSON.stringify({ text })}\n\n`);
+      }
 
-  let stream;
-  let attempts = 0;
+      // Guard: empty response
+      if (!fullReply.trim()) {
+        console.error(`⚠️ Empty AI response for chat ${id}`);
+        res.write(
+          `data: ${JSON.stringify({ text: '\n\n**Error:** The AI returned an empty response. Please try again.' })}\n\n`,
+        );
+        res.write('data: [DONE]\n\n');
+        res.end();
+        return;
+      }
 
-  while (attempts < aiInstances.length) {
-    try {
-      const activeAi = getRotatedAI();
-      stream = await activeAi.models.generateContentStream({
-        model: "gemini-2.5-flash",
-        contents,
-      });
-      break;
+      // Save the model reply
+      try {
+        const saveModelReplyUseCase = DIContainer.getSaveModelReplyUseCase();
+        const { modelMessageId } = await saveModelReplyUseCase.execute(
+          id,
+          userId,
+          fullReply,
+        );
+
+        res.write(
+          `data: ${JSON.stringify({ type: 'metadata', userMessageId, modelMessageId })}\n\n`,
+        );
+
+        if (finalUsageMetadata) {
+          logAIQuery(message, finalUsageMetadata);
+        }
+      } catch (err) {
+        console.error('Failed to save model reply or log usage:', err);
+      }
+
+      res.write('data: [DONE]\n\n');
+      res.end();
     } catch (error: any) {
-      if (
-        error.status === 429 ||
-        error.message?.includes("quota") ||
-        error.message?.includes("RESOURCE_EXHAUSTED")
-      ) {
-        rotateAIKey();
-        attempts++;
-        continue;
+      if (!res.headersSent) {
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
       }
       res.write(
-        `data: ${JSON.stringify({ text: "\n\n**System Error:** " + error.message })}\n\n`,
+        `data: ${JSON.stringify({ text: '\n\n**System Error:** ' + error.message })}\n\n`,
       );
-      res.write("data: [DONE]\n\n");
+      res.write('data: [DONE]\n\n');
       res.end();
-      return;
     }
-  }
+  };
 
-  if (!stream) {
-    res.write(
-      `data: ${JSON.stringify({ text: "\n\n**Quota Exhausted:** All your provided Gemini API keys have exceeded their free-tier limits. Please wait, or add a new key." })}\n\n`,
-    );
-    res.write("data: [DONE]\n\n");
-    res.end();
-    return;
-  }
-
-  let fullReply = "";
-  let finalUsageMetadata: any = null;
-  res.flushHeaders();
-
-  for await (const chunk of stream) {
-    const text = chunk.text || "";
-    fullReply += text;
-    if (chunk.usageMetadata) {
-      finalUsageMetadata = chunk.usageMetadata;
-    }
-    res.write(`data: ${JSON.stringify({ text })}\n\n`);
-  }
-
-  // Guard: If AI returned an empty response, don't save it
-  if (!fullReply.trim()) {
-    console.error(`⚠️ Empty AI response for chat ${id}`);
-
-    res.write(
-      `data: ${JSON.stringify({ text: "\n\n**Error:** The AI returned an empty response. Please try again." })}\n\n`,
-    );
-    res.write("data: [DONE]\n\n");
-    res.end();
-    return;
-  }
-
-  try {
-    const chatRepo = new MongoChatRepository();
-    const messageRepo = new MongoMessageRepository();
-    const codeBlockRepo = new MongoCodeBlockRepository();
-    const outboxRepo = new MongoOutboxEventRepository();
-
-    const saveModelReplyUseCase = new SaveModelReply(chatRepo, messageRepo, codeBlockRepo, outboxRepo);
-    const { modelMessageId } = await saveModelReplyUseCase.execute(
-      id,
-      req.user._id.toString(),
-      fullReply,
-    );
-
-    res.write(
-      `data: ${JSON.stringify({ type: "metadata", userMessageId, modelMessageId })}\n\n`,
-    );
-
-    if (finalUsageMetadata) {
-      logAIQuery(message, finalUsageMetadata);
-    }
-  } catch (err) {
-    console.error("Failed to save model reply or log usage:", err);
-  }
-
-  res.write("data: [DONE]\n\n");
-  res.end();
-};
-
-const getAnchorContext = async (chatId: string, anchorMessageId: string) => {
-  const cacheKey = `anchor_ctx:${anchorMessageId}`;
-
-  try {
-    const cachedData = await redisConnection.get(cacheKey);
-    if (cachedData) {
-      return JSON.parse(cachedData);
-    }
-
-    const messageRepo = new MongoMessageRepository();
-    const anchorMsg = await messageRepo.findById(anchorMessageId);
-    if (!anchorMsg) return [];
-
-    const contextMessages = await messageRepo.findAnchorContext(chatId, anchorMsg.createdAt, 4);
-
-    const result = contextMessages.reverse();
-
-    await redisConnection.setex(cacheKey, 7200, JSON.stringify(result));
-
-    return result;
-  } catch (err) {
-    console.error("getAnchorContext error:", err);
-    return [];
-  }
-};
-
-export const streamQuickChat = async (req: Request, res: Response) => {
-  const { chatId, anchorMessageId, highlightedText, quickChatHistory } =
-    req.body;
-
-  if (!req.user) {
-    res.status(401).json({ message: "Unauthorized" });
-    return;
-  }
-
-  const recentHistory = (quickChatHistory || []).slice(-CONTEXT_WINDOW);
-
-  const backgroundContext = await getAnchorContext(chatId, anchorMessageId);
-
-  const historicalString = backgroundContext
-    .map((msg: any) => `[${msg.role}]: ${msg.content}`)
-    .join("\n\n");
-
-  const systemPrompt = `You are a surgical AI Assistant specialized in analyzing highlights within a side-modal.
----
-HISTORICAL CONTEXT (for background only):
-${historicalString}
-
-USER'S HIGHLIGHT (your primary focus):
-"${highlightedText}"
----
-RESPONSE GUIDELINES:
-- DEFAULT: Be brief. Use crisp bullet points and short, punchy sentences in default but you can identify user need and have the flexibility to generate response.
-- ONLY provide an expansive/detailed explanation if the user specifically asks to explanation in detailed manner or any other specific style according to user query".
-.`;
-
-  const contents = [
-    { role: "user", parts: [{ text: systemPrompt }] },
-    ...recentHistory.map((msg: any) => ({
-      role: msg.role === "model" ? "model" : "user",
-      parts: [{ text: msg.content }],
-    })),
-  ];
-
-  res.setHeader("Content-Type", "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache");
-  res.setHeader("Connection", "keep-alive");
-
-  let stream;
-  let attempts = 0;
-
-  while (attempts < aiInstances.length) {
+  /**
+   * Stream quick chat response for highlighted text
+   * POST /api/chats/:id/quick-chat
+   */
+  public streamQuickChat = async (req: Request, res: Response): Promise<void> => {
     try {
-      const activeAi = getRotatedAI();
-      stream = await activeAi.models.generateContentStream({
-        model: "gemini-3-flash-preview",
-        contents,
-      });
-      break;
+      const userId = this.validateUserAuth(req);
+      const { chatId, anchorMessageId, highlightedText, quickChatHistory } = req.body;
+
+      if (!highlightedText || !anchorMessageId) {
+        throw new AppError('Highlighted text and anchor message ID are required', 400);
+      }
+
+      const recentHistory = (quickChatHistory || []).slice(-CONTEXT_WINDOW);
+
+      // Get background context
+      const messageRepo = DIContainer.getMessageRepository();
+      const backgroundContext = await AIService.getAnchorContext(
+        chatId,
+        anchorMessageId,
+        messageRepo,
+      );
+
+      const historicalString = backgroundContext
+        .map((msg: any) => `[${msg.role}]: ${msg.content}`)
+        .join('\n\n');
+
+      const systemPrompt = AIService.buildQuickChatSystemPrompt(
+        historicalString,
+        highlightedText,
+      );
+
+      const contents = [
+        { role: 'user', parts: [{ text: systemPrompt }] },
+        ...recentHistory.map((msg: any) => ({
+          role: msg.role === 'model' ? 'model' : 'user',
+          parts: [{ text: msg.content }],
+        })),
+      ];
+
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+
+      let stream;
+      try {
+        stream = await AIService.streamAIContent(contents);
+      } catch (error: any) {
+        res.write(
+          `data: ${JSON.stringify({ text: '\n\n**Quota Exhausted:** All your provided Gemini API keys have exceeded their free-tier limits. Please wait, or add a new key.' })}\n\n`,
+        );
+        res.write('data: [DONE]\n\n');
+        res.end();
+        return;
+      }
+
+      res.flushHeaders();
+
+      for await (const chunk of stream) {
+        const text = chunk.text || '';
+        if (text) {
+          res.write(`data: ${JSON.stringify({ text })}\n\n`);
+        }
+      }
+
+      res.write('data: [DONE]\n\n');
+      res.end();
     } catch (error: any) {
-      if (
-        error.status === 429 ||
-        error.message?.includes("quota") ||
-        error.message?.includes("RESOURCE_EXHAUSTED")
-      ) {
-        rotateAIKey();
-        attempts++;
-        continue;
+      if (!res.headersSent) {
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
       }
       res.write(
-        `data: ${JSON.stringify({ text: "\n\n**System Error:** " + error.message })}\n\n`,
+        `data: ${JSON.stringify({ text: '\n\n**System Error:** ' + error.message })}\n\n`,
       );
-      res.write("data: [DONE]\n\n");
+      res.write('data: [DONE]\n\n');
       res.end();
-      return;
     }
-  }
+  };
 
-  if (!stream) {
-    res.write(
-      `data: ${JSON.stringify({ text: "\n\n**Quota Exhausted:** All your provided Gemini API keys have exceeded their free-tier limits. Please wait, or add a new key." })}\n\n`,
-    );
-    res.write("data: [DONE]\n\n");
-    res.end();
-    return;
-  }
+  /**
+   * Get a sub-chat (highlight conversation)
+   * GET /api/chats/:id/subchat
+   */
+  public getSubChat = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const userId = this.validateUserAuth(req);
+      const chatId = this.getRouteParam(req, 'id');
+      const subChatId = this.getQueryParam(req, 'subChatId');
 
-  for await (const chunk of stream) {
-    const text = chunk.text || "";
-    if (text) {
-      res.write(`data: ${JSON.stringify({ text })}\n\n`);
+      if (!subChatId) {
+        throw new AppError('Sub-chat ID is required', 400);
+      }
+
+      const getSubChatUseCase = DIContainer.getGetSubChatUseCase();
+      const subChat = await getSubChatUseCase.execute(chatId, subChatId, userId);
+
+      this.sendSuccess(res, subChat);
+    } catch (error) {
+      this.sendError(res, error);
     }
-  }
+  };
 
-  res.write("data: [DONE]\n\n");
-  res.end();
-};
+  /**
+   * Save a sub-chat (highlight conversation)
+   * POST /api/chats/:id/subchat
+   */
 
-export const getSubChat = async (req: Request, res: Response) => {
-  const { id: chatId } = req.params;
 
-  const { subChatId } = req.query;
 
-  if (!req.user) {
-    res.status(401).json({ message: "Unauthorized" });
-    return;
-  }
 
-  try {
-    const subChatRepo = new MongoSubChatRepository();
-    const getSubChatUseCase = new GetSubChatUseCase(subChatRepo);
+  public saveSubChat = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const userId = this.validateUserAuth(req);
+      const chatId = this.getRouteParam(req, 'id');
+      const { subChatId, anchorMessageId, highlightedText, messages, relativeY } =
+        req.body;
 
-    const subChat = await getSubChatUseCase.execute(
-      chatId as string,
-      subChatId as string,
-      req.user._id.toString()
-    );
+      if (!anchorMessageId) {
+        throw new AppError('Sub-chat ID and anchor message ID are required', 400);
+      }
 
-    res.json({
-      success: true,
-      data: subChat,
-    });
-  } catch (error) {
-    console.error("Get SubChat Error:", error);
-    res.status(500).json({ error: "Failed to fetch sub-chat history." });
-  }
-};
+      const saveSubChatUseCase = DIContainer.getSaveSubChatUseCase();
+     
+      const subChat = await saveSubChatUseCase.execute(
+        chatId,
+        userId,
+        subChatId,
+        anchorMessageId,
+        highlightedText,
+        messages,
+        relativeY,
+      );
 
-export const saveSubChat = async (req: Request, res: Response) => {
-  const { id: chatId } = req.params;
-  const { subChatId, anchorMessageId, highlightedText, messages, relativeY } =
-    req.body;
+      this.sendSuccess(res, subChat, 201, 'Sub-chat saved successfully');
+    } catch (error) {
+      this.sendError(res, error);
+    }
+  };
+}
 
-  if (!req.user) {
-    res.status(401).json({ message: "Unauthorized" });
-    return;
-  }
-
-  try {
-    const subChatRepo = new MongoSubChatRepository();
-    const saveSubChatUseCase = new SaveSubChat(subChatRepo);
-
-    const subChat = await saveSubChatUseCase.execute(
-      chatId as string,
-      req.user._id.toString(),
-      subChatId,
-      anchorMessageId,
-      highlightedText,
-      messages,
-      relativeY
-    );
-
-    res.json({
-      success: true,
-      data: subChat,
-    });
-  } catch (error) {
-    console.error("Save SubChat Error:", error);
-    res.status(500).json({ error });
-  }
-};
+// Export singleton instance for use in routes
+export const chatController = new ChatController();

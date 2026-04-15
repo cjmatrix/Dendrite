@@ -1,6 +1,6 @@
 import { redisConnection } from "../config/redis";
 
-import { generateEmbedding } from "../utils/embedding";
+import { embeddingService } from "./EmbeddingService";
 import { tavily } from "@tavily/core";
 import { v4 as uuid } from "uuid";
 
@@ -25,7 +25,7 @@ export async function getTavilySearchContext(query: string, precomputedVector?: 
   }
 
   try {
-    const queryVector = precomputedVector || await generateEmbedding(rawQuery, "RETRIEVAL_QUERY");
+    const queryVector = precomputedVector || await embeddingService.embed(rawQuery, "RETRIEVAL_QUERY");
     
 
     const twelveHoursAgo = Date.now() - (12 * 60 * 60 * 1000);

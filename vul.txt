@@ -1,2 +1,3 @@
 can create subchats for chats.
 losing context of chat summury while inheriting branch 
+what if two sticky chat at with same y

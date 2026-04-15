@@ -1,16 +1,16 @@
-import { AppError } from '../../../utils/AppError';
-import { IVectorRepository } from '../../../domain/vector/repositories/IVectorRepository';
-import { IChatRepository } from '../../../domain/chat/repositories/IChatRepository';
-import { IMessageRepository } from '../../../domain/chat/repositories/IMessageRepository';
-import { generateEmbedding } from '../../../utils/embedding';
-import CONTEXT_WINDOW from '../../../constants/contextWindow';
-import { systemInstruction } from '../../../config/AIConfig';
+import { AppError } from "../../../utils/AppError";
+import { IVectorRepository } from "../../../domain/vector/repositories/IVectorRepository";
+import { IChatRepository } from "../../../domain/chat/repositories/IChatRepository";
+import { IMessageRepository } from "../../../domain/chat/repositories/IMessageRepository";
+import { embeddingService } from "../../../services/EmbeddingService";
+import CONTEXT_WINDOW from "../../../constants/contextWindow";
+import { systemInstruction } from "../../../config/AIConfig";
 
 export class PrepareMessage {
   constructor(
     private vectorRepository: IVectorRepository,
     private chatRepository: IChatRepository,
-    private messageRepository: IMessageRepository
+    private messageRepository: IMessageRepository,
   ) {}
 
   async execute(
@@ -21,6 +21,8 @@ export class PrepareMessage {
     codeQueryVector?: number[],
     descQueryVector?: number[],
     imageUrl?: string,
+    fileUrl?: string,
+    fileName?: string,
   ) {
     const chat = await this.chatRepository.findByIdAndUserId(chatId, userId);
 
@@ -28,22 +30,31 @@ export class PrepareMessage {
       throw new AppError("Chat not found", 404);
     }
 
-    const normalizedMessage = (userMessage || "").trim() || "Analyze this image";
+    const normalizedMessage =
+      (userMessage || "").trim() || "Analyze this image";
     const userMsg = await this.messageRepository.create({
       chatId,
       userId,
       role: "user",
       content: normalizedMessage,
       imageUrl: imageUrl || undefined,
+      fileUrl: fileUrl || undefined,
+      fileName: fileName || undefined,
     });
 
     // (most recent at the top)
-    let recentMessages = await this.messageRepository.findRecentByChatId(chatId, CONTEXT_WINDOW);
+    let recentMessages = await this.messageRepository.findRecentByChatId(
+      chatId,
+      CONTEXT_WINDOW,
+    );
 
     const deficit = CONTEXT_WINDOW - recentMessages.length;
 
     if (deficit > 0 && chat.contextParent) {
-      const parentMessages = await this.messageRepository.findRecentByChatId(chat.contextParent, deficit);
+      const parentMessages = await this.messageRepository.findRecentByChatId(
+        chat.contextParent,
+        deficit,
+      );
 
       // (older) + current messages (newer)
       recentMessages = [...recentMessages, ...parentMessages];
@@ -53,12 +64,18 @@ export class PrepareMessage {
     recentMessages.reverse();
 
     const recentMessagesText = recentMessages
-      .map((m: any) => `${m.content}${m.imageUrl ? `\nAttached image URL: ${m.imageUrl}` : ""}`)
+      .map(
+        (m: any) =>
+          `${m.content}${m.imageUrl ? `\nAttached image URL: ${m.imageUrl}` : ""}`,
+      )
       .join("\n");
 
-
-    const finalCodeQueryVector = codeQueryVector || await generateEmbedding(normalizedMessage, "CODE_RETRIEVAL_QUERY");
-    const finalDescQueryVector = descQueryVector || await generateEmbedding(normalizedMessage, "RETRIEVAL_QUERY");
+    const finalCodeQueryVector =
+      codeQueryVector ||
+      (await embeddingService.embed(normalizedMessage, "CODE_RETRIEVAL_QUERY"));
+    const finalDescQueryVector =
+      descQueryVector ||
+      (await embeddingService.embed(normalizedMessage, "RETRIEVAL_QUERY"));
 
     const chatIdsToSearch: string[] = [chatId];
     const inheritedSummaries: { title: string; summary: string }[] = [];
@@ -66,13 +83,16 @@ export class PrepareMessage {
     let currentParentId = chat.contextParent;
     let depth = 0;
     while (currentParentId && depth < 5) {
-      const pChat = await this.chatRepository.findByIdAndUserId(currentParentId, userId);
+      const pChat = await this.chatRepository.findByIdAndUserId(
+        currentParentId,
+        userId,
+      );
       if (!pChat) break;
 
       const parentIdStr = pChat._id.toString();
       if (!chatIdsToSearch.includes(parentIdStr)) {
         chatIdsToSearch.push(parentIdStr);
-        
+
         if (pChat.summary) {
           // Unshift so the oldest ancestors come first in the prompt
           inheritedSummaries.unshift({
@@ -81,16 +101,28 @@ export class PrepareMessage {
           });
         }
       }
-      
+
       currentParentId = pChat.contextParent;
       depth++;
     }
 
-    console.log(`\n🌲 [BRANCH ARCHITECTURE] Searching across ${chatIdsToSearch.length} chats in full lineage:`, chatIdsToSearch);
+    console.log(
+      `\n🌲 [BRANCH ARCHITECTURE] Searching across ${chatIdsToSearch.length} chats in full lineage:`,
+      chatIdsToSearch,
+    );
 
     const [rawSimilarCode, chatContextStats] = await Promise.all([
-      this.vectorRepository.searchSimilarCode(finalCodeQueryVector, finalDescQueryVector, userId, chatIdsToSearch),
-      this.vectorRepository.searchSimilarChatChunk(finalDescQueryVector, userId, chatIdsToSearch),
+      this.vectorRepository.searchSimilarCode(
+        finalCodeQueryVector,
+        finalDescQueryVector,
+        userId,
+        chatIdsToSearch,
+      ),
+      this.vectorRepository.searchSimilarChatChunk(
+        finalDescQueryVector,
+        userId,
+        chatIdsToSearch,
+      ),
     ]);
 
     // --- DIAGNOSTIC LOGS ---
@@ -98,11 +130,13 @@ export class PrepareMessage {
     console.log(`📡 User Message: "${normalizedMessage}"`);
     console.log(`🧠 Long-Term Facts Found: ${chatContextStats.length}`);
     chatContextStats.slice(0, 3).forEach((f, i) => {
-      console.log(`   [Fact ${i + 1}] Score: ${f.score.toFixed(3)} | Content: ${f.fact.fact.substring(0, 100)}...`);
+      console.log(
+        `   [Fact ${i + 1}] Score: ${f.score.toFixed(3)} | Content: ${f.fact.fact.substring(0, 100)}...`,
+      );
     });
     console.log(`💻 Code Snippets Found: ${rawSimilarCode.length}`);
     console.log(`------------------------\n`);
-    
+
     const deduplicatedSimilarCode = rawSimilarCode.filter((item) => {
       return (
         typeof item.content !== "string" &&
@@ -110,7 +144,7 @@ export class PrepareMessage {
         !recentMessagesText.includes(item.content.code)
       );
     });
-    
+
     const deduplicatedChatContext = chatContextStats.filter((item) => {
       return item.fact?.fact && !recentMessagesText.includes(item.fact.fact);
     });
@@ -125,7 +159,7 @@ export class PrepareMessage {
     }
 
     if (chat.summary) {
-      console.log(chat.summary,"📡📡📡📡📡📡📡📡📡📡")
+      console.log(chat.summary, "📡📡📡📡📡📡📡📡📡📡");
       dynamicSystemInstruction += `\n\n--- [ACTIVE CONVERSATION STATE / MIDDLE-LAYER MEMORY] ---\nThis is the active middle-layer summary for your currently ongoing conversation:\n${chat.summary}`;
     }
 
@@ -155,8 +189,7 @@ export class PrepareMessage {
 
 Assume your code will be executed in a blank environment. You should write standard global p5 code (e.g., function setup() { createCanvas(600, 400); } function draw() { ... }).
 CRUCIAL: You MUST include a functional Pause/Resume button and also Next and Previous buttons with explanation of each steps in your sketch. You can use p5's \`createButton()\` or draw it manually using \`rect()\`. IF you use \`createButton()\`, you MUST explicitly call \`.position(x, y)\` (e.g., \`button.position(10, 10)\`) to place it safely over the canvas, otherwise it will corrupt the HTML flex layout and overlap elements! The button MUST successfully toggle between \`noLoop()\` to pause and \`loop()\` to resume the animation. Make everything interactive and look beautiful using modern colors!`;
-    }
-    else{
+    } else {
       dynamicSystemInstruction += `\n\nIMPORTANT: The user is currently in GENERAL mode. Do NOT produce any raw p5 code blocks or runnable visualization code. Under no circumstances output a fenced code block labeled \`p5\` or any JavaScript code intended to be executed as a visualization. If the user asks about a previous visualization, provide only a high-level textual description or pseudo-code, and NEVER include runnable p5 code unless the user explicitly switches to Visual Mode.`;
     }
 
@@ -172,9 +205,7 @@ CRUCIAL: You MUST include a functional Pause/Resume button and also Next and Pre
       }
     };
 
-    const contents: any[] = [
-      { text: dynamicSystemInstruction },
-    ];
+    const contents: any[] = [{ text: dynamicSystemInstruction }];
 
     for (const msg of recentMessages) {
       if (msg.role === "model") {

@@ -28,6 +28,14 @@ const MessageSchema = new Schema(
       type: String,
       required: false,
     },
+    fileUrl: {
+      type: String,
+      required: false,
+    },
+    fileName: {
+      type: String,
+      required: false,
+    },
   },
   {
     timestamps: true,

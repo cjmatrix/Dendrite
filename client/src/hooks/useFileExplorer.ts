@@ -11,7 +11,7 @@ import type { FileNode } from "../types/types";
  */
 export function useFileTree() {
   const dispatch = useAppDispatch();
-
+  console.log("rerending usecases")
   const { data: folders } = useQuery({
     queryKey: ["folders"],
     queryFn: () => folderRepository.getFolders(),
@@ -22,10 +22,21 @@ export function useFileTree() {
     queryFn: () => chatListRepository.getChats(),
   });
 
-  const { data: recallCount } = useQuery({
+  const { data: recallCount, refetch: refetchRecallCount } = useQuery({
     queryKey: ["recallCount"],
     queryFn: () => recallCountRepository.getDueCount(),
   });
+
+  console.log(recallCount,"in usecase")
+  // Listen for recall notifications and refetch the count
+  useEffect(() => {
+    const handleRecallNotification = () => {
+      refetchRecallCount();
+    };
+
+    window.addEventListener("recall:notification-pushed", handleRecallNotification);
+    return () => window.removeEventListener("recall:notification-pushed", handleRecallNotification);
+  }, [refetchRecallCount]);
 
   // Build Redux tree whenever folders or chats change
   useEffect(() => {

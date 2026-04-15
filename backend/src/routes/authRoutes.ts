@@ -1,15 +1,15 @@
 import { Router } from 'express';
-import { AuthController } from '../controllers/authController';
+import { authController } from '../controllers/authController';
 import { userProtect } from '../middleware/authMiddleware';
 
 const router = Router();
 
-router.post('/register', AuthController.register);
-router.post('/login', AuthController.login);
-router.post('/refresh', AuthController.refresh);
-router.post('/logout', AuthController.logout);
+router.post('/register', (req, res, next) => authController.register(req, res).catch(next));
+router.post('/login', (req, res, next) => authController.login(req, res).catch(next));
+router.post('/refresh', (req, res, next) => authController.refresh(req, res).catch(next));
+router.post('/logout', (req, res, next) => authController.logout(req, res).catch(next));
 
-router.get('/me', userProtect, AuthController.getMe);
-router.post('/fcm-token', userProtect, AuthController.saveFCMToken);
+router.get('/me', userProtect, (req, res, next) => authController.getMe(req, res).catch(next));
+router.post('/fcm-token', userProtect, (req, res, next) => authController.updateFcmToken(req, res).catch(next));
 
 export default router;

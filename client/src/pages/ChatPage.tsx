@@ -49,7 +49,7 @@ function ChatPage() {
       {isExplorerModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-6 sm:p-10 backdrop-blur-sm bg-black/60 animate-in fade-in duration-300">
            <div className="bg-(--theme-bg-surface) border border-zinc-800 w-full h-[90vh] rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-             <FileDisplay isModal={true} />
+             <FileDisplay isModal={true} currentFolderId={undefined} />
            </div>
         </div>
       )}

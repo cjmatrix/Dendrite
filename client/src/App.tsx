@@ -13,6 +13,7 @@ import ChatWindow from "./components/ChatWindow";
 import EmptyChatState from "./components/EmptyChatState";
 import RecallPage from "./pages/RecallPage";
 import KnowledgeGraphPage from "./pages/KnowledgeGraphPage";
+import SplitFileViewer from "./components/SplitFileViewer";
 import { useQueryClient } from "@tanstack/react-query";
 
 const router = createBrowserRouter([
@@ -45,6 +46,10 @@ const router = createBrowserRouter([
             element: <KnowledgeGraphPage />
           },
           {
+            path:"/:id/view-file",
+            element:<SplitFileViewerWrapper></SplitFileViewerWrapper>
+          },
+          {
             path:"/:id",
             element:<ChatWindow></ChatWindow>
           }
@@ -54,6 +59,15 @@ const router = createBrowserRouter([
     ],
   },
 ]);
+
+function SplitFileViewerWrapper() {
+  const fileData = sessionStorage.getItem('splitViewFile');
+  if (!fileData) {
+    return <ChatWindow />;
+  }
+  const { url, name } = JSON.parse(fileData);
+  return <SplitFileViewer fileUrl={url} fileName={name} />;
+}
 
 function App() {
   const dispatch = useAppDispatch();

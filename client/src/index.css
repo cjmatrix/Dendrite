@@ -132,3 +132,30 @@
 @keyframes rotate-angle {
   to { --angle: 360deg; }
 }
+
+/* Fix for react-doc-viewer disappears on resize */
+#proxy-renderer, 
+#pdf-renderer, 
+#msdoc-renderer,
+#msdoc-iframe,
+#txt-renderer,
+#csv-renderer,
+.pg-viewer-wrapper,
+.pg-viewer {
+  height: 100% !important;
+  width: 100% !important;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #3f3f46;
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}

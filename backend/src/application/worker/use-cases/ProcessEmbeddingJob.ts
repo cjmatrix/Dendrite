@@ -1,6 +1,6 @@
 import { IOutboxEventRepository } from '../../../domain/outbox/repositories/IOutboxEventRepository';
 import { IVectorRepository } from '../../../domain/vector/repositories/IVectorRepository';
-import { generateEmbedding } from '../../../utils/embedding';
+import { embeddingService } from '../../../services/EmbeddingService';
 import crypto from 'crypto';
 
 export class ProcessEmbeddingJob {
@@ -17,8 +17,8 @@ export class ProcessEmbeddingJob {
       }
 
       const [codeEmbedding, descriptionEmbedding] = await Promise.all([
-        generateEmbedding(content.code, "RETRIEVAL_DOCUMENT"),
-        generateEmbedding(content.description, "RETRIEVAL_DOCUMENT"),
+        embeddingService.embed(content.code, "RETRIEVAL_DOCUMENT"),
+        embeddingService.embed(content.description, "RETRIEVAL_DOCUMENT"),
       ]);
 
       const payload = {

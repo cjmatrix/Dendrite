@@ -1,16 +1,16 @@
-import express from 'express'
-import { creatingCard, updatingCard, gettingDueCards, deletingCard, clearingCards, countingCards } from '../controllers/recallController';
+import express from 'express';
+import { recallController } from '../controllers/recallController';
 import { userProtect } from '../middleware/authMiddleware';
 
-const router=express.Router();
+const router = express.Router();
 
 router.use(userProtect);
 
-router.post("/save",creatingCard)
-router.post("/update/:id",updatingCard)
-router.get("/count", countingCards)
-router.get("/", gettingDueCards)
-router.delete("/clear", clearingCards)
-router.delete("/:id", deletingCard)
+router.post('/save', (req, res, next) => recallController.createCard(req, res).catch(next));
+router.post('/update/:id', (req, res, next) => recallController.updateCard(req, res).catch(next));
+router.get('/count', (req, res, next) => recallController.countDueCards(req, res).catch(next));
+router.get('/', (req, res, next) => recallController.getDueCards(req, res).catch(next));
+router.delete('/clear', (req, res, next) => recallController.clearAllCards(req, res).catch(next));
+router.delete('/:id', (req, res, next) => recallController.deleteCard(req, res).catch(next));
 
-export default router
+export default router;

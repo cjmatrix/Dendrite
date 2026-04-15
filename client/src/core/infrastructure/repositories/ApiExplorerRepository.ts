@@ -42,6 +42,7 @@ export class ApiChatListRepository implements IChatListRepository {
 export class ApiRecallCountRepository implements IRecallCountRepository {
   async getDueCount(): Promise<number> {
     const res = await api.get("/recall/count");
-    return res.data.count;
+   
+    return res.data.data.count;
   }
 }

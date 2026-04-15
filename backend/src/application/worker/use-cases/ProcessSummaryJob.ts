@@ -1,7 +1,7 @@
 import { IOutboxEventRepository } from '../../../domain/outbox/repositories/IOutboxEventRepository';
 import { IVectorRepository } from '../../../domain/vector/repositories/IVectorRepository';
 import generateCompressedChat from '../../../utils/AISummary';
-import { generateEmbedding } from '../../../utils/embedding';
+import { embeddingService } from '../../../services/EmbeddingService';
 import crypto from 'crypto';
 
 export class ProcessSummaryJob {
@@ -27,7 +27,7 @@ export class ProcessSummaryJob {
         .filter((chunk) => chunk.length > 0);
 
       for (const chunk of contextChunks) {
-        const embedding = await generateEmbedding(chunk, "RETRIEVAL_DOCUMENT");
+        const embedding = await embeddingService.embed(chunk, "RETRIEVAL_DOCUMENT");
 
         points.push({
           id: crypto.randomUUID(),

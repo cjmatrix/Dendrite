@@ -8,6 +8,8 @@ export interface Message {
   role: "user" | "model" | "system";
   content: string;
   imageUrl?: string;
+  fileUrl?: string;
+  fileName?: string;
   hasSubChat?: boolean;
   subChats?: SubChat[];
 }

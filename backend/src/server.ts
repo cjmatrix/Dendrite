@@ -13,6 +13,7 @@ import "./worker/descriptionWorker";
 import "./worker/summaryWorker";
 import "./worker/stateWorker";
 import "./worker/recallWorker";
+import "./queue/documentChunkingQueue";
 import "./cron/outboxSweeper";
 import "./cron/descriptionSweeper";
 import "./cron/searchCacheSweeper";
@@ -44,6 +45,7 @@ app.get("/", (req, res) => {
 app.use(errorHandler);
 
 import { initQdrant } from "./config/qdrant";
+import { embeddingService } from "./services/EmbeddingService";
 
 const MONGODB_URI =
   process.env.MONGODB_URI || "mongodb://localhost:27017/dentrites";
@@ -52,6 +54,14 @@ mongoose
   .then(async () => {
     console.log("Connected to MongoDB");
     await initQdrant();
+
+    
+    const isEmbeddingHealthy = await embeddingService.healthCheck();
+    if (isEmbeddingHealthy) {
+      console.log("✅ Embedding service is healthy");
+    } else {
+      console.warn("⚠️ Embedding service is not responding. Run 'npm run infra:start'");
+    }
 
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);

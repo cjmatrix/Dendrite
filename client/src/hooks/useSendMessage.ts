@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { chatRepository } from "../core/container";
 import type { StreamChunk, Message } from "../core/domain/entities/Message";
@@ -14,14 +14,14 @@ export function useSendMessage({ chatId, mode, onStreamStart, onStreamEnd }: Use
   const [streamingText, setStreamingText] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const queryClient = useQueryClient();
-  const metadataRef = useRef<{ userMessageId?: string; modelMessageId?: string } | null>(null);
 
   const send = useCallback(
-    async (input: string, imageUrl: string | null) => {
-      if (!chatId || (!input.trim() && !imageUrl) || isStreaming) return;
+    async (input: string, imageUrl: string | null, selectedFile?: { name: string; url: string } | null) => {
+      if (!chatId || (!input.trim() && !imageUrl && !selectedFile) || isStreaming) return;
 
       const userMessage = input.trim();
       const userTempId = `temp-${Date.now()}`;
+      const fallbackText = selectedFile ? `Uploaded file: ${selectedFile.name}` : "Analyze this image";
 
       // Optimistically add user message to the cache
       queryClient.setQueryData(["chatMessages", chatId], (old: any) => {
@@ -33,8 +33,10 @@ export function useSendMessage({ chatId, mode, onStreamStart, onStreamEnd }: Use
             ...newPages[0].messages,
             {
               role: "user",
-              content: userMessage || "Analyze this image",
+              content: userMessage || fallbackText,
               imageUrl: imageUrl || undefined,
+              fileUrl: selectedFile?.url,
+              fileName: selectedFile?.name,
               _id: userTempId,
             } satisfies Message,
           ],
@@ -44,7 +46,8 @@ export function useSendMessage({ chatId, mode, onStreamStart, onStreamEnd }: Use
 
       setIsStreaming(true);
       setStreamingText("");
-      metadataRef.current = null;
+      let streamUserMessageId: string | undefined;
+      let streamModelMessageId: string | undefined;
       onStreamStart?.();
 
       let fullReply = "";
@@ -55,9 +58,12 @@ export function useSendMessage({ chatId, mode, onStreamStart, onStreamEnd }: Use
           userMessage,
           mode,
           imageUrl,
+          selectedFile?.url || null,
+          selectedFile?.name || null,
           (chunk: StreamChunk) => {
             if (chunk.type === "metadata") {
-              metadataRef.current = chunk;
+              streamUserMessageId = chunk.userMessageId;
+              streamModelMessageId = chunk.modelMessageId;
               return;
             }
             if (chunk.text) {
@@ -70,7 +76,8 @@ export function useSendMessage({ chatId, mode, onStreamStart, onStreamEnd }: Use
         console.error("Streaming error:", error);
       } finally {
         // Finalize: insert AI message into cache
-        const metadata = metadataRef.current;
+        const modelMessageId = streamModelMessageId;
+        const userMessageId = streamUserMessageId;
 
         queryClient.setQueryData(["chatMessages", chatId], (old: any) => {
           if (!old?.pages?.length) return old;
@@ -81,14 +88,14 @@ export function useSendMessage({ chatId, mode, onStreamStart, onStreamEnd }: Use
             newMessages.push({
               role: "model",
               content: fullReply,
-              _id: metadata?.modelMessageId || `temp-ai-${Date.now()}`,
+              _id: modelMessageId || `temp-ai-${Date.now()}`,
             } satisfies Message);
           }
 
           // Replace temp user ID with real DB ID
-          if (metadata?.userMessageId) {
+          if (userMessageId) {
             newMessages = newMessages.map((m: Message) =>
-              m._id === userTempId ? { ...m, _id: metadata.userMessageId } : m,
+              m._id === userTempId ? { ...m, _id: userMessageId } : m,
             );
           }
 

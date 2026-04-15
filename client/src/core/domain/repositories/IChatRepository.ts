@@ -1,5 +1,5 @@
 import type { Chat } from "../entities/Chat";
-import type { Message, MessagePage, StreamChunk } from "../entities/Message";
+import type { MessagePage, StreamChunk } from "../entities/Message";
 import type { UploadResult } from "../entities/FileUpload";
 
 export interface IChatRepository {
@@ -15,6 +15,8 @@ export interface IChatRepository {
     message: string,
     mode: "general" | "visual",
     imageUrl: string | null,
+    fileUrl: string | null,
+    fileName: string | null,
     onChunk: (chunk: StreamChunk) => void,
   ): Promise<void>;
 

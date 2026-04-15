@@ -61,7 +61,7 @@ export default function P5Sandbox({ p5CodeString }: P5SandboxProps) {
         <iframe
           ref={iframeRef}
           src="/sandbox_p5.html"
-          title="P5.js Message-based Sandbox"
+          title="Message-based Sandbox"
           sandbox="allow-scripts"
           className="w-full h-full border-none"
           onLoad={() => {

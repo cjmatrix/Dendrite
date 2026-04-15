@@ -16,6 +16,7 @@ export default function FileExplorer() {
 
 
   const { recallCount } = useFileTree();
+  console.log(recallCount)
   const { createFolder, createChat } = useExplorerMutations();
 
   // Recall badge animation 

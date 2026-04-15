@@ -199,5 +199,68 @@ export class QdrantVectorRepository implements IVectorRepository {
       },
     });
   }
+
+  async upsertDocumentVectors(points: any[]): Promise<void> {
+    if (points.length === 0) return;
+    try {
+      await qdrantClient.upsert(COLLECTION_NAME, { points });
+      console.log(`✅ Upserted ${points.length} document vectors to Qdrant`);
+    } catch (error: any) {
+      console.error("❌ Failed to upsert document vectors:", error?.message ?? error);
+      throw error;
+    }
+  }
+
+  async searchDocuments(
+    queryVector: number[],
+    userId: string,
+    chatIds: string[],
+    topK: number = 5
+  ): Promise<any[]> {
+    try {
+      const filter = {
+        must: [
+          {
+            key: "userId",
+            match: { value: String(userId) },
+          },
+          {
+            key: "sourceType",
+            match: { value: "document" },
+          },
+          {
+            key: "chatId",
+            match: { any: chatIds.map(String) },
+          },
+        ],
+      };
+
+      const results = await qdrantClient.search(COLLECTION_NAME, {
+        vector: { name: "code", vector: queryVector }, // Using code vector for similarity
+        limit: topK,
+        filter,
+        with_payload: true,
+      });
+
+      const relevantResults = results.filter(
+        (result) => result.score >= SIMILARITY_THRESHOLD,
+      );
+
+      return relevantResults.map((result) => ({
+        score: result.score,
+        document: result.payload?.content as {
+          text: string;
+          chunkIndex: number;
+          totalChunks: number;
+          headings: string[];
+          kinds: string[];
+        },
+        metadata: result.payload,
+      }));
+    } catch (error: any) {
+      console.error("❌ Document search failed:", error?.message ?? error);
+      return [];
+    }
+  }
 }
 

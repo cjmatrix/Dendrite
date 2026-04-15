@@ -25,12 +25,14 @@ export class ApiChatRepository implements IChatRepository {
     message: string,
     mode: "general" | "visual",
     imageUrl: string | null,
+    fileUrl: string | null,
+    fileName: string | null,
     onChunk: (chunk: StreamChunk) => void,
   ): Promise<void> {
     const response = await streamingFetch(`${API_URL}/chats/${chatId}/message`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message, mode, imageUrl }),
+      body: JSON.stringify({ message, mode, imageUrl, fileUrl, fileName }),
     });
 
     if (!response.ok || !response.body) {
@@ -72,9 +74,15 @@ export class ApiChatRepository implements IChatRepository {
     return { url: res.data.data.url };
   }
 
-  async uploadFile(file: File): Promise<UploadResult> {
+  async uploadFile(file: File, chatId?: string, fileName?: string): Promise<UploadResult> {
     const formData = new FormData();
     formData.append("file", file);
+    if (chatId) {
+      formData.append("chatId", chatId);
+    }
+    if (fileName) {
+      formData.append("fileName", fileName);
+    }
     const res = await api.post("/chats/upload-file", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     });

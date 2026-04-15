@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from "react";
+import React, { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import {
   Paperclip, Share, MoreVertical, ArrowUp, Image, Sparkles,
   ChevronDown, Check, StickyNote, Folder, Home, ChevronRight,
@@ -37,10 +37,14 @@ const MessageBubble = React.memo(
     msg,
     onOpenSubChat,
     onCreateRecall,
+    fileAttachment,
+    onOpenSplitView,
   }: {
     msg: Message;
     onOpenSubChat: (msgId: string, subChatId: string) => void;
     onCreateRecall: (msgId: string) => void;
+    fileAttachment?: { fileUrl: string; fileName: string };
+    onOpenSplitView: (fileUrl: string, fileName: string) => void;
   }) => {
     const isUser = msg.role === "user";
     const time = new Date().toLocaleTimeString([], {
@@ -70,6 +74,27 @@ const MessageBubble = React.memo(
               {msg.content}
             </div>
 
+            {fileAttachment && (
+              <div className="mt-2 inline-flex items-center gap-2 rounded-xl border border-zinc-700 bg-zinc-900/70 px-3 py-2 backdrop-blur-sm">
+                <span className="text-xs text-zinc-300 font-medium">📎 File uploaded: {fileAttachment.fileName}</span>
+                <button
+                  onClick={() => onOpenSplitView(fileAttachment.fileUrl, fileAttachment.fileName)}
+                  className="text-xs text-blue-400 hover:text-blue-300 font-semibold px-2 py-1 hover:bg-blue-500/10 rounded transition-colors border border-blue-500/30 hover:border-blue-400/50"
+                  title="Open file in split-screen view"
+                >
+                  View Split
+                </button>
+                <a
+                  href={fileAttachment.fileUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs text-gray-400 hover:text-gray-300 font-medium"
+                >
+                  Open
+                </a>
+              </div>
+            )}
+
             {/* Sticky Notes for User Message */}
             {msg.hasSubChat &&
               msg.subChats?.map((sc) => (
@@ -95,7 +120,7 @@ const MessageBubble = React.memo(
             </div>
           </div>
         ) : (
-          <div className="flex w-full gap-4 max-w-[95%] md:max-w-[100%] group/bubble relative">
+          <div className="flex w-full gap-4 max-w-[95%] md:max-w-full group/bubble relative">
             <DendritesLogo className="mt-1 hidden sm:flex shrink-0" />
 
             <div className="flex-1 flex flex-col min-w-0 relative">
@@ -202,9 +227,25 @@ const VirtuosoFooter = ({ context }: any) => {
   );
 };
 
+interface ExternalSelectionAction {
+  type: "ask" | "quick";
+  text: string;
+  nonce: number;
+  fileAttachment?: {
+    fileUrl: string;
+    fileName: string;
+  };
+}
 
+interface ChatWindowProps {
+  externalSelectionAction?: ExternalSelectionAction | null;
+  onExternalSelectionHandled?: () => void;
+}
 
-const ChatWindow: React.FC = () => {
+const ChatWindow: React.FC<ChatWindowProps> = ({
+  externalSelectionAction,
+  onExternalSelectionHandled,
+}) => {
   const { id } = useParams();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
@@ -222,16 +263,40 @@ const ChatWindow: React.FC = () => {
 
   const { messages, firstItemIndex } = useFlattenedMessages(messagesData);
   const breadCrumbs = useBreadcrumbs(tree, id);
+  const latestMessageId = useMemo(() => {
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+      const messageId = messages[index]?._id;
+      if (messageId) return messageId;
+    }
+    return "";
+  }, [messages]);
  
 
   const [mode, setMode] = useState<"general" | "visual">("general");
   const [isModeOpen, setIsModeOpen] = useState(false);
   const [input, setInput] = useState("");
   const [isQuickChatOpen, setIsQuickChatOpen] = useState(false);
+  const [externalSelectedFile, setExternalSelectedFile] = useState<{ name: string; url: string } | null>(null);
+  const [externalQuickSelection, setExternalQuickSelection] = useState<{
+    text: string;
+    messageId: string;
+    relativeY: number;
+  } | null>(null);
 
   const virtuosoRef = useRef<VirtuosoHandle>(null);
+  const composerRef = useRef<HTMLTextAreaElement | null>(null);
+  const lastHandledExternalActionRef = useRef<number | null>(null);
   const [atBottom, setAtBottom] = useState(true);
   const [isTracerActive, setIsTracerActive] = useState(false);
+
+  const openSplitView = useCallback(
+    (fileUrl: string, fileName: string) => {
+      if (!id) return;
+      sessionStorage.setItem("splitViewFile", JSON.stringify({ url: fileUrl, name: fileName }));
+      navigate(`/${id}/view-file`);
+    },
+    [id, navigate],
+  );
 
   // Scroll helper
   const scrollToBottom = useCallback(
@@ -258,7 +323,7 @@ const ChatWindow: React.FC = () => {
   const {
     selectedImageUrl, selectedFile, isUploading,
     fileInputRef, handleFileSelect, clearImage, clearFile,
-  } = useFileUpload();
+  } = useFileUpload(id);
 
   const { isRecalling, saveRecallCard } = useRecallActions(id);
   const { isModalOpen: isInheritModalOpen, openModal: openInheritModal, closeModal: closeInheritModal, inheritFromChat } = useInheritContext(id);
@@ -278,15 +343,19 @@ const ChatWindow: React.FC = () => {
 
 
   const handleSend = useCallback(() => {
-    if ((!input.trim() && !selectedImageUrl) || isStreaming || isUploading) return;
+    const effectiveSelectedFile = selectedFile ?? externalSelectedFile;
+    if ((!input.trim() && !selectedImageUrl && !effectiveSelectedFile) || isStreaming || isUploading) return;
     const msg = input.trim();
     setInput("");
-    send(msg, selectedImageUrl);
+    send(msg, selectedImageUrl, effectiveSelectedFile);
     clearImage();
-  }, [input, selectedImageUrl, isStreaming, isUploading, send, clearImage]);
+    clearFile();
+    setExternalSelectedFile(null);
+  }, [input, selectedImageUrl, selectedFile, externalSelectedFile, isStreaming, isUploading, send, clearImage, clearFile]);
 
   const handleOpenSubChat = useCallback(
     (messageId: string, subChatId: string) => {
+      setExternalQuickSelection(null);
       openSubChatSelection(messageId, subChatId);
       setIsQuickChatOpen(true);
     },
@@ -301,11 +370,74 @@ const ChatWindow: React.FC = () => {
     [saveRecallCard, clearSelection],
   );
 
+  useEffect(() => {
+    if (!externalSelectionAction) return;
+    if (lastHandledExternalActionRef.current === externalSelectionAction.nonce) return;
 
+    lastHandledExternalActionRef.current = externalSelectionAction.nonce;
+    const selectedText = externalSelectionAction.text.trim();
+
+    if (!selectedText) {
+      onExternalSelectionHandled?.();
+      return;
+    }
+
+    if (externalSelectionAction.type === "ask") {
+      setExternalSelectedFile(
+        externalSelectionAction.fileAttachment
+          ? {
+              url: externalSelectionAction.fileAttachment.fileUrl,
+              name: externalSelectionAction.fileAttachment.fileName,
+            }
+          : null,
+      );
+      setInput(`Based on this selected text:\n\"\"\"\n${selectedText}\n\"\"\"\n\n`);
+      requestAnimationFrame(() => composerRef.current?.focus());
+      onExternalSelectionHandled?.();
+      return;
+    }
+
+    if (latestMessageId) {
+      setExternalQuickSelection({
+        text: selectedText,
+        messageId: latestMessageId,
+        relativeY: 0,
+      });
+      setIsQuickChatOpen(true);
+    } else {
+      setInput(`Based on this selected text:\n\"\"\"\n${selectedText}\n\"\"\"\n\n`);
+      requestAnimationFrame(() => composerRef.current?.focus());
+    }
+
+    onExternalSelectionHandled?.();
+  }, [externalSelectionAction, latestMessageId, onExternalSelectionHandled]);
+
+  const quickChatSelection = externalQuickSelection
+    ? {
+        text: externalQuickSelection.text,
+        messageId: externalQuickSelection.messageId,
+        relativeY: externalQuickSelection.relativeY,
+        subChatId: null,
+      }
+    : selection;
+
+  const getFileAttachmentForMessage = useCallback(
+    (msg: Message) => {
+      if (!msg.fileUrl || !msg.fileName) return undefined;
+      return { fileUrl: msg.fileUrl, fileName: msg.fileName };
+    },
+    [],
+  );
+  const activeSelectedFile = selectedFile ?? externalSelectedFile;
+
+  const clearAttachedFile = useCallback(() => {
+    clearFile();
+    setExternalSelectedFile(null);
+  }, [clearFile]);
 
   return (
     <div
-      className="flex flex-col h-screen bg-[var(--theme-bg-base)] text-gray-200 font-sans w-full relative overflow-hidden"
+      className="flex flex-col h-screen bg-(--theme-bg-base) text-gray-200 font-sans w-full relative overflow-hidden"
       onMouseUp={handleTextSelection}
     >
       {/* Animated Edge Tracer */}
@@ -428,6 +560,8 @@ const ChatWindow: React.FC = () => {
                   msg={msg}
                   onOpenSubChat={handleOpenSubChat}
                   onCreateRecall={(msgId) => handleCreateRecall(null, msgId)}
+                  fileAttachment={getFileAttachmentForMessage(msg)}
+                  onOpenSplitView={openSplitView}
                 />
               </div>
             )}
@@ -477,19 +611,27 @@ const ChatWindow: React.FC = () => {
             </div>
           )}
 
-          {selectedFile && (
-            <div className="mb-2 inline-flex items-center gap-2 rounded-xl border border-zinc-700 bg-zinc-900/70 px-2 py-2">
-              <span className="text-xs text-zinc-300">File attached: {selectedFile.name}</span>
-              <a href={selectedFile.url} target="_blank" rel="noreferrer" className="text-xs text-blue-400 hover:underline">
-                View
+          {activeSelectedFile && (
+            <div className="mb-2 inline-flex items-center gap-2 rounded-xl border border-zinc-700 bg-zinc-900/70 px-3 py-2 backdrop-blur-sm">
+              <span className="text-xs text-zinc-300 font-medium">📎 {activeSelectedFile.name}</span>
+              <button 
+                onClick={() => openSplitView(activeSelectedFile.url, activeSelectedFile.name)}
+                className="text-xs text-blue-400 hover:text-blue-300 font-semibold px-2 py-1 hover:bg-blue-500/10 rounded transition-colors border border-blue-500/30 hover:border-blue-400/50"
+                title="Open file in split-screen view"
+              >
+                View Split
+              </button>
+              <a href={activeSelectedFile.url} target="_blank" rel="noreferrer" className="text-xs text-gray-400 hover:text-gray-300 font-medium">
+                Open
               </a>
-              <button onClick={clearFile} className="p-1 rounded-md hover:bg-white/10 text-zinc-300" title="Remove file">
+              
+              <button onClick={clearAttachedFile} className="p-1 rounded-md hover:bg-white/10 text-zinc-400 hover:text-zinc-300 transition-colors" title="Remove file">
                 <X size={14} />
               </button>
             </div>
           )}
 
-          <div className="flex items-center bg-[var(--theme-bg-elevated)]/90 backdrop-blur-xl border border-white/10 rounded-2xl px-3 md:px-4 py-3 md:py-3.5 focus-within:border-blue-500/50 focus-within:bg-[var(--theme-bg-elevated)] transition-all shadow-2xl">
+          <div className="flex items-center bg-(--theme-bg-elevated)/90 backdrop-blur-xl border border-white/10 rounded-2xl px-3 md:px-4 py-3 md:py-3.5 focus-within:border-blue-500/50 focus-within:bg-(--theme-bg-elevated) transition-all shadow-2xl">
             <button
               onClick={() => fileInputRef.current?.click()}
               className="p-2 hover:bg-white/5 rounded-xl text-gray-400 hover:text-gray-200 transition-colors hidden md:block group"
@@ -552,6 +694,7 @@ const ChatWindow: React.FC = () => {
               value={input}
               rows={1}
               ref={(el) => {
+                composerRef.current = el;
                 if (el) {
                   el.style.height = "auto";
                   el.style.height = el.scrollHeight + "px";
@@ -573,9 +716,9 @@ const ChatWindow: React.FC = () => {
               </span>
               <button
                 onClick={handleSend}
-                disabled={isStreaming || isUploading || (!input.trim() && !selectedImageUrl)}
+                disabled={isStreaming || isUploading || (!input.trim() && !selectedImageUrl && !activeSelectedFile)}
                 className={`p-2 rounded-xl transition-all flex items-center justify-center ${
-                  (input.trim() || selectedImageUrl) && !isStreaming && !isUploading
+                  (input.trim() || selectedImageUrl || activeSelectedFile) && !isStreaming && !isUploading
                     ? "bg-blue-600 text-white hover:bg-blue-500 shadow-md shadow-blue-500/20"
                     : "bg-white/5 text-gray-500 cursor-not-allowed"
                 }`}
@@ -612,19 +755,20 @@ const ChatWindow: React.FC = () => {
       )}
 
       {/* Quick Chat Modal */}
-      {selection && (
+      {quickChatSelection && (
         <QuickChatModal
-          key={`${selection.messageId}-${selection.text}`}
+          key={`${quickChatSelection.messageId}-${quickChatSelection.text}`}
           isOpen={isQuickChatOpen}
           onClose={() => {
             setIsQuickChatOpen(false);
             clearSelection();
+            setExternalQuickSelection(null);
           }}
-          selectedText={selection.text}
-          sourceMessageId={selection.messageId}
+          selectedText={quickChatSelection.text}
+          sourceMessageId={quickChatSelection.messageId}
           chatId={id}
-          relativeY={selection.relativeY}
-          subChatId={selection?.subChatId ?? undefined}
+          relativeY={quickChatSelection.relativeY}
+          subChatId={quickChatSelection?.subChatId ?? undefined}
         />
       )}
 

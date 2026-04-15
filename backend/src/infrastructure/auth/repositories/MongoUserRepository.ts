@@ -10,6 +10,10 @@ export class MongoUserRepository implements IUserRepository {
     return User.findById(id);
   }
 
+  async findByIdSafe(id: string): Promise<IUser | null> {
+    return User.findById(id).select('-password -refreshTokens');
+  }
+
   async create(userData: any): Promise<IUser> {
     return new User(userData);
   }

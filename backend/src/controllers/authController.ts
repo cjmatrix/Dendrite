@@ -1,12 +1,7 @@
 import { Request, Response } from 'express';
+import { BaseController } from './base/BaseController';
+import { DIContainer } from './container/DIContainer';
 import { AppError } from '../utils/AppError';
-import { User } from '../models/User';
-import { MongoUserRepository } from '../infrastructure/auth/repositories/MongoUserRepository';
-import { RegisterUser } from '../application/auth/use-cases/RegisterUser';
-import { LoginUser } from '../application/auth/use-cases/LoginUser';
-import { RefreshTokenUser } from '../application/auth/use-cases/RefreshTokenUser';
-import { LogoutUser } from '../application/auth/use-cases/LogoutUser';
-import { GetMe } from '../application/auth/use-cases/GetMe';
 
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -16,107 +11,170 @@ const cookieOptions = {
   sameSite: 'strict' as const,
 };
 
-const userRepository = new MongoUserRepository();
 
-export const AuthController = {
-  async register(req: Request, res: Response) {
-    const { name, email, password, confirmPassword } = req.body;
+export class AuthController extends BaseController {
+  constructor() {
+    super();
+  }
 
-    if (!name || !email || !password || !confirmPassword) {
-      throw new AppError('All fields are required', 400);
-    }
-
-    if (password !== confirmPassword) {
-      throw new AppError('Passwords do not match', 400);
-    }
-
-    const registerUser = new RegisterUser(userRepository);
-    const { user, accessToken, refreshToken } = await registerUser.execute({ name, email, password });
-
-    res.cookie('accessToken', accessToken, { ...cookieOptions, maxAge: 15 * 60 * 1000 }); // 15 mins
-    res.cookie('refreshToken', refreshToken, { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 * 1000 }); // 7 days
-
-    res.status(201).json({ user, message: 'User registered successfully' });
-  },
-
-  async login(req: Request, res: Response) {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      throw new AppError('Email and password are required', 400);
-    }
-
-    const loginUser = new LoginUser(userRepository);
-    const { user, accessToken, refreshToken } = await loginUser.execute({ email, password });
-
-    res.cookie('accessToken', accessToken, { ...cookieOptions, maxAge: 15 * 60 * 1000 });
-    res.cookie('refreshToken', refreshToken, { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 * 1000 });
-
-    res.status(200).json({ user, message: 'Logged in successfully' });
-  },
-
-  async refresh(req: Request, res: Response) {
-    const cookies = req.cookies;
-    if (!cookies?.refreshToken) {
-      throw new AppError('Unauthorized', 401);
-    }
-
+  /**
+   * Register a new user
+   * POST /api/auth/register
+   */
+  public register = async (req: Request, res: Response): Promise<void> => {
     try {
-      const refreshTokenUser = new RefreshTokenUser(userRepository);
-      const { accessToken, refreshToken } = await refreshTokenUser.execute(cookies.refreshToken);
+      const { name, email, password, confirmPassword } = req.body;
+
+      if (!name || !email || !password || !confirmPassword) {
+        throw new AppError('All fields are required', 400);
+      }
+
+      if (password !== confirmPassword) {
+        throw new AppError('Passwords do not match', 400);
+      }
+
+      const registerUser = DIContainer.getRegisterUserUseCase();
+      const { user, accessToken, refreshToken } = await registerUser.execute({
+        name,
+        email,
+        password,
+      });
 
       res.cookie('accessToken', accessToken, { ...cookieOptions, maxAge: 15 * 60 * 1000 });
-      res.cookie('refreshToken', refreshToken, { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 * 1000 });
+      res.cookie('refreshToken', refreshToken, {
+        ...cookieOptions,
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      });
+
+      this.sendSuccess(res, user, 201, 'User registered successfully');
+    } catch (error) {
+      this.sendError(res, error);
+    }
+  };
+
+  /**
+   * Login a user
+   * POST /api/auth/login
+   */
+  public login = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { email, password } = req.body;
+
+      if (!email || !password) {
+        throw new AppError('Email and password are required', 400);
+      }
+
+      const loginUser = DIContainer.getLoginUserUseCase();
+      const { user, accessToken, refreshToken } = await loginUser.execute({
+        email,
+        password,
+      });
+
+      res.cookie('accessToken', accessToken, { ...cookieOptions, maxAge: 15 * 60 * 1000 });
+      res.cookie('refreshToken', refreshToken, {
+        ...cookieOptions,
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      });
+
+      this.sendSuccess(res, user, 200, 'Logged in successfully');
+    } catch (error) {
+      this.sendError(res, error);
+    }
+  };
+
+  /**
+   * Refresh authentication tokens
+   * POST /api/auth/refresh
+   */
+  public refresh = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const cookies = req.cookies;
+      if (!cookies?.refreshToken) {
+        throw new AppError('Unauthorized', 401);
+      }
+
+      const refreshTokenUser = DIContainer.getRefreshTokenUserUseCase();
+      const { accessToken, refreshToken } = await refreshTokenUser.execute(
+        cookies.refreshToken,
+      );
+
+      res.cookie('accessToken', accessToken, { ...cookieOptions, maxAge: 15 * 60 * 1000 });
+      res.cookie('refreshToken', refreshToken, {
+        ...cookieOptions,
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      });
 
       res.status(200).json({ message: 'Token refreshed' });
-    } catch(err: any) {
-      // Clear cookies if refresh fails
+    } catch (err: any) {
       res.clearCookie('accessToken', cookieOptions);
       res.clearCookie('refreshToken', cookieOptions);
-      throw err; // Let the global error handler catch it
+      this.sendError(res, err);
     }
-  },
+  };
 
-  async logout(req: Request, res: Response) {
-    const cookies = req.cookies;
-    if (!cookies?.refreshToken) {
-        return res.sendStatus(204); // No content
+  /**
+   * Logout a user
+   * POST /api/auth/logout
+   */
+  public logout = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const cookies = req.cookies;
+      if (!cookies?.refreshToken) {
+        res.sendStatus(204);
+        return;
+      }
+
+      const logoutUser = DIContainer.getLogoutUserUseCase();
+      await logoutUser.execute(cookies.refreshToken);
+
+      res.clearCookie('accessToken', cookieOptions);
+      res.clearCookie('refreshToken', cookieOptions);
+      res.status(200).json({ message: 'Logged out successfully' });
+    } catch (error) {
+      this.sendError(res, error);
     }
+  };
 
-    const logoutUser = new LogoutUser(userRepository);
-    await logoutUser.execute(cookies.refreshToken);
-    
-    res.clearCookie('accessToken', cookieOptions);
-    res.clearCookie('refreshToken', cookieOptions);
-    res.status(200).json({ message: 'Logged out successfully' });
-  },
+  /**
+   * Get current user information
+   * GET /api/auth/me
+   */
+  public getMe = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const userId = this.validateUserAuth(req);
 
-  async getMe(req: Request, res: Response) {
-    if (!req.user) {
-      throw new AppError('Unauthorized', 401);
+      const getMeUseCase = DIContainer.getGetMeUseCase();
+      const user = await getMeUseCase.execute(userId);
+
+      this.sendSuccess(res, user);
+    } catch (error) {
+      this.sendError(res, error);
     }
-    
-    const getMeUseCase = new GetMe(userRepository);
-    const user = await getMeUseCase.execute(req.user._id.toString());
-    res.status(200).json({ user });
-  },
+  };
 
-  async saveFCMToken(req: Request, res: Response) {
-    if (!req.user) throw new AppError('Unauthorized', 401);
+  /**
+   * Update FCM token for push notifications
+   * POST /api/auth/fcm-token
+   */
+  public updateFcmToken = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const userId = this.validateUserAuth(req);
+      const { fcmToken } = req.body;
 
-    const { fcmToken } = req.body;
-    if (!fcmToken) throw new AppError('fcmToken is required', 400);
+      if (!fcmToken) {
+        throw new AppError('FCM token is required', 400);
+      }
 
-    const user = await userRepository.findById(req.user._id.toString());
-    if (!user) throw new AppError('User not found', 404);
+      const updateFcmTokenUseCase = DIContainer.getUpdateFcmTokenUseCase();
+      const result = await updateFcmTokenUseCase.execute(userId, fcmToken);
 
-    if (!user.fcmToken) user.fcmToken = [];
-    if (!user.fcmToken.includes(fcmToken)) {
-      user.fcmToken.push(fcmToken);
-      await userRepository.save(user);
+      this.sendSuccess(res, result, 200, 'FCM token updated successfully');
+    } catch (error) {
+      this.sendError(res, error);
     }
+  };
+}
 
-    res.status(200).json({ success: true, message: 'FCM token saved' });
-  }
-};
+// Export singleton instance for use in routes
+export const authController = new AuthController();
 

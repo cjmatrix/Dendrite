@@ -1,79 +1,97 @@
 import { Request, Response } from 'express';
-import { MongoFolderRepository } from '../infrastructure/folder/repositories/MongoFolderRepository';
-import { CreateFolder } from '../application/folder/use-cases/CreateFolder';
-import { GetFolders } from '../application/folder/use-cases/GetFolders';
-import { UpdateFolder } from '../application/folder/use-cases/UpdateFolder';
-import { DeleteFolder } from '../application/folder/use-cases/DeleteFolder';
-import { QdrantVectorRepository } from '../infrastructure/vector/repositories/QdrantVectorRepository';
+import { BaseController } from './base/BaseController';
+import { DIContainer } from './container/DIContainer';
+import { AppError } from '../utils/AppError';
 
-const folderRepository = new MongoFolderRepository();
+/**
+ * FolderController - handles all folder-related HTTP requests
+ * Uses clean architecture with dependency injection
+ */
+export class FolderController extends BaseController {
+  constructor() {
+    super();
+  }
 
-export const createFolder = async(req: Request, res: Response) => {
-    if (!req.user) {
-        res.status(401).json({ message: 'Unauthorized' });
-        return;
+  /**
+   * Create a new folder
+   * POST /api/folders
+   */
+  public createFolder = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const userId = this.validateUserAuth(req);
+      const { name, parentId } = req.body;
+
+      if (!name || typeof name !== 'string') {
+        throw new AppError('Folder name is required and must be a string', 400);
+      }
+
+      const createFolderUseCase = DIContainer.getCreateFolderUseCase();
+      const data = await createFolderUseCase.execute(userId, name, parentId);
+
+      this.sendSuccess(res, data, 201, 'Folder created successfully');
+    } catch (error) {
+      this.sendError(res, error);
     }
+  };
 
-    const {name,parentId}=req.body;
-    
-    const createFolderUseCase = new CreateFolder(folderRepository);
-    const data = await createFolderUseCase.execute(req.user._id.toString(), name, parentId);
-  
-    res.status(201).json({
-        success:true,
-        data
-    })
+  /**
+   * Get all folders for the authenticated user
+   * GET /api/folders
+   */
+  public getFolders = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const userId = this.validateUserAuth(req);
+
+      const getFoldersUseCase = DIContainer.getGetFoldersUseCase();
+      const data = await getFoldersUseCase.execute(userId);
+
+      this.sendSuccess(res, data, 200);
+    } catch (error) {
+      this.sendError(res, error);
+    }
+  };
+
+  /**
+   * Update a folder
+   * PATCH /api/folders/:id
+   */
+  public updateFolder = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const userId = this.validateUserAuth(req);
+      const id = this.getRouteParam(req, 'id');
+      const { name, isExpanded } = req.body;
+
+      if (!name && isExpanded === undefined) {
+        throw new AppError('At least one field (name or isExpanded) is required', 400);
+      }
+
+      const updateFolderUseCase = DIContainer.getUpdateFolderUseCase();
+      const data = await updateFolderUseCase.execute(id, userId, { name, isExpanded });
+
+      this.sendSuccess(res, data, 200, 'Folder updated successfully');
+    } catch (error) {
+      this.sendError(res, error);
+    }
+  };
+
+  /**
+   * Delete a folder and all associated chats
+   * DELETE /api/folders/:id
+   */
+  public deleteFolder = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const userId = this.validateUserAuth(req);
+      const id = this.getRouteParam(req, 'id');
+
+      const deleteFolderUseCase = DIContainer.getDeleteFolderUseCase();
+      const data = await deleteFolderUseCase.execute(id, userId);
+
+      this.sendSuccess(res, data, 200, 'Folder deleted successfully');
+    } catch (error) {
+      this.sendError(res, error);
+    }
+  };
 }
 
-export const getFolders = async(req: Request, res: Response) => {
-    if (!req.user) {
-        res.status(401).json({ message: 'Unauthorized' });
-        return;
-    }
-
-    const getFoldersUseCase = new GetFolders(folderRepository);
-    const data = await getFoldersUseCase.execute(req.user._id.toString());
-
-    res.status(200).json({
-        success: true,
-        data
-    })
-}
-
-export const updateFolder = async(req: Request, res: Response) => {
-    if (!req.user) {
-        res.status(401).json({ message: 'Unauthorized' });
-        return;
-    }
-
-    const id = req.params.id as string;
-    const { name, isExpanded } = req.body;
-
-    const updateFolderUseCase = new UpdateFolder(folderRepository);
-    const data = await updateFolderUseCase.execute(id, req.user._id.toString(), { name, isExpanded });
-
-    res.status(200).json({
-        success: true,
-        data
-    })
-}
-
-import { MongoChatRepository } from '../infrastructure/chat/repositories/MongoChatRepository';
-
-export const deleteFolder = async(req: Request, res: Response) => {
-    if (!req.user) {
-        res.status(401).json({ message: 'Unauthorized' });
-        return;
-    }
-
-    const id = req.params.id as string;
-    const chatRepository = new MongoChatRepository();
-
-    const deleteFolderUseCase = new DeleteFolder(folderRepository, new QdrantVectorRepository(), chatRepository);
-    const data = await deleteFolderUseCase.execute(id, req.user._id.toString());
-
-    res.status(200).json({
-        success: true,
-        data
-    })
-}
+// Export singleton instance for use in routes
+export const folderController = new FolderController();

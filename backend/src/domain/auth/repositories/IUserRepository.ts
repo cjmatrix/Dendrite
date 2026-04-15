@@ -3,6 +3,7 @@ import { IUser } from '../../../models/User';
 export interface IUserRepository {
   findByEmail(email: string): Promise<IUser | null>;
   findById(id: string): Promise<IUser | null>;
+  findByIdSafe(id: string): Promise<IUser | null>;
   create(userData: any): Promise<IUser>;
   save(user: IUser, session?: any): Promise<IUser>;
   updateRefreshTokens(userId: string, tokens: string[]): Promise<void>;

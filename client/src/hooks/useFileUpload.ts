@@ -2,7 +2,7 @@ import { useState, useRef, useCallback } from "react";
 import { classifyFile } from "../core/domain/entities/FileUpload";
 import { chatRepository } from "../core/container";
 
-export function useFileUpload() {
+export function useFileUpload(chatId?: string) {
   const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<{ name: string; url: string } | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -23,7 +23,7 @@ export function useFileUpload() {
       const result =
         classification === "image"
           ? await chatRepository.uploadImage(file)
-          : await chatRepository.uploadFile(file);
+          : await chatRepository.uploadFile(file, chatId, file.name);
 
       if (classification === "image") {
         setSelectedImageUrl(result.url);
@@ -41,7 +41,7 @@ export function useFileUpload() {
         fileInputRef.current.value = "";
       }
     }
-  }, []);
+  }, [chatId]);
 
   const clearImage = useCallback(() => setSelectedImageUrl(null), []);
   const clearFile = useCallback(() => setSelectedFile(null), []);

@@ -92,7 +92,7 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.isAuthenticated = false;
         state.user = null;
-        // Don't set error message for initial checkAuth failure, it's expected if logged out
+       
       })
 
       // Login

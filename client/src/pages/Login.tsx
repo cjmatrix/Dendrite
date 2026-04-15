@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Mail, Lock, LogIn, AlertCircle } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "../store/store";
@@ -10,8 +10,14 @@ const Login: React.FC = () => {
   const [password, setPassword] = useState("");
 
   const dispatch = useAppDispatch();
-  const { isLoading, error } = useAppSelector((state) => state.auth);
+  const { isLoading, error,isAuthenticated } = useAppSelector((state) => state.auth);
   const navigate = useNavigate();
+
+    useEffect(()=>{
+      if(isAuthenticated){
+        navigate("/")
+      }
+    },[isAuthenticated])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
