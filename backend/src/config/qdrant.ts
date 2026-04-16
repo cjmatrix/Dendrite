@@ -10,6 +10,7 @@ export const qdrantClient = new QdrantClient({
 export const COLLECTION_NAME = "code_blocks";
 export const SUMMARY_COLLECTION_NAME = "chat_summaries";
 export const SEARCH_CACHE_COLLECTION = "search_cache";
+export const DOCUMENT_COLLECTION_NAME="document_collections"
 
 export async function initQdrant() {
   try {
@@ -30,6 +31,32 @@ export async function initQdrant() {
     } else {
       console.log(`✅ Qdrant collection '${COLLECTION_NAME}' ready.`);
     }
+
+
+     const docExists = collections.collections.some(
+      (c) => c.name === DOCUMENT_COLLECTION_NAME,
+    );
+    if (!docExists) {
+      await qdrantClient.createCollection(DOCUMENT_COLLECTION_NAME,{
+
+        vectors: {
+          "dense-vector": {
+            size: 768, 
+            distance: "Cosine",
+          },
+        },
+    
+        sparse_vectors: {
+          "bm25-vector": {
+            modifier: "idf", 
+          },
+        },
+      });
+      console.log(`✅ Qdrant collection '${DOCUMENT_COLLECTION_NAME}' created.`);
+    } else {
+      console.log(`✅ Qdrant collection '${DOCUMENT_COLLECTION_NAME}' ready.`);
+    }
+
 
 
     const summaryExists = collections.collections.some(

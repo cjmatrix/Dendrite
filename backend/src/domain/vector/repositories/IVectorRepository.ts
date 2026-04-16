@@ -4,7 +4,7 @@ export interface IVectorRepository {
     descQueryVector: number[],
     userId: string,
     chatIds: string[],
-    topK?: number
+    topK?: number,
   ): Promise<any[]>;
 
   searchSimilarChatChunk(
@@ -34,6 +34,7 @@ export interface IVectorRepository {
   deleteOldSearchCache(minTimestamp: number): Promise<void>;
 
   searchDocuments(
+    queryText:string,
     queryVector: number[],
     userId: string,
     chatIds: string[],

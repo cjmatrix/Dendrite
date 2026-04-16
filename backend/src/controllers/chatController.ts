@@ -212,7 +212,7 @@ export class ChatController extends BaseController {
             return;
           }
 
-          // Use default filename if not provided
+         
           const documentFileName = fileName || 'document';
 
           // Create outbox event in MongoDB
@@ -250,7 +250,7 @@ export class ChatController extends BaseController {
 
           console.log(`📎 Queued document chunking for: ${documentFileName} (outboxId: ${outboxEvent._id})`);
           sendJson(201, { success: true, data: { url: result.secure_url } });
-          // Note: temp file cleanup will happen in ProcessDocumentChunking after chunking is complete
+         
         } catch (error: any) {
           console.error('Document upload failed:', error);
           if (!responseSent) {

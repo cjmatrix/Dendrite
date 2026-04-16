@@ -508,17 +508,36 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <button
                 onClick={openInheritModal}
-                className="group flex items-center gap-3 px-6 py-3.5 bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 rounded-2xl transition-all hover:scale-105 active:scale-95 shadow-[0_0_20px_-10px_rgba(245,158,11,0.5)]"
+                className={`group flex items-center gap-3 px-6 py-3.5 rounded-2xl transition-all hover:scale-105 active:scale-95 ${
+                  chat && (chat as any).contextParent
+                    ? 'bg-blue-500/10 border border-blue-500/30 hover:bg-blue-500/20 shadow-[0_0_20px_-10px_rgba(59,130,246,0.5)]'
+                    : 'bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 shadow-[0_0_20px_-10px_rgba(245,158,11,0.5)]'
+                }`}
               >
-                <div className="p-2 bg-amber-500/20 rounded-xl group-hover:bg-amber-500/40 transition-colors">
-                  <GitBranch size={18} className="text-amber-400" />
+                <div className={`p-2 rounded-xl transition-colors ${
+                  chat && (chat as any).contextParent
+                    ? 'bg-blue-500/20 group-hover:bg-blue-500/40'
+                    : 'bg-amber-500/20 group-hover:bg-amber-500/40'
+                }`}>
+                  <GitBranch size={18} className={chat && (chat as any).contextParent ? 'text-blue-400' : 'text-amber-400'} />
                 </div>
                 <div className="text-left">
-                  <div className="text-[14px] font-bold text-amber-200/90 leading-tight">
-                    Inherit Experience
+                  <div className={`text-[14px] font-bold leading-tight ${
+                    chat && (chat as any).contextParent
+                      ? 'text-blue-200/90'
+                      : 'text-amber-200/90'
+                  }`}>
+                    {chat && (chat as any).contextParent ? 'Context Linked' : 'Inherit Experience'}
                   </div>
-                  <div className="text-[11px] text-amber-500/70 font-medium">
-                    Link this chat to a parent context
+                  <div className={`text-[11px] font-medium ${
+                    chat && (chat as any).contextParent
+                      ? 'text-blue-500/70'
+                      : 'text-amber-500/70'
+                  }`}>
+                    {chat && (chat as any).contextParent 
+                      ? `From: ${(chat as any).contextParent?.title || 'Parent Chat'}`
+                      : 'Link this chat to a parent context'
+                    }
                   </div>
                 </div>
               </button>

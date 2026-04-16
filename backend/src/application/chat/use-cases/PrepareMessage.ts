@@ -111,7 +111,7 @@ export class PrepareMessage {
       chatIdsToSearch,
     );
 
-    const [rawSimilarCode, chatContextStats] = await Promise.all([
+    const [rawSimilarCode, chatContextStats, documentChunks] = await Promise.all([
       this.vectorRepository.searchSimilarCode(
         finalCodeQueryVector,
         finalDescQueryVector,
@@ -123,8 +123,15 @@ export class PrepareMessage {
         userId,
         chatIdsToSearch,
       ),
+      this.vectorRepository.searchDocuments(
+        normalizedMessage,
+        finalDescQueryVector,
+        userId,
+        chatIdsToSearch,
+      ),
     ]);
 
+    console.log(documentChunks,"raw document")
     // --- DIAGNOSTIC LOGS ---
     console.log(`\n🔍 [RAG DIAGNOSTICS]`);
     console.log(`📡 User Message: "${normalizedMessage}"`);
@@ -135,6 +142,7 @@ export class PrepareMessage {
       );
     });
     console.log(`💻 Code Snippets Found: ${rawSimilarCode.length}`);
+    console.log(`📄 Document Chunks Found: ${documentChunks.length}`);
     console.log(`------------------------\n`);
 
     const deduplicatedSimilarCode = rawSimilarCode.filter((item) => {
@@ -147,6 +155,10 @@ export class PrepareMessage {
 
     const deduplicatedChatContext = chatContextStats.filter((item) => {
       return item.fact?.fact && !recentMessagesText.includes(item.fact.fact);
+    });
+
+    const deduplicatedDocuments = documentChunks.filter((item: any) => {
+      return item.document?.text && !recentMessagesText.includes(item.document.text);
     });
 
     let dynamicSystemInstruction = systemInstruction;
@@ -180,6 +192,20 @@ export class PrepareMessage {
         .join("\n\n");
 
       dynamicSystemInstruction += `\n\n--- [RELEVANT ARCHIVED FACTS] ---\nThese are granular details from deep in the conversation history:\n\n${factText}`;
+    }
+
+    if (deduplicatedDocuments.length > 0) {
+      const docText = deduplicatedDocuments
+        .map((item: any, index: number) => {
+          const fileName = item.metadata?.fileName || "Unknown File";
+          const text = item.document?.text || "";
+          const headings = item.document?.headings ? item.document.headings.join(" > ") : "";
+          const heading = headings ? `\nSection: ${headings}` : "";
+          return `[Document ${index + 1}] ${fileName}${heading}\n${text.substring(0, 500)}${text.length > 500 ? "..." : ""}`;
+        })
+        .join("\n\n");
+
+      dynamicSystemInstruction += `\n\n=== [PRIMARY SOURCE: UPLOADED DOCUMENTS] ===\nIMPORTANT: The user has uploaded specific documents. Your responses MUST be grounded exclusively in the following document excerpts. Do NOT rely on general knowledge or external sources unless the user explicitly asks. If the user's question cannot be answered using ONLY the provided documents, clearly state: "This information is not covered in the uploaded documents and then you may free to use general knowledge."\n\n${docText}\n\nSOURCE CONSTRAINT: Base your entire response on the above document content. Cite the document name and section when providing information.`;
     }
 
     if (mode === "visual") {

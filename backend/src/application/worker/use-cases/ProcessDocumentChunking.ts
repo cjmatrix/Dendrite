@@ -4,6 +4,7 @@ import { SemanticChunkingService, ChunkingOptions } from '../../../services/Sema
 import { FileUploadService } from '../../../services/FileUploadService';
 import crypto from 'crypto';
 import fs from 'fs';
+import { textToSparseVector } from '../../../utils/BM25Healper';
 
 export class ProcessDocumentChunking {
   private chunkingService: SemanticChunkingService;
@@ -41,10 +42,13 @@ export class ProcessDocumentChunking {
         throw new Error('No chunks generated from document');
       }
 
-      // Prepare vectors for Qdrant
+      // Prepare vectors for Qdrant (direct vector format for document collection)
       const points = chunks.map(chunk => ({
         id: crypto.randomUUID(),
-        vector: chunk.embedding || new Array(768).fill(0), // Fallback if no embedding
+        vectors: {
+        "dense-vector": chunk.embedding || new Array(768).fill(0),
+        "bm25-vector": textToSparseVector(chunk.content),
+      },
         payload: {
           sourceId: outboxEvent.payload.sourceId?.toString() || 'unknown',
           sourceType: 'document',
@@ -64,12 +68,13 @@ export class ProcessDocumentChunking {
         },
       }));
 
-      // Upsert all chunks to vector store
+      
+   
       await this.vectorRepository.upsertDocumentVectors(points);
 
       console.log(`✅ Processed ${chunks.length} semantic chunks from document: ${fileName}`);
 
-      // Mark as processed
+     
       await this.outboxRepository.updateStatus(outboxId, 'processed');
 
       // Clean up temp file after successful processing

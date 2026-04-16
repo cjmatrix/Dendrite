@@ -3,7 +3,9 @@ import {
   qdrantClient,
   COLLECTION_NAME,
   SUMMARY_COLLECTION_NAME,
+  DOCUMENT_COLLECTION_NAME
 } from '../../../config/qdrant';
+import { textToSparseVector } from '../../../utils/BM25Healper';
 
 const SIMILARITY_THRESHOLD = 0.62;
 
@@ -203,7 +205,7 @@ export class QdrantVectorRepository implements IVectorRepository {
   async upsertDocumentVectors(points: any[]): Promise<void> {
     if (points.length === 0) return;
     try {
-      await qdrantClient.upsert(COLLECTION_NAME, { points });
+      await qdrantClient.upsert(DOCUMENT_COLLECTION_NAME, { points });
       console.log(`✅ Upserted ${points.length} document vectors to Qdrant`);
     } catch (error: any) {
       console.error("❌ Failed to upsert document vectors:", error?.message ?? error);
@@ -212,55 +214,79 @@ export class QdrantVectorRepository implements IVectorRepository {
   }
 
   async searchDocuments(
-    queryVector: number[],
-    userId: string,
-    chatIds: string[],
-    topK: number = 5
-  ): Promise<any[]> {
-    try {
-      const filter = {
-        must: [
-          {
-            key: "userId",
-            match: { value: String(userId) },
-          },
-          {
-            key: "sourceType",
-            match: { value: "document" },
-          },
-          {
-            key: "chatId",
-            match: { any: chatIds.map(String) },
-          },
-        ],
-      };
-
-      const results = await qdrantClient.search(COLLECTION_NAME, {
-        vector: { name: "code", vector: queryVector }, // Using code vector for similarity
-        limit: topK,
-        filter,
-        with_payload: true,
-      });
-
-      const relevantResults = results.filter(
-        (result) => result.score >= SIMILARITY_THRESHOLD,
-      );
-
-      return relevantResults.map((result) => ({
-        score: result.score,
-        document: result.payload?.content as {
-          text: string;
-          chunkIndex: number;
-          totalChunks: number;
-          headings: string[];
-          kinds: string[];
+  queryText: string,     
+  queryVector: number[],
+  userId: string,
+  chatIds: string[],
+  topK: number = 5
+): Promise<any[]> {
+  try {
+ 
+    const filter = {
+      must: [
+        {
+          key: "userId",
+          match: { value: String(userId) },
         },
-        metadata: result.payload,
-      }));
-    } catch (error: any) {
-      console.error("❌ Document search failed:", error?.message ?? error);
-      return [];
-    }
+        {
+          key: "sourceType",
+          match: { value: "document" },
+        },
+        {
+          key: "chatId",
+          match: { any: chatIds.map(String) },
+        },
+      ],
+    };
+
+   
+    const sparseVector = textToSparseVector(queryText);
+
+    // 3. Use Qdrant's Universal Query API for Hybrid Search
+
+    const response = await qdrantClient.query(DOCUMENT_COLLECTION_NAME, {
+      prefetch: [
+        {
+          using: "dense-vector",     
+          query: queryVector,
+          filter: filter,             
+          limit: topK * 3,            
+          score_threshold: SIMILARITY_THRESHOLD, 
+        },
+        {
+          using: "bm25-vector",       
+          query: sparseVector,
+          filter: filter,            
+          limit: topK * 3,           
+        },
+      ],
+      query: {
+        rrf: {
+          fusion: "rrf",              
+        },
+      },
+      limit: topK,                    
+      with_payload: true,
+    });
+
+    
+    return response.points.map((result) => ({
+      score: result.score, // This is now an RRF score not a Cosine score
+      document: result.payload?.content as {
+        text: string;
+        chunkIndex: number;
+        totalChunks: number;
+        headings: string[];
+        kinds: string[];
+      },
+      metadata: result.payload,
+    }));
+    
+  
+  } catch (error: any) {
+    console.error("❌ Document hybrid search failed:", error?.message ?? error);
+    return [];
   }
+}
 }
 

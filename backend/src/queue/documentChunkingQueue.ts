@@ -25,6 +25,7 @@ new Worker(
     const vectorRepo = DIContainer.getVectorRepository();
 
     const processor = new ProcessDocumentChunking(outboxRepo, vectorRepo);
+    console.log(`[Worker] Processing document chunking job ${job.id} for file: ${fileName}`);
     await processor.execute(outboxId, filePath, userId, chatId, fileName);
   },
   {

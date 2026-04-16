@@ -15,7 +15,9 @@ export class MongoChatRepository implements IChatRepository {
   }
 
   async findByIdAndUserId(chatId: string, userId: string, options?: any): Promise<any | null> {
-    return Chat.findOne({ _id: chatId, userId }, null, options).lean();
+    return Chat.findOne({ _id: chatId, userId }, null, options)
+      .populate('contextParent', 'title _id')
+      .lean();
   }
 
   async update(chatId: string, userId: string, updates: any, options?: any): Promise<any | null> {
