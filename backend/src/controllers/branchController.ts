@@ -34,6 +34,24 @@ export class BranchController extends BaseController {
       this.sendError(res, error);
     }
   };
+
+  /**
+   * Unlink context inheritance for a chat
+   * PATCH /api/branch/unlink/:id
+   */
+  public unlinkInheritance = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const userId = this.validateUserAuth(req);
+      const id = this.getRouteParam(req, 'id');
+
+      const unlinkInheritanceUseCase = DIContainer.getUnlinkInheritanceUseCase();
+      const updatedChat = await unlinkInheritanceUseCase.execute(id, userId);
+
+      this.sendSuccess(res, updatedChat, 200, 'Inheritance unlinked successfully');
+    } catch (error) {
+      this.sendError(res, error);
+    }
+  };
 }
 
 // Export singleton instance for use in routes

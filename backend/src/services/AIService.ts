@@ -1,7 +1,7 @@
-import { redisConnection } from '../config/redis';
-import { getTavilySearchContext } from './searchCacheService';
-import { getRotatedAI, rotateAIKey, aiInstances } from '../config/AIConfig';
-import CONTEXT_WINDOW from '../constants/contextWindow';
+import { redisConnection } from "../config/redis";
+import { getTavilySearchContext } from "./searchCacheService";
+import { getRotatedAI, rotateAIKey, aiInstances } from "../config/AIConfig";
+import CONTEXT_WINDOW from "../constants/contextWindow";
 
 /**
  * AIService - handles AI-related operations
@@ -23,15 +23,15 @@ User query: "${queryText}"`;
       try {
         const activeAi = getRotatedAI();
         const routerResponse = await activeAi.models.generateContent({
-          model: 'gemini-2.5-flash-lite',
-          contents: [{ role: 'user', parts: [{ text: routingPrompt }] }],
+          model: "gemini-2.5-flash-lite",
+          contents: [{ role: "user", parts: [{ text: routingPrompt }] }],
         });
-        return routerResponse?.text?.trim().toUpperCase() === 'YES';
+        return routerResponse?.text?.trim().toUpperCase() === "YES";
       } catch (error: any) {
         if (
           error.status === 429 ||
-          error.message?.includes('quota') ||
-          error.message?.includes('RESOURCE_EXHAUSTED')
+          error.message?.includes("quota") ||
+          error.message?.includes("RESOURCE_EXHAUSTED")
         ) {
           rotateAIKey();
           routerAttempts++;
@@ -54,16 +54,23 @@ User query: "${queryText}"`;
       const shouldSearch = await this.shouldUseInternetSearch(queryText);
 
       if (shouldSearch) {
-        console.log(`[Router] internet search needed for query: "${queryText}"`);
-        const context = await getTavilySearchContext(queryText, descQueryVector);
-        return context || '';
+        console.log(
+          `[Router] internet search needed for query: "${queryText}"`,
+        );
+        const context = await getTavilySearchContext(
+          queryText,
+          descQueryVector,
+        );
+        return context || "";
       }
 
-      console.log(`[Router] no internet search needed for query: "${queryText}"`);
-      return '';
+      console.log(
+        `[Router] no internet search needed for query: "${queryText}"`,
+      );
+      return "";
     } catch (error) {
-      console.error('Routing/Search error:', error);
-      return '';
+      console.error("Routing/Search error:", error);
+      return "";
     }
   }
 
@@ -72,7 +79,7 @@ User query: "${queryText}"`;
    */
   static async streamAIContent(
     contents: any[],
-    model: string = 'gemini-3-flash-preview',
+    model: string = "gemini-3-flash-preview",
   ) {
     let stream;
     let attempts = 0;
@@ -88,8 +95,8 @@ User query: "${queryText}"`;
       } catch (error: any) {
         if (
           error.status === 429 ||
-          error.message?.includes('quota') ||
-          error.message?.includes('RESOURCE_EXHAUSTED')
+          error.message?.includes("quota") ||
+          error.message?.includes("RESOURCE_EXHAUSTED")
         ) {
           rotateAIKey();
           attempts++;
@@ -99,7 +106,7 @@ User query: "${queryText}"`;
       }
     }
 
-    throw new Error('All AI instances exhausted quota');
+    throw new Error("All AI instances exhausted quota");
   }
 
   /**
@@ -133,7 +140,7 @@ User query: "${queryText}"`;
 
       return result;
     } catch (err) {
-      console.error('getAnchorContext error:', err);
+      console.error("getAnchorContext error:", err);
       return [];
     }
   }
@@ -154,7 +161,7 @@ USER'S HIGHLIGHT (your primary focus):
 "${highlightedText}"
 ---
 RESPONSE GUIDELINES:
-- DEFAULT: Be brief. Use crisp bullet points and short, punchy sentences in default but you can identify user need and have the flexibility to generate response.
+- DEFAULT: Be brief. Use crisp bullet points and short, punchy sentences and give example according to the context  in default but you can identify user need from user query and have the flexibility to generate response.
 - ONLY provide an expansive/detailed explanation if the user specifically asks to explanation in detailed manner or any other specific style according to user query".
 .`;
   }
@@ -166,10 +173,10 @@ RESPONSE GUIDELINES:
     try {
       const response = await fetch(url);
       const buffer = await response.arrayBuffer();
-      return Buffer.from(buffer).toString('base64');
+      return Buffer.from(buffer).toString("base64");
     } catch (error) {
-      console.error('Error converting image URL to base64:', error);
-      return '';
+      console.error("Error converting image URL to base64:", error);
+      return "";
     }
   }
 }

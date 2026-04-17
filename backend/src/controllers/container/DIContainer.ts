@@ -39,6 +39,7 @@ import { ClearAllCards } from '../../application/recall/use-cases/ClearAllCards'
 import { CountDueCards } from '../../application/recall/use-cases/CountDueCards';
 
 import { InheritContext } from '../../application/branch/use-cases/InheritContext';
+import { UnlinkInheritance } from '../../application/branch/use-cases/UnlinkInheritance';
 import { ProcessDocumentChunking } from '../../application/worker/use-cases/ProcessDocumentChunking';
 
 /**
@@ -94,6 +95,7 @@ export class DIContainer {
 
   // Branch Use Cases
   private static inheritContextUseCase: InheritContext;
+  private static unlinkInheritanceUseCase: UnlinkInheritance;
 
   // Worker Use Cases
   private static processDocumentChunkingUseCase: ProcessDocumentChunking;
@@ -386,6 +388,13 @@ export class DIContainer {
       this.inheritContextUseCase = new InheritContext(this.getChatRepository());
     }
     return this.inheritContextUseCase;
+  }
+
+  static getUnlinkInheritanceUseCase(): UnlinkInheritance {
+    if (!this.unlinkInheritanceUseCase) {
+      this.unlinkInheritanceUseCase = new UnlinkInheritance(this.getChatRepository());
+    }
+    return this.unlinkInheritanceUseCase;
   }
 
   /**

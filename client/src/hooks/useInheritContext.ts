@@ -25,5 +25,15 @@ export function useInheritContext(chatId: string | undefined) {
     [chatId, queryClient],
   );
 
-  return { isModalOpen, openModal, closeModal, inheritFromChat };
+  const unlinkInheritance = useCallback(async () => {
+    if (!chatId) return;
+    try {
+      await branchRepository.unlinkInheritance(chatId);
+      queryClient.invalidateQueries({ queryKey: ["chat", chatId] });
+    } catch (err) {
+      console.error("Failed to unlink context:", err);
+    }
+  }, [chatId, queryClient]);
+
+  return { isModalOpen, openModal, closeModal, inheritFromChat, unlinkInheritance };
 }

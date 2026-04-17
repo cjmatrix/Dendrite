@@ -545,9 +545,9 @@ export class ChatController extends BaseController {
       const userId = this.validateUserAuth(req);
       const { chatId, anchorMessageId, highlightedText, quickChatHistory } = req.body;
 
-      if (!highlightedText || !anchorMessageId) {
-        throw new AppError('Highlighted text and anchor message ID are required', 400);
-      }
+      // if (!highlightedText || !anchorMessageId) {
+      //   throw new AppError('Highlighted text and anchor message ID are required', 400);
+      // }
 
       const recentHistory = (quickChatHistory || []).slice(-CONTEXT_WINDOW);
 

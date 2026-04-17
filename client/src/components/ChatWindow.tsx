@@ -1,8 +1,26 @@
-import React, { useState, useRef, useCallback, useEffect, useMemo } from "react";
+import React, {
+  useState,
+  useRef,
+  useCallback,
+  useEffect,
+  useMemo,
+} from "react";
 import {
-  Paperclip, Share, MoreVertical, ArrowUp, Image, Sparkles,
-  ChevronDown, Check, StickyNote, Folder, Home, ChevronRight,
-  Brain, X, GitBranch,
+  Paperclip,
+  Share,
+  MoreVertical,
+  ArrowUp,
+  Image,
+  Sparkles,
+  ChevronDown,
+  Check,
+  StickyNote,
+  Folder,
+  Home,
+  ChevronRight,
+  Brain,
+  X,
+  GitBranch,
 } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
 import type { VirtuosoHandle } from "react-virtuoso";
@@ -28,9 +46,6 @@ import { useDebouncedValue } from "../hooks/useDebouncedValue";
 
 // Domain types
 import type { Message } from "../core/domain/entities/Message";
-
-
-
 
 const MessageBubble = React.memo(
   ({
@@ -60,8 +75,12 @@ const MessageBubble = React.memo(
         {isUser ? (
           <div className="flex flex-col items-end max-w-[85%] md:max-w-[70%] relative">
             <div className="flex items-center gap-2 mb-1.5 px-1">
-              <span className="text-[12px] text-gray-500 font-medium">{time}</span>
-              <span className="text-[13px] font-semibold text-gray-300">Researcher</span>
+              <span className="text-[12px] text-gray-500 font-medium">
+                {time}
+              </span>
+              <span className="text-[13px] font-semibold text-gray-300">
+                Researcher
+              </span>
             </div>
             <div className="px-5 py-3.5 rounded-2xl rounded-tr-sm bg-(--theme-bg-surface) border border-zinc-800 text-[16px] leading-relaxed whitespace-pre-wrap text-gray-200 shadow-sm">
               {msg.imageUrl && (
@@ -76,9 +95,16 @@ const MessageBubble = React.memo(
 
             {fileAttachment && (
               <div className="mt-2 inline-flex items-center gap-2 rounded-xl border border-zinc-700 bg-zinc-900/70 px-3 py-2 backdrop-blur-sm">
-                <span className="text-xs text-zinc-300 font-medium">📎 File uploaded: {fileAttachment.fileName}</span>
+                <span className="text-xs text-zinc-300 font-medium">
+                  📎 File uploaded: {fileAttachment.fileName}
+                </span>
                 <button
-                  onClick={() => onOpenSplitView(fileAttachment.fileUrl, fileAttachment.fileName)}
+                  onClick={() =>
+                    onOpenSplitView(
+                      fileAttachment.fileUrl,
+                      fileAttachment.fileName,
+                    )
+                  }
                   className="text-xs text-blue-400 hover:text-blue-300 font-semibold px-2 py-1 hover:bg-blue-500/10 rounded transition-colors border border-blue-500/30 hover:border-blue-400/50"
                   title="Open file in split-screen view"
                 >
@@ -105,7 +131,10 @@ const MessageBubble = React.memo(
                   style={{ top: sc.relY }}
                   title="View sticky deep-dive"
                 >
-                  <StickyNote size={14} className="group-hover:scale-110 transition-transform" />
+                  <StickyNote
+                    size={14}
+                    className="group-hover:scale-110 transition-transform"
+                  />
                 </button>
               ))}
             {/* Recall Button for User Message */}
@@ -125,8 +154,12 @@ const MessageBubble = React.memo(
 
             <div className="flex-1 flex flex-col min-w-0 relative">
               <div className="flex items-center gap-2 mb-1.5">
-                <span className="text-[13px] font-semibold text-gray-200">AI ASSISTANT</span>
-                <span className="text-[12px] text-gray-500 font-medium">{time}</span>
+                <span className="text-[13px] font-semibold text-gray-200">
+                  AI ASSISTANT
+                </span>
+                <span className="text-[12px] text-gray-500 font-medium">
+                  {time}
+                </span>
               </div>
               <MessageContent content={msg.content} />
 
@@ -140,7 +173,10 @@ const MessageBubble = React.memo(
                     style={{ top: sc.relY }}
                     title="View sticky deep-dive"
                   >
-                    <StickyNote size={14} className="group-hover:scale-110 transition-transform" />
+                    <StickyNote
+                      size={14}
+                      className="group-hover:scale-110 transition-transform"
+                    />
                   </button>
                 ))}
 
@@ -185,7 +221,10 @@ const VirtuosoFooter = ({ context }: any) => {
       {/* Streaming response */}
       {streamingText && (
         <div className="flex w-full gap-4 max-w-[95%] md:max-w-[85%] streaming-bubble mt-6">
-          <DendritesLogo isLoading={true} className="mt-1 hidden sm:flex shrink-0" />
+          <DendritesLogo
+            isLoading={true}
+            className="mt-1 hidden sm:flex shrink-0"
+          />
           <div className="flex-1 flex flex-col min-w-0">
             <div className="flex items-center gap-2 mb-1.5">
               <span className="text-[13px] font-semibold text-gray-200 uppercase tracking-wider">
@@ -205,7 +244,10 @@ const VirtuosoFooter = ({ context }: any) => {
       {/* Typing indicator */}
       {isStreaming && !streamingText && (
         <div className="flex w-full gap-4 max-w-[95%] md:max-w-[85%] streaming-bubble mt-6">
-          <DendritesLogo isLoading={true} className="mt-1 hidden sm:flex shrink-0" />
+          <DendritesLogo
+            isLoading={true}
+            className="mt-1 hidden sm:flex shrink-0"
+          />
           <div className="flex-1 flex flex-col justify-center">
             <div className="flex items-center gap-3">
               <span className="text-[13px] font-bold text-gray-300 tracking-widest uppercase">
@@ -251,7 +293,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const dispatch = useAppDispatch();
   const { tree } = useAppSelector((state) => state.explorer);
 
-
   const { data: chat, isLoading: isChatLoading } = useChatDetails(id);
   const {
     data: messagesData,
@@ -270,13 +311,15 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     }
     return "";
   }, [messages]);
- 
 
   const [mode, setMode] = useState<"general" | "visual">("general");
   const [isModeOpen, setIsModeOpen] = useState(false);
   const [input, setInput] = useState("");
   const [isQuickChatOpen, setIsQuickChatOpen] = useState(false);
-  const [externalSelectedFile, setExternalSelectedFile] = useState<{ name: string; url: string } | null>(null);
+  const [externalSelectedFile, setExternalSelectedFile] = useState<{
+    name: string;
+    url: string;
+  } | null>(null);
   const [externalQuickSelection, setExternalQuickSelection] = useState<{
     text: string;
     messageId: string;
@@ -292,7 +335,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const openSplitView = useCallback(
     (fileUrl: string, fileName: string) => {
       if (!id) return;
-      sessionStorage.setItem("splitViewFile", JSON.stringify({ url: fileUrl, name: fileName }));
+      sessionStorage.setItem(
+        "splitViewFile",
+        JSON.stringify({ url: fileUrl, name: fileName }),
+      );
       navigate(`/${id}/view-file`);
     },
     [id, navigate],
@@ -312,7 +358,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     [],
   );
 
-
   const { send, isStreaming, streamingText } = useSendMessage({
     chatId: id,
     mode,
@@ -321,13 +366,29 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   });
 
   const {
-    selectedImageUrl, selectedFile, isUploading,
-    fileInputRef, handleFileSelect, clearImage, clearFile,
+    selectedImageUrl,
+    selectedFile,
+    isUploading,
+    fileInputRef,
+    handleFileSelect,
+    clearImage,
+    clearFile,
   } = useFileUpload(id);
 
   const { isRecalling, saveRecallCard } = useRecallActions(id);
-  const { isModalOpen: isInheritModalOpen, openModal: openInheritModal, closeModal: closeInheritModal, inheritFromChat } = useInheritContext(id);
-  const { selection, handleTextSelection, clearSelection, openSubChatSelection } = useTextSelection();
+  const {
+    isModalOpen: isInheritModalOpen,
+    openModal: openInheritModal,
+    closeModal: closeInheritModal,
+    inheritFromChat,
+    unlinkInheritance,
+  } = useInheritContext(id);
+  const {
+    selection,
+    handleTextSelection,
+    clearSelection,
+    openSubChatSelection,
+  } = useTextSelection();
 
   const debouncedStreamingText = useDebouncedValue(streamingText, 50);
 
@@ -338,20 +399,38 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       setTimeout(() => setIsTracerActive(false), 12500);
     };
     window.addEventListener("recall:notification-pushed", handleNotification);
-    return () => window.removeEventListener("recall:notification-pushed", handleNotification);
+    return () =>
+      window.removeEventListener(
+        "recall:notification-pushed",
+        handleNotification,
+      );
   }, []);
-
 
   const handleSend = useCallback(() => {
     const effectiveSelectedFile = selectedFile ?? externalSelectedFile;
-    if ((!input.trim() && !selectedImageUrl && !effectiveSelectedFile) || isStreaming || isUploading) return;
+    if (
+      (!input.trim() && !selectedImageUrl && !effectiveSelectedFile) ||
+      isStreaming ||
+      isUploading
+    )
+      return;
     const msg = input.trim();
     setInput("");
     send(msg, selectedImageUrl, effectiveSelectedFile);
     clearImage();
     clearFile();
     setExternalSelectedFile(null);
-  }, [input, selectedImageUrl, selectedFile, externalSelectedFile, isStreaming, isUploading, send, clearImage, clearFile]);
+  }, [
+    input,
+    selectedImageUrl,
+    selectedFile,
+    externalSelectedFile,
+    isStreaming,
+    isUploading,
+    send,
+    clearImage,
+    clearFile,
+  ]);
 
   const handleOpenSubChat = useCallback(
     (messageId: string, subChatId: string) => {
@@ -372,7 +451,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
   useEffect(() => {
     if (!externalSelectionAction) return;
-    if (lastHandledExternalActionRef.current === externalSelectionAction.nonce) return;
+    if (lastHandledExternalActionRef.current === externalSelectionAction.nonce)
+      return;
 
     lastHandledExternalActionRef.current = externalSelectionAction.nonce;
     const selectedText = externalSelectionAction.text.trim();
@@ -391,7 +471,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             }
           : null,
       );
-      setInput(`Based on this selected text:\n\"\"\"\n${selectedText}\n\"\"\"\n\n`);
+      setInput(
+        `Based on this selected text:\n\"\"\"\n${selectedText}\n\"\"\"\n\n`,
+      );
       requestAnimationFrame(() => composerRef.current?.focus());
       onExternalSelectionHandled?.();
       return;
@@ -405,7 +487,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       });
       setIsQuickChatOpen(true);
     } else {
-      setInput(`Based on this selected text:\n\"\"\"\n${selectedText}\n\"\"\"\n\n`);
+      setInput(
+        `Based on this selected text:\n\"\"\"\n${selectedText}\n\"\"\"\n\n`,
+      );
       requestAnimationFrame(() => composerRef.current?.focus());
     }
 
@@ -421,13 +505,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       }
     : selection;
 
-  const getFileAttachmentForMessage = useCallback(
-    (msg: Message) => {
-      if (!msg.fileUrl || !msg.fileName) return undefined;
-      return { fileUrl: msg.fileUrl, fileName: msg.fileName };
-    },
-    [],
-  );
+  const getFileAttachmentForMessage = useCallback((msg: Message) => {
+    if (!msg.fileUrl || !msg.fileName) return undefined;
+    return { fileUrl: msg.fileUrl, fileName: msg.fileName };
+  }, []);
   const activeSelectedFile = selectedFile ?? externalSelectedFile;
 
   const clearAttachedFile = useCallback(() => {
@@ -441,7 +522,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       onMouseUp={handleTextSelection}
     >
       {/* Animated Edge Tracer */}
-      <div className={`violet-edge-tracer ${isTracerActive ? "active-tracer" : ""}`}></div>
+      <div
+        className={`violet-edge-tracer ${isTracerActive ? "active-tracer" : ""}`}
+      ></div>
 
       {/* Top Header */}
       <div className="h-14 border-b border-white/5 flex items-center justify-between px-6 bg-(--theme-bg-base)/80 backdrop-blur-xl shrink-0 z-20">
@@ -453,7 +536,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             }}
             className="flex items-center p-2 hover:bg-zinc-800/80 rounded-lg transition-all cursor-pointer group hover:scale-105 active:scale-95"
           >
-            <Home size={15} className="text-zinc-500 group-hover:text-amber-200/90 transition-colors" />
+            <Home
+              size={15}
+              className="text-zinc-500 group-hover:text-amber-200/90 transition-colors"
+            />
           </button>
           <ChevronRight size={14} className="text-zinc-700 mx-0.5 shrink-0" />
 
@@ -463,12 +549,18 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 onClick={() => dispatch(setActiveSidebarRootId(crumb.id))}
                 className="flex items-center gap-1.5 px-2.5 py-1.5 hover:bg-zinc-800/80 rounded-lg transition-all cursor-pointer group whitespace-nowrap hover:scale-[1.02] active:scale-[0.98]"
               >
-                <Folder size={14} className="text-zinc-600 group-hover:text-amber-200/90 transition-colors" />
+                <Folder
+                  size={14}
+                  className="text-zinc-600 group-hover:text-amber-200/90 transition-colors"
+                />
                 <span className="text-zinc-500 group-hover:text-zinc-200 transition-colors font-semibold">
                   {crumb.name}
                 </span>
               </button>
-              <ChevronRight size={14} className="text-zinc-700 mx-0.5 shrink-0" />
+              <ChevronRight
+                size={14}
+                className="text-zinc-700 mx-0.5 shrink-0"
+              />
             </React.Fragment>
           ))}
 
@@ -505,52 +597,74 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               How can I help with your research or development today?
             </p>
 
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <button
-                onClick={openInheritModal}
-                className={`group flex items-center gap-3 px-6 py-3.5 rounded-2xl transition-all hover:scale-105 active:scale-95 ${
-                  chat && (chat as any).contextParent
-                    ? 'bg-blue-500/10 border border-blue-500/30 hover:bg-blue-500/20 shadow-[0_0_20px_-10px_rgba(59,130,246,0.5)]'
-                    : 'bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 shadow-[0_0_20px_-10px_rgba(245,158,11,0.5)]'
-                }`}
-              >
-                <div className={`p-2 rounded-xl transition-colors ${
-                  chat && (chat as any).contextParent
-                    ? 'bg-blue-500/20 group-hover:bg-blue-500/40'
-                    : 'bg-amber-500/20 group-hover:bg-amber-500/40'
-                }`}>
-                  <GitBranch size={18} className={chat && (chat as any).contextParent ? 'text-blue-400' : 'text-amber-400'} />
-                </div>
-                <div className="text-left">
-                  <div className={`text-[14px] font-bold leading-tight ${
-                    chat && (chat as any).contextParent
-                      ? 'text-blue-200/90'
-                      : 'text-amber-200/90'
-                  }`}>
-                    {chat && (chat as any).contextParent ? 'Context Linked' : 'Inherit Experience'}
-                  </div>
-                  <div className={`text-[11px] font-medium ${
-                    chat && (chat as any).contextParent
-                      ? 'text-blue-500/70'
-                      : 'text-amber-500/70'
-                  }`}>
-                    {chat && (chat as any).contextParent 
-                      ? `From: ${(chat as any).contextParent?.title || 'Parent Chat'}`
-                      : 'Link this chat to a parent context'
-                    }
-                  </div>
-                </div>
-              </button>
-
-              <div className="hidden sm:block h-10 w-px bg-zinc-800 mx-2"></div>
-
-              <div className="flex flex-col items-start gap-1">
-                <span className="text-[11px] text-zinc-600 font-bold uppercase tracking-widest px-1">
-                  Quick Start
+            <div className="flex flex-col items-center gap-8 w-full max-w-sm mx-auto">
+              <div className="flex flex-col items-center gap-2">
+                <span className="text-[11px] text-zinc-600 font-bold uppercase tracking-[0.2em] px-1">
+                  Neural Flow
                 </span>
-                <p className="text-[13px] text-zinc-500 italic px-1">
-                  Just type below to start a fresh thread
+                <p className="text-[15px] text-zinc-300 font-medium">
+                  Type below to begin a fresh mapping
                 </p>
+              </div>
+
+              {/* Sophisticated OR separator */}
+              <div className="flex items-center gap-4 w-full">
+                <div className="h-px flex-1 bg-linear-to-r from-transparent via-zinc-800 to-transparent"></div>
+                <span className="text-[10px] text-zinc-600 font-black tracking-widest uppercase">OR</span>
+                <div className="h-px flex-1 bg-linear-to-r from-transparent via-zinc-800 to-transparent"></div>
+              </div>
+
+              <div className="flex flex-col items-center gap-4">
+                <span className="text-[11px] text-zinc-600 font-bold uppercase tracking-[0.2em] px-1">
+                  Inherit Experience
+                </span>
+                
+                {/* Premium Branch Indicator */}
+                <div className="relative group/inherit">
+                  <button
+                    onClick={openInheritModal}
+                    className={`flex items-center gap-3 px-6 py-3 rounded-2xl transition-all duration-500 border backdrop-blur-xl hover:scale-105 active:scale-95 ${
+                      chat && (chat as any).contextParent
+                        ? "bg-blue-500/10 border-blue-500/30 text-blue-400 shadow-[0_0_30px_-10px_rgba(59,130,246,0.5)]"
+                        : "bg-white/5 border-white/10 text-zinc-400 hover:text-amber-200/90 hover:border-amber-500/40 hover:bg-amber-500/10 hover:shadow-[0_0_30px_-10px_rgba(245,158,11,0.3)]"
+                    }`}
+                  >
+                    <div className={`p-2 rounded-xl transition-colors ${
+                       chat && (chat as any).contextParent ? "bg-blue-500/20" : "bg-white/5"
+                    }`}>
+                      <GitBranch
+                        size={18}
+                        className={`${chat && (chat as any).contextParent ? "animate-pulse" : ""}`}
+                      />
+                    </div>
+                    <div className="flex flex-col items-start min-w-[120px]">
+                       <span className="text-[10px] font-black uppercase tracking-widest opacity-50 mb-0.5">
+                         {chat && (chat as any).contextParent ? "Active Link" : "Context"}
+                       </span>
+                       <span className="text-[13px] font-bold truncate max-w-[160px]">
+                        {chat && (chat as any).contextParent
+                          ? (chat as any).contextParent.title
+                          : "Inherit Branch"}
+                      </span>
+                    </div>
+                  </button>
+
+                  {/* Unlink Button */}
+                  {chat && (chat as any).contextParent && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (window.confirm("Disconnect this chat from its parent?")) {
+                          unlinkInheritance();
+                        }
+                      }}
+                      className="absolute -top-2 -right-2 p-2 rounded-full bg-zinc-900 border border-white/10 text-zinc-500 hover:text-red-400 hover:border-red-400/50 transition-all opacity-0 group-hover/inherit:opacity-100 shadow-2xl scale-75 group-hover/inherit:scale-100"
+                      title="Unlink inheritance"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -560,7 +674,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             className="w-full h-full"
             data={messages}
             firstItemIndex={firstItemIndex}
-            initialTopMostItemIndex={messages.length > 0 ? messages.length - 2 : 0}
+            initialTopMostItemIndex={
+              messages.length > 0 ? messages.length - 2 : 0
+            }
             computeItemKey={(index, item) => item._id || String(index)}
             followOutput={false}
             increaseViewportBy={{ top: 4000, bottom: 4000 }}
@@ -604,7 +720,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             className="absolute bottom-24 right-8 z-30 p-2.5 rounded-full bg-zinc-800/90 border border-white/10 text-white shadow-2xl hover:bg-zinc-700 transition-all hover:scale-110 active:scale-95 group"
             title="Scroll to bottom"
           >
-            <ChevronDown size={20} strokeWidth={2.5} className="group-hover:translate-y-0.5 transition-transform" />
+            <ChevronDown
+              size={20}
+              strokeWidth={2.5}
+              className="group-hover:translate-y-0.5 transition-transform"
+            />
           </button>
         )}
       </div>
@@ -622,9 +742,17 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
           {selectedImageUrl && (
             <div className="mb-2 inline-flex items-center gap-2 rounded-xl border border-zinc-700 bg-zinc-900/70 px-2 py-2">
-              <img src={selectedImageUrl} alt="Selected upload" className="h-12 w-12 rounded-lg object-cover" />
+              <img
+                src={selectedImageUrl}
+                alt="Selected upload"
+                className="h-12 w-12 rounded-lg object-cover"
+              />
               <span className="text-xs text-zinc-300">Image attached</span>
-              <button onClick={clearImage} className="p-1 rounded-md hover:bg-white/10 text-zinc-300" title="Remove image">
+              <button
+                onClick={clearImage}
+                className="p-1 rounded-md hover:bg-white/10 text-zinc-300"
+                title="Remove image"
+              >
                 <X size={14} />
               </button>
             </div>
@@ -632,19 +760,32 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
           {activeSelectedFile && (
             <div className="mb-2 inline-flex items-center gap-2 rounded-xl border border-zinc-700 bg-zinc-900/70 px-3 py-2 backdrop-blur-sm">
-              <span className="text-xs text-zinc-300 font-medium">📎 {activeSelectedFile.name}</span>
-              <button 
-                onClick={() => openSplitView(activeSelectedFile.url, activeSelectedFile.name)}
+              <span className="text-xs text-zinc-300 font-medium">
+                📎 {activeSelectedFile.name}
+              </span>
+              <button
+                onClick={() =>
+                  openSplitView(activeSelectedFile.url, activeSelectedFile.name)
+                }
                 className="text-xs text-blue-400 hover:text-blue-300 font-semibold px-2 py-1 hover:bg-blue-500/10 rounded transition-colors border border-blue-500/30 hover:border-blue-400/50"
                 title="Open file in split-screen view"
               >
                 View Split
               </button>
-              <a href={activeSelectedFile.url} target="_blank" rel="noreferrer" className="text-xs text-gray-400 hover:text-gray-300 font-medium">
+              <a
+                href={activeSelectedFile.url}
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs text-gray-400 hover:text-gray-300 font-medium"
+              >
                 Open
               </a>
-              
-              <button onClick={clearAttachedFile} className="p-1 rounded-md hover:bg-white/10 text-zinc-400 hover:text-zinc-300 transition-colors" title="Remove file">
+
+              <button
+                onClick={clearAttachedFile}
+                className="p-1 rounded-md hover:bg-white/10 text-zinc-400 hover:text-zinc-300 transition-colors"
+                title="Remove file"
+              >
                 <X size={14} />
               </button>
             </div>
@@ -657,7 +798,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               disabled={isUploading || isStreaming}
               title="Upload image or file"
             >
-              <Paperclip size={20} className="group-hover:rotate-12 transition-transform" />
+              <Paperclip
+                size={20}
+                className="group-hover:rotate-12 transition-transform"
+              />
             </button>
 
             {/* Mode Selector */}
@@ -671,7 +815,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 ) : (
                   <Image size={14} className="text-purple-400" />
                 )}
-                <span className="hidden sm:inline">{mode === "general" ? "General" : "Visual"}</span>
+                <span className="hidden sm:inline">
+                  {mode === "general" ? "General" : "Visual"}
+                </span>
                 <ChevronDown
                   size={14}
                   className={`text-gray-500 transition-transform ${isModeOpen ? "rotate-180" : ""}`}
@@ -680,27 +826,40 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
               {isModeOpen && (
                 <>
-                  <div className="fixed inset-0 z-40" onClick={() => setIsModeOpen(false)}></div>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setIsModeOpen(false)}
+                  ></div>
                   <div className="absolute bottom-full left-0 mb-3 w-48 bg-(--theme-bg-surface) border border-zinc-700 shadow-2xl rounded-xl overflow-hidden py-1.5 z-50">
                     <button
-                      onClick={() => { setMode("general"); setIsModeOpen(false); }}
+                      onClick={() => {
+                        setMode("general");
+                        setIsModeOpen(false);
+                      }}
                       className="w-full flex items-center justify-between px-3 py-2.5 text-sm text-gray-300 hover:bg-white/5 transition-colors"
                     >
                       <div className="flex items-center gap-3 font-medium">
                         <Sparkles size={16} className="text-blue-400" />
                         <span>General Mode</span>
                       </div>
-                      {mode === "general" && <Check size={16} className="text-blue-400" />}
+                      {mode === "general" && (
+                        <Check size={16} className="text-blue-400" />
+                      )}
                     </button>
                     <button
-                      onClick={() => { setMode("visual"); setIsModeOpen(false); }}
+                      onClick={() => {
+                        setMode("visual");
+                        setIsModeOpen(false);
+                      }}
                       className="w-full flex items-center justify-between px-3 py-2.5 text-sm text-gray-300 hover:bg-white/5 transition-colors"
                     >
                       <div className="flex items-center gap-3 font-medium">
                         <Image size={16} className="text-purple-400" />
                         <span>Visual Mode</span>
                       </div>
-                      {mode === "visual" && <Check size={16} className="text-purple-400" />}
+                      {mode === "visual" && (
+                        <Check size={16} className="text-purple-400" />
+                      )}
                     </button>
                   </div>
                 </>
@@ -735,9 +894,15 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               </span>
               <button
                 onClick={handleSend}
-                disabled={isStreaming || isUploading || (!input.trim() && !selectedImageUrl && !activeSelectedFile)}
+                disabled={
+                  isStreaming ||
+                  isUploading ||
+                  (!input.trim() && !selectedImageUrl && !activeSelectedFile)
+                }
                 className={`p-2 rounded-xl transition-all flex items-center justify-center ${
-                  (input.trim() || selectedImageUrl || activeSelectedFile) && !isStreaming && !isUploading
+                  (input.trim() || selectedImageUrl || activeSelectedFile) &&
+                  !isStreaming &&
+                  !isUploading
                     ? "bg-blue-600 text-white hover:bg-blue-500 shadow-md shadow-blue-500/20"
                     : "bg-white/5 text-gray-500 cursor-not-allowed"
                 }`}
@@ -764,7 +929,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           </button>
           <button
             className="px-3 py-1.5 bg-purple-600 text-white text-xs font-bold rounded-lg shadow-xl hover:bg-purple-500 transition-all flex items-center gap-2"
-            onClick={() => handleCreateRecall(selection.markdown, selection.messageId)}
+            onClick={() =>
+              handleCreateRecall(selection.markdown, selection.messageId)
+            }
             disabled={isRecalling}
           >
             <Brain size={14} />
@@ -820,7 +987,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
             {/* Modal Body */}
             <div className="flex-1 overflow-hidden relative">
-              <FileDisplay isModal={true} onSelect={inheritFromChat} currentFolderId={chat?.folderId}/>
+              <FileDisplay
+                isModal={true}
+                onSelect={inheritFromChat}
+                currentFolderId={chat?.folderId}
+              />
             </div>
 
             {/* Modal Footer */}

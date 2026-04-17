@@ -35,4 +35,5 @@ export interface IRecallRepository {
 export interface IBranchRepository {
 
   inheritContext(chatId: string, contextParentId: string): Promise<void>;
+  unlinkInheritance(chatId: string): Promise<void>;
 }

@@ -206,6 +206,7 @@ export function useQuickChat({
     subMessages,
     streamingText,
     isPinned,
+    setIsPinned,
     isRecalling,
     recallSelection,
     scrollRef,

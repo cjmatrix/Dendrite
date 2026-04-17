@@ -41,6 +41,7 @@ export const QuickChatModal: React.FC<QuickChatModalProps> = ({
     subMessages,
     streamingText,
     isPinned,
+    setIsPinned,
     isRecalling,
     recallSelection,
     scrollRef,
@@ -75,11 +76,11 @@ export const QuickChatModal: React.FC<QuickChatModalProps> = ({
                   ? "text-blue-400 bg-blue-500/10 border-blue-500/30 cursor-default"
                   : "text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 border-transparent hover:border-blue-500/30"
               }`}
-              onClick={() => !existingSubChat && stickToChatMutation.mutate()}
+              onClick={() => (!existingSubChat || !isPinned) && stickToChatMutation.mutate()}
               disabled={stickToChatMutation.isPending || subMessages.length === 0}
             >
               <Pin size={14} className={existingSubChat ? "fill-blue-400" : ""} />
-              {existingSubChat || isPinned ? "Pinned to Chat" : "Stick to Chat"}
+              {(existingSubChat && isPinned) || isPinned ? "Pinned to Chat" : "Stick to Chat"}
             </button>
             <button
               onClick={() => setIsExpanded(!isExpanded)}
@@ -218,6 +219,7 @@ export const QuickChatModal: React.FC<QuickChatModalProps> = ({
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
+                  setIsPinned(false);
                   handleSend();
                 }
               }}
