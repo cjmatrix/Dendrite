@@ -17,7 +17,6 @@ export class ProcessDocumentChunking {
   }
 
   async execute(
-    outboxId: string,
     filePath: string,
     userId: string,
     chatId: string,
@@ -25,12 +24,10 @@ export class ProcessDocumentChunking {
     chunkingOptions?: ChunkingOptions
   ): Promise<void> {
     try {
-      const outboxEvent = await this.outboxRepository.findById(outboxId);
-      if (!outboxEvent) {
-        throw new Error(`Outbox event not found: ${outboxId}`);
-      }
 
       // Process document with semantic chunking
+
+      
       const chunks = await this.chunkingService.processDocument(filePath, {
         minChunkTokens: 80,
         maxChunkTokens: 8000,
@@ -42,7 +39,11 @@ export class ProcessDocumentChunking {
         throw new Error('No chunks generated from document');
       }
 
-      // Prepare vectors for Qdrant (direct vector format for document collection)
+
+
+      // Prepare vectors for Qdrant 
+
+
       const points = chunks.map(chunk => ({
         id: crypto.randomUUID(),
         vectors: {
@@ -50,7 +51,7 @@ export class ProcessDocumentChunking {
         "bm25-vector": textToSparseVector(chunk.content),
       },
         payload: {
-          sourceId: outboxEvent.payload.sourceId?.toString() || 'unknown',
+        
           sourceType: 'document',
           userId,
           chatId,
@@ -72,26 +73,8 @@ export class ProcessDocumentChunking {
    
       await this.vectorRepository.upsertDocumentVectors(points);
 
-      console.log(`✅ Processed ${chunks.length} semantic chunks from document: ${fileName}`);
-
-     
-      await this.outboxRepository.updateStatus(outboxId, 'processed');
-
-      // Clean up temp file after successful processing
-      try {
-        if (filePath && fs.existsSync(filePath)) {
-          await FileUploadService.cleanupTempFile(filePath);
-          console.log(`🗑️ Cleaned up temp file: ${filePath}`);
-        }
-      } catch (cleanupError) {
-        console.warn(`⚠️ Failed to clean up temp file ${filePath}:`, cleanupError);
-      }
+      console.log(`Processed ${chunks.length} semantic chunks from document: ${fileName}`);
     } catch (error: any) {
-      await this.outboxRepository.updateStatus(outboxId, 'failed', {
-        error: error.message,
-        incrementRetry: true,
-      });
-      console.error(`❌ Document chunking failed for outbox ${outboxId}:`, error.message);
       throw error;
     }
   }

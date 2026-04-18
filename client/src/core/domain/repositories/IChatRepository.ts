@@ -24,7 +24,7 @@ export interface IChatRepository {
   uploadImage(file: File): Promise<UploadResult>;
 
 
-  uploadFile(file: File): Promise<UploadResult>;
+  uploadFile(file: File,chatId?:string,fileName?:string): Promise<UploadResult>;
 }
 
 export interface IRecallRepository {

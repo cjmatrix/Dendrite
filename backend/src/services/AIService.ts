@@ -3,11 +3,6 @@ import { getTavilySearchContext } from "./searchCacheService";
 import { getRotatedAI, rotateAIKey, aiInstances } from "../config/AIConfig";
 import CONTEXT_WINDOW from "../constants/contextWindow";
 
-/**
- * AIService - handles AI-related operations
- * Separates AI logic from the presentation layer
- * Manages routing, streaming, and context management
- */
 export class AIService {
   /**
    * Determine if internet search is needed for a query

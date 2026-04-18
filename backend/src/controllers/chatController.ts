@@ -197,68 +197,75 @@ export class ChatController extends BaseController {
             return;
           }
 
-          const result = await FileUploadService.uploadDocumentToCloudinary(filePath);
-          
           // Get user info - use captured form field variables
           const userId = (req as any).user?._id;
 
           if (!userId) {
             sendJson(401, { message: 'User not authenticated' });
+            if (filePath && fs.existsSync(filePath)) {
+              fs.unlinkSync(filePath);
+            }
             return;
           }
 
           if (!chatId) {
             sendJson(400, { message: 'Chat ID is required' });
+            if (filePath && fs.existsSync(filePath)) {
+              fs.unlinkSync(filePath);
+            }
             return;
           }
 
-         
           const documentFileName = fileName || 'document';
+          const documentId = crypto.randomUUID();
 
-          // Create outbox event in MongoDB
-          const outboxEvent = await OutboxEvent.create({
-            eventType: 'PDF_CHUNK_CREATED',
-            payload: {
-              sourceId: new mongoose.Types.ObjectId(), // Document ID placeholder
-              sourceType: 'pdf_chunk',
-              userId: new mongoose.Types.ObjectId(userId),
-              content: { fileName: documentFileName, uploadUrl: result.secure_url },
-              metadata: { chatId, fileSize: 0 },
-            },
-            status: 'pending',
-          });
-
-          // Queue document chunking with outbox ID
+          // QUEUE JOB - STAGE 1: UPLOAD TO CLOUDINARY
           await documentChunkingQueue.add(
             'chunk-document',
             {
-              outboxId: outboxEvent._id.toString(),
-              filePath,
+              stage: 'upload',
+              documentId,
+              tempFilePath: filePath,
+              fileName: documentFileName,
               userId,
               chatId,
-              fileName: documentFileName,
+              createdAt: new Date().toISOString()
             },
             {
+              jobId: documentId,
               priority: 10,
               attempts: 3,
               backoff: {
                 type: 'exponential',
-                delay: 2000,
+                delay: 5000
               },
+              removeOnComplete: {
+                age: 3600
+              }
             }
           );
 
-          console.log(`📎 Queued document chunking for: ${documentFileName} (outboxId: ${outboxEvent._id})`);
-          sendJson(201, { success: true, data: { url: result.secure_url } });
+          console.log(`Document upload queued: ${documentId}`);
+
+          // RETURN IMMEDIATELY (202 Accepted - processing started)
+          sendJson(202, {
+            success: true,
+            data: {
+              documentId,
+              fileName: documentFileName,
+              status: 'uploading'
+            }
+          });
          
         } catch (error: any) {
-          console.error('Document upload failed:', error);
+          console.error('Document queue failed:', error);
           if (!responseSent) {
-            const message = error.statusCode ? error.message : 'Failed to upload file To Cloudinary';
+            const message = error.statusCode ? error.message : 'Failed to queue document processing';
             sendJson(error.statusCode || 500, { message });
           }
-          // Clean up temp file on error
-          if (filePath) await FileUploadService.cleanupTempFile(filePath);
+          if (filePath && fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+          }
         }
       });
 
@@ -299,6 +306,8 @@ export class ChatController extends BaseController {
    * Get all chats for the authenticated user
    * GET /api/chats
    */
+
+
   public getChats = async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
@@ -312,9 +321,10 @@ export class ChatController extends BaseController {
     }
   };
 
-  /**
-   * Get a specific chat by ID
-   * GET /api/chats/:id
+
+  /*
+    Get a specific chat by ID
+   GET /api/chats/:id
    */
   public getChatById = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -330,9 +340,9 @@ export class ChatController extends BaseController {
     }
   };
 
-  /**
-   * Get messages for a specific chat
-   * GET /api/chats/:id/messages
+  /*
+   Get messages for a specific chat
+   GET /api/chats/:id/messages
    */
   public getChatMessages = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -352,9 +362,9 @@ export class ChatController extends BaseController {
     }
   };
 
-  /**
-   * Update a chat
-   * PATCH /api/chats/:id
+  /*
+    Update a chat
+    PATCH /api/chats/:id
    */
   public updateChat = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -393,9 +403,9 @@ export class ChatController extends BaseController {
     }
   };
 
-  /**
-   * Send a message and get AI streaming response
-   * POST /api/chats/:id/send-message
+  /*
+  Send a message and get AI streaming response
+    POST /api/chats/:id/send-message
    */
   public sendMessage = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -536,9 +546,9 @@ export class ChatController extends BaseController {
     }
   };
 
-  /**
-   * Stream quick chat response for highlighted text
-   * POST /api/chats/:id/quick-chat
+  /*
+    Stream quick chat response for highlighted text
+    POST /api/chats/:id/quick-chat
    */
   public streamQuickChat = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -617,9 +627,9 @@ export class ChatController extends BaseController {
     }
   };
 
-  /**
-   * Get a sub-chat (highlight conversation)
-   * GET /api/chats/:id/subchat
+  /*
+    Get a sub-chat (highlight conversation)
+    GET /api/chats/:id/subchat
    */
   public getSubChat = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -640,9 +650,9 @@ export class ChatController extends BaseController {
     }
   };
 
-  /**
-   * Save a sub-chat (highlight conversation)
-   * POST /api/chats/:id/subchat
+  /*
+    Save a sub-chat (highlight conversation)
+    POST /api/chats/:id/subchat
    */
 
 
