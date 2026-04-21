@@ -16,6 +16,8 @@ export interface IVectorRepository {
 
   deleteVectorsByChatIds(userId: string, chatIds: string[]): Promise<void>;
 
+  deleteDocumentVectorsByFileUrl(userId: string, fileUrl: string): Promise<void>;
+
   upsertCodeVector(
     id: string,
     codeVector: number[],

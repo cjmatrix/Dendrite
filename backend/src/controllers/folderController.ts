@@ -3,10 +3,7 @@ import { BaseController } from './base/BaseController';
 import { DIContainer } from './container/DIContainer';
 import { AppError } from '../utils/AppError';
 
-/**
- * FolderController - handles all folder-related HTTP requests
- * Uses clean architecture with dependency injection
- */
+
 export class FolderController extends BaseController {
   constructor() {
     super();

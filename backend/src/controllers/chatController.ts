@@ -1,19 +1,20 @@
-import { Request, Response } from 'express';
-import multer from 'multer';
-import Busboy from 'busboy';
-import fs from 'fs';
-import crypto from 'crypto';
-import mongoose from 'mongoose';
-import { BaseController } from './base/BaseController';
-import { DIContainer } from './container/DIContainer';
-import { AppError } from '../utils/AppError';
-import { FileUploadService } from '../services/FileUploadService';
-import { AIService } from '../services/AIService';
-import { embeddingService } from '../services/EmbeddingService';
-import { logAIQuery } from '../utils/logger';
-import { documentChunkingQueue } from '../queue/documentChunkingQueue';
-import { OutboxEvent } from '../models/OutboxEvent';
-import CONTEXT_WINDOW from '../constants/contextWindow';
+import { Request, Response } from "express";
+import multer from "multer";
+import Busboy from "busboy";
+import fs from "fs";
+import crypto from "crypto";
+import mongoose from "mongoose";
+import { BaseController } from "./base/BaseController";
+import { DIContainer } from "./container/DIContainer";
+import { AppError } from "../utils/AppError";
+import { FileUploadService } from "../services/FileUploadService";
+import { AIService } from "../services/AIService";
+import { embeddingService } from "../services/EmbeddingService";
+import { logAIQuery } from "../utils/logger";
+import { documentChunkingQueue } from "../queue/documentChunkingQueue";
+import { documentProgressPubSub } from "../services/documentProgressPubSub";
+import { OutboxEvent } from "../models/OutboxEvent";
+import CONTEXT_WINDOW from "../constants/contextWindow";
 
 export class ChatController extends BaseController {
   private readonly upload = multer({
@@ -25,27 +26,39 @@ export class ChatController extends BaseController {
     super();
   }
 
-  /**
-   * Middleware for uploading chat images
-   */
   public get uploadChatImageMiddleware() {
-    return this.upload.single('image');
+    return this.upload.single("image");
   }
 
   /**
    * Upload a chat image to Cloudinary
    * POST /api/chats/upload/image
    */
-  public uploadChatImage = async (req: Request, res: Response): Promise<void> => {
+  public uploadChatImage = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
     try {
-      this.validateUserAuth(req);
+      const userId = this.validateUserAuth(req);
+      const chatId = req.body.chatId;
 
-      if (!req.file) {
-        throw new AppError('Image file is required', 400);
+      if (!chatId || typeof chatId !== "string") {
+        throw new AppError("chatId is required and must be a string", 400);
       }
 
-      if (!req.file.mimetype.startsWith('image/')) {
-        throw new AppError('Only image files are allowed', 400);
+      // Validate that the chat exists and belongs to the user
+      const chatRepository = DIContainer.getChatRepository();
+      const chat = await chatRepository.findByIdAndUserId(chatId, userId);
+      if (!chat) {
+        throw new AppError("Chat not found or access denied", 404);
+      }
+
+      if (!req.file) {
+        throw new AppError("Image file is required", 400);
+      }
+
+      if (!req.file.mimetype.startsWith("image/")) {
+        throw new AppError("Only image files are allowed", 400);
       }
 
       FileUploadService.validateCloudinaryConfig();
@@ -57,7 +70,12 @@ export class ChatController extends BaseController {
         req.file.mimetype,
       );
 
-      this.sendSuccess(res, { url: result.secure_url }, 201, 'Image uploaded successfully');
+      this.sendSuccess(
+        res,
+        { url: result.secure_url },
+        201,
+        "Image uploaded successfully",
+      );
     } catch (error) {
       this.sendError(res, error);
     }
@@ -65,12 +83,20 @@ export class ChatController extends BaseController {
 
   /**
    * Upload a chat PDF/document to Cloudinary
-   * POST /api/chats/upload/pdf
-   */
+   * POST /api/chats/:id/upload/pdf
+  */
   public uploadChatPdf = async (req: Request, res: Response): Promise<void> => {
     try {
-      this.validateUserAuth(req);
-      
+      const userId = this.validateUserAuth(req);
+      const chatId = this.getRouteParam(req, "id");
+
+      // Validate that the chat exists and belongs to the user
+      const chatRepository = DIContainer.getChatRepository();
+      const chat = await chatRepository.findByIdAndUserId(chatId, userId);
+      if (!chat) {
+        throw new AppError("Chat not found or access denied", 404);
+      }
+
       FileUploadService.validateCloudinaryConfig();
 
       const busboy = Busboy({
@@ -78,10 +104,9 @@ export class ChatController extends BaseController {
         limits: { fileSize: 100 * 1024 * 1024 },
       });
 
-      let filePath = '';
+      let filePath = "";
       let responseSent = false;
-      let chatId = '';
-      let fileName = '';
+      let fileName = "";
 
       const sendJson = (status: number, payload: any) => {
         if (responseSent) return;
@@ -91,16 +116,14 @@ export class ChatController extends BaseController {
 
       let fileProcessPromise: Promise<void> | null = null;
 
-      // Capture form fields (chatId, fileName)
-      busboy.on('field', (fieldname, val) => {
-        if (fieldname === 'chatId') {
-          chatId = val;
-        } else if (fieldname === 'fileName') {
+      // Capture form fields (fileName)
+      busboy.on("field", (fieldname, val) => {
+        if (fieldname === "fileName") {
           fileName = val;
         }
       });
 
-      busboy.on('file', (fieldname, file, info) => {
+      busboy.on("file", (fieldname, file, info) => {
         const { filename } = info;
         filePath = FileUploadService.generateTempFilePath(filename);
 
@@ -115,16 +138,17 @@ export class ChatController extends BaseController {
           const validateAndStartWriting = async (finalChunks: Buffer[]) => {
             if (isProcessing || responseSent) return;
             isProcessing = true;
-            
+
             try {
               const total = Buffer.concat(finalChunks);
               await FileUploadService.validateDocumentFile(total, filename);
               isValidated = true;
 
               writeStream = fs.createWriteStream(filePath);
-              writeStream.on('error', (err) => {
-                console.error('Write stream error:', err);
-                if (!responseSent) sendJson(500, { message: 'Failed to save uploaded file' });
+              writeStream.on("error", (err) => {
+                console.error("Write stream error:", err);
+                if (!responseSent)
+                  sendJson(500, { message: "Failed to save uploaded file" });
                 reject(err);
               });
 
@@ -132,14 +156,15 @@ export class ChatController extends BaseController {
               isProcessing = false;
               file.resume();
             } catch (error: any) {
-              if (!responseSent) sendJson(error.statusCode || 415, { message: error.message });
+              if (!responseSent)
+                sendJson(error.statusCode || 415, { message: error.message });
               isProcessing = false;
               file.resume();
               reject(error);
             }
           };
 
-          file.on('data', (chunk: Buffer) => {
+          file.on("data", (chunk: Buffer) => {
             if (responseSent) return;
 
             if (!isValidated) {
@@ -155,7 +180,7 @@ export class ChatController extends BaseController {
             }
           });
 
-          file.on('end', async () => {
+          file.on("end", async () => {
             if (responseSent) {
               resolve();
               return;
@@ -165,7 +190,7 @@ export class ChatController extends BaseController {
               if (!isValidated) {
                 await validateAndStartWriting(chunks);
               }
-              
+
               if (writeStream) {
                 writeStream.end(() => resolve());
               } else {
@@ -176,91 +201,88 @@ export class ChatController extends BaseController {
             }
           });
 
-          file.on('limit', () => {
-            if (!responseSent) sendJson(413, { message: 'File too large. Max allowed is 100MB.' });
+          file.on("limit", () => {
+            if (!responseSent)
+              sendJson(413, {
+                message: "File too large. Max allowed is 100MB.",
+              });
             file.resume();
             resolve();
           });
         });
       });
 
-      busboy.on('finish', async () => {
+      busboy.on("finish", async () => {
         if (responseSent) return;
-        
+
         try {
           if (fileProcessPromise) {
             await fileProcessPromise;
           }
 
           if (!filePath) {
-            sendJson(400, { message: 'No file uploaded' });
+            sendJson(400, { message: "No file uploaded" });
             return;
           }
 
-          // Get user info - use captured form field variables
-          const userId = (req as any).user?._id;
+          // userId and chatId are already validated at the top of the method
 
-          if (!userId) {
-            sendJson(401, { message: 'User not authenticated' });
-            if (filePath && fs.existsSync(filePath)) {
-              fs.unlinkSync(filePath);
-            }
-            return;
-          }
-
-          if (!chatId) {
-            sendJson(400, { message: 'Chat ID is required' });
-            if (filePath && fs.existsSync(filePath)) {
-              fs.unlinkSync(filePath);
-            }
-            return;
-          }
-
-          const documentFileName = fileName || 'document';
+          const documentFileName = fileName || "document";
           const documentId = crypto.randomUUID();
 
           // QUEUE JOB - STAGE 1: UPLOAD TO CLOUDINARY
           await documentChunkingQueue.add(
-            'chunk-document',
+            "chunk-document",
             {
-              stage: 'upload',
+              stage: "upload",
               documentId,
               tempFilePath: filePath,
               fileName: documentFileName,
               userId,
               chatId,
-              createdAt: new Date().toISOString()
+              createdAt: new Date().toISOString(),
             },
             {
               jobId: documentId,
               priority: 10,
               attempts: 3,
               backoff: {
-                type: 'exponential',
-                delay: 5000
+                type: "exponential",
+                delay: 5000,
               },
               removeOnComplete: {
-                age: 3600
-              }
-            }
+                age: 3600,
+              },
+            },
           );
+
+          await documentProgressPubSub.publish({
+            documentId,
+            chatId,
+            userId,
+            fileName: documentFileName,
+            stage: "upload",
+            status: "queued",
+            progress: 0,
+            message: "Document queued for processing",
+          });
 
           console.log(`Document upload queued: ${documentId}`);
 
-          // RETURN IMMEDIATELY (202 Accepted - processing started)
           sendJson(202, {
             success: true,
             data: {
               documentId,
               fileName: documentFileName,
-              status: 'uploading'
-            }
+              status: "uploading",
+            },
           });
-         
         } catch (error: any) {
-          console.error('Document queue failed:', error);
+          console.error("Document queue failed:", error);
           if (!responseSent) {
-            const message = error.statusCode ? error.message : 'Failed to queue document processing';
+            const message = error.statusCode
+              ? error.message
+              : "Failed to queue document processing";
             sendJson(error.statusCode || 500, { message });
           }
           if (filePath && fs.existsSync(filePath)) {
@@ -269,13 +291,125 @@ export class ChatController extends BaseController {
         }
       });
 
-      busboy.on('error', (error) => {
-        console.error('Busboy error:', error);
-        sendJson(500, { message: 'Failed to process upload' });
+      busboy.on("error", (error) => {
+        console.error("Busboy error:", error);
+        sendJson(500, { message: "Failed to process upload" });
       });
 
       req.pipe(busboy);
     } catch (error) {
+      this.sendError(res, error);
+    }
+  };
+
+  /**
+   * Stream document upload/chunk progress via SSE
+   * GET /api/chats/:id/documents/:documentId/progress
+   */
+  public streamDocumentProgress = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    let unsubscribe: (() => Promise<void>) | null = null;
+    let heartbeat: NodeJS.Timeout | null = null;
+
+    try {
+      const userId = this.validateUserAuth(req);
+      const chatId = this.getRouteParam(req, "id");
+      const documentId = this.getRouteParam(req, "documentId");
+
+      const chatRepo = DIContainer.getChatRepository();
+      const chat = await chatRepo.findByIdAndUserId(chatId, userId);
+      if (!chat) {
+        throw new AppError("Chat not found", 404);
+      }
+
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache, no-transform");
+      res.setHeader("Connection", "keep-alive");
+      res.setHeader("X-Accel-Buffering", "no");
+      res.flushHeaders();
+
+      const writeEvent = (eventName: string, payload: unknown) => {
+        res.write(`event: ${eventName}\n`);
+        res.write(`data: ${JSON.stringify(payload)}\n\n`);
+      };
+
+      writeEvent("connected", {
+        documentId,
+        chatId,
+        status: "connected",
+        timestamp: new Date().toISOString(),
+      });
+
+      const latest = await documentProgressPubSub.getLatest(documentId);
+      if (latest && latest.userId === userId && latest.chatId === chatId) {
+        writeEvent("progress", latest);
+
+        if (latest.status === "completed" || latest.status === "failed") {
+          writeEvent("done", latest);
+          res.end();
+          return;
+        }
+      }
+
+      unsubscribe = await documentProgressPubSub.subscribe(
+        documentId,
+        (event) => {
+          if (event.userId !== userId || event.chatId !== chatId) return;
+          writeEvent("progress", event);
+
+          if (event.status === "completed" || event.status === "failed") {
+            writeEvent("done", event);
+            if (heartbeat) clearInterval(heartbeat);
+            if (unsubscribe) {
+              unsubscribe().catch((error) =>
+                console.error(
+                  "[SSE] Failed to unsubscribe document listener:",
+                  error,
+                ),
+              );
+            }
+            res.end();
+          }
+        },
+      );
+
+      heartbeat = setInterval(() => {
+        res.write(`: ping ${Date.now()}\n\n`);
+      }, 25000);
+
+      req.on("close", async () => {
+        if (heartbeat) clearInterval(heartbeat);
+        if (unsubscribe) {
+          try {
+            await unsubscribe();
+          } catch (error) {
+            console.error("[SSE] Failed to unsubscribe on close:", error);
+          }
+        }
+      });
+    } catch (error) {
+      if (heartbeat) clearInterval(heartbeat);
+      if (unsubscribe) {
+        try {
+          await unsubscribe();
+        } catch (unsubscribeError) {
+          console.error(
+            "[SSE] Failed to unsubscribe after error:",
+            unsubscribeError,
+          );
+        }
+      }
+
+      if (res.headersSent) {
+        res.write(
+          `event: error\ndata: ${JSON.stringify({ message: "Failed to stream document progress" })}\n\n`,
+        );
+        res.end();
+        return;
+      }
+
       this.sendError(res, error);
     }
   };
@@ -289,14 +423,14 @@ export class ChatController extends BaseController {
       const userId = this.validateUserAuth(req);
       const { title, folderId } = req.body;
 
-      if (!title || typeof title !== 'string') {
-        throw new AppError('Chat title is required and must be a string', 400);
+      if (!title || typeof title !== "string") {
+        throw new AppError("Chat title is required and must be a string", 400);
       }
 
       const createChatUseCase = DIContainer.getCreateChatUseCase();
       const data = await createChatUseCase.execute(userId, title, folderId);
 
-      this.sendSuccess(res, data, 201, 'Chat created successfully');
+      this.sendSuccess(res, data, 201, "Chat created successfully");
     } catch (error) {
       this.sendError(res, error);
     }
@@ -306,7 +440,6 @@ export class ChatController extends BaseController {
    * Get all chats for the authenticated user
    * GET /api/chats
    */
-
 
   public getChats = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -321,7 +454,6 @@ export class ChatController extends BaseController {
     }
   };
 
-
   /*
     Get a specific chat by ID
    GET /api/chats/:id
@@ -329,7 +461,7 @@ export class ChatController extends BaseController {
   public getChatById = async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
-      const id = this.getRouteParam(req, 'id');
+      const id = this.getRouteParam(req, "id");
 
       const getChatByIdUseCase = DIContainer.getGetChatByIdUseCase();
       const data = await getChatByIdUseCase.execute(id, userId);
@@ -344,19 +476,100 @@ export class ChatController extends BaseController {
    Get messages for a specific chat
    GET /api/chats/:id/messages
    */
-  public getChatMessages = async (req: Request, res: Response): Promise<void> => {
+  public getChatMessages = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
-      const id = this.getRouteParam(req, 'id');
-      const cursor = this.getQueryParam(req, 'cursor');
+      const id = this.getRouteParam(req, "id");
+      const cursor = this.getQueryParam(req, "cursor");
       const limit = 10;
 
       const getChatMessagesUseCase = DIContainer.getGetChatMessagesUseCase();
-      const messages = await getChatMessagesUseCase.execute(id, userId, limit, cursor || null);
+      const messages = await getChatMessagesUseCase.execute(
+        id,
+        userId,
+        limit,
+        cursor || null,
+      );
 
-      const nextCursor = messages.length === limit ? messages[0]._id.toString() : null;
+      const nextCursor =
+        messages.length === limit ? messages[0]._id.toString() : null;
 
       this.sendSuccess(res, { messages, nextCursor });
+    } catch (error) {
+      this.sendError(res, error);
+    }
+  };
+
+  /*
+    Get uploaded documents for a chat
+    GET /api/chats/:id/documents
+   */
+  public getChatDocuments = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const userId = this.validateUserAuth(req);
+      const chatId = this.getRouteParam(req, "id");
+
+      const chatRepository = DIContainer.getChatRepository();
+      const chat = await chatRepository.findByIdAndUserId(chatId, userId);
+
+      if (!chat) {
+        throw new AppError("Chat not found", 404);
+      }
+
+      const documents = chat.documents || [];
+      this.sendSuccess(res, { documents });
+    } catch (error) {
+      this.sendError(res, error);
+    }
+  };
+
+  /*
+    Remove a document from a chat
+    DELETE /api/chats/:id/documents
+   */
+  public removeDocument = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const userId = this.validateUserAuth(req);
+      const chatId = this.getRouteParam(req, "id");
+      const { fileUrl } = req.body;
+
+      if (!fileUrl || typeof fileUrl !== "string") {
+        throw new AppError("fileUrl is required and must be a string", 400);
+      }
+
+      const chatRepository = DIContainer.getChatRepository();
+      const vectorRepository = DIContainer.getVectorRepository();
+
+      await vectorRepository.deleteDocumentVectorsByFileUrl(userId, fileUrl);
+
+      const chat = await chatRepository.findByIdAndUserId(chatId, userId);
+      if (!chat) {
+        throw new AppError("Chat not found", 404);
+      }
+
+      // chat.documents = chat.documents.filter((doc: any) => doc.fileUrl !== fileUrl);
+      // await chat.save();
+      // const updateResult = await Chat.findOneAndUpdate(
+      //   { _id: chatId, userId },
+      //   { $pull: { documents: { fileUrl } } },
+      //   { new: true },
+      // );
+      const updateResult = await chatRepository.update(chatId, userId, {
+        $pull: { documents: { fileUrl } },
+      });
+      if (!updateResult) {
+        throw new AppError("Chat not found", 404);
+      }
+      this.sendSuccess(res, { message: "Document removed successfully" });
     } catch (error) {
       this.sendError(res, error);
     }
@@ -369,17 +582,23 @@ export class ChatController extends BaseController {
   public updateChat = async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
-      const id = this.getRouteParam(req, 'id');
+      const id = this.getRouteParam(req, "id");
       const { title, folderId } = req.body;
 
       if (!title && folderId === undefined) {
-        throw new AppError('At least one field (title or folderId) is required', 400);
+        throw new AppError(
+          "At least one field (title or folderId) is required",
+          400,
+        );
       }
 
       const updateChatUseCase = DIContainer.getUpdateChatUseCase();
-      const data = await updateChatUseCase.execute(id, userId, { title, folderId });
+      const data = await updateChatUseCase.execute(id, userId, {
+        title,
+        folderId,
+      });
 
-      this.sendSuccess(res, data, 200, 'Chat updated successfully');
+      this.sendSuccess(res, data, 200, "Chat updated successfully");
     } catch (error) {
       this.sendError(res, error);
     }
@@ -392,12 +611,12 @@ export class ChatController extends BaseController {
   public deleteChat = async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
-      const id = this.getRouteParam(req, 'id');
+      const id = this.getRouteParam(req, "id");
 
       const deleteChatUseCase = DIContainer.getDeleteChatUseCase();
       const data = await deleteChatUseCase.execute(id, userId);
 
-      this.sendSuccess(res, data, 200, 'Chat deleted successfully');
+      this.sendSuccess(res, data, 200, "Chat deleted successfully");
     } catch (error) {
       this.sendError(res, error);
     }
@@ -410,24 +629,32 @@ export class ChatController extends BaseController {
   public sendMessage = async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
-      const id = this.getRouteParam(req, 'id');
+      const id = this.getRouteParam(req, "id");
       const { message, mode, imageUrl, fileUrl, fileName } = req.body;
 
-      const normalizedMessage = typeof message === 'string' ? message.trim() : '';
-      const normalizedImageUrl = typeof imageUrl === 'string' ? imageUrl.trim() : '';
-      const normalizedFileUrl = typeof fileUrl === 'string' ? fileUrl.trim() : '';
-      const normalizedFileName = typeof fileName === 'string' ? fileName.trim() : '';
+      const normalizedMessage =
+        typeof message === "string" ? message.trim() : "";
+      const normalizedImageUrl =
+        typeof imageUrl === "string" ? imageUrl.trim() : "";
+      const normalizedFileUrl =
+        typeof fileUrl === "string" ? fileUrl.trim() : "";
+      const normalizedFileName =
+        typeof fileName === "string" ? fileName.trim() : "";
 
       if (!normalizedMessage && !normalizedImageUrl && !normalizedFileUrl) {
-        throw new AppError('Message, image, or file is required', 400);
+        throw new AppError("Message, image, or file is required", 400);
       }
 
-      const queryText = normalizedMessage || (normalizedFileName ? `Analyze uploaded file: ${normalizedFileName}` : 'Analyze the uploaded image');
+      const queryText =
+        normalizedMessage ||
+        (normalizedFileName
+          ? `Analyze uploaded file: ${normalizedFileName}`
+          : "Analyze the uploaded image");
 
       // Generate embeddings for retrieval
       const [codeQueryVector, descQueryVector] = await Promise.all([
-        embeddingService.embed(queryText, 'CODE_RETRIEVAL_QUERY'),
-        embeddingService.embed(queryText, 'RETRIEVAL_QUERY'),
+        embeddingService.embed(queryText, "CODE_RETRIEVAL_QUERY"),
+        embeddingService.embed(queryText, "RETRIEVAL_QUERY"),
       ]);
 
       // Prepare message and get context
@@ -445,11 +672,14 @@ export class ChatController extends BaseController {
       );
 
       // Get internet context if needed
-      let internetContext = await AIService.getInternetContext(queryText, descQueryVector);
+      let internetContext = await AIService.getInternetContext(
+        queryText,
+        descQueryVector,
+      );
 
       if (internetContext) {
         for (let i = contents.length - 1; i >= 0; i--) {
-          if (contents[i].text && typeof contents[i].text === 'string') {
+          if (contents[i].text && typeof contents[i].text === "string") {
             contents[i].text += internetContext;
             break;
           }
@@ -462,7 +692,7 @@ export class ChatController extends BaseController {
         if (base64Data) {
           contents.push({
             inlineData: {
-              mimeType: 'image/jpeg',
+              mimeType: "image/jpeg",
               data: base64Data,
             },
           });
@@ -470,28 +700,28 @@ export class ChatController extends BaseController {
       }
 
       // Set up streaming response
-      res.setHeader('Content-Type', 'text/event-stream');
-      res.setHeader('Cache-Control', 'no-cache');
-      res.setHeader('Connection', 'keep-alive');
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache");
+      res.setHeader("Connection", "keep-alive");
 
       let stream;
       try {
         stream = await AIService.streamAIContent(contents);
       } catch (error: any) {
         res.write(
-          `data: ${JSON.stringify({ text: '\n\n**Quota Exhausted:** All your provided Gemini API keys have exceeded their free-tier limits. Please wait, or add a new key.' })}\n\n`,
+          `data: ${JSON.stringify({ text: "\n\n**Quota Exhausted:** All your provided Gemini API keys have exceeded their free-tier limits. Please wait, or add a new key." })}\n\n`,
         );
-        res.write('data: [DONE]\n\n');
+        res.write("data: [DONE]\n\n");
         res.end();
         return;
       }
 
-      let fullReply = '';
+      let fullReply = "";
       let finalUsageMetadata: any = null;
       res.flushHeaders();
 
       for await (const chunk of stream) {
-        const text = chunk.text || '';
+        const text = chunk.text || "";
         fullReply += text;
         if (chunk.usageMetadata) {
           finalUsageMetadata = chunk.usageMetadata;
@@ -503,9 +733,9 @@ export class ChatController extends BaseController {
       if (!fullReply.trim()) {
         console.error(`⚠️ Empty AI response for chat ${id}`);
         res.write(
-          `data: ${JSON.stringify({ text: '\n\n**Error:** The AI returned an empty response. Please try again.' })}\n\n`,
+          `data: ${JSON.stringify({ text: "\n\n**Error:** The AI returned an empty response. Please try again." })}\n\n`,
         );
-        res.write('data: [DONE]\n\n');
+        res.write("data: [DONE]\n\n");
         res.end();
         return;
       }
@@ -520,28 +750,28 @@ export class ChatController extends BaseController {
         );
 
         res.write(
-          `data: ${JSON.stringify({ type: 'metadata', userMessageId, modelMessageId })}\n\n`,
+          `data: ${JSON.stringify({ type: "metadata", userMessageId, modelMessageId })}\n\n`,
         );
 
         if (finalUsageMetadata) {
           logAIQuery(message, finalUsageMetadata);
         }
       } catch (err) {
-        console.error('Failed to save model reply or log usage:', err);
+        console.error("Failed to save model reply or log usage:", err);
       }
 
-      res.write('data: [DONE]\n\n');
+      res.write("data: [DONE]\n\n");
       res.end();
     } catch (error: any) {
       if (!res.headersSent) {
-        res.setHeader('Content-Type', 'text/event-stream');
-        res.setHeader('Cache-Control', 'no-cache');
-        res.setHeader('Connection', 'keep-alive');
+        res.setHeader("Content-Type", "text/event-stream");
+        res.setHeader("Cache-Control", "no-cache");
+        res.setHeader("Connection", "keep-alive");
       }
       res.write(
-        `data: ${JSON.stringify({ text: '\n\n**System Error:** ' + error.message })}\n\n`,
+        `data: ${JSON.stringify({ text: "\n\n**System Error:** " + error.message })}\n\n`,
       );
-      res.write('data: [DONE]\n\n');
+      res.write("data: [DONE]\n\n");
       res.end();
     }
   };
@@ -550,10 +780,14 @@ export class ChatController extends BaseController {
     Stream quick chat response for highlighted text
     POST /api/chats/:id/quick-chat
    */
-  public streamQuickChat = async (req: Request, res: Response): Promise<void> => {
+  public streamQuickChat = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
-      const { chatId, anchorMessageId, highlightedText, quickChatHistory } = req.body;
+      const { chatId, anchorMessageId, highlightedText, quickChatHistory } =
+        req.body;
 
       // if (!highlightedText || !anchorMessageId) {
       //   throw new AppError('Highlighted text and anchor message ID are required', 400);
@@ -571,7 +805,7 @@ export class ChatController extends BaseController {
 
       const historicalString = backgroundContext
         .map((msg: any) => `[${msg.role}]: ${msg.content}`)
-        .join('\n\n');
+        .join("\n\n");
 
       const systemPrompt = AIService.buildQuickChatSystemPrompt(
         historicalString,
@@ -579,25 +813,25 @@ export class ChatController extends BaseController {
       );
 
       const contents = [
-        { role: 'user', parts: [{ text: systemPrompt }] },
+        { role: "user", parts: [{ text: systemPrompt }] },
         ...recentHistory.map((msg: any) => ({
-          role: msg.role === 'model' ? 'model' : 'user',
+          role: msg.role === "model" ? "model" : "user",
           parts: [{ text: msg.content }],
         })),
       ];
 
-      res.setHeader('Content-Type', 'text/event-stream');
-      res.setHeader('Cache-Control', 'no-cache');
-      res.setHeader('Connection', 'keep-alive');
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache");
+      res.setHeader("Connection", "keep-alive");
 
       let stream;
       try {
         stream = await AIService.streamAIContent(contents);
       } catch (error: any) {
         res.write(
-          `data: ${JSON.stringify({ text: '\n\n**Quota Exhausted:** All your provided Gemini API keys have exceeded their free-tier limits. Please wait, or add a new key.' })}\n\n`,
+          `data: ${JSON.stringify({ text: "\n\n**Quota Exhausted:** All your provided Gemini API keys have exceeded their free-tier limits. Please wait, or add a new key." })}\n\n`,
         );
-        res.write('data: [DONE]\n\n');
+        res.write("data: [DONE]\n\n");
         res.end();
         return;
       }
@@ -605,24 +839,24 @@ export class ChatController extends BaseController {
       res.flushHeaders();
 
       for await (const chunk of stream) {
-        const text = chunk.text || '';
+        const text = chunk.text || "";
         if (text) {
           res.write(`data: ${JSON.stringify({ text })}\n\n`);
         }
       }
 
-      res.write('data: [DONE]\n\n');
+      res.write("data: [DONE]\n\n");
       res.end();
     } catch (error: any) {
       if (!res.headersSent) {
-        res.setHeader('Content-Type', 'text/event-stream');
-        res.setHeader('Cache-Control', 'no-cache');
-        res.setHeader('Connection', 'keep-alive');
+        res.setHeader("Content-Type", "text/event-stream");
+        res.setHeader("Cache-Control", "no-cache");
+        res.setHeader("Connection", "keep-alive");
       }
       res.write(
-        `data: ${JSON.stringify({ text: '\n\n**System Error:** ' + error.message })}\n\n`,
+        `data: ${JSON.stringify({ text: "\n\n**System Error:** " + error.message })}\n\n`,
       );
-      res.write('data: [DONE]\n\n');
+      res.write("data: [DONE]\n\n");
       res.end();
     }
   };
@@ -634,15 +868,19 @@ export class ChatController extends BaseController {
   public getSubChat = async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
-      const chatId = this.getRouteParam(req, 'id');
-      const subChatId = this.getQueryParam(req, 'subChatId');
+      const chatId = this.getRouteParam(req, "id");
+      const subChatId = this.getQueryParam(req, "subChatId");
 
       if (!subChatId) {
-        throw new AppError('Sub-chat ID is required', 400);
+        throw new AppError("Sub-chat ID is required", 400);
       }
 
       const getSubChatUseCase = DIContainer.getGetSubChatUseCase();
-      const subChat = await getSubChatUseCase.execute(chatId, subChatId, userId);
+      const subChat = await getSubChatUseCase.execute(
+        chatId,
+        subChatId,
+        userId,
+      );
 
       this.sendSuccess(res, subChat);
     } catch (error) {
@@ -655,22 +893,27 @@ export class ChatController extends BaseController {
     POST /api/chats/:id/subchat
    */
 
-
-
-
   public saveSubChat = async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
-      const chatId = this.getRouteParam(req, 'id');
-      const { subChatId, anchorMessageId, highlightedText, messages, relativeY } =
-        req.body;
+      const chatId = this.getRouteParam(req, "id");
+      const {
+        subChatId,
+        anchorMessageId,
+        highlightedText,
+        messages,
+        relativeY,
+      } = req.body;
 
       if (!anchorMessageId) {
-        throw new AppError('Sub-chat ID and anchor message ID are required', 400);
+        throw new AppError(
+          "Sub-chat ID and anchor message ID are required",
+          400,
+        );
       }
 
       const saveSubChatUseCase = DIContainer.getSaveSubChatUseCase();
-     
+
       const subChat = await saveSubChatUseCase.execute(
         chatId,
         userId,
@@ -681,7 +924,7 @@ export class ChatController extends BaseController {
         relativeY,
       );
 
-      this.sendSuccess(res, subChat, 201, 'Sub-chat saved successfully');
+      this.sendSuccess(res, subChat, 201, "Sub-chat saved successfully");
     } catch (error) {
       this.sendError(res, error);
     }

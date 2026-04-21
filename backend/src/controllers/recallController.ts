@@ -3,10 +3,7 @@ import { BaseController } from './base/BaseController';
 import { DIContainer } from './container/DIContainer';
 import { AppError } from '../utils/AppError';
 
-/**
- * RecallController - handles spaced repetition recall cards
- * Uses clean architecture with dependency injection
- */
+
 export class RecallController extends BaseController {
   constructor() {
     super();

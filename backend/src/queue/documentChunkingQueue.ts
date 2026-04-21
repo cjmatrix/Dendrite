@@ -1,10 +1,10 @@
 import { Queue, Worker } from 'bullmq';
 import fs from 'fs';
-import crypto from 'crypto';
 
 import { DIContainer } from '../controllers/container/DIContainer';
 import { ProcessDocumentChunking } from '../application/worker/use-cases/ProcessDocumentChunking';
 import { FileUploadService } from '../services/FileUploadService';
+import { documentProgressPubSub } from '../services/documentProgressPubSub';
 
 import { redisConfig } from '../config/redis';
 
@@ -32,6 +32,12 @@ interface DocumentChunkingJobStage2 {
 
 type DocumentChunkingJob = DocumentChunkingJobStage1 | DocumentChunkingJobStage2;
 
+const publishDocumentProgress = async (
+  data: Omit<Parameters<typeof documentProgressPubSub.publish>[0], 'timestamp'>,
+) => {
+  await documentProgressPubSub.publish(data);
+};
+
 
 
 new Worker(
@@ -50,6 +56,16 @@ new Worker(
 
         console.log(`[Stage 1] Uploading to Cloudinary: ${fileName}`);
         await job.updateProgress(5);
+        await publishDocumentProgress({
+          documentId,
+          chatId,
+          userId,
+          fileName,
+          stage: 'upload',
+          status: 'uploading',
+          progress: 5,
+          message: 'Uploading document to storage',
+        });
 
       
         if (!fs.existsSync(tempFilePath)) {
@@ -60,7 +76,20 @@ new Worker(
         const result = await FileUploadService.uploadDocumentToCloudinary(tempFilePath);
         console.log(`[Stage 1] Upload complete: ${result.secure_url}`);
 
+        // Note: Document will be added to Chat after successful chunking in Stage 2
+
         await job.updateProgress(15);
+        await publishDocumentProgress({
+          documentId,
+          chatId,
+          userId,
+          fileName,
+          stage: 'upload',
+          status: 'uploaded',
+          progress: 15,
+          cloudinaryUrl: result.secure_url,
+          message: 'Upload complete, queuing chunking',
+        });
 
        
         await documentChunkingQueue.add(
@@ -107,6 +136,17 @@ new Worker(
 
         console.log(`[Stage 2] Processing: ${processingPath}`);
         await job.updateProgress(20);
+        await publishDocumentProgress({
+          documentId,
+          chatId,
+          userId,
+          fileName,
+          stage: 'chunk',
+          status: 'chunking',
+          progress: 20,
+          cloudinaryUrl,
+          message: 'Extracting and chunking document',
+        });
 
         const outboxRepo = DIContainer.getOutboxEventRepository();
         const vectorRepo = DIContainer.getVectorRepository();
@@ -114,14 +154,44 @@ new Worker(
         const processor = new ProcessDocumentChunking(outboxRepo, vectorRepo);
 
         // Execute chunking
-        await processor.execute(
+        cloudinaryUrl && await processor.execute(
           processingPath,
           userId,
           chatId,
-          fileName
+          fileName,
+          cloudinaryUrl
         );
 
+        // Update Chat model with document information after successful chunking
+        try {
+          const chatRepository = DIContainer.getChatRepository();
+          const extension = fileName.split('.').pop() || 'pdf';
+          
+          let chatDoc = await chatRepository.addDocumentToChat({chatId, userId}, {
+            fileType: 'document',
+            filename: fileName,
+            extension,
+            fileUrl: cloudinaryUrl!,
+          });
+          console.log(`Added document to Chat after chunking: ${chatId}`, chatDoc);
+          
+        } catch (err) {
+          console.error('Failed to update Chat with document after chunking:', err);
+          // Don't fail the job since chunking succeeded
+        }
+
         await job.updateProgress(100);
+        await publishDocumentProgress({
+          documentId,
+          chatId,
+          userId,
+          fileName,
+          stage: 'chunk',
+          status: 'completed',
+          progress: 100,
+          cloudinaryUrl,
+          message: 'Document is ready for RAG',
+        });
 
     
         if (stageFilePath && fs.existsSync(stageFilePath)) {
@@ -142,6 +212,16 @@ new Worker(
 
     } catch (error: any) {
       console.error(`Error processing document ${documentId}:`, error);
+      await publishDocumentProgress({
+        documentId,
+        chatId,
+        userId,
+        fileName,
+        stage,
+        status: 'failed',
+        progress: 0,
+        message: error?.message || 'Document processing failed',
+      });
 
       // Cleanup on error
       if (stage === 'upload') {

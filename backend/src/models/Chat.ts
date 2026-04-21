@@ -44,6 +44,32 @@ const ChatSchema = new Schema(
       type: Number,
       default: 0,
     },
+
+    documents: [
+      {
+        fileType: {
+          type: String,
+          enum: ["image", "document"],
+          required: true,
+        },
+        filename: {
+          type: String,
+          required: true,
+        },
+        extension: {
+          type: String,
+          required: true,
+        },
+        fileUrl: {
+          type: String,
+          required: true,
+        },
+        uploadedAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
   },
   {
     timestamps: true,

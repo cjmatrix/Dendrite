@@ -78,6 +78,15 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
     dispatch(setActiveSidebarRootId(node.id));
   };
 
+  const handleRowClick = () => {
+    if (isRenaming) return;
+    if (isFolder) {
+      handleToggle();
+      return;
+    }
+    handleOpenWindow(node);
+  };
+
   // ── Context menu ─────────────────────────────────────────────────────────
 
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
@@ -99,10 +108,12 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
 
   return (
     <div className="select-none relative" onContextMenu={handleContextMenu}>
-      <div className="group/item flex items-center justify-between py-1.25 px-2 mb-[1px] hover:bg-zinc-800/60 cursor-pointer text-zinc-400 hover:text-zinc-100 rounded-lg transition-all duration-200 border border-transparent hover:border-white/5">
+      <div
+        className="group/item flex w-full items-center justify-between py-1.25 px-2 mb-[1px] hover:bg-zinc-800/60 cursor-pointer text-zinc-400 hover:text-zinc-100 rounded-lg transition-all duration-200 border border-transparent hover:border-white/5"
+        onClick={handleRowClick}
+      >
         <div
           className={`${!isFolder && " -ml-3"} flex items-center gap-2 flex-1 min-w-0`}
-          onClick={isFolder ? handleToggle : () => handleOpenWindow(node)}
         >
           {isFolder ? (
             <span className={`text-zinc-600 group-hover/item:text-zinc-400 transition-all duration-300 shrink-0 ${isOpen ? "rotate-0 text-cyan-500/80" : "-rotate-90"}`}>
@@ -181,7 +192,7 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
         </div>
 
         {isFolder && (
-          <div className="flex opacity-0 group-hover/item:opacity-100 items-center gap-0.5 transition-opacity duration-200">
+          <div className="flex opacity-0 pointer-events-none group-hover/item:pointer-events-auto group-hover/item:opacity-100 items-center gap-0.5 transition-opacity duration-200">
             <button
               onClick={(e) => { e.stopPropagation(); setIsCreating("chat"); }}
               className="p-1 hover:bg-zinc-700/60 rounded-md text-zinc-500 hover:text-emerald-400 transition-colors active:scale-95"

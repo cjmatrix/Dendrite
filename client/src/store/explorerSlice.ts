@@ -4,7 +4,8 @@ import type { FileNode } from '../types/types';
 interface ExplorerState {
   tree: FileNode,
   activeSidebarRootId: string | null,
-  isExplorerModalOpen: boolean
+  isExplorerModalOpen: boolean,
+  isRecallOverlayOpen: boolean
 }
 
 const initialState: ExplorerState = {
@@ -16,7 +17,8 @@ const initialState: ExplorerState = {
     children: [],
   },
   activeSidebarRootId: localStorage.getItem("dendrites_active_folder") || null,
-  isExplorerModalOpen: false
+  isExplorerModalOpen: false,
+  isRecallOverlayOpen: false
 };
 
 const explorerSlice = createSlice({
@@ -40,9 +42,16 @@ const explorerSlice = createSlice({
       } else {
         state.isExplorerModalOpen = !state.isExplorerModalOpen;
       }
+    },
+    toggleRecallOverlay: (state, action: PayloadAction<boolean | undefined>) => {
+      if (action.payload !== undefined) {
+        state.isRecallOverlayOpen = action.payload;
+      } else {
+        state.isRecallOverlayOpen = !state.isRecallOverlayOpen;
+      }
     }
   },
 });
 
-export const { setTree, setActiveSidebarRootId, toggleExplorerModal } = explorerSlice.actions;
+export const { setTree, setActiveSidebarRootId, toggleExplorerModal, toggleRecallOverlay } = explorerSlice.actions;
 export default explorerSlice.reducer;

@@ -21,6 +21,7 @@ export class ProcessDocumentChunking {
     userId: string,
     chatId: string,
     fileName: string,
+    fileUrl:string,
     chunkingOptions?: ChunkingOptions
   ): Promise<void> {
     try {
@@ -56,6 +57,7 @@ export class ProcessDocumentChunking {
           userId,
           chatId,
           fileName,
+          fileUrl,
           content: {
             text: chunk.content,
             chunkIndex: chunk.metadata.chunkIndex,

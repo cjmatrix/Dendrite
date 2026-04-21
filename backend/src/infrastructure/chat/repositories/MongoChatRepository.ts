@@ -35,4 +35,24 @@ export class MongoChatRepository implements IChatRepository {
   async deleteManyByFolderIds(userId: string, folderIds: string[]): Promise<any> {
     return Chat.deleteMany({ folderId: { $in: folderIds }, userId });
   }
+
+  async addDocumentToChat({chatId,userId}:{chatId:string,userId:string}, documentData: {
+    fileType: 'image' | 'document';
+    filename: string;
+    extension: string;
+    fileUrl: string;
+  }): Promise<any> {
+    return Chat.findByIdAndUpdate(
+      { _id: chatId,userId },
+      {
+        $push: {
+          documents: {
+            ...documentData,
+            uploadedAt: new Date(),
+          },
+        },
+      },
+      { new: true }
+    );
+  }
 }

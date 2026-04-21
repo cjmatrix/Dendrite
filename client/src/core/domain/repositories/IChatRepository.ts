@@ -1,6 +1,10 @@
 import type { Chat } from "../entities/Chat";
 import type { MessagePage, StreamChunk } from "../entities/Message";
-import type { UploadResult } from "../entities/FileUpload";
+import type {
+  DocumentProgressEvent,
+  DocumentUploadResult,
+  ImageUploadResult,
+} from "../entities/FileUpload";
 
 export interface IChatRepository {
 
@@ -21,10 +25,17 @@ export interface IChatRepository {
   ): Promise<void>;
 
 
-  uploadImage(file: File): Promise<UploadResult>;
+  uploadImage(file: File, chatId?: string): Promise<ImageUploadResult>;
 
 
-  uploadFile(file: File,chatId?:string,fileName?:string): Promise<UploadResult>;
+  uploadFile(file: File, chatId?: string, fileName?: string): Promise<DocumentUploadResult>;
+
+  streamDocumentProgress(
+    chatId: string,
+    documentId: string,
+    onEvent: (event: DocumentProgressEvent) => void,
+    onError?: () => void,
+  ): () => void;
 }
 
 export interface IRecallRepository {

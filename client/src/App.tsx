@@ -37,10 +37,7 @@ const router = createBrowserRouter([
             index:true,
             element:<EmptyChatState></EmptyChatState>
           },
-          {
-            path: "recall",
-            element: <RecallPage />
-          },
+         
           {
             path: "graph/:folderId",
             element: <KnowledgeGraphPage />

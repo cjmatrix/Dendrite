@@ -7,4 +7,10 @@ export interface IChatRepository {
   delete(chatId: string, userId: string): Promise<any | null>;
   findByFolderIds(userId: string, folderIds: string[]): Promise<any[]>;
   deleteManyByFolderIds(userId: string, folderIds: string[]): Promise<any>;
+  addDocumentToChat({chatId, userId}: {chatId: string, userId: string}, documentData: {
+    fileType: 'image' | 'document';
+    filename: string;
+    extension: string;
+    fileUrl: string;
+  }): Promise<any>;
 }

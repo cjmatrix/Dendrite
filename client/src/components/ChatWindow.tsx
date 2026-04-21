@@ -27,12 +27,14 @@ import type { VirtuosoHandle } from "react-virtuoso";
 import { Virtuoso } from "react-virtuoso";
 import "../styles/markdown.css";
 import { useAppSelector, useAppDispatch } from "../store/store";
-import { setActiveSidebarRootId } from "../store/explorerSlice";
+import { setActiveSidebarRootId, toggleRecallOverlay } from "../store/explorerSlice";
 import DendritesLogo from "./DendritesLogo";
 import { MessageContent } from "./MessageContent";
 import { StreamingContext } from "../contexts/StreamingContext";
 import { QuickChatModal } from "./QuickChatModal.tsx";
+import { DocumentBrowser } from "./DocumentBrowser";
 import FileDisplay from "./FileDisplay";
+import RecallPage from "../pages/RecallPage";
 
 // Clean Architecture Hooks
 import { useChatDetails, useChatMessages } from "../hooks/useChatQueries";
@@ -41,11 +43,21 @@ import { useFileUpload } from "../hooks/useFileUpload";
 import { useRecallActions } from "../hooks/useRecallActions";
 import { useInheritContext } from "../hooks/useInheritContext";
 import { useTextSelection } from "../hooks/useTextSelection";
+import { useDocumentHistory } from "../hooks/useDocumentHistory";
 import { useFlattenedMessages, useBreadcrumbs } from "../hooks/useChatHelpers";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
+import { useQueryClient } from "@tanstack/react-query";
 
 // Domain types
 import type { Message } from "../core/domain/entities/Message";
+
+
+const clampText = (text: string, maxLines: number = 3) => {
+  const lines = text.split("\n");
+  const isClamped = lines.length > maxLines;
+  const clampedLines = lines.slice(0, maxLines).join("\n");
+  return { clampedLines, isClamped, fullText: text };
+};
 
 const MessageBubble = React.memo(
   ({
@@ -66,6 +78,8 @@ const MessageBubble = React.memo(
       hour: "2-digit",
       minute: "2-digit",
     });
+    const [isExpanded, setIsExpanded] = useState(false);
+    const { clampedLines, isClamped, fullText } = clampText(msg.content, 3);
 
     return (
       <div
@@ -90,8 +104,25 @@ const MessageBubble = React.memo(
                   className="mb-3 rounded-xl border border-zinc-700 max-h-72 object-contain"
                 />
               )}
-              {msg.content}
+              <div className="relative">
+                {isExpanded ? fullText : clampedLines}
+                {isClamped && !isExpanded && (
+                  <span className="text-gray-400">...</span>
+                )}
+              </div>
             </div>
+            {isClamped && (
+              <button
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="mt-2 p-1.5 rounded-lg bg-zinc-800/50 text-gray-400 hover:bg-zinc-700 hover:text-gray-200 transition-colors"
+                title={isExpanded ? "Collapse message" : "Expand message"}
+              >
+                <ArrowUp
+                  size={16}
+                  className={`transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                />
+              </button>
+            )}
 
             {fileAttachment && (
               <div className="mt-2 inline-flex items-center gap-2 rounded-xl border border-zinc-700 bg-zinc-900/70 px-3 py-2 backdrop-blur-sm">
@@ -291,7 +322,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const { id } = useParams();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const { tree } = useAppSelector((state) => state.explorer);
+  const { tree, activeSidebarRootId, isRecallOverlayOpen } = useAppSelector((state) => state.explorer);
+  const queryClient = useQueryClient();
 
   const { data: chat, isLoading: isChatLoading } = useChatDetails(id);
   const {
@@ -324,6 +356,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     text: string;
     messageId: string;
     relativeY: number;
+  } | null>(null);
+  const [pinnedQuickChatSelection, setPinnedQuickChatSelection] = useState<{
+    text: string;
+    messageId: string;
+    relativeY: number;
+    subChatId: string | null;
   } | null>(null);
 
   const virtuosoRef = useRef<VirtuosoHandle>(null);
@@ -369,6 +407,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     selectedImageUrl,
     selectedFile,
     isUploading,
+    documentUpload,
+    isDocumentProcessing,
+    canOpenSplitView,
     fileInputRef,
     handleFileSelect,
     clearImage,
@@ -390,7 +431,32 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     openSubChatSelection,
   } = useTextSelection();
 
+  const {
+    documents,
+    isShowingBrowser,
+    setIsShowingBrowser,
+    removeDocument,
+  } = useDocumentHistory(id);
+
   const debouncedStreamingText = useDebouncedValue(streamingText, 50);
+
+  // Track document uploads and invalidate documents query
+  useEffect(() => {
+    if (
+      documentUpload?.status === "completed" &&
+      documentUpload.fileUrl &&
+      documentUpload.documentId
+    ) {
+      queryClient.invalidateQueries({ queryKey: ["documents", id] });
+    }
+  }, [documentUpload?.documentId, documentUpload?.status, queryClient, id]);
+
+  // Track image uploads to document history
+  useEffect(() => {
+    if (selectedImageUrl && selectedFile) {
+      queryClient.invalidateQueries({ queryKey: ["documents", id] });
+    }
+  }, [selectedImageUrl, selectedFile, queryClient, id]);
 
   // Tracer animation on Firebase push notification
   useEffect(() => {
@@ -435,6 +501,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const handleOpenSubChat = useCallback(
     (messageId: string, subChatId: string) => {
       setExternalQuickSelection(null);
+      setPinnedQuickChatSelection({
+        text: "",
+        messageId,
+        relativeY: 0,
+        subChatId,
+      });
       openSubChatSelection(messageId, subChatId);
       setIsQuickChatOpen(true);
     },
@@ -485,6 +557,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         messageId: latestMessageId,
         relativeY: 0,
       });
+      setPinnedQuickChatSelection({
+        text: selectedText,
+        messageId: latestMessageId,
+        relativeY: 0,
+        subChatId: null,
+      });
       setIsQuickChatOpen(true);
     } else {
       setInput(
@@ -503,13 +581,25 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         relativeY: externalQuickSelection.relativeY,
         subChatId: null,
       }
-    : selection;
+    : pinnedQuickChatSelection
+      ? pinnedQuickChatSelection
+      : selection;
 
   const getFileAttachmentForMessage = useCallback((msg: Message) => {
     if (!msg.fileUrl || !msg.fileName) return undefined;
     return { fileUrl: msg.fileUrl, fileName: msg.fileName };
   }, []);
   const activeSelectedFile = selectedFile ?? externalSelectedFile;
+  const documentStageLabel =
+    documentUpload?.status === "queued"
+      ? "Queued"
+      : documentUpload?.status === "uploading" || documentUpload?.status === "uploaded"
+        ? "Uploading"
+        : documentUpload?.status === "chunking"
+          ? "Chunking"
+          : documentUpload?.status === "failed"
+            ? "Failed"
+            : "Ready";
 
   const clearAttachedFile = useCallback(() => {
     clearFile();
@@ -582,6 +672,41 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
       {/* Messages Area */}
       <div className="flex-1 w-full relative">
+        {isDocumentProcessing && documentUpload && (
+          <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/50 backdrop-blur-sm px-6">
+            <div className="w-full max-w-md rounded-2xl border border-blue-500/30 bg-zinc-900/90 p-6 shadow-2xl">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-blue-300 tracking-wide uppercase">
+                  Preparing document for RAG
+                </h3>
+                <span className="text-xs text-zinc-400 font-medium">
+                  {documentUpload.progress}%
+                </span>
+              </div>
+
+              <p className="text-sm text-zinc-300 mb-4 truncate" title={documentUpload.fileName}>
+                {documentUpload.fileName}
+              </p>
+
+              <div className="h-2 rounded-full bg-zinc-800 overflow-hidden mb-3">
+                <div
+                  className="h-full bg-linear-to-r from-blue-500 to-violet-500 transition-all duration-300"
+                  style={{ width: `${Math.max(0, Math.min(100, documentUpload.progress))}%` }}
+                />
+              </div>
+
+              <div className="flex items-center justify-between text-xs text-zinc-400">
+                <span className="font-semibold">Stage: {documentStageLabel}</span>
+                <span>{documentUpload.message || "Processing document..."}</span>
+              </div>
+
+              <p className="text-[11px] text-zinc-500 mt-4">
+                Split view unlocks once processing is complete.
+              </p>
+            </div>
+          </div>
+        )}
+
         {isChatLoading || isMessagesLoading ? (
           <div className="flex items-center justify-center h-full text-gray-500">
             Loading messages...
@@ -765,12 +890,18 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               </span>
               <button
                 onClick={() =>
+                  canOpenSplitView &&
                   openSplitView(activeSelectedFile.url, activeSelectedFile.name)
                 }
-                className="text-xs text-blue-400 hover:text-blue-300 font-semibold px-2 py-1 hover:bg-blue-500/10 rounded transition-colors border border-blue-500/30 hover:border-blue-400/50"
+                disabled={!canOpenSplitView}
+                className={`text-xs font-semibold px-2 py-1 rounded transition-colors border ${
+                  canOpenSplitView
+                    ? "text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 border-blue-500/30 hover:border-blue-400/50"
+                    : "text-zinc-500 border-zinc-700 cursor-not-allowed"
+                }`}
                 title="Open file in split-screen view"
               >
-                View Split
+                {canOpenSplitView ? "View Split" : "Locked"}
               </button>
               <a
                 href={activeSelectedFile.url}
@@ -802,6 +933,23 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 size={20}
                 className="group-hover:rotate-12 transition-transform"
               />
+            </button>
+
+            <button
+              onClick={() => setIsShowingBrowser(true)}
+              className="p-2 hover:bg-white/5 rounded-xl text-gray-400 hover:text-gray-200 transition-colors hidden md:block group"
+              disabled={isStreaming}
+              title={`View uploaded files (${documents.length})`}
+            >
+              <Paperclip
+                size={20}
+                className="group-hover:rotate-12 transition-transform"
+              />
+              {documents.length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                  {documents.length}
+                </span>
+              )}
             </button>
 
             {/* Mode Selector */}
@@ -915,14 +1063,22 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       </div>
 
       {/* Floating Actions Trigger */}
-      {selection && selection.visible && (
+      {selection && selection.visible &&!isQuickChatOpen && (
         <div
           className="fixed z-99 -translate-x-1/2 -translate-y-full mb-4 flex gap-2 animate-in fade-in slide-in-from-bottom-2 duration-200"
           style={{ top: selection.y - 10, left: selection.x }}
         >
           <button
             className="px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-lg shadow-xl hover:bg-blue-500 transition-all flex items-center gap-2"
-            onClick={() => setIsQuickChatOpen(true)}
+            onClick={() => {
+              setPinnedQuickChatSelection({
+                text: selection.text,
+                messageId: selection.messageId,
+                relativeY: selection.relativeY ?? 0,
+                subChatId: selection.subChatId,
+              });
+              setIsQuickChatOpen(true);
+            }}
           >
             <Sparkles size={14} />
             Quick Chat
@@ -949,6 +1105,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             setIsQuickChatOpen(false);
             clearSelection();
             setExternalQuickSelection(null);
+            setPinnedQuickChatSelection(null);
           }}
           selectedText={quickChatSelection.text}
           sourceMessageId={quickChatSelection.messageId}
@@ -957,6 +1114,15 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           subChatId={quickChatSelection?.subChatId ?? undefined}
         />
       )}
+
+      {/* Document Browser Modal */}
+      <DocumentBrowser
+        isOpen={isShowingBrowser}
+        onClose={() => setIsShowingBrowser(false)}
+        documents={documents}
+        onOpenSplitView={openSplitView}
+        onRemoveDocument={removeDocument}
+      />
 
       {/* Inherit Context Modal */}
       {isInheritModalOpen && (
@@ -1007,6 +1173,13 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Recall Page Overlay */}
+      {isRecallOverlayOpen && (
+        <div className="fixed inset-0 z-[60] bg-(--theme-bg-base) animate-in fade-in duration-300 overflow-y-auto overflow-x-hidden">
+          <RecallPage onClose={() => dispatch(toggleRecallOverlay(false))} />
         </div>
       )}
     </div>

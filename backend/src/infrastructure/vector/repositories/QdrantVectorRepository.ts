@@ -136,6 +136,23 @@ export class QdrantVectorRepository implements IVectorRepository {
     }
   }
 
+  async deleteDocumentVectorsByFileUrl(userId: string, fileUrl: string): Promise<void> {
+    const filter = {
+      must: [
+        { key: "userId", match: { value: String(userId) } },
+        { key: "fileUrl", match: { value: fileUrl } },
+      ],
+    };
+
+    try {
+      await qdrantClient.delete(DOCUMENT_COLLECTION_NAME, { filter });
+      console.log(`✅ Deleted Qdrant document vectors for fileUrl: ${fileUrl}`);
+    } catch (err: any) {
+      console.error("❌ Qdrant document delete failed:", err?.message ?? err);
+      throw err;
+    }
+  }
+
   async upsertCodeVector(
     id: string,
     codeVector: number[],

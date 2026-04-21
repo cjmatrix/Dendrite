@@ -1,4 +1,4 @@
-import { Brain, Search, Loader, CheckCircle2, Award, Clock, Trash2, PenLine, ChevronDown, ChevronUp } from "lucide-react";
+import { Brain, Search, Loader, CheckCircle2, Award, Clock, Trash2, PenLine, ChevronDown, ChevronUp, X } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import "../styles/markdown.css";
 import remarkGfm from "remark-gfm";
@@ -118,7 +118,11 @@ const RecallCard: React.FC<RecallCardProps> = ({ card, index, onReview, onDelete
   );
 };
 
-export default function RecallPage() {
+interface RecallPageProps {
+  onClose?: () => void;
+}
+
+export default function RecallPage({ onClose }: RecallPageProps) {
   const queryClient = useQueryClient();
 
   const { data: cards = [], isLoading } = useQuery({
@@ -185,16 +189,35 @@ export default function RecallPage() {
 
   if (cards.length === 0) {
     return (
+      <div>
+         {onClose && (
+        <button
+          onClick={onClose}
+          className="fixed top-6 right-10 z-50 p-3 bg-zinc-900/50 border border-white/10 rounded-2xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all shadow-2xl backdrop-blur-md"
+        >
+          <X size={24} />
+        </button>
+      )}
       <div className="flex flex-col items-center justify-center h-screen w-full text-zinc-400 bg-(--theme-bg-base)">
         <CheckCircle2 className="mb-4 text-emerald-500" size={48} />
         <h2 className="text-xl font-semibold text-gray-200 mb-2">You're all caught up!</h2>
         <p>You have reviewed all due Active Recall cards for today.</p>
       </div>
+      </div>
+      
     );
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-(--theme-bg-base) text-gray-200 px-0 sm:px-4 py-6 md:p-10 w-full max-w-6xl mx-auto animate-in fade-in duration-500">
+    <div className="flex flex-col min-h-screen bg-(--theme-bg-base) text-gray-200 px-0 sm:px-4 py-6 md:p-10 w-full max-w-6xl mx-auto animate-in fade-in duration-500 relative">
+      {onClose && (
+        <button
+          onClick={onClose}
+          className="fixed top-6 right-10 z-50 p-3 bg-zinc-900/50 border border-white/10 rounded-2xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all shadow-2xl backdrop-blur-md"
+        >
+          <X size={24} />
+        </button>
+      )}
       
       {/* Header Section */}
       <div className="flex items-center gap-3 mb-10 shrink-0">

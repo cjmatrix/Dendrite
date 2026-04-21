@@ -1,5 +1,28 @@
-export interface UploadResult {
+export interface ImageUploadResult {
+  type: "image";
   url: string;
+}
+
+export interface DocumentUploadResult {
+  type: "document";
+  documentId: string;
+  fileName: string;
+  status: "queued" | "uploading" | "uploaded" | "chunking" | "completed" | "failed";
+}
+
+export type UploadResult = ImageUploadResult | DocumentUploadResult;
+
+export interface DocumentProgressEvent {
+  documentId: string;
+  chatId: string;
+  userId: string;
+  fileName: string;
+  stage: "upload" | "chunk";
+  status: "queued" | "uploading" | "uploaded" | "chunking" | "completed" | "failed";
+  progress: number;
+  cloudinaryUrl?: string;
+  message?: string;
+  timestamp: string;
 }
 
 

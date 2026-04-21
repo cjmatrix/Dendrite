@@ -28,3 +28,5 @@ qdrant_storage/
 serviceAccountKey.json 
 infinity_clean/
 .infinity_cache/
+
+SEMANTIC_CHUNKING_GUIDE.md

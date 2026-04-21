@@ -205,6 +205,35 @@ export class FileUploadService {
   }
 
   /**
+   * Detect MIME type from file path
+   */
+  static async getMimeType(filePath: string): Promise<string> {
+    try {
+      const buffer = await fsp.readFile(filePath, { flag: 'r' });
+      const detected = await FileType.fromBuffer(buffer);
+      return detected?.mime || 'application/octet-stream';
+    } catch {
+      // Fall back to extension-based detection
+      const ext = path.extname(filePath).toLowerCase();
+      const mimeMap: { [key: string]: string } = {
+        '.pdf': 'application/pdf',
+        '.txt': 'text/plain',
+        '.md': 'text/markdown',
+        '.csv': 'text/csv',
+        '.json': 'application/json',
+        '.xml': 'application/xml',
+        '.yaml': 'application/yaml',
+        '.yml': 'application/yaml',
+        '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        '.doc': 'application/msword',
+        '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      };
+      return mimeMap[ext] || 'application/octet-stream';
+    }
+  }
+
+  /**
    * Clean up temporary file
    */
   static async cleanupTempFile(filePath: string): Promise<void> {

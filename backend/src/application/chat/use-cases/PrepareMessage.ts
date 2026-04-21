@@ -48,17 +48,24 @@ export class PrepareMessage {
       CONTEXT_WINDOW,
     );
 
-    const deficit = CONTEXT_WINDOW - recentMessages.length;
-
-    if (deficit > 0 && chat.contextParent) {
+    let deficit = CONTEXT_WINDOW - recentMessages.length;
+    let parentChatId=chat.contextParent
+    let safetyDepth = 0; 
+    while(parentChatId &&deficit>0 && safetyDepth < 300){
+     
       const parentMessages = await this.messageRepository.findRecentByChatId(
-        chat.contextParent,
+        parentChatId,
         deficit,
       );
-
+      
       // (older) + current messages (newer)
       recentMessages = [...recentMessages, ...parentMessages];
+      deficit=CONTEXT_WINDOW - recentMessages.length;
+      const parentChat= await this.chatRepository.findByIdAndUserId(parentChatId, userId);
+      parentChatId=parentChat.contextParent
+        safetyDepth++;
     }
+    
 
     // [oldest -> newest]
     recentMessages.reverse();

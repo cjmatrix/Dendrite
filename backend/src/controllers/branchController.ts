@@ -3,10 +3,9 @@ import { BaseController } from './base/BaseController';
 import { DIContainer } from './container/DIContainer';
 import { AppError } from '../utils/AppError';
 
-/**
- * BranchController - handles branch context management for chats
- * Uses clean architecture with dependency injection
- */
+
+
+
 export class BranchController extends BaseController {
   constructor() {
     super();
@@ -53,6 +52,9 @@ export class BranchController extends BaseController {
     }
   };
 }
+
+
+
 
 // Export singleton instance for use in routes
 export const branchController = new BranchController();

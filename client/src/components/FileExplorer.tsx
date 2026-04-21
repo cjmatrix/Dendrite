@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import type { FileType } from "../types/types";
 import { FileItem } from "./FileItem";
 import { useAppDispatch, useAppSelector } from "../store/store";
-import { setActiveSidebarRootId, toggleExplorerModal } from "../store/explorerSlice";
+import { setActiveSidebarRootId, toggleExplorerModal, toggleRecallOverlay } from "../store/explorerSlice";
 import DendritesLogo from "./DendritesLogo";
 
 import { useFileTree, useExplorerMutations } from "../hooks/useFileExplorer";
@@ -248,7 +248,7 @@ export default function FileExplorer() {
             {/* Bottom Action Bar */}
             <div className="px-4 py-4 bg-zinc-900/40 border-t border-zinc-800/50 backdrop-blur-md relative z-10 before:absolute before:inset-0 before:bg-linear-to-t before:from-[#09090b] before:to-transparent before:-z-10">
               <button
-                onClick={() => navigate("/recall")}
+                onClick={() => dispatch(toggleRecallOverlay(true))}
                 className="relative group w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-linear-to-r from-purple-600/10 to-indigo-600/10 hover:from-purple-500/20 hover:to-indigo-500/20 text-purple-400 hover:text-purple-300 transition-all border border-purple-500/20 hover:border-purple-400/50 text-[12px] font-bold shadow-[0_4px_20px_-10px_rgba(168,85,247,0.3)] hover:shadow-[0_4px_20px_-8px_rgba(168,85,247,0.5)] active:scale-[0.98] mb-2"
               >
                 <Brain size={14} strokeWidth={2.5} className="text-purple-500 group-hover:drop-shadow-[0_0_8px_rgba(168,85,247,0.8)] transition-all" />

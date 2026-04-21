@@ -1,6 +1,10 @@
 import type { Chat } from "../../domain/entities/Chat";
 import type { MessagePage, StreamChunk } from "../../domain/entities/Message";
-import type { UploadResult } from "../../domain/entities/FileUpload";
+import type {
+  DocumentProgressEvent,
+  DocumentUploadResult,
+  ImageUploadResult,
+} from "../../domain/entities/FileUpload";
 import type { IChatRepository } from "../../domain/repositories/IChatRepository";
 import api from "../../../api/axios";
 import { streamingFetch } from "../../../api/streamingFetch";
@@ -65,27 +69,69 @@ export class ApiChatRepository implements IChatRepository {
     }
   }
 
-  async uploadImage(file: File): Promise<UploadResult> {
+  async uploadImage(file: File, chatId?: string): Promise<ImageUploadResult> {
     const formData = new FormData();
     formData.append("image", file);
-    const res = await api.post("/chats/upload-image", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
-    return { url: res.data.data.url };
-  }
-
-  async uploadFile(file: File, chatId?: string, fileName?: string): Promise<UploadResult> {
-    const formData = new FormData();
-    formData.append("file", file);
     if (chatId) {
       formData.append("chatId", chatId);
     }
+    const res = await api.post("/chats/upload-image", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return { type: "image", url: res.data.data.url };
+  }
+
+  async uploadFile(
+    file: File,
+    chatId?: string,
+    fileName?: string,
+  ): Promise<DocumentUploadResult> {
+    if (!chatId) {
+      throw new Error("Chat ID is required for document uploads");
+    }
+    const formData = new FormData();
+    formData.append("file", file);
     if (fileName) {
       formData.append("fileName", fileName);
     }
-    const res = await api.post("/chats/upload-file", formData, {
+    const res = await api.post(`/chats/${chatId}/upload-file`, formData, {
       headers: { "Content-Type": "multipart/form-data" },
     });
-    return { url: res.data.data.url };
+
+    return {
+      type: "document",
+      documentId: res.data.data.documentId,
+      fileName: res.data.data.fileName,
+      status: res.data.data.status,
+    };
+  }
+
+  streamDocumentProgress(
+    chatId: string,
+    documentId: string,
+    onEvent: (event: DocumentProgressEvent) => void,
+    onError?: () => void,
+  ): () => void {
+    const url = `${API_URL}/chats/${chatId}/documents/${documentId}/progress`;
+    const source = new EventSource(url, { withCredentials: true });
+
+    const onProgress = (messageEvent: MessageEvent) => {
+      try {
+        const parsed = JSON.parse(messageEvent.data) as DocumentProgressEvent;
+        onEvent(parsed);
+      } catch (error) {
+        console.error("[DocumentProgress] Failed to parse event payload", error);
+      }
+    };
+
+    source.addEventListener("progress", onProgress);
+    source.addEventListener("error", () => {
+      onError?.();
+    });
+
+    return () => {
+      source.removeEventListener("progress", onProgress);
+      source.close();
+    };
   }
 }

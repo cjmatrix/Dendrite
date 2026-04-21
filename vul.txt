@@ -2,3 +2,4 @@ can create subchats for chats.
 losing context of chat summury while inheriting branch 
 what if two sticky chat at with same y
 background off feature and drag drop for modal.
+create activerecall as modal so user can easly go back to thier chat
