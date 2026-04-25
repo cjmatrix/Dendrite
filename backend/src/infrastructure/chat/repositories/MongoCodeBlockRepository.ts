@@ -9,6 +9,10 @@ export class MongoCodeBlockRepository implements ICodeBlockRepository {
     }).limit(limit);
   }
 
+  async findUndescribedByChatId(chatId: string): Promise<any[]> {
+    return CodeBlock.find({ chatId, description: "" }).lean();
+  }
+
   async bulkUpdateDescriptions(updates: any[], session?: any): Promise<any> {
     if (session) {
       return CodeBlock.bulkWrite(updates, { session });

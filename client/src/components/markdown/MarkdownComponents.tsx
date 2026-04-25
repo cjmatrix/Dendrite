@@ -56,7 +56,7 @@ export const markdownComponents = {
       </div>
     ) : (
       <code
-        className="bg-zinc-700/40 px-[0.3rem] py-[0.1rem] mx-[0.3rem] my-[0.5rem] rounded-md text-amber-200/90 text-[14.5px] border border-zinc-600/30"
+        className="bg-zinc-700/40 px-[0.3rem] py-[0.1rem] mx-[0.3rem] my-[0.5rem] font-thin rounded-md text-amber-200/90 text-[14.5px] border border-zinc-600/30"
         {...props}
       >
         {children}

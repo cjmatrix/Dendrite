@@ -110,7 +110,8 @@ export class DIContainer {
     return this.folderRepository;
   }
 
-  static getChatRepository(): MongoChatRepository {
+  static 
+  getChatRepository(): MongoChatRepository {
     if (!this.chatRepository) {
       this.chatRepository = new MongoChatRepository();
     }

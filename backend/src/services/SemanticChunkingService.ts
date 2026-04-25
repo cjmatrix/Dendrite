@@ -257,7 +257,7 @@ async function semanticChunk(
     similarityThreshold = 0.45,
     windowSize = 3,
     minChunkTokens = 256,
-    maxChunkTokens = 8000, // Safe buffer for Jina's 8192
+    maxChunkTokens = 8000, 
     embedChunks = false,
   } = options;
    console.log("Intitlaizing SEMANTIC CHUNKING")

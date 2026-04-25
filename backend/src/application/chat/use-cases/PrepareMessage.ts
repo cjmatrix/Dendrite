@@ -49,23 +49,24 @@ export class PrepareMessage {
     );
 
     let deficit = CONTEXT_WINDOW - recentMessages.length;
-    let parentChatId=chat.contextParent
-    let safetyDepth = 0; 
-    while(parentChatId &&deficit>0 && safetyDepth < 300){
-     
+    let parentChatId = chat.contextParent;
+    let safetyDepth = 0;
+    while (parentChatId && deficit > 0 && safetyDepth < 300) {
       const parentMessages = await this.messageRepository.findRecentByChatId(
         parentChatId,
         deficit,
       );
-      
+
       // (older) + current messages (newer)
       recentMessages = [...recentMessages, ...parentMessages];
-      deficit=CONTEXT_WINDOW - recentMessages.length;
-      const parentChat= await this.chatRepository.findByIdAndUserId(parentChatId, userId);
-      parentChatId=parentChat.contextParent
-        safetyDepth++;
+      deficit = CONTEXT_WINDOW - recentMessages.length;
+      const parentChat = await this.chatRepository.findByIdAndUserId(
+        parentChatId,
+        userId,
+      );
+      parentChatId = parentChat.contextParent;
+      safetyDepth++;
     }
-    
 
     // [oldest -> newest]
     recentMessages.reverse();
@@ -77,19 +78,15 @@ export class PrepareMessage {
       )
       .join("\n");
 
-    const finalCodeQueryVector =
-      codeQueryVector ||
-      (await embeddingService.embed(normalizedMessage, "CODE_RETRIEVAL_QUERY"));
-    const finalDescQueryVector =
-      descQueryVector ||
-      (await embeddingService.embed(normalizedMessage, "RETRIEVAL_QUERY"));
+    const finalCodeQueryVector = codeQueryVector;
+    const finalDescQueryVector = descQueryVector;
 
     const chatIdsToSearch: string[] = [chatId];
     const inheritedSummaries: { title: string; summary: string }[] = [];
 
     let currentParentId = chat.contextParent;
     let depth = 0;
-    while (currentParentId && depth < 5) {
+    while (currentParentId && depth < 15) {
       const pChat = await this.chatRepository.findByIdAndUserId(
         currentParentId,
         userId,
@@ -117,28 +114,43 @@ export class PrepareMessage {
       `\n🌲 [BRANCH ARCHITECTURE] Searching across ${chatIdsToSearch.length} chats in full lineage:`,
       chatIdsToSearch,
     );
+    
+    const canRunVectorSearch =
+      Array.isArray(finalCodeQueryVector) &&
+      finalCodeQueryVector.length > 0 &&
+      Array.isArray(finalDescQueryVector) &&
+      finalDescQueryVector.length > 0;
 
-    const [rawSimilarCode, chatContextStats, documentChunks] = await Promise.all([
-      this.vectorRepository.searchSimilarCode(
-        finalCodeQueryVector,
-        finalDescQueryVector,
-        userId,
-        chatIdsToSearch,
-      ),
-      this.vectorRepository.searchSimilarChatChunk(
-        finalDescQueryVector,
-        userId,
-        chatIdsToSearch,
-      ),
-      this.vectorRepository.searchDocuments(
-        normalizedMessage,
-        finalDescQueryVector,
-        userId,
-        chatIdsToSearch,
-      ),
-    ]);
+    if (!canRunVectorSearch) {
+      console.warn(
+        "⚠️ [RAG] Embedding vectors missing/undefined, skipping vector retrieval for this request.",
+      );
+    }
 
-    console.log(documentChunks,"raw document")
+    const [rawSimilarCode, chatContextStats, documentChunks] =
+      canRunVectorSearch
+        ? await Promise.all([
+            this.vectorRepository.searchSimilarCode(
+              finalCodeQueryVector,
+              finalDescQueryVector,
+              userId,
+              chatIdsToSearch,
+            ),
+            this.vectorRepository.searchSimilarChatChunk(
+              finalDescQueryVector,
+              userId,
+              chatIdsToSearch,
+            ),
+            this.vectorRepository.searchDocuments(
+              normalizedMessage,
+              finalDescQueryVector,
+              userId,
+              chatIdsToSearch,
+            ),
+          ])
+        : [[], [], []];
+
+    console.log(documentChunks, "raw document");
     // --- DIAGNOSTIC LOGS ---
     console.log(`\n🔍 [RAG DIAGNOSTICS]`);
     console.log(`📡 User Message: "${normalizedMessage}"`);
@@ -165,7 +177,9 @@ export class PrepareMessage {
     });
 
     const deduplicatedDocuments = documentChunks.filter((item: any) => {
-      return item.document?.text && !recentMessagesText.includes(item.document.text);
+      return (
+        item.document?.text && !recentMessagesText.includes(item.document.text)
+      );
     });
 
     let dynamicSystemInstruction = systemInstruction;
@@ -206,7 +220,9 @@ export class PrepareMessage {
         .map((item: any, index: number) => {
           const fileName = item.metadata?.fileName || "Unknown File";
           const text = item.document?.text || "";
-          const headings = item.document?.headings ? item.document.headings.join(" > ") : "";
+          const headings = item.document?.headings
+            ? item.document.headings.join(" > ")
+            : "";
           const heading = headings ? `\nSection: ${headings}` : "";
           return `[Document ${index + 1}] ${fileName}${heading}\n${text.substring(0, 500)}${text.length > 500 ? "..." : ""}`;
         })

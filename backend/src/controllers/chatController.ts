@@ -11,6 +11,7 @@ import { FileUploadService } from "../services/FileUploadService";
 import { AIService } from "../services/AIService";
 import { embeddingService } from "../services/EmbeddingService";
 import { logAIQuery } from "../utils/logger";
+import { exceedsTokenLimit, getTokenInfo } from "../utils/tokenCounter";
 import { documentChunkingQueue } from "../queue/documentChunkingQueue";
 import { documentProgressPubSub } from "../services/documentProgressPubSub";
 import { OutboxEvent } from "../models/OutboxEvent";
@@ -651,18 +652,43 @@ export class ChatController extends BaseController {
           ? `Analyze uploaded file: ${normalizedFileName}`
           : "Analyze the uploaded image");
 
-      // Generate embeddings for retrieval
-      const [codeQueryVector, descQueryVector] = await Promise.all([
-        embeddingService.embed(queryText, "CODE_RETRIEVAL_QUERY"),
-        embeddingService.embed(queryText, "RETRIEVAL_QUERY"),
-      ]);
+    
+      const MAX_EMBEDDING_TOKENS = 1024;
+      const tokenInfo = getTokenInfo(queryText, MAX_EMBEDDING_TOKENS);
+      
+      let codeQueryVector: number[] | undefined;
+      let descQueryVector: number[] | undefined;
 
-      // Prepare message and get context
+      if (tokenInfo.isExceeded) {
+       
+        console.warn(
+          `[Token Limit Warning] Query text exceeds ${MAX_EMBEDDING_TOKENS} tokens. ` +
+          `Estimated: ${tokenInfo.estimatedTokens} tokens (${tokenInfo.ratio}). ` +
+          `Skipping embedding generation to prevent system crash.`,
+        );
+        
+      
+        codeQueryVector = undefined;
+        descQueryVector = undefined;
+      } else {
+        
+        console.log(
+          `[Token Info] Query text: ${tokenInfo.estimatedTokens}/${MAX_EMBEDDING_TOKENS} tokens (${tokenInfo.ratio})`,
+        );
+        
+       
+        [codeQueryVector, descQueryVector] = await Promise.all([
+          embeddingService.embed(queryText, "CODE_RETRIEVAL_QUERY"),
+          embeddingService.embed(queryText, "RETRIEVAL_QUERY"),
+        ]);
+      }
+
+     
       const prepareMessageUseCase = DIContainer.getPrepareMessageUseCase();
       const { contents, userMessageId } = await prepareMessageUseCase.execute(
         id,
         userId,
-        normalizedMessage,
+        queryText,
         mode,
         codeQueryVector,
         descQueryVector,
@@ -671,11 +697,14 @@ export class ChatController extends BaseController {
         normalizedFileName || undefined,
       );
 
-      // Get internet context if needed
-      let internetContext = await AIService.getInternetContext(
-        queryText,
-        descQueryVector,
-      );
+    
+      let internetContext: string | undefined;
+      if (descQueryVector) {
+        internetContext = await AIService.getInternetContext(
+          queryText,
+          descQueryVector,
+        );
+      }
 
       if (internetContext) {
         for (let i = contents.length - 1; i >= 0; i--) {
@@ -789,10 +818,7 @@ export class ChatController extends BaseController {
       const { chatId, anchorMessageId, highlightedText, quickChatHistory } =
         req.body;
 
-      // if (!highlightedText || !anchorMessageId) {
-      //   throw new AppError('Highlighted text and anchor message ID are required', 400);
-      // }
-
+     
       const recentHistory = (quickChatHistory || []).slice(-CONTEXT_WINDOW);
 
       // Get background context
@@ -826,8 +852,9 @@ export class ChatController extends BaseController {
 
       let stream;
       try {
-        stream = await AIService.streamAIContent(contents);
+        stream = await AIService.streamAIContent(contents,"gemini-2.5-flash");
       } catch (error: any) {
+        console.log(error)
         res.write(
           `data: ${JSON.stringify({ text: "\n\n**Quota Exhausted:** All your provided Gemini API keys have exceeded their free-tier limits. Please wait, or add a new key." })}\n\n`,
         );

@@ -30,3 +30,5 @@ infinity_clean/
 .infinity_cache/
 
 SEMANTIC_CHUNKING_GUIDE.md
+
+dendrites_analysis.md

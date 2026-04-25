@@ -82,7 +82,7 @@ const RecallCard: React.FC<RecallCardProps> = ({ card, index, onReview, onDelete
       </div>
 
       {/* Content Area - Full Expansion */}
-      <div className={`w-full bg-white/5 rounded-xl sm:rounded-[24px] p-5 md:p-10 border border-white/5 shadow-inner mb-10 flex flex-col items-start transition-all duration-500 ${isPracticeOpen ? "filter blur-sm opacity-20 pointer-events-none scale-95" : "hover:bg-white/[0.07]"}`}>
+      <div className={`w-full bg-white/1 rounded-xl sm:rounded-[24px] p-5 md:p-10 border border-white/5 shadow-inner mb-10 flex flex-col items-start transition-all duration-500 ${isPracticeOpen ? "filter blur-sm opacity-20 pointer-events-none scale-95" : ""}`}>
           <div className="markdown-body w-full text-[17px] leading-relaxed text-gray-300/95">
              <ReactMarkdown
                 remarkPlugins={[remarkGfm, remarkMath]}

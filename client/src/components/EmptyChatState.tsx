@@ -71,8 +71,8 @@ export default function EmptyChatState() {
         {/* Logo */}
         <div className="relative mb-10 group">
           <div className="absolute inset-0 bg-cyan-500/15 rounded-full blur-3xl group-hover:bg-cyan-500/25 transition-all duration-700 animate-pulse" />
-          <div className="relative animate-float">
-            <DendritesLogo size={100} isRotate={true} />
+          <div className="relative ">
+            <DendritesLogo size={100} isRotate={false} />
           </div>
         </div>
 

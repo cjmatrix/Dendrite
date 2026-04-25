@@ -1,19 +1,19 @@
-import { Chat } from '../../../models/Chat';
-import { Message } from '../../../models/Message';
-import { CodeBlock } from '../../../models/CodeBlock';
-import { OutboxEvent } from '../../../models/OutboxEvent';
-import { AppError } from '../../../utils/AppError';
-import { hashCode } from '../../../utils/stripComments';
-import { redisConnection } from '../../../config/redis';
-import mongoose from 'mongoose';
-import addDescriptionQueue from '../../../queue/descriptionQueue';
-import addSummaryQueue from '../../../queue/summaryQueue';
-import addStateQueue from '../../../queue/stateQueue';
-import CONTEXT_WINDOW from '../../../constants/contextWindow';
-import { IChatRepository } from '../../../domain/chat/repositories/IChatRepository';
-import { IMessageRepository } from '../../../domain/chat/repositories/IMessageRepository';
-import { ICodeBlockRepository } from '../../../domain/chat/repositories/ICodeBlockRepository';
-import { IOutboxEventRepository } from '../../../domain/outbox/repositories/IOutboxEventRepository';
+import { Chat } from "../../../models/Chat";
+import { Message } from "../../../models/Message";
+import { CodeBlock } from "../../../models/CodeBlock";
+import { OutboxEvent } from "../../../models/OutboxEvent";
+import { AppError } from "../../../utils/AppError";
+import { hashCode } from "../../../utils/stripComments";
+import { redisConnection } from "../../../config/redis";
+import mongoose from "mongoose";
+import addDescriptionQueue from "../../../queue/descriptionQueue";
+import addSummaryQueue from "../../../queue/summaryQueue";
+import addStateQueue from "../../../queue/stateQueue";
+import CONTEXT_WINDOW from "../../../constants/contextWindow";
+import { IChatRepository } from "../../../domain/chat/repositories/IChatRepository";
+import { IMessageRepository } from "../../../domain/chat/repositories/IMessageRepository";
+import { ICodeBlockRepository } from "../../../domain/chat/repositories/ICodeBlockRepository";
+import { IOutboxEventRepository } from "../../../domain/outbox/repositories/IOutboxEventRepository";
 
 export function extractCodeBlocks(text: string) {
   const regex = /```(\w+)?\n([\s\S]*?)```/g;
@@ -27,7 +27,7 @@ export function extractCodeBlocks(text: string) {
     blocks.push({
       language: lang,
       code,
-      hash: hashCode(code), 
+      hash: hashCode(code),
     });
   }
   return blocks;
@@ -38,14 +38,10 @@ export class SaveModelReply {
     private chatRepository: IChatRepository,
     private messageRepository: IMessageRepository,
     private codeBlockRepository: ICodeBlockRepository,
-    private outboxRepository: IOutboxEventRepository
+    private outboxRepository: IOutboxEventRepository,
   ) {}
 
-  async execute(
-    chatId: string,
-    userId: string,
-    modelReply: string,
-  ) {
+  async execute(chatId: string, userId: string, modelReply: string) {
     const chat = await this.chatRepository.findByIdAndUserId(chatId, userId);
 
     if (!chat) {
@@ -63,12 +59,11 @@ export class SaveModelReply {
       );
       modelMessageId = modelMsg._id.toString();
 
-   
       const updatedChat = await this.chatRepository.update(
         chatId,
         userId,
         { $inc: { unsummarizedCount: 2 } },
-        { session }
+        { session },
       );
 
       let messageToCompress: any[] = [];
@@ -77,13 +72,21 @@ export class SaveModelReply {
         const recent = await this.messageRepository.findRecentByChatId(
           chatId,
           CONTEXT_WINDOW,
-          { session }
+          { session },
         );
         messageToCompress = recent.reverse();
-        console.log("Message to compress /n hereee-------------------",messageToCompress)
+        console.log(
+          "Message to compress /n hereee-------------------",
+          messageToCompress,
+        );
 
         // Reset the counter atomically
-        await this.chatRepository.update(chatId, userId, { unsummarizedCount: 0 }, { session });
+        await this.chatRepository.update(
+          chatId,
+          userId,
+          { unsummarizedCount: 0 },
+          { session },
+        );
       }
 
       const codeBlocks = extractCodeBlocks(modelReply);
@@ -98,16 +101,26 @@ export class SaveModelReply {
 
           const cachedDesc = await redisConnection.get(redisKey);
           if (cachedDesc) {
-            console.log(`[CodeDedup] Redis hit for hash ${block.hash.slice(0, 8)}... — skipping API calls.`);
+            console.log(
+              `[CodeDedup] Redis hit for hash ${block.hash.slice(0, 8)}... — skipping API calls.`,
+            );
             continue;
           }
 
-          const existingBlock = await this.codeBlockRepository.findByHash(block.hash);
+          const existingBlock = await this.codeBlockRepository.findByHash(
+            block.hash,
+          );
           if (existingBlock) {
-            console.log(`[CodeDedup] DB hit for hash ${block.hash.slice(0, 8)}... — skipping API calls.`);
+            console.log(
+              `[CodeDedup] DB hit for hash ${block.hash.slice(0, 8)}... — skipping API calls.`,
+            );
             // Redis to avoid future DB lookups
             if (existingBlock.description) {
-              await redisConnection.setex(redisKey, 86400, existingBlock.description);
+              await redisConnection.setex(
+                redisKey,
+                86400,
+                existingBlock.description,
+              );
             }
             continue;
           }
@@ -123,12 +136,19 @@ export class SaveModelReply {
         }
 
         if (newBlockDocs.length > 0) {
-          savedBlocks = await this.codeBlockRepository.insertMany(newBlockDocs, session);
-          console.log(`[CodeDedup] ${newBlockDocs.length} new / ${codeBlocks.length - newBlockDocs.length} duplicate blocks in this reply.`);
+          savedBlocks = await this.codeBlockRepository.insertMany(
+            newBlockDocs,
+            session,
+          );
+          console.log(
+            `[CodeDedup] ${newBlockDocs.length} new / ${codeBlocks.length - newBlockDocs.length} duplicate blocks in this reply.`,
+          );
         } else {
-          console.log(`[CodeDedup] All ${codeBlocks.length} code block(s) were duplicates — zero API calls needed.`);
+          console.log(
+            `[CodeDedup] All ${codeBlocks.length} code block(s) were duplicates — zero API calls needed.`,
+          );
         }
-      } 
+      }
 
       let summaryOutboxEvent = null;
       let stateOutboxEvent = null;
@@ -161,30 +181,39 @@ export class SaveModelReply {
             status: "pending",
           },
         ];
-        const savedOutbox = await this.outboxRepository.insertMany(outboxDocs, session);
+        const savedOutbox = await this.outboxRepository.insertMany(
+          outboxDocs,
+          session,
+        );
         summaryOutboxEvent = savedOutbox[0];
         stateOutboxEvent = savedOutbox[1];
       }
 
       await session.commitTransaction();
 
-      if (savedBlocks.length > 0) {
-        const queuePayload = savedBlocks.map((b) => ({
-          _id: b._id,
-          userId: b.userId,
-          chatId: b.chatId,
-          code: b.code,
-          language: b.language,
-          hash: b.hash,
-        }));
-        await addDescriptionQueue(queuePayload);
-        console.log(
-          `🚀 Sent ${savedBlocks.length} NEW code blocks to description-queue background worker!`,
-        );
+      // Batch-describe code blocks ONLY at the summarization threshold.
+
+      if (messageToCompress.length > 0) {
+        const undescribedBlocks =
+          await this.codeBlockRepository.findUndescribedByChatId(chatId);
+        if (undescribedBlocks.length > 0) {
+          const queuePayload = undescribedBlocks.map((b: any) => ({
+            _id: b._id.toString(),
+            userId: b.userId,
+            chatId: b.chatId,
+            code: b.code,
+            language: b.language,
+            hash: b.hash,
+          }));
+          await addDescriptionQueue(queuePayload);
+          console.log(
+            `🚀 Context window overflow — batched ${undescribedBlocks.length} code blocks to description-queue!`,
+          );
+        }
       }
 
       if (summaryOutboxEvent && stateOutboxEvent) {
-       //Longterm retrival facts
+        //Longterm retrival facts
         addSummaryQueue(summaryOutboxEvent._id.toString(), messageToCompress);
 
         // Middleterm recursive chunk

@@ -13,166 +13,36 @@ const DendritesLogo: React.FC<DendritesLogoProps> = ({
   isRotate = false,
   isLoading = false,
 }) => {
+  const shouldRotate = isRotate || isLoading;
+
   return (
     <div
-      className={`relative flex items-center justify-center shrink-0 ${className}`}
-      style={{ width: size, height: size, minWidth: size, minHeight: size }}
+      className={`flex items-center justify-center shrink-0 ${className}`}
+      style={{ width: size, height: size }}
     >
       <svg
-        viewBox="0 0 100 100"
-        fill="none"
+        viewBox="0 0 1024 1024"
         xmlns="http://www.w3.org/2000/svg"
-        className="w-full h-full drop-shadow-[0_0_15px_rgba(34,211,238,0.4)]"
+        className={`w-full h-full ${shouldRotate ? "animate-spin-slow" : ""}`}
       >
-        <defs>
-          <linearGradient id="neuralGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#22d3ee" />
-            <stop offset="100%" stopColor="#0ea5e9" />
-          </linearGradient>
-
-          <radialGradient id="sphereBody" cx="30%" cy="30%" r="70%">
-            <stop offset="0%" stopColor="rgba(34, 211, 238, 0.25)" />
-            <stop offset="60%" stopColor="rgba(14, 165, 233, 0.05)" />
-            <stop offset="100%" stopColor="rgba(34, 211, 238, 0.2)" />
-          </radialGradient>
+        <g fill="#3b82f6">
+          <path d="M854.321167,566.405518 C865.965332,526.609436 869.739563,486.295044 868.152405,445.308563 C871.175842,449.105377 870.580750,453.620300 871.095642,457.727203 C873.521240,477.075043 874.957214,496.539307 874.093201,516.036011 C870.187439,604.170105 841.975281,683.002014 782.901794,749.491089 C741.754700,795.803406 691.716492,828.463989 631.425232,844.469971 C608.446655,850.570190 584.985718,853.745544 561.260803,852.948547 C511.543518,851.278503 465.685211,836.272400 423.566284,810.169861 C364.134064,773.337708 320.492798,722.342712 290.352814,659.492493 C274.528992,626.495605 263.991089,591.885254 259.024048,555.661133 C253.822403,517.726013 255.066055,479.942841 262.914337,442.410065 C273.428589,392.127960 294.260162,346.622803 326.450623,306.552155 C372.337677,249.431976 430.461761,211.825882 502.800629,197.297974 C506.385223,196.578079 510.025421,196.127625 513.648865,195.616089 C514.246521,195.531723 514.891357,195.781540 515.760193,195.914551 C515.195435,198.155624 513.333679,198.235748 511.927399,198.766205 C468.479767,215.154510 430.707855,240.113663 398.875092,273.924957 C354.907013,320.625854 326.780701,375.444763 315.250305,438.616394 C305.165955,493.865417 310.237396,547.734192 331.154602,599.883240 C350.035919,646.956665 378.637451,687.218201 417.293762,720.218201 C451.390442,749.325745 490.202393,769.194397 533.953552,778.970825 C581.162048,789.519714 627.659912,786.184509 673.112000,769.818420 C733.424133,748.101501 779.196960,708.337830 813.893250,655.122192 C831.760071,627.718872 845.048828,598.190369 854.321167,566.405518 Z" />
           
-          <linearGradient id="sphereHighlight" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="white" stopOpacity="0.5" />
-            <stop offset="40%" stopColor="white" stopOpacity="0" />
-          </linearGradient>
+          <path d="M257.571503,325.539795 C213.798065,403.759033 199.348663,486.746246 216.721954,574.306641 C234.005051,661.412415 278.802551,732.790466 346.170990,790.234619 C344.554718,792.165283 343.490753,790.747559 342.485504,790.196777 C267.885468,749.325684 215.119431,689.292480 184.766571,609.796692 C174.456375,582.793640 167.958878,554.807495 164.555649,526.054932 C161.290527,498.469055 160.891205,470.890045 163.803329,443.308990 C170.744232,377.570679 192.741058,317.355621 230.902634,263.245026 C262.803772,218.011337 302.839661,181.586334 350.960144,154.271317 C390.326050,131.925720 432.617279,117.645370 477.343506,110.789970 C530.331360,102.668266 582.657898,105.633919 633.951355,121.655144 C694.285461,140.500168 744.146851,174.445221 781.862427,225.577087 C782.642517,226.634659 783.612732,227.616089 783.620300,229.358917 C781.578308,229.928406 780.770386,228.195908 779.755554,227.145844 C738.548767,184.506378 688.063049,159.053345 630.365295,147.706070 C592.276978,140.215332 553.936035,140.736481 515.583374,146.886139 C456.518005,156.356979 403.131897,179.225418 355.086945,214.562805 C314.632477,244.317291 282.725311,281.761383 257.571503,325.539795 Z" />
           
-          <filter id="nodeGlow" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation="2" result="blur" />
-            <feComposite in="SourceGraphic" in2="blur" operator="over" />
-          </filter>
-        </defs>
-
-        {/* Shining Transparent Sphere - Always rendered, transitions smoothly */}
-        <g className={`origin-center transition-all duration-1000 ease-out ${isLoading ? "opacity-100 scale-100" : "opacity-0 scale-75 pointer-events-none"}`}>
-          {/* The Sphere Body */}
-          <circle 
-            cx="50" cy="50" r="46" 
-            fill="url(#sphereBody)" 
-            stroke="rgba(34, 211, 238, 0.4)" 
-            strokeWidth="0.5"
-            className={isLoading ? "animate-shimmer" : ""}
-          />
-          {/* Specular Highlight */}
-          <circle 
-            cx="50" cy="50" r="46" 
-            fill="url(#sphereHighlight)" 
-            className={isLoading ? "animate-spin-slow opacity-40" : "opacity-40"} 
-            style={{ transformOrigin: '50px 50px' }}
-          />
-        </g>
-
-        {/* Outer Orbital Rings - Always rendered, transitions smoothly */}
-        <g className={`origin-center transition-all duration-1000 delay-100 ${isLoading ? "opacity-100 scale-100" : "opacity-0 scale-110 pointer-events-none"}`}>
-          {/* Rapid Spinning Neural Ring */}
-          <circle 
-            cx="50" 
-            cy="50" 
-            r="44" 
-            stroke="url(#neuralGradient)" 
-            strokeWidth="1.5" 
-            strokeDasharray="30 150" 
-            strokeLinecap="round"
-            className={isLoading ? "animate-spin-fast opacity-60" : "opacity-60"} 
-          />
-          {/* Outer dotted ring */}
-          <circle cx="50" cy="50" r="48" stroke="url(#neuralGradient)" strokeWidth="0.5" strokeDasharray="4 4" className={isLoading ? "animate-spin-slow opacity-20" : "opacity-20"} />
-          {/* Pulse wave */}
-          <circle cx="50" cy="50" r="40" stroke="url(#neuralGradient)" strokeWidth="1" className={isLoading ? "animate-[ping_2s_linear_infinite] opacity-15" : "opacity-15"} />
-        </g>
-
-        {/* Brain/Neural Cluster Container */}
-        <g 
-          className={`origin-center transition-all duration-700 ${
-            isLoading ? "animate-living-neural-fast scale-90" : 
-            isRotate ? "animate-living-neural scale-100" : "scale-100"
-          }`}
-        >
-          {/* Orbiting Particle */}
-          <g className={`origin-center transition-opacity duration-700 ${isLoading ? "opacity-100 animate-spin-fast" : "opacity-0"}`} style={{ transformOrigin: '50px 50px' }}>
-            <circle cx="50" cy="10" r="3" fill="#22d3ee" filter="url(#nodeGlow)" className={isLoading ? "animate-pulse" : ""} />
-          </g>
-
-          {/* Main Branches */}
-          <g className="opacity-80">
-            <path d="M 50 50 L 50 20 L 40 10" stroke="url(#neuralGradient)" strokeWidth="5" strokeLinecap="round" opacity="0.9" />
-            <circle cx="40" cy="10" r="2.5" fill="#22d3ee" filter="url(#nodeGlow)" className={isLoading ? "animate-synapse-fire" : ""} />
-            
-            <path d="M 50 50 L 75 40 L 85 45" stroke="url(#neuralGradient)" strokeWidth="5" strokeLinecap="round" opacity="0.8" />
-            <circle cx="85" cy="45" r="2" fill="#0ea5e9" filter="url(#nodeGlow)" className={isLoading ? "animate-synapse-fire [animation-delay:200ms]" : ""} />
-            
-            <path d="M 50 50 L 65 75 L 60 85" stroke="url(#neuralGradient)" strokeWidth="5" strokeLinecap="round" opacity="0.7" />
-            <circle cx="60" cy="85" r="3" fill="#3b82f6" filter="url(#nodeGlow)" className={isLoading ? "animate-synapse-fire [animation-delay:400ms]" : ""} />
-            
-            <path d="M 50 50 L 25 65 L 15 60" stroke="url(#neuralGradient)" strokeWidth="5" strokeLinecap="round" opacity="0.9" />
-            <circle cx="15" cy="60" r="2" fill="#22d3ee" filter="url(#nodeGlow)" className={isLoading ? "animate-synapse-fire [animation-delay:600ms]" : ""} />
-            
-            <path d="M 50 50 L 20 40 L 10 45" stroke="url(#neuralGradient)" strokeWidth="5" strokeLinecap="round" opacity="0.6" />
-            <circle cx="10" cy="45" r="1.5" fill="#22d3ee" filter="url(#nodeGlow)" className={isLoading ? "animate-synapse-fire [animation-delay:800ms]" : ""} />
-
-            <path d="M 50 35 L 60 25" stroke="#22d3ee" strokeWidth="1.5" strokeLinecap="round" opacity="0.4" />
-            <path d="M 68 52 L 80 65" stroke="#3b82f6" strokeWidth="1.5" strokeLinecap="round" opacity="0.4" />
-            <path d="M 35 60 L 25 80" stroke="#0ea5e9" strokeWidth="1.5" strokeLinecap="round" opacity="0.4" />
-          </g>
-
-          {/* Central Nucleus */}
-          <g>
-             <circle cx="50" cy="50" r="10" fill="url(#neuralGradient)" opacity="0.2" className={isLoading ? "animate-pulse" : ""} />
-             <circle 
-              cx="50" 
-              cy="50" 
-              r="6" 
-              fill="url(#neuralGradient)" 
-              className={`transition-all duration-700 ${isLoading ? "animate-nucleus-breathing-fast shadow-[0_0_20px_#22d3ee]" : isRotate ? "animate-nucleus-breathing" : ""}`} 
-             />
-             <circle cx="50" cy="50" r="2" fill="white" className={isLoading ? "animate-ping opacity-60" : "opacity-60"} style={{ animationDuration: '2s' }} />
-          </g>
+          <path d="M428.673523,605.359985 C453.627014,653.985535 490.505005,689.707031 540.013550,712.101318 C557.837097,720.163391 576.458923,725.778687 596.020142,727.862793 C597.162476,727.984436 598.378418,727.993408 599.265930,729.499634 C598.034241,731.528076 595.889404,730.861206 594.123169,730.885803 C543.766418,731.589355 498.649841,716.193298 458.894073,685.620422 C415.047882,651.901978 386.590698,607.560425 370.649841,554.835632 C362.619385,528.274719 358.572662,501.033112 359.986176,473.492432 C365.420868,367.604370 413.351349,288.230652 509.362396,240.503403 C547.665527,221.462830 589.022522,213.578613 631.653870,217.122757 C706.954102,223.382812 763.926086,259.553558 801.599365,325.416748 C802.450073,326.904083 803.961487,328.289398 803.222595,330.434631 C800.901367,330.303467 800.390442,328.264282 799.354248,326.918915 C764.792786,282.045502 719.932068,254.363800 663.473145,247.248108 C604.149841,239.771393 550.387207,255.119339 502.520416,290.413696 C452.359161,327.399902 421.928802,377.599243 408.231049,437.882385 C395.064331,495.828552 402.262726,551.677917 428.673523,605.359985 Z" />
         </g>
       </svg>
 
       <style>{`
-        @keyframes living-neural {
-          0%, 100% { transform: rotate(0deg) scale(1); }
-          50% { transform: rotate(5deg) scale(1.05); }
-        }
-        @keyframes living-neural-fast {
-          0%, 100% { transform: rotate(0deg) scale(1); }
-          50% { transform: rotate(12deg) scale(1.1); }
-        }
-        @keyframes synapse-fire {
-          0%, 100% { opacity: 0.3; transform: scale(0.8); }
-          50% { opacity: 1; transform: scale(1.5); filter: brightness(2) blur(1px); }
-        }
-        @keyframes shimmer {
-          0%, 100% { opacity: 0.8; filter: brightness(1); }
-          50% { opacity: 1; filter: brightness(1.3); }
-        }
-        .animate-living-neural { animation: living-neural 8s ease-in-out infinite; }
-        .animate-living-neural-fast { animation: living-neural-fast 2.5s ease-in-out infinite; }
-        .animate-synapse-fire { animation: synapse-fire 1s ease-in-out infinite; }
-        .animate-shimmer { animation: shimmer 3s ease-in-out infinite; }
-        
-        @keyframes nucleus-breathing {
-          0%, 100% { transform: scale(1); opacity: 0.8; }
-          50% { transform: scale(1.2); opacity: 1; filter: brightness(1.2); }
-        }
-        @keyframes nucleus-breathing-fast {
-          0%, 100% { transform: scale(1); opacity: 0.8; }
-          50% { transform: scale(1.5); opacity: 1; filter: brightness(1.8); }
-        }
-        .animate-nucleus-breathing { transform-origin: center; animation: nucleus-breathing 4s ease-in-out infinite; }
-        .animate-nucleus-breathing-fast { transform-origin: center; animation: nucleus-breathing-fast 1.2s ease-in-out infinite; }
-        
-        @keyframes spin-fast {
+        @keyframes spin-slow {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
         }
-        .animate-spin-fast { animation: spin-fast 1.5s linear infinite; }
-        .animate-spin-slow { animation: spin-fast 10s linear infinite; }
+        .animate-spin-slow {
+          animation: spin-slow 8s linear infinite;
+          transform-origin: center;
+        }
       `}</style>
     </div>
   );

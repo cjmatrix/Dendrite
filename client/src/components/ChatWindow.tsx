@@ -608,7 +608,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
   return (
     <div
-      className="flex flex-col h-screen bg-(--theme-bg-base) text-gray-200 font-sans w-full relative overflow-hidden"
+      className="flex flex-col h-screen  bg-white/1 text-gray-200 font-sans w-full relative overflow-hidden"
       onMouseUp={handleTextSelection}
     >
       {/* Animated Edge Tracer */}
