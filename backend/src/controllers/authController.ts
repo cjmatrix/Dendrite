@@ -16,10 +16,7 @@ export class AuthController extends BaseController {
     super();
   }
 
-  /*
-    Register a new user
-    POST /api/auth/register
-   */
+ 
   public register = async (req: Request, res: Response): Promise<void> => {
     try {
       const { name, email, password, confirmPassword } = req.body;
@@ -54,10 +51,7 @@ export class AuthController extends BaseController {
     }
   };
 
-  /*
-  Login a user
-   POST /api/auth/login
-   */
+ 
   public login = async (req: Request, res: Response): Promise<void> => {
     try {
       const { email, password } = req.body;
@@ -87,10 +81,7 @@ export class AuthController extends BaseController {
     }
   };
 
-  /*
-   Refresh authentication tokens
-   POST /api/auth/refresh
-   */
+  
   public refresh = async (req: Request, res: Response): Promise<void> => {
     try {
       const cookies = req.cookies;
@@ -120,10 +111,7 @@ export class AuthController extends BaseController {
     }
   };
 
-  /*
-    Logout a user
-   POST /api/auth/logout
-   */
+ 
   public logout = async (req: Request, res: Response): Promise<void> => {
     try {
       const cookies = req.cookies;
@@ -143,10 +131,7 @@ export class AuthController extends BaseController {
     }
   };
 
-  /*
-    Get current user information
-   GET /api/auth/me
-   */
+
   public getMe = async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
@@ -160,10 +145,7 @@ export class AuthController extends BaseController {
     }
   };
 
-  /*
-    Update FCM token for push notifications
-    POST /api/auth/fcm-token
-   */
+
   public updateFcmToken = async (
     req: Request,
     res: Response,
@@ -186,5 +168,5 @@ export class AuthController extends BaseController {
   };
 }
 
-// Export singleton instance for use in routes
+
 export const authController = new AuthController();

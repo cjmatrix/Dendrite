@@ -42,11 +42,7 @@ import { InheritContext } from '../../application/branch/use-cases/InheritContex
 import { UnlinkInheritance } from '../../application/branch/use-cases/UnlinkInheritance';
 import { ProcessDocumentChunking } from '../../application/worker/use-cases/ProcessDocumentChunking';
 
-/**
- * Container for dependency injection
- * Manages all repository instances and use cases
- * Ensures single instances across the application
- */
+
 export class DIContainer {
   // Repositories (singletons)
   private static folderRepository: MongoFolderRepository;
@@ -100,9 +96,7 @@ export class DIContainer {
   // Worker Use Cases
   private static processDocumentChunkingUseCase: ProcessDocumentChunking;
 
-  /**
-   * Get or create repository instances
-   */
+ 
   static getFolderRepository(): MongoFolderRepository {
     if (!this.folderRepository) {
       this.folderRepository = new MongoFolderRepository();
@@ -167,9 +161,7 @@ export class DIContainer {
     return this.vectorRepository;
   }
 
-  /**
-   * Get or create Folder Use Cases
-   */
+  
   static getCreateFolderUseCase(): CreateFolder {
     if (!this.createFolderUseCase) {
       this.createFolderUseCase = new CreateFolder(this.getFolderRepository());
@@ -202,9 +194,7 @@ export class DIContainer {
     return this.deleteFolderUseCase;
   }
 
-  /**
-   * Get or create Chat Use Cases
-   */
+ 
   static getCreateChatUseCase(): CreateChat {
     if (!this.createChatUseCase) {
       this.createChatUseCase = new CreateChat(this.getChatRepository());
@@ -291,9 +281,7 @@ export class DIContainer {
     return this.getSubChatUseCase;
   }
 
-  /**
-   * Get or create Auth Use Cases
-   */
+  
   static getRegisterUserUseCase(): RegisterUser {
     if (!this.registerUserUseCase) {
       this.registerUserUseCase = new RegisterUser(this.getUserRepository());
@@ -336,9 +324,7 @@ export class DIContainer {
     return this.updateFcmTokenUseCase;
   }
 
-  /**
-   * Get or create Recall Use Cases
-   */
+  
   static getCreateCardUseCase(): CreateCard {
     if (!this.createCardUseCase) {
       this.createCardUseCase = new CreateCard(this.getRecallRepository());
@@ -381,9 +367,6 @@ export class DIContainer {
     return this.countDueCardsUseCase;
   }
 
-  /**
-   * Get or create Branch Use Cases
-   */
   static getInheritContextUseCase(): InheritContext {
     if (!this.inheritContextUseCase) {
       this.inheritContextUseCase = new InheritContext(this.getChatRepository());
@@ -398,9 +381,6 @@ export class DIContainer {
     return this.unlinkInheritanceUseCase;
   }
 
-  /**
-   * Get or create Worker Use Cases
-   */
   static getProcessDocumentChunkingUseCase(): ProcessDocumentChunking {
     if (!this.processDocumentChunkingUseCase) {
       this.processDocumentChunkingUseCase = new ProcessDocumentChunking(

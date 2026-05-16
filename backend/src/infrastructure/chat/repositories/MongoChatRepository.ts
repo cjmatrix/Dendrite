@@ -24,6 +24,21 @@ export class MongoChatRepository implements IChatRepository {
     return Chat.findOneAndUpdate({ _id: chatId, userId }, updates, { new: true, ...options });
   }
 
+  async bulkResetUnsummarizedCount(chatIds: string[], userId: string, options?: any): Promise<any> {
+    if (!chatIds.length) {
+      return { modifiedCount: 0 };
+    }
+
+    const updates = chatIds.map((chatId) => ({
+      updateOne: {
+        filter: { _id: chatId, userId },
+        update: { $set: { unsummarizedCount: 0 } },
+      },
+    }));
+
+    return Chat.bulkWrite(updates, options);
+  }
+
   async delete(chatId: string, userId: string): Promise<any | null> {
     return Chat.findOneAndDelete({ _id: chatId, userId });
   }

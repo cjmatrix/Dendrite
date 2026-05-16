@@ -164,10 +164,8 @@ function buildSegments(markdown: string): Segment[] {
       while (
         i < lines.length &&
         lines[i].trim() !== "" &&
-        (
-          /^([-*+]|[\dA-Za-z]+[.):])\s/.test(lines[i].trim()) ||
-          /^\s{2,}/.test(lines[i])  // indented continuation
-        )
+        (/^([-*+]|[\dA-Za-z]+[.):])\s/.test(lines[i].trim()) ||
+          /^\s{2,}/.test(lines[i])) // indented continuation
       ) {
         block.push(lines[i]);
         i++;
@@ -197,9 +195,10 @@ function buildSegments(markdown: string): Segment[] {
 
     // Paragraphs -> Sentences
     const paraLines: string[] = [];
-    
+
     // FIX 1: Aligned the regex to accurately represent block prefixes
-    const exclusionRegex = /^(?:#{1,6}\s+|\||>|[-*+]\s|[\dA-Za-z]+[.):]\s|```|~~~)/;
+    const exclusionRegex =
+      /^(?:#{1,6}\s+|\||>|[-*+]\s|[\dA-Za-z]+[.):]\s|```|~~~)/;
 
     while (
       i < lines.length &&
@@ -212,7 +211,7 @@ function buildSegments(markdown: string): Segment[] {
 
     // FIX 2: Ultimate fail-safe to prevent infinite loops
     if (paraLines.length === 0) {
-      i++; 
+      i++;
       continue;
     }
 
@@ -222,7 +221,7 @@ function buildSegments(markdown: string): Segment[] {
     const sentences = paraText
       .split(/(?<=[.!?])\s+(?=[A-Z"'(])|(?<=[.!?])$/)
       .filter(Boolean);
-      
+
     if (sentences.length <= 2) {
       segments.push({
         text: paraText,
@@ -257,13 +256,13 @@ async function semanticChunk(
     similarityThreshold = 0.45,
     windowSize = 3,
     minChunkTokens = 256,
-    maxChunkTokens = 8000, 
+    maxChunkTokens = 8000,
     embedChunks = false,
   } = options;
-   console.log("Intitlaizing SEMANTIC CHUNKING")
+  console.log("Intitlaizing SEMANTIC CHUNKING");
 
   const initialSegments = buildSegments(markdown);
- console.log("COMPLETED BUILDING SEGMENTS")
+  console.log("COMPLETED BUILDING SEGMENTS");
   const segments: Segment[] = [];
   for (const s of initialSegments) {
     if (estimateTokens(s.text) > maxChunkTokens) {
@@ -372,7 +371,7 @@ function enforceTokenLimits(
 ): RawChunk[] {
   // Merge Pass
 
-  console.log(rawChunks)
+  console.log(rawChunks);
   const merged: RawChunk[] = [];
   for (const chunk of rawChunks) {
     const tokens = estimateTokens(chunk.segments.map((s) => s.text).join(" "));
@@ -414,7 +413,6 @@ function enforceTokenLimits(
       result.push({ segments: bufSegs, embeddings: bufEmbs });
   }
 
-
   return result;
 }
 
@@ -425,7 +423,7 @@ export class SemanticChunkingService {
 
   constructor() {
     this.client = new LlamaCloud({
-      apiKey: process.env.LLAMA_CLOUD_API_KEY, // from .env
+      apiKey: process.env.LLAMA_CLOUD_API_KEY,
     });
   }
 
@@ -473,7 +471,7 @@ export class SemanticChunkingService {
       console.log(
         `✅ LlamaParse extraction complete (${result.markdown.pages.length} pages)`,
       );
-      console.log(markdown,"heree")
+      console.log(markdown, "heree");
       markdown = markdown.replace(/^\[\d+\]\s?/gm, "");
       return markdown;
     } catch (error: any) {

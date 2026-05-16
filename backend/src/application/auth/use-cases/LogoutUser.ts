@@ -11,7 +11,7 @@ export class LogoutUser {
         await this.userRepository.removeRefreshToken(decoded.userId, refreshToken);
       }
     } catch(err) {
-       // Ignore verification error on logout
+      
     }
   }
 }

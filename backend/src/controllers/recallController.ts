@@ -9,16 +9,13 @@ export class RecallController extends BaseController {
     super();
   }
 
-  /**
-   * Create a new recall card
-   * POST /api/recall/cards
-   */
+
   public createCard = async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
       let { content, chatId, msgId } = req.body;
 
-      // If content is not provided, try to get it from message repository
+     
       if (!content && msgId) {
         const messageRepository = DIContainer.getMessageRepository();
         const message = await messageRepository.findById(msgId);
@@ -40,10 +37,7 @@ export class RecallController extends BaseController {
     }
   };
 
-  /**
-   * Update a recall card with a rating
-   * PATCH /api/recall/cards/:id
-   */
+  
   public updateCard = async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
@@ -68,10 +62,7 @@ export class RecallController extends BaseController {
     }
   };
 
-  /**
-   * Get all due cards for the user
-   * GET /api/recall/cards/due
-   */
+ 
   public getDueCards = async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
@@ -85,10 +76,7 @@ export class RecallController extends BaseController {
     }
   };
 
-  /**
-   * Delete a recall card
-   * DELETE /api/recall/cards/:id
-   */
+
   public deleteCard = async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
@@ -103,10 +91,8 @@ export class RecallController extends BaseController {
     }
   };
 
-  /**
-   * Clear all recall cards for the user
-   * DELETE /api/recall/cards
-   */
+ 
+
   public clearAllCards = async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
@@ -120,10 +106,8 @@ export class RecallController extends BaseController {
     }
   };
 
-  /**
-   * Count the number of due cards for the user
-   * GET /api/recall/cards/count
-   */
+
+
   public countDueCards = async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
@@ -138,5 +122,5 @@ export class RecallController extends BaseController {
   };
 }
 
-// Export singleton instance for use in routes
+
 export const recallController = new RecallController();

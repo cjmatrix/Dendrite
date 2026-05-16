@@ -17,7 +17,7 @@ export class RefreshTokenUser {
 
     if (!user || !user.refreshTokens.includes(refreshToken)) {
       if (user) {
-        // Compromised token detected, clear all tokens to re-login user
+        // Compromised token 
         await this.userRepository.clearRefreshTokens(user._id.toString());
       }
       throw new AppError('Compromised Token', 403);

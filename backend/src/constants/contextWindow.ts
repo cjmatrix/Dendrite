@@ -1,3 +1,3 @@
 
-const CONTEXT_WINDOW=12
+const CONTEXT_WINDOW=14
 export default CONTEXT_WINDOW;

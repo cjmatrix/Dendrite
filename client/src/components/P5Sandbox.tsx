@@ -31,7 +31,7 @@ export default function P5Sandbox({ p5CodeString }: P5SandboxProps) {
  
   const iframeWrapperClasses = isFullscreen
     ? "relative w-full h-[90vh] max-w-7xl mx-auto shadow-[0_0_50px_rgba(0,0,0,0.5)] flex bg-zinc-900/40 rounded-2xl overflow-hidden border border-zinc-700/80"
-    : "relative w-[115%] -ml-[7.5%] max-w-[92vw] h-[700px] border border-zinc-700/50 rounded-xl bg-zinc-900/40 shadow-xl overflow-hidden self-center ";
+    : "relative w-[115%] -ml-[7.5%] max-w-[92vw] h-[700px]  rounded-xl   overflow-hidden self-center ";
 
   return (
     <div className={containerClasses}>
@@ -63,7 +63,7 @@ export default function P5Sandbox({ p5CodeString }: P5SandboxProps) {
           src="/sandbox_p5.html"
           title="Message-based Sandbox"
           sandbox="allow-scripts"
-          className="w-full h-full border-none"
+          className="w-full h-full "
           onLoad={() => {
              if (!isStreaming) {
                  iframeRef.current?.contentWindow?.postMessage({ code: p5CodeString }, "*");

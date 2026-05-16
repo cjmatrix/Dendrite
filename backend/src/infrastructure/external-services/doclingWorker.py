@@ -3,7 +3,7 @@ import json
 import logging
 from docling.document_converter import DocumentConverter
 
-# Disable unnecessary logging for clean stdout
+
 logging.getLogger("docling").setLevel(logging.ERROR)
 
 def run_extraction(file_path):
@@ -12,7 +12,7 @@ def run_extraction(file_path):
         result = converter.convert(file_path)
         markdown_text = result.document.export_to_markdown()
         
-        # Output ONLY the JSON to stdout
+     
         print(json.dumps({"markdown": markdown_text}))
     except Exception as e:
         print(json.dumps({"error": str(e)}))

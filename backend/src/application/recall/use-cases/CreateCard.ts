@@ -5,7 +5,7 @@ export class CreateCard {
   constructor(private recallRepository: IRecallRepository) {}
 
   async execute(userId: string, content: string, chatId: string) {
-    const nextReview = new Date(Date.now() + 5000); // 1 minute default (5 seconds effectively for demo?)
+    const nextReview = new Date(Date.now() + 60000); // 1 minute default (5 seconds effectively for demo?)
 
     
     const recall = await this.recallRepository.create({

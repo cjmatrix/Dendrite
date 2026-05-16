@@ -1,0 +1,5107 @@
+{
+  "info": {
+    "name": "Dendrites API",
+    "description": "Complete API documentation for the Dendrites AI Learning Companion.\n\nBase URL: {{baseUrl}} = http://localhost:5000/api/v1\n\nAuthentication: httpOnly cookies (accessToken + refreshToken) set automatically on login/register.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000/api/v1"
+    },
+    {
+      "key": "chatId",
+      "value": ""
+    },
+    {
+      "key": "folderId",
+      "value": ""
+    },
+    {
+      "key": "messageId",
+      "value": ""
+    },
+    {
+      "key": "cardId",
+      "value": ""
+    },
+    {
+      "key": "documentId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "🔐 Auth",
+      "description": "Authentication endpoints. Cookies are set/sent automatically.",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john@example.com\",\n  \"password\": \"securePass123\",\n  \"confirmPassword\": \"securePass123\"\n}"
+            },
+            "description": "Register a new user. Sets accessToken (15min) and refreshToken (7d) as httpOnly cookies."
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "originalRequest": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/auth/register",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "register"
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john@example.com\",\n  \"password\": \"securePass123\",\n  \"confirmPassword\": \"securePass123\"\n}"
+                },
+                "description": "Register a new user. Sets accessToken (15min) and refreshToken (7d) as httpOnly cookies."
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"message\": \"User registered successfully\",\n  \"data\": {\n    \"_id\": \"665a1b2c3d4e5f6a7b8c9d0e\",\n    \"name\": \"John Doe\",\n    \"email\": \"john@example.com\",\n    \"tier\": \"free\",\n    \"tokensUsed\": 0,\n    \"settings\": {\n      \"theme\": \"dark\",\n      \"defaultModel\": \"gemini-2.5-flash\",\n      \"saveHistory\": true\n    }\n  }\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized: No Token Provided\"\n}"
+            },
+            {
+              "name": "403 Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Forbidden: You do not have permission to access this resource\"\n}"
+            },
+            {
+              "name": "500 Internal Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Internal server error\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john@example.com\",\n  \"password\": \"securePass123\"\n}"
+            },
+            "description": "Login with email and password. Returns user object and sets auth cookies."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/auth/login",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "login"
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"john@example.com\",\n  \"password\": \"securePass123\"\n}"
+                },
+                "description": "Login with email and password. Returns user object and sets auth cookies."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Logged in successfully\",\n  \"data\": {\n    \"_id\": \"665a1b2c3d4e5f6a7b8c9d0e\",\n    \"name\": \"John Doe\",\n    \"email\": \"john@example.com\",\n    \"tier\": \"pro\",\n    \"tokensUsed\": 14320\n  }\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized: No Token Provided\"\n}"
+            },
+            {
+              "name": "403 Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Forbidden: You do not have permission to access this resource\"\n}"
+            },
+            {
+              "name": "500 Internal Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Internal server error\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "refresh"
+              ]
+            },
+            "description": "Silently refresh the accessToken using the refreshToken cookie. Called automatically by the frontend interceptor on 401."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/auth/refresh",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "refresh"
+                  ]
+                },
+                "description": "Silently refresh the accessToken using the refreshToken cookie. Called automatically by the frontend interceptor on 401."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"message\": \"Token refreshed\"\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized: No Token Provided\"\n}"
+            },
+            {
+              "name": "403 Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Forbidden: You do not have permission to access this resource\"\n}"
+            },
+            {
+              "name": "500 Internal Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Internal server error\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "logout"
+              ]
+            },
+            "description": "Invalidate refresh token and clear auth cookies."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/auth/logout",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "logout"
+                  ]
+                },
+                "description": "Invalidate refresh token and clear auth cookies."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"message\": \"Logged out successfully\"\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized: No Token Provided\"\n}"
+            },
+            {
+              "name": "403 Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Forbidden: You do not have permission to access this resource\"\n}"
+            },
+            {
+              "name": "500 Internal Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Internal server error\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Me",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            },
+            "description": "Get the currently authenticated user's profile. Requires valid accessToken cookie."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/auth/me",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "me"
+                  ]
+                },
+                "description": "Get the currently authenticated user's profile. Requires valid accessToken cookie."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"665a1b2c3d4e5f6a7b8c9d0e\",\n    \"name\": \"John Doe\",\n    \"email\": \"john@example.com\",\n    \"tier\": \"free\",\n    \"tokensUsed\": 5210,\n    \"settings\": {\n      \"theme\": \"dark\",\n      \"defaultModel\": \"gemini-2.5-flash\",\n      \"saveHistory\": true\n    }\n  }\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized: No Token Provided\"\n}"
+            },
+            {
+              "name": "403 Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Forbidden: You do not have permission to access this resource\"\n}"
+            },
+            {
+              "name": "500 Internal Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Internal server error\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update FCM Token",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/auth/fcm-token",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "fcm-token"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fcmToken\": \"firebase-cloud-messaging-token-here\"\n}"
+            },
+            "description": "Register or update Firebase Cloud Messaging token for push notifications (recall reminders)."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/auth/fcm-token",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "fcm-token"
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"fcmToken\": \"firebase-cloud-messaging-token-here\"\n}"
+                },
+                "description": "Register or update Firebase Cloud Messaging token for push notifications (recall reminders)."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"message\": \"FCM token updated successfully\",\n  \"data\": {\n    \"acknowledged\": true\n  }\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized: No Token Provided\"\n}"
+            },
+            {
+              "name": "403 Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Forbidden: You do not have permission to access this resource\"\n}"
+            },
+            {
+              "name": "500 Internal Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Internal server error\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "[PLANNED] Send OTP",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/auth/otp/send",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "otp",
+                "send"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john@example.com\"\n}"
+            },
+            "description": "🔜 PLANNED: Send a 6-digit OTP to the user's email for verification. Used during registration and password reset flows. OTP expires in 10 minutes. Store OTP hash in Redis with TTL."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/auth/otp/send",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "otp",
+                    "send"
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"john@example.com\"\n}"
+                },
+                "description": "🔜 PLANNED: Send a 6-digit OTP to the user's email for verification. Used during registration and password reset flows. OTP expires in 10 minutes. Store OTP hash in Redis with TTL."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"message\": \"OTP sent to john@example.com. Expires in 10 minutes.\",\n  \"data\": {\n    \"expiresAt\": \"2026-05-14T12:10:00Z\"\n  }\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized: No Token Provided\"\n}"
+            },
+            {
+              "name": "403 Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Forbidden: You do not have permission to access this resource\"\n}"
+            },
+            {
+              "name": "500 Internal Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Internal server error\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "[PLANNED] Verify OTP",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/auth/otp/verify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "otp",
+                "verify"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john@example.com\",\n  \"otp\": \"482917\"\n}"
+            },
+            "description": "🔜 PLANNED: Verify the OTP code. On success, mark the user's email as verified (set emailVerified: true on User model). Returns a short-lived verification token for password reset flow."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/auth/otp/verify",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "otp",
+                    "verify"
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"john@example.com\",\n  \"otp\": \"482917\"\n}"
+                },
+                "description": "🔜 PLANNED: Verify the OTP code. On success, mark the user's email as verified (set emailVerified: true on User model). Returns a short-lived verification token for password reset flow."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Email verified successfully\",\n  \"data\": {\n    \"emailVerified\": true,\n    \"verificationToken\": \"vt_abc123def456\"\n  }\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized: No Token Provided\"\n}"
+            },
+            {
+              "name": "403 Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Forbidden: You do not have permission to access this resource\"\n}"
+            },
+            {
+              "name": "500 Internal Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Internal server error\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "[PLANNED] Reset Password",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/auth/reset-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "reset-password"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john@example.com\",\n  \"verificationToken\": \"token-from-otp-verify\",\n  \"newPassword\": \"newSecurePass456\",\n  \"confirmPassword\": \"newSecurePass456\"\n}"
+            },
+            "description": "🔜 PLANNED: Reset password using the verification token obtained from OTP verify step."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/auth/reset-password",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "reset-password"
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"john@example.com\",\n  \"verificationToken\": \"token-from-otp-verify\",\n  \"newPassword\": \"newSecurePass456\",\n  \"confirmPassword\": \"newSecurePass456\"\n}"
+                },
+                "description": "🔜 PLANNED: Reset password using the verification token obtained from OTP verify step."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Password reset successfully. Please login with your new password.\"\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized: No Token Provided\"\n}"
+            },
+            {
+              "name": "403 Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Forbidden: You do not have permission to access this resource\"\n}"
+            },
+            {
+              "name": "500 Internal Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Internal server error\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "📁 Folders",
+      "description": "Hierarchical folder management for organizing chats.",
+      "item": [
+        {
+          "name": "Create Folder",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/folders/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "folders",
+                "create"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Machine Learning\",\n  \"parentId\": null\n}"
+            },
+            "description": "Create a new folder. Set parentId to null for root-level, or to another folder's _id for nesting."
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "originalRequest": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/folders/create",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "folders",
+                    "create"
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Machine Learning\",\n  \"parentId\": null\n}"
+                },
+                "description": "Create a new folder. Set parentId to null for root-level, or to another folder's _id for nesting."
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Folder created successfully\",\n  \"data\": {\n    \"_id\": \"f01a2b3c4d5e6f7a8b9c0d1e\",\n    \"userId\": \"665a1b2c3d4e5f6a7b8c9d0e\",\n    \"name\": \"Machine Learning\",\n    \"parentId\": null,\n    \"color\": \"default\",\n    \"isExpanded\": false,\n    \"createdAt\": \"2026-05-14T10:00:00Z\"\n  }\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized: No Token Provided\"\n}"
+            },
+            {
+              "name": "403 Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Forbidden: You do not have permission to access this resource\"\n}"
+            },
+            {
+              "name": "500 Internal Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Internal server error\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get All Folders",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/folders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "folders"
+              ]
+            },
+            "description": "Get all folders for the authenticated user. Returns flat list; client builds the tree."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/folders",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "folders"
+                  ]
+                },
+                "description": "Get all folders for the authenticated user. Returns flat list; client builds the tree."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"data\": [\n    {\n      \"_id\": \"f01a2b3c4d5e6f7a8b9c0d1e\",\n      \"name\": \"Machine Learning\",\n      \"parentId\": null,\n      \"isExpanded\": true,\n      \"color\": \"default\"\n    },\n    {\n      \"_id\": \"f02b3c4d5e6f7a8b9c0d1e2f\",\n      \"name\": \"Neural Networks\",\n      \"parentId\": \"f01a2b3c4d5e6f7a8b9c0d1e\",\n      \"isExpanded\": false,\n      \"color\": \"default\"\n    }\n  ]\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized: No Token Provided\"\n}"
+            },
+            {
+              "name": "403 Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Forbidden: You do not have permission to access this resource\"\n}"
+            },
+            {
+              "name": "500 Internal Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Internal server error\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Folder",
+          "request": {
+            "method": "PATCH",
+            "url": {
+              "raw": "{{baseUrl}}/folders/{{folderId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "folders",
+                "{{folderId}}"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Deep Learning\",\n  \"isExpanded\": true\n}"
+            },
+            "description": "Update folder name, expansion state, or other properties."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "PATCH",
+                "url": {
+                  "raw": "{{baseUrl}}/folders/{{folderId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "folders",
+                    "{{folderId}}"
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Deep Learning\",\n  \"isExpanded\": true\n}"
+                },
+                "description": "Update folder name, expansion state, or other properties."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Folder updated successfully\",\n  \"data\": {\n    \"_id\": \"f01a2b3c4d5e6f7a8b9c0d1e\",\n    \"name\": \"Deep Learning\",\n    \"isExpanded\": true\n  }\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized: No Token Provided\"\n}"
+            },
+            {
+              "name": "403 Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Forbidden: You do not have permission to access this resource\"\n}"
+            },
+            {
+              "name": "500 Internal Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Internal server error\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Delete Folder",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/folders/{{folderId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "folders",
+                "{{folderId}}"
+              ]
+            },
+            "description": "Delete a folder and all its contents (subfolders + chats + messages + vectors)."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "DELETE",
+                "url": {
+                  "raw": "{{baseUrl}}/folders/{{folderId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "folders",
+                    "{{folderId}}"
+                  ]
+                },
+                "description": "Delete a folder and all its contents (subfolders + chats + messages + vectors)."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Folder deleted successfully\",\n  \"data\": {\n    \"deletedChats\": 3,\n    \"deletedMessages\": 47,\n    \"deletedFolders\": 1\n  }\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized: No Token Provided\"\n}"
+            },
+            {
+              "name": "403 Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Forbidden: You do not have permission to access this resource\"\n}"
+            },
+            {
+              "name": "500 Internal Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Internal server error\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "[PLANNED] Set Folder Behavior",
+          "request": {
+            "method": "PATCH",
+            "url": {
+              "raw": "{{baseUrl}}/folders/{{folderId}}/behavior",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "folders",
+                "{{folderId}}",
+                "behavior"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"behaviorPrompt\": \"You are a Python tutor. Always explain concepts using Python examples. Use beginner-friendly language. When showing code, always include comments explaining each line.\",\n  \"isActive\": true\n}"
+            },
+            "description": "🔜 PLANNED: Set a custom behavior instruction for a folder. All chats created inside this folder will inherit this behavior prompt and prepend it to their system instruction. The behaviorPrompt field is a free-text string the user types describing how the AI should behave. isActive allows toggling without deleting."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "PATCH",
+                "url": {
+                  "raw": "{{baseUrl}}/folders/{{folderId}}/behavior",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "folders",
+                    "{{folderId}}",
+                    "behavior"
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"behaviorPrompt\": \"You are a Python tutor. Always explain concepts using Python examples. Use beginner-friendly language. When showing code, always include comments explaining each line.\",\n  \"isActive\": true\n}"
+                },
+                "description": "🔜 PLANNED: Set a custom behavior instruction for a folder. All chats created inside this folder will inherit this behavior prompt and prepend it to their system instruction. The behaviorPrompt field is a free-text string the user types describing how the AI should behave. isActive allows toggling without deleting."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Folder behavior updated\",\n  \"data\": {\n    \"folderId\": \"f01a2b3c4d5e6f7a8b9c0d1e\",\n    \"behaviorPrompt\": \"You are a Python tutor...\",\n    \"isActive\": true,\n    \"updatedAt\": \"2026-05-14T10:30:00Z\"\n  }\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized: No Token Provided\"\n}"
+            },
+            {
+              "name": "403 Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Forbidden: You do not have permission to access this resource\"\n}"
+            },
+            {
+              "name": "500 Internal Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Internal server error\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "[PLANNED] Get Folder Behavior",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/folders/{{folderId}}/behavior",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "folders",
+                "{{folderId}}",
+                "behavior"
+              ]
+            },
+            "description": "🔜 PLANNED: Retrieve the current behavior configuration for a folder. Returns { behaviorPrompt, isActive, updatedAt }."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/folders/{{folderId}}/behavior",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "folders",
+                    "{{folderId}}",
+                    "behavior"
+                  ]
+                },
+                "description": "🔜 PLANNED: Retrieve the current behavior configuration for a folder. Returns { behaviorPrompt, isActive, updatedAt }."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"folderId\": \"f01a2b3c4d5e6f7a8b9c0d1e\",\n    \"behaviorPrompt\": \"You are a Python tutor. Always explain concepts using Python examples.\",\n    \"isActive\": true,\n    \"updatedAt\": \"2026-05-14T10:30:00Z\"\n  }\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized: No Token Provided\"\n}"
+            },
+            {
+              "name": "403 Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Forbidden: You do not have permission to access this resource\"\n}"
+            },
+            {
+              "name": "500 Internal Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Internal server error\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "💬 Chats",
+      "description": "Chat CRUD, messaging, streaming, and file operations.",
+      "item": [
+        {
+          "name": "Create Chat",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/chats/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chats",
+                "create"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"SQL Fundamentals\",\n  \"folderId\": null\n}"
+            },
+            "description": "Create a new chat. Set folderId to place it inside a folder, or null for root level."
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "originalRequest": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/chats/create",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "chats",
+                    "create"
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"SQL Fundamentals\",\n  \"folderId\": null\n}"
+                },
+                "description": "Create a new chat. Set folderId to place it inside a folder, or null for root level."
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"c01a2b3c4d5e6f7a8b9c0d1e\",\n    \"userId\": \"665a1b2c3d4e5f6a7b8c9d0e\",\n    \"title\": \"SQL Fundamentals\",\n    \"folderId\": null,\n    \"contextParent\": null,\n    \"summary\": null,\n    \"tokenCount\": 0,\n    \"documents\": [],\n    \"createdAt\": \"2026-05-14T10:00:00Z\"\n  }\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized: No Token Provided\"\n}"
+            },
+            {
+              "name": "403 Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Forbidden: You do not have permission to access this resource\"\n}"
+            },
+            {
+              "name": "500 Internal Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Internal server error\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get All Chats",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/chats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chats"
+              ]
+            },
+            "description": "Get all chats for the authenticated user (excludes message content)."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/chats",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "chats"
+                  ]
+                },
+                "description": "Get all chats for the authenticated user (excludes message content)."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"data\": [\n    {\n      \"_id\": \"c01a2b3c4d5e6f7a8b9c0d1e\",\n      \"title\": \"SQL Fundamentals\",\n      \"folderId\": null,\n      \"contextParent\": null,\n      \"createdAt\": \"2026-05-14T10:00:00Z\"\n    },\n    {\n      \"_id\": \"c02b3c4d5e6f7a8b9c0d1e2f\",\n      \"title\": \"Python Basics\",\n      \"folderId\": \"f01a2b3c4d5e6f7a8b9c0d1e\",\n      \"contextParent\": null,\n      \"createdAt\": \"2026-05-13T08:00:00Z\"\n    }\n  ]\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized: No Token Provided\"\n}"
+            },
+            {
+              "name": "403 Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Forbidden: You do not have permission to access this resource\"\n}"
+            },
+            {
+              "name": "500 Internal Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Internal server error\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Chat by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/chats/{{chatId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chats",
+                "{{chatId}}"
+              ]
+            },
+            "description": "Get a single chat's metadata (title, summary, contextParent, documents, etc.)."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/chats/{{chatId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "chats",
+                    "{{chatId}}"
+                  ]
+                },
+                "description": "Get a single chat's metadata (title, summary, contextParent, documents, etc.)."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"c01a2b3c4d5e6f7a8b9c0d1e\",\n    \"title\": \"SQL Fundamentals\",\n    \"folderId\": null,\n    \"contextParent\": null,\n    \"summary\": \"Discussion about SQL basics including SELECT, WHERE, and JOIN clauses.\",\n    \"tokenCount\": 4820,\n    \"documents\": [\n      {\n        \"fileType\": \"document\",\n        \"filename\": \"sql_cheatsheet.pdf\",\n        \"extension\": \".pdf\",\n        \"fileUrl\": \"https://res.cloudinary.com/dendrites/docs/sql.pdf\"\n      }\n    ]\n  }\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized: No Token Provided\"\n}"
+            },
+            {
+              "name": "403 Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Forbidden: You do not have permission to access this resource\"\n}"
+            },
+            {
+              "name": "500 Internal Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Internal server error\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Chat Messages",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/chats/{{chatId}}/messages?limit=20&cursor=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chats",
+                "{{chatId}}",
+                "messages"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "cursor",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Get paginated messages for a chat. Uses cursor-based pagination (pass the oldest message _id as cursor for next page)."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/chats/{{chatId}}/messages?limit=20&cursor=",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "chats",
+                    "{{chatId}}",
+                    "messages"
+                  ],
+                  "query": [
+                    {
+                      "key": "limit",
+                      "value": "20"
+                    },
+                    {
+                      "key": "cursor",
+                      "value": ""
+                    }
+                  ]
+                },
+                "description": "Get paginated messages for a chat. Uses cursor-based pagination (pass the oldest message _id as cursor for next page)."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"messages\": [\n      {\n        \"_id\": \"m01\",\n        \"role\": \"user\",\n        \"content\": \"Explain SQL joins\",\n        \"createdAt\": \"2026-05-14T10:01:00Z\",\n        \"hasSubChat\": false\n      },\n      {\n        \"_id\": \"m02\",\n        \"role\": \"model\",\n        \"content\": \"## SQL Joins\\nSQL joins combine rows from two or more tables...\",\n        \"createdAt\": \"2026-05-14T10:01:05Z\",\n        \"hasSubChat\": true,\n        \"subChats\": [\n          {\n            \"subChatId\": \"sc01\",\n            \"relY\": 0.3\n          }\n        ]\n      }\n    ],\n    \"nextCursor\": \"m01\",\n    \"hasMore\": false\n  }\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized: No Token Provided\"\n}"
+            },
+            {
+              "name": "403 Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Forbidden: You do not have permission to access this resource\"\n}"
+            },
+            {
+              "name": "500 Internal Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Internal server error\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Chat",
+          "request": {
+            "method": "PATCH",
+            "url": {
+              "raw": "{{baseUrl}}/chats/{{chatId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chats",
+                "{{chatId}}"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Advanced SQL Joins\",\n  \"folderId\": \"target-folder-id\"\n}"
+            },
+            "description": "Update chat title, move to different folder, etc."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "PATCH",
+                "url": {
+                  "raw": "{{baseUrl}}/chats/{{chatId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "chats",
+                    "{{chatId}}"
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"Advanced SQL Joins\",\n  \"folderId\": \"target-folder-id\"\n}"
+                },
+                "description": "Update chat title, move to different folder, etc."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"c01a2b3c4d5e6f7a8b9c0d1e\",\n    \"title\": \"Advanced SQL Joins\",\n    \"folderId\": \"f01a2b3c4d5e6f7a8b9c0d1e\"\n  }\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized: No Token Provided\"\n}"
+            },
+            {
+              "name": "403 Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Forbidden: You do not have permission to access this resource\"\n}"
+            },
+            {
+              "name": "500 Internal Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Internal server error\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Delete Chat",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/chats/{{chatId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chats",
+                "{{chatId}}"
+              ]
+            },
+            "description": "Delete a chat and all its messages, code blocks, subchat data, and associated Qdrant vectors."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "DELETE",
+                "url": {
+                  "raw": "{{baseUrl}}/chats/{{chatId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "chats",
+                    "{{chatId}}"
+                  ]
+                },
+                "description": "Delete a chat and all its messages, code blocks, subchat data, and associated Qdrant vectors."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Chat deleted successfully\"\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized: No Token Provided\"\n}"
+            },
+            {
+              "name": "403 Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Forbidden: You do not have permission to access this resource\"\n}"
+            },
+            {
+              "name": "500 Internal Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Internal server error\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Send Message (SSE Stream)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/chats/{{chatId}}/message",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chats",
+                "{{chatId}}",
+                "message"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"Explain SQL joins with examples\",\n  \"mode\": \"general\",\n  \"imageUrl\": null\n}"
+            },
+            "description": "Send a message and receive AI response as Server-Sent Events (SSE) stream. Mode can be 'general' or 'visual' (P5.js). Response format: data: {text: '...'} chunks, then data: {type: 'metadata', userMessageId, modelMessageId}, then data: [DONE]."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/chats/{{chatId}}/message",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "chats",
+                    "{{chatId}}",
+                    "message"
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"message\": \"Explain SQL joins with examples\",\n  \"mode\": \"general\",\n  \"imageUrl\": null\n}"
+                },
+                "description": "Send a message and receive AI response as Server-Sent Events (SSE) stream. Mode can be 'general' or 'visual' (P5.js). Response format: data: {text: '...'} chunks, then data: {type: 'metadata', userMessageId, modelMessageId}, then data: [DONE]."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "plain",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "text/event-stream"
+                }
+              ],
+              "body": "data: {\"text\":\"## SQL Joins\\n\"}\n\ndata: {\"text\":\"There are four main types of joins:\\n\"}\n\ndata: {\"text\":\"1. **INNER JOIN** - Returns matching rows\\n\"}\n\ndata: {\"type\":\"metadata\",\"userMessageId\":\"m03\",\"modelMessageId\":\"m04\"}\n\ndata: [DONE]"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized: No Token Provided\"\n}"
+            },
+            {
+              "name": "403 Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Forbidden: You do not have permission to access this resource\"\n}"
+            },
+            {
+              "name": "500 Internal Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Internal server error\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Upload Image",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/chats/upload-image",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chats",
+                "upload-image"
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "image",
+                  "type": "file",
+                  "description": "Image file (JPEG, PNG, GIF, WebP, AVIF). Max 8MB."
+                },
+                {
+                  "key": "chatId",
+                  "type": "text",
+                  "value": "{{chatId}}"
+                }
+              ]
+            },
+            "description": "Upload an image to Cloudinary for use in multimodal chat. Returns { imageUrl }."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/chats/upload-image",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "chats",
+                    "upload-image"
+                  ]
+                },
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "image",
+                      "type": "file",
+                      "description": "Image file (JPEG, PNG, GIF, WebP, AVIF). Max 8MB."
+                    },
+                    {
+                      "key": "chatId",
+                      "type": "text",
+                      "value": "{{chatId}}"
+                    }
+                  ]
+                },
+                "description": "Upload an image to Cloudinary for use in multimodal chat. Returns { imageUrl }."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"imageUrl\": \"https://res.cloudinary.com/dendrites/chat-images/abc123.jpg\"\n  }\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized: No Token Provided\"\n}"
+            },
+            {
+              "name": "403 Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Forbidden: You do not have permission to access this resource\"\n}"
+            },
+            {
+              "name": "500 Internal Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Internal server error\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Upload Document",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/chats/{{chatId}}/upload-file",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chats",
+                "{{chatId}}",
+                "upload-file"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/octet-stream"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "<binary file data>"
+            },
+            "description": "Upload a document (PDF, code, text, Office docs). Triggers async LlamaParse + Semantic Chunking pipeline. Returns { documentId, fileUrl }. Track progress via the progress SSE endpoint."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/chats/{{chatId}}/upload-file",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "chats",
+                    "{{chatId}}",
+                    "upload-file"
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/octet-stream"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "<binary file data>"
+                },
+                "description": "Upload a document (PDF, code, text, Office docs). Triggers async LlamaParse + Semantic Chunking pipeline. Returns { documentId, fileUrl }. Track progress via the progress SSE endpoint."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"documentId\": \"doc_abc123\",\n    \"fileUrl\": \"https://res.cloudinary.com/dendrites/docs/report.pdf\",\n    \"filename\": \"report.pdf\",\n    \"extension\": \".pdf\"\n  }\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized: No Token Provided\"\n}"
+            },
+            {
+              "name": "403 Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Forbidden: You do not have permission to access this resource\"\n}"
+            },
+            {
+              "name": "500 Internal Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Internal server error\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Stream Document Progress (SSE)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/chats/{{chatId}}/documents/{{documentId}}/progress",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chats",
+                "{{chatId}}",
+                "documents",
+                "{{documentId}}",
+                "progress"
+              ]
+            },
+            "description": "SSE stream for real-time document processing progress. Events: queued → uploading → uploaded → chunking → completed/failed."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/chats/{{chatId}}/documents/{{documentId}}/progress",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "chats",
+                    "{{chatId}}",
+                    "documents",
+                    "{{documentId}}",
+                    "progress"
+                  ]
+                },
+                "description": "SSE stream for real-time document processing progress. Events: queued → uploading → uploaded → chunking → completed/failed."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "plain",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "text/event-stream"
+                }
+              ],
+              "body": "data: {\"documentId\":\"doc_abc123\",\"status\":\"uploading\",\"progress\":30,\"message\":\"Uploading to CDN...\"}\n\ndata: {\"documentId\":\"doc_abc123\",\"status\":\"chunking\",\"progress\":70,\"message\":\"Semantic chunking...\"}\n\ndata: {\"documentId\":\"doc_abc123\",\"status\":\"completed\",\"progress\":100,\"message\":\"Ready\"}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized: No Token Provided\"\n}"
+            },
+            {
+              "name": "403 Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Forbidden: You do not have permission to access this resource\"\n}"
+            },
+            {
+              "name": "500 Internal Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Internal server error\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Chat Documents",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/chats/{{chatId}}/documents",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chats",
+                "{{chatId}}",
+                "documents"
+              ]
+            },
+            "description": "List all uploaded documents (images + files) for a chat."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/chats/{{chatId}}/documents",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "chats",
+                    "{{chatId}}",
+                    "documents"
+                  ]
+                },
+                "description": "List all uploaded documents (images + files) for a chat."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"data\": [\n    {\n      \"fileType\": \"document\",\n      \"filename\": \"report.pdf\",\n      \"extension\": \".pdf\",\n      \"fileUrl\": \"https://res.cloudinary.com/dendrites/docs/report.pdf\",\n      \"uploadedAt\": \"2026-05-14T10:00:00Z\"\n    },\n    {\n      \"fileType\": \"image\",\n      \"filename\": \"diagram.png\",\n      \"extension\": \".png\",\n      \"fileUrl\": \"https://res.cloudinary.com/dendrites/chat-images/diagram.png\",\n      \"uploadedAt\": \"2026-05-14T10:05:00Z\"\n    }\n  ]\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized: No Token Provided\"\n}"
+            },
+            {
+              "name": "403 Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Forbidden: You do not have permission to access this resource\"\n}"
+            },
+            {
+              "name": "500 Internal Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Internal server error\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Remove Document",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/chats/{{chatId}}/documents?fileUrl=https://res.cloudinary.com/...",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chats",
+                "{{chatId}}",
+                "documents"
+              ],
+              "query": [
+                {
+                  "key": "fileUrl",
+                  "value": "https://res.cloudinary.com/..."
+                }
+              ]
+            },
+            "description": "Remove a document from a chat and delete its vectors from Qdrant."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "DELETE",
+                "url": {
+                  "raw": "{{baseUrl}}/chats/{{chatId}}/documents?fileUrl=https://res.cloudinary.com/...",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "chats",
+                    "{{chatId}}",
+                    "documents"
+                  ],
+                  "query": [
+                    {
+                      "key": "fileUrl",
+                      "value": "https://res.cloudinary.com/..."
+                    }
+                  ]
+                },
+                "description": "Remove a document from a chat and delete its vectors from Qdrant."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Document removed and vectors cleaned up\"\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized: No Token Provided\"\n}"
+            },
+            {
+              "name": "403 Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Forbidden: You do not have permission to access this resource\"\n}"
+            },
+            {
+              "name": "500 Internal Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Internal server error\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Stream Quick Chat (SSE)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/chats/{{chatId}}/quick-chat",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chats",
+                "{{chatId}}",
+                "quick-chat"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"Explain this in simpler terms\",\n  \"highlightedText\": \"The JOIN clause combines rows from two or more tables...\",\n  \"anchorMessageId\": \"msg-id-of-parent-message\",\n  \"history\": []\n}"
+            },
+            "description": "Stream a Quick Chat (sticky note) response. Contextualizes the AI around the highlighted text from a parent message. SSE format same as sendMessage."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/chats/{{chatId}}/quick-chat",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "chats",
+                    "{{chatId}}",
+                    "quick-chat"
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"message\": \"Explain this in simpler terms\",\n  \"highlightedText\": \"The JOIN clause combines rows from two or more tables...\",\n  \"anchorMessageId\": \"msg-id-of-parent-message\",\n  \"history\": []\n}"
+                },
+                "description": "Stream a Quick Chat (sticky note) response. Contextualizes the AI around the highlighted text from a parent message. SSE format same as sendMessage."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "plain",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "text/event-stream"
+                }
+              ],
+              "body": "data: {\"text\":\"In simpler terms, a JOIN is like \"}\n\ndata: {\"text\":\"merging two spreadsheets based on a common column.\"}\n\ndata: [DONE]"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized: No Token Provided\"\n}"
+            },
+            {
+              "name": "403 Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Forbidden: You do not have permission to access this resource\"\n}"
+            },
+            {
+              "name": "500 Internal Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Internal server error\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get SubChat",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/chats/{{chatId}}/subchat?messageId={{messageId}}&highlightedText=example",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chats",
+                "{{chatId}}",
+                "subchat"
+              ],
+              "query": [
+                {
+                  "key": "messageId",
+                  "value": "{{messageId}}"
+                },
+                {
+                  "key": "highlightedText",
+                  "value": "example"
+                }
+              ]
+            },
+            "description": "Retrieve a persisted SubChat (sticky note) for a specific message and highlighted text."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/chats/{{chatId}}/subchat?messageId={{messageId}}&highlightedText=example",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "chats",
+                    "{{chatId}}",
+                    "subchat"
+                  ],
+                  "query": [
+                    {
+                      "key": "messageId",
+                      "value": "{{messageId}}"
+                    },
+                    {
+                      "key": "highlightedText",
+                      "value": "example"
+                    }
+                  ]
+                },
+                "description": "Retrieve a persisted SubChat (sticky note) for a specific message and highlighted text."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"sc01\",\n    \"chatId\": \"c01a2b3c4d5e6f7a8b9c0d1e\",\n    \"messageId\": \"m02\",\n    \"highlightedText\": \"SQL joins combine rows\",\n    \"relY\": 0.3,\n    \"messages\": [\n      {\n        \"role\": \"user\",\n        \"content\": \"Explain this in simpler terms\"\n      },\n      {\n        \"role\": \"model\",\n        \"content\": \"A JOIN merges two tables based on a shared column.\"\n      }\n    ]\n  }\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized: No Token Provided\"\n}"
+            },
+            {
+              "name": "403 Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Forbidden: You do not have permission to access this resource\"\n}"
+            },
+            {
+              "name": "500 Internal Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Internal server error\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Save SubChat",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/chats/{{chatId}}/subchat",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "chats",
+                "{{chatId}}",
+                "subchat"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messageId\": \"parent-message-id\",\n  \"highlightedText\": \"The selected text\",\n  \"relY\": 0.45,\n  \"messages\": [\n    { \"role\": \"user\", \"content\": \"Explain this\" },\n    { \"role\": \"model\", \"content\": \"Here is the explanation...\" }\n  ]\n}"
+            },
+            "description": "Persist a Quick Chat conversation as a sticky note (SubChat) attached to a specific message."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/chats/{{chatId}}/subchat",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "chats",
+                    "{{chatId}}",
+                    "subchat"
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"messageId\": \"parent-message-id\",\n  \"highlightedText\": \"The selected text\",\n  \"relY\": 0.45,\n  \"messages\": [\n    { \"role\": \"user\", \"content\": \"Explain this\" },\n    { \"role\": \"model\", \"content\": \"Here is the explanation...\" }\n  ]\n}"
+                },
+                "description": "Persist a Quick Chat conversation as a sticky note (SubChat) attached to a specific message."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"message\": \"SubChat saved\",\n  \"data\": {\n    \"_id\": \"sc01\"\n  }\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized: No Token Provided\"\n}"
+            },
+            {
+              "name": "403 Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Forbidden: You do not have permission to access this resource\"\n}"
+            },
+            {
+              "name": "500 Internal Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Internal server error\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "🌲 Branch",
+      "description": "Hierarchical chat branching with context inheritance.",
+      "item": [
+        {
+          "name": "Inherit Context",
+          "request": {
+            "method": "PATCH",
+            "url": {
+              "raw": "{{baseUrl}}/branch/inherit/{{chatId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "branch",
+                "inherit",
+                "{{chatId}}"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contextParentId\": \"parent-chat-id\"\n}"
+            },
+            "description": "Link a chat to a parent chat for context inheritance. The child chat's sliding window will be filled from the parent's messages when the child has fewer than CONTEXT_WINDOW (20) messages."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "PATCH",
+                "url": {
+                  "raw": "{{baseUrl}}/branch/inherit/{{chatId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "branch",
+                    "inherit",
+                    "{{chatId}}"
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"contextParentId\": \"parent-chat-id\"\n}"
+                },
+                "description": "Link a chat to a parent chat for context inheritance. The child chat's sliding window will be filled from the parent's messages when the child has fewer than CONTEXT_WINDOW (20) messages."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Context inherited successfully\",\n  \"data\": {\n    \"_id\": \"c02b3c4d5e6f7a8b9c0d1e2f\",\n    \"contextParent\": \"c01a2b3c4d5e6f7a8b9c0d1e\"\n  }\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized: No Token Provided\"\n}"
+            },
+            {
+              "name": "403 Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Forbidden: You do not have permission to access this resource\"\n}"
+            },
+            {
+              "name": "500 Internal Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Internal server error\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Unlink Inheritance",
+          "request": {
+            "method": "PATCH",
+            "url": {
+              "raw": "{{baseUrl}}/branch/unlink/{{chatId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "branch",
+                "unlink",
+                "{{chatId}}"
+              ]
+            },
+            "description": "Remove the context inheritance link from a chat. Sets contextParent to null."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "PATCH",
+                "url": {
+                  "raw": "{{baseUrl}}/branch/unlink/{{chatId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "branch",
+                    "unlink",
+                    "{{chatId}}"
+                  ]
+                },
+                "description": "Remove the context inheritance link from a chat. Sets contextParent to null."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Inheritance unlinked successfully\",\n  \"data\": {\n    \"_id\": \"c02b3c4d5e6f7a8b9c0d1e2f\",\n    \"contextParent\": null\n  }\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized: No Token Provided\"\n}"
+            },
+            {
+              "name": "403 Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Forbidden: You do not have permission to access this resource\"\n}"
+            },
+            {
+              "name": "500 Internal Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Internal server error\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "🧠 Recall (Spaced Repetition)",
+      "description": "SM-2 based spaced repetition flashcard system.",
+      "item": [
+        {
+          "name": "Create Card",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/recall/save",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "recall",
+                "save"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"## SQL JOIN Types\\n- INNER JOIN: Returns matching rows from both tables\\n- LEFT JOIN: Returns all rows from left table...\",\n  \"chatId\": \"source-chat-id\"\n}"
+            },
+            "description": "Create a new recall card from selected AI response text. The SM-2 algorithm schedules the first review. A push notification is sent when the card is due."
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "originalRequest": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/recall/save",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "recall",
+                    "save"
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"content\": \"## SQL JOIN Types\\n- INNER JOIN: Returns matching rows from both tables\\n- LEFT JOIN: Returns all rows from left table...\",\n  \"chatId\": \"source-chat-id\"\n}"
+                },
+                "description": "Create a new recall card from selected AI response text. The SM-2 algorithm schedules the first review. A push notification is sent when the card is due."
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Card created successfully\",\n  \"data\": {\n    \"_id\": \"r01a2b3c4d5e6f7a8b9c0d1e\",\n    \"content\": \"## SQL JOIN Types\\n- INNER JOIN: Returns matching rows...\",\n    \"stage\": \"learning\",\n    \"stepIndex\": 0,\n    \"easeFactor\": 2.5,\n    \"interval\": 0,\n    \"nextReview\": \"2026-05-15T10:00:00Z\"\n  }\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized: No Token Provided\"\n}"
+            },
+            {
+              "name": "403 Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Forbidden: You do not have permission to access this resource\"\n}"
+            },
+            {
+              "name": "500 Internal Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Internal server error\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Due Cards",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/recall",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "recall"
+              ]
+            },
+            "description": "Get all recall cards that are currently due for review."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/recall",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "recall"
+                  ]
+                },
+                "description": "Get all recall cards that are currently due for review."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"data\": [\n    {\n      \"_id\": \"r01a2b3c4d5e6f7a8b9c0d1e\",\n      \"content\": \"## SQL JOIN Types...\",\n      \"stage\": \"learning\",\n      \"stepIndex\": 1,\n      \"easeFactor\": 2.5,\n      \"repetitions\": 1,\n      \"nextReview\": \"2026-05-14T10:00:00Z\",\n      \"breadCrumbs\": [\n        \"Machine Learning\",\n        \"SQL Fundamentals\"\n      ]\n    }\n  ]\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized: No Token Provided\"\n}"
+            },
+            {
+              "name": "403 Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Forbidden: You do not have permission to access this resource\"\n}"
+            },
+            {
+              "name": "500 Internal Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Internal server error\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Count Due Cards",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/recall/count",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "recall",
+                "count"
+              ]
+            },
+            "description": "Get the count of due cards. Used for the badge indicator in the sidebar."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/recall/count",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "recall",
+                    "count"
+                  ]
+                },
+                "description": "Get the count of due cards. Used for the badge indicator in the sidebar."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"count\": 7\n  }\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized: No Token Provided\"\n}"
+            },
+            {
+              "name": "403 Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Forbidden: You do not have permission to access this resource\"\n}"
+            },
+            {
+              "name": "500 Internal Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Internal server error\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Card (Review)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/recall/update/{{cardId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "recall",
+                "update",
+                "{{cardId}}"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 4\n}"
+            },
+            "description": "Submit a review rating (0-5) for a recall card. SM-2 algorithm recalculates interval, easeFactor, and nextReview. Ratings: 0=Complete blackout, 1=Incorrect, 2=Hard, 3=Good, 4=Easy, 5=Perfect."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/recall/update/{{cardId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "recall",
+                    "update",
+                    "{{cardId}}"
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"rating\": 4\n}"
+                },
+                "description": "Submit a review rating (0-5) for a recall card. SM-2 algorithm recalculates interval, easeFactor, and nextReview. Ratings: 0=Complete blackout, 1=Incorrect, 2=Hard, 3=Good, 4=Easy, 5=Perfect."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Card updated successfully\",\n  \"data\": {\n    \"_id\": \"r01a2b3c4d5e6f7a8b9c0d1e\",\n    \"stage\": \"review\",\n    \"stepIndex\": 2,\n    \"easeFactor\": 2.6,\n    \"interval\": 6,\n    \"nextReview\": \"2026-05-20T10:00:00Z\",\n    \"repetitions\": 2\n  }\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized: No Token Provided\"\n}"
+            },
+            {
+              "name": "403 Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Forbidden: You do not have permission to access this resource\"\n}"
+            },
+            {
+              "name": "500 Internal Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Internal server error\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Delete Card",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/recall/{{cardId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "recall",
+                "{{cardId}}"
+              ]
+            },
+            "description": "Delete a single recall card."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "DELETE",
+                "url": {
+                  "raw": "{{baseUrl}}/recall/{{cardId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "recall",
+                    "{{cardId}}"
+                  ]
+                },
+                "description": "Delete a single recall card."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Card deleted successfully\"\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized: No Token Provided\"\n}"
+            },
+            {
+              "name": "403 Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Forbidden: You do not have permission to access this resource\"\n}"
+            },
+            {
+              "name": "500 Internal Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Internal server error\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Clear All Cards",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/recall/clear",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "recall",
+                "clear"
+              ]
+            },
+            "description": "Delete all recall cards for the authenticated user."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "DELETE",
+                "url": {
+                  "raw": "{{baseUrl}}/recall/clear",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "recall",
+                    "clear"
+                  ]
+                },
+                "description": "Delete all recall cards for the authenticated user."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"message\": \"All cards cleared successfully\"\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized: No Token Provided\"\n}"
+            },
+            {
+              "name": "403 Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Forbidden: You do not have permission to access this resource\"\n}"
+            },
+            {
+              "name": "500 Internal Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Internal server error\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "💳 [PLANNED] Billing (Stripe)",
+      "description": "🔜 PLANNED: Stripe-based subscription billing. Manages free/pro/enterprise tiers.",
+      "item": [
+        {
+          "name": "[PLANNED] Create Checkout Session",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/billing/checkout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "billing",
+                "checkout"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"priceId\": \"price_xxx\",\n  \"tier\": \"pro\"\n}"
+            },
+            "description": "🔜 PLANNED: Create a Stripe Checkout session. Returns { sessionId, url } for redirecting the user to Stripe's hosted checkout page. priceId comes from your Stripe dashboard."
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "originalRequest": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/billing/checkout",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "billing",
+                    "checkout"
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"priceId\": \"price_xxx\",\n  \"tier\": \"pro\"\n}"
+                },
+                "description": "🔜 PLANNED: Create a Stripe Checkout session. Returns { sessionId, url } for redirecting the user to Stripe's hosted checkout page. priceId comes from your Stripe dashboard."
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"sessionId\": \"cs_test_abc123\",\n    \"url\": \"https://checkout.stripe.com/c/pay/cs_test_abc123\"\n  }\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized: No Token Provided\"\n}"
+            },
+            {
+              "name": "403 Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Forbidden: You do not have permission to access this resource\"\n}"
+            },
+            {
+              "name": "500 Internal Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Internal server error\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "[PLANNED] Stripe Webhook",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/billing/webhook",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "billing",
+                "webhook"
+              ]
+            },
+            "header": [
+              {
+                "key": "stripe-signature",
+                "value": "whsec_..."
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "<stripe event payload>"
+            },
+            "description": "🔜 PLANNED: Stripe webhook endpoint. Handles events: checkout.session.completed (upgrade tier), customer.subscription.deleted (downgrade to free), invoice.payment_failed (flag account). Must verify stripe-signature header."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/billing/webhook",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "billing",
+                    "webhook"
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "stripe-signature",
+                    "value": "whsec_..."
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "<stripe event payload>"
+                },
+                "description": "🔜 PLANNED: Stripe webhook endpoint. Handles events: checkout.session.completed (upgrade tier), customer.subscription.deleted (downgrade to free), invoice.payment_failed (flag account). Must verify stripe-signature header."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"received\": true\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized: No Token Provided\"\n}"
+            },
+            {
+              "name": "403 Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Forbidden: You do not have permission to access this resource\"\n}"
+            },
+            {
+              "name": "500 Internal Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Internal server error\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "[PLANNED] Get Subscription Status",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/billing/subscription",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "billing",
+                "subscription"
+              ]
+            },
+            "description": "🔜 PLANNED: Get the current user's subscription details: tier, stripeCustomerId, currentPeriodEnd, cancelAtPeriodEnd, tokensUsed, tokenLimit."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/billing/subscription",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "billing",
+                    "subscription"
+                  ]
+                },
+                "description": "🔜 PLANNED: Get the current user's subscription details: tier, stripeCustomerId, currentPeriodEnd, cancelAtPeriodEnd, tokensUsed, tokenLimit."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"tier\": \"pro\",\n    \"stripeCustomerId\": \"cus_abc123\",\n    \"currentPeriodEnd\": \"2026-06-14T00:00:00Z\",\n    \"cancelAtPeriodEnd\": false,\n    \"tokensUsed\": 142000,\n    \"tokenLimit\": 1000000\n  }\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized: No Token Provided\"\n}"
+            },
+            {
+              "name": "403 Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Forbidden: You do not have permission to access this resource\"\n}"
+            },
+            {
+              "name": "500 Internal Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Internal server error\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "[PLANNED] Create Customer Portal Session",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/billing/portal",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "billing",
+                "portal"
+              ]
+            },
+            "description": "🔜 PLANNED: Create a Stripe Customer Portal session for the user to manage their subscription (cancel, update payment method, view invoices). Returns { url }."
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "originalRequest": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/billing/portal",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "billing",
+                    "portal"
+                  ]
+                },
+                "description": "🔜 PLANNED: Create a Stripe Customer Portal session for the user to manage their subscription (cancel, update payment method, view invoices). Returns { url }."
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"url\": \"https://billing.stripe.com/p/session/test_abc123\"\n  }\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized: No Token Provided\"\n}"
+            },
+            {
+              "name": "403 Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Forbidden: You do not have permission to access this resource\"\n}"
+            },
+            {
+              "name": "500 Internal Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Internal server error\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "[PLANNED] Get Usage Stats",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/billing/usage",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "billing",
+                "usage"
+              ]
+            },
+            "description": "🔜 PLANNED: Get token usage statistics for the current billing period. Returns { tokensUsed, tokenLimit, messagesCount, percentUsed, resetDate }."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/billing/usage",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "billing",
+                    "usage"
+                  ]
+                },
+                "description": "🔜 PLANNED: Get token usage statistics for the current billing period. Returns { tokensUsed, tokenLimit, messagesCount, percentUsed, resetDate }."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"tokensUsed\": 142000,\n    \"tokenLimit\": 1000000,\n    \"messagesCount\": 328,\n    \"percentUsed\": 14.2,\n    \"resetDate\": \"2026-06-14T00:00:00Z\"\n  }\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized: No Token Provided\"\n}"
+            },
+            {
+              "name": "403 Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Forbidden: You do not have permission to access this resource\"\n}"
+            },
+            {
+              "name": "500 Internal Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Internal server error\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "🛡️ [PLANNED] Admin",
+      "description": "🔜 PLANNED: Admin-only endpoints. Protected by adminProtect middleware that checks User.role === 'admin'.",
+      "item": [
+        {
+          "name": "[PLANNED] Get All Users",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/admin/users?page=1&limit=20&search=&tier=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "search",
+                  "value": ""
+                },
+                {
+                  "key": "tier",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "🔜 PLANNED: List all users with pagination, search, and tier filter. Returns { users, total, page, totalPages }."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/admin/users?page=1&limit=20&search=&tier=",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "users"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "20"
+                    },
+                    {
+                      "key": "search",
+                      "value": ""
+                    },
+                    {
+                      "key": "tier",
+                      "value": ""
+                    }
+                  ]
+                },
+                "description": "🔜 PLANNED: List all users with pagination, search, and tier filter. Returns { users, total, page, totalPages }."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"users\": [\n      {\n        \"_id\": \"u01\",\n        \"name\": \"John Doe\",\n        \"email\": \"john@example.com\",\n        \"tier\": \"pro\",\n        \"tokensUsed\": 142000,\n        \"createdAt\": \"2026-01-15T00:00:00Z\"\n      },\n      {\n        \"_id\": \"u02\",\n        \"name\": \"Jane Smith\",\n        \"email\": \"jane@example.com\",\n        \"tier\": \"free\",\n        \"tokensUsed\": 3200,\n        \"createdAt\": \"2026-03-20T00:00:00Z\"\n      }\n    ],\n    \"total\": 1250,\n    \"page\": 1,\n    \"totalPages\": 63\n  }\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized: No Token Provided\"\n}"
+            },
+            {
+              "name": "403 Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Forbidden: You do not have permission to access this resource\"\n}"
+            },
+            {
+              "name": "500 Internal Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Internal server error\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "[PLANNED] Get User Details",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/:userId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users",
+                ":userId"
+              ]
+            },
+            "description": "🔜 PLANNED: Get detailed info for a specific user including chat count, message count, total tokens used, subscription status, and recall card stats."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/admin/users/:userId",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "users",
+                    ":userId"
+                  ]
+                },
+                "description": "🔜 PLANNED: Get detailed info for a specific user including chat count, message count, total tokens used, subscription status, and recall card stats."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"u01\",\n    \"name\": \"John Doe\",\n    \"email\": \"john@example.com\",\n    \"tier\": \"pro\",\n    \"tokensUsed\": 142000,\n    \"chatCount\": 45,\n    \"messageCount\": 1280,\n    \"recallCardCount\": 32,\n    \"stripeCustomerId\": \"cus_abc123\",\n    \"createdAt\": \"2026-01-15T00:00:00Z\"\n  }\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized: No Token Provided\"\n}"
+            },
+            {
+              "name": "403 Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Forbidden: You do not have permission to access this resource\"\n}"
+            },
+            {
+              "name": "500 Internal Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Internal server error\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "[PLANNED] Update User Tier",
+          "request": {
+            "method": "PATCH",
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/:userId/tier",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users",
+                ":userId",
+                "tier"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tier\": \"pro\",\n  \"reason\": \"Manually upgraded — beta tester reward\"\n}"
+            },
+            "description": "🔜 PLANNED: Manually upgrade/downgrade a user's tier. Useful for granting free Pro access to beta testers."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "PATCH",
+                "url": {
+                  "raw": "{{baseUrl}}/admin/users/:userId/tier",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "users",
+                    ":userId",
+                    "tier"
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"tier\": \"pro\",\n  \"reason\": \"Manually upgraded — beta tester reward\"\n}"
+                },
+                "description": "🔜 PLANNED: Manually upgrade/downgrade a user's tier. Useful for granting free Pro access to beta testers."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"message\": \"User tier updated to pro\",\n  \"data\": {\n    \"_id\": \"u01\",\n    \"tier\": \"pro\"\n  }\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized: No Token Provided\"\n}"
+            },
+            {
+              "name": "403 Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Forbidden: You do not have permission to access this resource\"\n}"
+            },
+            {
+              "name": "500 Internal Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Internal server error\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "[PLANNED] Ban/Suspend User",
+          "request": {
+            "method": "PATCH",
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/:userId/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users",
+                ":userId",
+                "status"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"suspended\",\n  \"reason\": \"Terms of service violation\"\n}"
+            },
+            "description": "🔜 PLANNED: Suspend or ban a user account. Status: active, suspended, banned."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "PATCH",
+                "url": {
+                  "raw": "{{baseUrl}}/admin/users/:userId/status",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "users",
+                    ":userId",
+                    "status"
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"suspended\",\n  \"reason\": \"Terms of service violation\"\n}"
+                },
+                "description": "🔜 PLANNED: Suspend or ban a user account. Status: active, suspended, banned."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"message\": \"User suspended\",\n  \"data\": {\n    \"_id\": \"u01\",\n    \"status\": \"suspended\"\n  }\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized: No Token Provided\"\n}"
+            },
+            {
+              "name": "403 Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Forbidden: You do not have permission to access this resource\"\n}"
+            },
+            {
+              "name": "500 Internal Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Internal server error\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "[PLANNED] Platform Analytics",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/admin/analytics",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "analytics"
+              ]
+            },
+            "description": "🔜 PLANNED: Get platform-wide analytics. Returns { totalUsers, activeUsersToday, totalChats, totalMessages, totalTokensConsumed, revenue: { mrr, activeSubscriptions }, tierDistribution: { free, pro, enterprise } }."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/admin/analytics",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "analytics"
+                  ]
+                },
+                "description": "🔜 PLANNED: Get platform-wide analytics. Returns { totalUsers, activeUsersToday, totalChats, totalMessages, totalTokensConsumed, revenue: { mrr, activeSubscriptions }, tierDistribution: { free, pro, enterprise } }."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"totalUsers\": 1250,\n    \"activeUsersToday\": 187,\n    \"totalChats\": 8420,\n    \"totalMessages\": 98500,\n    \"totalTokensConsumed\": 45200000,\n    \"revenue\": {\n      \"mrr\": 3580,\n      \"activeSubscriptions\": 298\n    },\n    \"tierDistribution\": {\n      \"free\": 952,\n      \"pro\": 270,\n      \"enterprise\": 28\n    }\n  }\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized: No Token Provided\"\n}"
+            },
+            {
+              "name": "403 Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Forbidden: You do not have permission to access this resource\"\n}"
+            },
+            {
+              "name": "500 Internal Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Internal server error\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "[PLANNED] Get Error Logs",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/admin/logs?level=error&limit=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "logs"
+              ],
+              "query": [
+                {
+                  "key": "level",
+                  "value": "error"
+                },
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "🔜 PLANNED: Retrieve recent error logs for monitoring. Filterable by level (error, warn, info)."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/admin/logs?level=error&limit=50",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "logs"
+                  ],
+                  "query": [
+                    {
+                      "key": "level",
+                      "value": "error"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "50"
+                    }
+                  ]
+                },
+                "description": "🔜 PLANNED: Retrieve recent error logs for monitoring. Filterable by level (error, warn, info)."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"data\": [\n    {\n      \"timestamp\": \"2026-05-14T09:15:00Z\",\n      \"level\": \"error\",\n      \"message\": \"Qdrant connection timeout\",\n      \"service\": \"embeddingWorker\"\n    }\n  ]\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized: No Token Provided\"\n}"
+            },
+            {
+              "name": "403 Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Forbidden: You do not have permission to access this resource\"\n}"
+            },
+            {
+              "name": "500 Internal Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Internal server error\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "[PLANNED] System Health",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/admin/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "health"
+              ]
+            },
+            "description": "🔜 PLANNED: Check health status of all services. Returns { mongodb, redis, qdrant, embeddingServer, geminiApi } with status (up/down) and latency for each."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/admin/health",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "health"
+                  ]
+                },
+                "description": "🔜 PLANNED: Check health status of all services. Returns { mongodb, redis, qdrant, embeddingServer, geminiApi } with status (up/down) and latency for each."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"mongodb\": {\n      \"status\": \"up\",\n      \"latencyMs\": 3\n    },\n    \"redis\": {\n      \"status\": \"up\",\n      \"latencyMs\": 1\n    },\n    \"qdrant\": {\n      \"status\": \"up\",\n      \"latencyMs\": 8\n    },\n    \"embeddingServer\": {\n      \"status\": \"up\",\n      \"latencyMs\": 45\n    },\n    \"geminiApi\": {\n      \"status\": \"up\",\n      \"latencyMs\": 210\n    }\n  }\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized: No Token Provided\"\n}"
+            },
+            {
+              "name": "403 Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Forbidden: You do not have permission to access this resource\"\n}"
+            },
+            {
+              "name": "500 Internal Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Internal server error\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "🔮 [PLANNED] Suggestions",
+      "description": "🔜 PLANNED: Inline query prediction and autocomplete using vector similarity + prefix matching.",
+      "item": [
+        {
+          "name": "[PLANNED] Get Inline Suggestions",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/suggestions/inline",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "suggestions",
+                "inline"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"prefix\": \"How do I implement\",\n  \"chatId\": \"current-chat-id\",\n  \"limit\": 5\n}"
+            },
+            "description": "🔜 PLANNED: Get inline query suggestions as the user types. Uses a hybrid approach: 1) Prefix match against recent user messages in the current chat + branch ancestors, 2) Vector similarity search against the user's historical queries across all chats. Returns ranked suggestions sorted by relevance. Should be debounced (300ms) on the frontend."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/suggestions/inline",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "suggestions",
+                    "inline"
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"prefix\": \"How do I implement\",\n  \"chatId\": \"current-chat-id\",\n  \"limit\": 5\n}"
+                },
+                "description": "🔜 PLANNED: Get inline query suggestions as the user types. Uses a hybrid approach: 1) Prefix match against recent user messages in the current chat + branch ancestors, 2) Vector similarity search against the user's historical queries across all chats. Returns ranked suggestions sorted by relevance. Should be debounced (300ms) on the frontend."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"data\": [\n    {\n      \"text\": \"How do I implement binary search in Python?\",\n      \"score\": 0.92,\n      \"source\": \"history\"\n    },\n    {\n      \"text\": \"How do I implement a linked list?\",\n      \"score\": 0.87,\n      \"source\": \"vector\"\n    },\n    {\n      \"text\": \"How do I implement authentication with JWT?\",\n      \"score\": 0.81,\n      \"source\": \"history\"\n    }\n  ]\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized: No Token Provided\"\n}"
+            },
+            {
+              "name": "403 Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Forbidden: You do not have permission to access this resource\"\n}"
+            },
+            {
+              "name": "500 Internal Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Internal server error\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "[PLANNED] Get Topic Suggestions",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/suggestions/topics?chatId={{chatId}}&limit=3",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "suggestions",
+                "topics"
+              ],
+              "query": [
+                {
+                  "key": "chatId",
+                  "value": "{{chatId}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "3"
+                }
+              ]
+            },
+            "description": "🔜 PLANNED: Get suggested follow-up topics based on the current chat's context and summary. Uses the chat's rolling summary + last few messages to generate relevant question suggestions via Gemini Flash Lite. Displayed as clickable chips below the input."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{baseUrl}}/suggestions/topics?chatId={{chatId}}&limit=3",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "suggestions",
+                    "topics"
+                  ],
+                  "query": [
+                    {
+                      "key": "chatId",
+                      "value": "{{chatId}}"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "3"
+                    }
+                  ]
+                },
+                "description": "🔜 PLANNED: Get suggested follow-up topics based on the current chat's context and summary. Uses the chat's rolling summary + last few messages to generate relevant question suggestions via Gemini Flash Lite. Displayed as clickable chips below the input."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"data\": [\n    {\n      \"text\": \"What are the time complexities of different JOIN types?\",\n      \"relevance\": 0.94\n    },\n    {\n      \"text\": \"How do indexes improve JOIN performance?\",\n      \"relevance\": 0.88\n    },\n    {\n      \"text\": \"When should I use a subquery instead of a JOIN?\",\n      \"relevance\": 0.82\n    }\n  ]\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized: No Token Provided\"\n}"
+            },
+            {
+              "name": "403 Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Forbidden: You do not have permission to access this resource\"\n}"
+            },
+            {
+              "name": "500 Internal Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Internal server error\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "[PLANNED] Log Suggestion Click",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/suggestions/click",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "suggestions",
+                "click"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"suggestionText\": \"How do I implement binary search?\",\n  \"source\": \"inline\",\n  \"chatId\": \"current-chat-id\"\n}"
+            },
+            "description": "🔜 PLANNED: Log when a user clicks a suggestion. Used for improving suggestion ranking over time. Source: 'inline' or 'topic'."
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "originalRequest": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{baseUrl}}/suggestions/click",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "suggestions",
+                    "click"
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"suggestionText\": \"How do I implement binary search?\",\n  \"source\": \"inline\",\n  \"chatId\": \"current-chat-id\"\n}"
+                },
+                "description": "🔜 PLANNED: Log when a user clicks a suggestion. Used for improving suggestion ranking over time. Source: 'inline' or 'topic'."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Suggestion click logged\"\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized: No Token Provided\"\n}"
+            },
+            {
+              "name": "403 Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Forbidden: You do not have permission to access this resource\"\n}"
+            },
+            {
+              "name": "500 Internal Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Internal server error\"\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -2,11 +2,74 @@ import React from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import P5Sandbox from "../P5Sandbox";
+import { MermaidBlock } from "react-markdown-mermaid";
+import plantumlEncoder from "plantuml-encoder";
 
 export const markdownComponents = {
+   MermaidBlock: ({ children }: { children: string }) => {
+    return (
+      <div className="my-6 flex justify-center  p-4 rounded-xl bordershadow-lg">
+        <MermaidBlock code={children} />
+      </div>
+    );
+  },
+
   code({ className, children, ...props }: any) {
     const match = /language-(\w+)/.exec(className || "");
-    const codeString = String(children).replace(/\n$/, "");
+   const codeString = Array.isArray(children) 
+    ? children.join("") 
+    : String(children).replace(/\n$/, "");
+
+    if (match && match[1] === "plantuml") {
+      const encoded = plantumlEncoder.encode(codeString);
+      const url = `https://www.plantuml.com/plantuml/svg/${encoded}`;
+
+      
+      return (
+        <div className="my-6 flex flex-col items-center  p-6 rounded-xl hover:scale-120 transition-all overflow-hidden">
+          <div><button></button></div>
+          <img 
+            src={url} 
+            alt="PlantUML Diagram" 
+            className="max-w-full h-auto" 
+            
+            style={{ filter: 'invert(0.9) hue-rotate(180deg)' }} 
+          />
+          {/* <a 
+            href={url} 
+            target="_blank" 
+            rel="noreferrer"
+            className="text-[10px] text-gray-500 mt-2 hover:underline"
+          >
+            Open Original SVG
+          </a> */}
+        </div>
+      );
+    }
+
+  if (match && match[1] === "mermaid") {
+   
+    return (
+    
+    <div className="my-6 w-full overflow-x-auto flex justify-center  p-4 rounded-xl ">
+      <div className="mermaid-container min-w-[600px] transition-all">
+        <MermaidBlock code={children} />
+      </div>
+      <style jsx global>{`
+        /* Target the mermaid SVG to ensure text remains legible */
+        .mermaid-container svg {
+          height: auto !important; /* Let the height grow based on content */
+          max-height: 500px;       /* Limit height if it gets too long */
+          width: 100% !important;
+        }
+        .mermaid-container .node text {
+          font-size: 16px !important; /* Force a readable font size */
+        }
+      `}</style>
+    </div>
+  );
+  }
+
     if (match && match[1] === "p5") {
       return <P5Sandbox p5CodeString={codeString} />;
     }
@@ -56,7 +119,7 @@ export const markdownComponents = {
       </div>
     ) : (
       <code
-        className="bg-zinc-700/40 px-[0.3rem] py-[0.1rem] mx-[0.3rem] my-[0.5rem] font-thin rounded-md text-amber-200/90 text-[14.5px] border border-zinc-600/30"
+        className="bg-zinc-700/20 px-[0.5rem] py-[0.2rem] mx-[0.3rem] my-[0.5rem] font-thin rounded-md text-amber-200/90 text-[14.5px] border border-zinc-600/30"
         {...props}
       >
         {children}

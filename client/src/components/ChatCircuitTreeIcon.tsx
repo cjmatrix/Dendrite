@@ -25,7 +25,7 @@ const TechNetworkIcon: React.FC<TechNetworkIconProps> = ({ primaryColor, ...prop
           <stop offset="0%" style={{ stopColor: '#33CCFF', stopOpacity: 1 }} />
           <stop offset="100%" style={{ stopColor: '#003366', stopOpacity: 1 }} />
         </linearGradient>
-
+        
         {/* Lighter Cyan gradient for chat bubbles */}
         <linearGradient id="chatBubbleGrad" x1="0%" y1="0%" x2="0%" y2="100%">
           <stop offset="0%" style={{ stopColor: '#66FFFF', stopOpacity: 1 }} />

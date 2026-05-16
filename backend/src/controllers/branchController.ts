@@ -11,10 +11,7 @@ export class BranchController extends BaseController {
     super();
   }
 
-  /**
-   * Inherit context from a parent chat branch
-   * POST /api/branch/inherit/:id
-   */
+  
   public inheritContext = async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
@@ -34,10 +31,7 @@ export class BranchController extends BaseController {
     }
   };
 
-  /**
-   * Unlink context inheritance for a chat
-   * PATCH /api/branch/unlink/:id
-   */
+
   public unlinkInheritance = async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);

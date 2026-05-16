@@ -5,6 +5,7 @@ import { IMessageRepository } from "../../../domain/chat/repositories/IMessageRe
 import { embeddingService } from "../../../services/EmbeddingService";
 import CONTEXT_WINDOW from "../../../constants/contextWindow";
 import { systemInstruction } from "../../../config/AIConfig";
+import { redisConfig, redisConnection } from "../../../config/redis";
 
 export class PrepareMessage {
   constructor(
@@ -12,6 +13,17 @@ export class PrepareMessage {
     private chatRepository: IChatRepository,
     private messageRepository: IMessageRepository,
   ) {}
+
+  private stripP5CodeBlocks(text: string): string {
+    if (!text) {
+      return "";
+    }
+
+    return text
+      .replace(/```p5\s*\n[\s\S]*?```/gi, "")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+  }
 
   async execute(
     chatId: string,
@@ -51,7 +63,8 @@ export class PrepareMessage {
     let deficit = CONTEXT_WINDOW - recentMessages.length;
     let parentChatId = chat.contextParent;
     let safetyDepth = 0;
-    while (parentChatId && deficit > 0 && safetyDepth < 300) {
+    let map = new Map();
+    while (parentChatId && deficit > 0 && safetyDepth < 100) {
       const parentMessages = await this.messageRepository.findRecentByChatId(
         parentChatId,
         deficit,
@@ -64,9 +77,16 @@ export class PrepareMessage {
         parentChatId,
         userId,
       );
+
+      if (parentChat) {
+        map.set(parentChat._id, {count:parentChat.unsummarizedCount,messages:[...parentMessages]});
+      }
       parentChatId = parentChat.contextParent;
+
       safetyDepth++;
     }
+
+    console.log(map, "🫐🫐🫐hereeeeeeeeeeeeeeeeeeee");
 
     // [oldest -> newest]
     recentMessages.reverse();
@@ -74,7 +94,7 @@ export class PrepareMessage {
     const recentMessagesText = recentMessages
       .map(
         (m: any) =>
-          `${m.content}${m.imageUrl ? `\nAttached image URL: ${m.imageUrl}` : ""}`,
+          `${this.stripP5CodeBlocks(m.content)}${m.imageUrl ? `\nAttached image URL: ${m.imageUrl}` : ""}`,
       )
       .join("\n");
 
@@ -97,7 +117,7 @@ export class PrepareMessage {
       if (!chatIdsToSearch.includes(parentIdStr)) {
         chatIdsToSearch.push(parentIdStr);
 
-        if (pChat.summary) {
+        if (pChat.summary && depth <= 1) {
           // Unshift so the oldest ancestors come first in the prompt
           inheritedSummaries.unshift({
             title: pChat.title || "Inherited Chat",
@@ -114,7 +134,7 @@ export class PrepareMessage {
       `\n🌲 [BRANCH ARCHITECTURE] Searching across ${chatIdsToSearch.length} chats in full lineage:`,
       chatIdsToSearch,
     );
-    
+
     const canRunVectorSearch =
       Array.isArray(finalCodeQueryVector) &&
       finalCodeQueryVector.length > 0 &&
@@ -232,43 +252,99 @@ export class PrepareMessage {
     }
 
     if (mode === "visual") {
-      dynamicSystemInstruction += `\n\nCRITICAL INSTRUCTION: The user has explicitly selected "Visual Mode". 
-- If the user asks to CREATE, EDIT, or MODIFY a visualization, you MUST output the raw valid JS code inside a single \`\`\`p5\`\`\` fenced code block, with NO explanations.
-- If the user asks a FOLLOW-UP question, asks for an EXPLANATION, or discusses the behavior of the current visual, you MUST answer politely with normal conversational text and explanations, and DO NOT output a \`\`\`p5\`\`\` block unless they explicitly ask for a code change.
+      dynamicSystemInstruction += `\n\n🎨 VISUAL MODE ACTIVE
+- To CREATE/EDIT a visualization → output ONLY raw JavaScript in one \`\`\`p5\`\`\` block, no extra text.
+- For conceptual/explanation questions → answer in normal text, no \`\`\`p5\`\`\` block unless explicitly requested.
+- If the user provides code to visualize → give explanation with code snippets alongside the visualization.
 
-Assume your code will be executed in a blank environment. You should write standard global p5 code (e.g., function setup() { createCanvas(600, 400); } function draw() { ... }).
-CRUCIAL: You MUST include a functional Pause/Resume button and also Next and Previous buttons with explanation of each steps in your sketch. You can use p5's \`createButton()\` or draw it manually using \`rect()\`. IF you use \`createButton()\`, you MUST explicitly call \`.position(x, y)\` (e.g., \`button.position(10, 10)\`) to place it safely over the canvas, otherwise it will corrupt the HTML flex layout and overlap elements! The button MUST successfully toggle between \`noLoop()\` to pause and \`loop()\` to resume the animation. Make everything interactive and look beautiful using modern colors!`;
+🌍 SCOPE: Visualize ANY topic — physics, chemistry, biology, math, data structures, algorithms, sorting, graphs, recursion, system architecture, code execution, memory, circuits, astronomy, geometry, statistics, or any educational/scientific concept. Prefer animations that teach step-by-step, not just decorative motion.
+
+📐 CANVAS & LAYOUT (CRITICAL — prevents overlap):
+- Canvas: \`createCanvas(windowWidth, windowHeight);\` — fills the iframe exactly.
+- Add \`function windowResized() { resizeCanvas(windowWidth, windowHeight); }\`
+-Background: Always call background('#F8FAFC') as the first line of draw().
+
+-Typography: Text should be high-contrast for readability. Use #1E293B for primary labels/titles and #475569 for secondary information.
+
+Shapes & Components:
+
+-Use a White (#FFFFFF) fill with a thin light-grey stroke (#E2E8F0) for containers or cards.
+-Accents: Use a Vibrant Indigo (#5046E5) for key interactive elements.
+
+Visual Style: Maintain a clean, airy aesthetic with plenty of padding and space between visual nodes.
+- LAYOUT ZONES (use these Y boundaries to prevent overlap):
+  • HEADER zone: y = 0 → 50. Title, mode label, legend go here.
+  • CONTROLS zone: y = 50 → 90. Buttons (Pause/Resume, Prev, Next, Reset) go here. Draw them as clickable rects with \`mousePressed()\`.
+  • BODY zone: y = 100 → height - 50. ALL drawings, animations, graphs live here. Never draw content above y=100 or below height-50.
+  • FOOTER zone: y = height-50 → height. Status text, step counters, annotations.
+- Center content horizontally in the body zone. Use \`width/2\` as anchor.
+- Keep labels readable: min 14px text, adequate contrast. Don't overcrowd — space elements with generous padding.
+🧭 INTERACTION:
+- For multi-step animations, add Pause/Resume + Prev/Next buttons in the CONTROLS zone.
+- Highlight the active element/step with a glow or distinct color.
+- Add labels, legends, units, and annotations where they help understanding.
+
+🛡️ OUTPUT RULES:
+- Global p5 mode (\`setup\`, \`draw\`, helper functions). No external libraries.
+- Code must be complete and runnable as-is.`;
     } else {
       dynamicSystemInstruction += `\n\nIMPORTANT: The user is currently in GENERAL mode. Do NOT produce any raw p5 code blocks or runnable visualization code. Under no circumstances output a fenced code block labeled \`p5\` or any JavaScript code intended to be executed as a visualization. If the user asks about a previous visualization, provide only a high-level textual description or pseudo-code, and NEVER include runnable p5 code unless the user explicitly switches to Visual Mode.`;
     }
 
     // Helper function image URL to base64
-    const urlToBase64 = async (url: string): Promise<string> => {
+    const urlToBase64 = async (
+      url: string,
+    ): Promise<{ base64: string; mimeType: string }> => {
       try {
+        const cacheJSON = await redisConnection.get(`image:${url}`);
+        if (cacheJSON) {
+          const cached = JSON.parse(cacheJSON);
+          return {
+            base64: cached.data || "",
+            mimeType: cached.mimeType || "image/jpeg",
+          };
+        }
+
         const response = await fetch(url);
+        const mimeType =
+          response.headers.get("content-type")?.split(";")[0] || "image/jpeg";
         const buffer = await response.arrayBuffer();
-        return Buffer.from(buffer).toString("base64");
+        const base64 = Buffer.from(buffer).toString("base64");
+
+        await redisConnection.setex(
+          `image:${url}`,
+          604800,
+          JSON.stringify({ data: base64, mimeType }),
+        );
+
+        return { base64, mimeType };
       } catch (error) {
         console.error("Error converting image URL to base64:", error);
-        return "";
+        return { base64: "", mimeType: "image/jpeg" };
       }
     };
 
     const contents: any[] = [{ text: dynamicSystemInstruction }];
 
     for (const msg of recentMessages) {
+      const sanitizedContent = this.stripP5CodeBlocks(msg.content);
+
       if (msg.role === "model") {
-        contents.push({ text: msg.content });
+        if (sanitizedContent) {
+          contents.push({ text: sanitizedContent });
+        }
       } else {
-        contents.push({ text: msg.content });
+        if (sanitizedContent) {
+          contents.push({ text: sanitizedContent });
+        }
         if (msg.imageUrl) {
           try {
-            const base64Data = await urlToBase64(msg.imageUrl);
-            if (base64Data) {
+            const imageData = await urlToBase64(msg.imageUrl);
+            if (imageData.base64) {
               contents.push({
                 inlineData: {
-                  mimeType: "image/jpeg",
-                  data: base64Data,
+                  mimeType: imageData.mimeType,
+                  data: imageData.base64,
                 },
               });
             }
@@ -279,6 +355,6 @@ CRUCIAL: You MUST include a functional Pause/Resume button and also Next and Pre
       }
     }
 
-    return { chat, contents, userMessageId: userMsg._id.toString() };
+    return { chat, contents, userMessageId: userMsg._id.toString() ,parentContext:map};
   }
 }

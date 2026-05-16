@@ -4,6 +4,7 @@ export interface IChatRepository {
   findAllByUserId(userId: string): Promise<any[]>;
   findByIdAndUserId(chatId: string, userId: string, options?: any): Promise<any | null>;
   update(chatId: string, userId: string, updates: any, options?: any): Promise<any | null>;
+  bulkResetUnsummarizedCount(chatIds: string[], userId: string, options?: any): Promise<any>;
   delete(chatId: string, userId: string): Promise<any | null>;
   findByFolderIds(userId: string, folderIds: string[]): Promise<any[]>;
   deleteManyByFolderIds(userId: string, folderIds: string[]): Promise<any>;

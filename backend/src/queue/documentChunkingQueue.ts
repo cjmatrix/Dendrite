@@ -63,7 +63,7 @@ new Worker(
           fileName,
           stage: 'upload',
           status: 'uploading',
-          progress: 5,
+          progress: 15,
           message: 'Uploading document to storage',
         });
 
@@ -76,7 +76,7 @@ new Worker(
         const result = await FileUploadService.uploadDocumentToCloudinary(tempFilePath);
         console.log(`[Stage 1] Upload complete: ${result.secure_url}`);
 
-        // Note: Document will be added to Chat after successful chunking in Stage 2
+        
 
         await job.updateProgress(15);
         await publishDocumentProgress({
@@ -86,7 +86,7 @@ new Worker(
           fileName,
           stage: 'upload',
           status: 'uploaded',
-          progress: 15,
+          progress: 40,
           cloudinaryUrl: result.secure_url,
           message: 'Upload complete, queuing chunking',
         });
@@ -143,7 +143,7 @@ new Worker(
           fileName,
           stage: 'chunk',
           status: 'chunking',
-          progress: 20,
+          progress: 70,
           cloudinaryUrl,
           message: 'Extracting and chunking document',
         });

@@ -6,11 +6,7 @@ import FileType from 'file-type';
 import cloudinary from '../config/cloudinary';
 import { AppError } from '../utils/AppError';
 
-/**
- * FileUploadService - handles all file upload operations
- * Separates file handling logic from the presentation layer (controller)
- * Ensures clean architecture by keeping infrastructure details isolated
- */
+
 export class FileUploadService {
   private static readonly PDF_TEMP_DIR = path.join(
     os.tmpdir(),
@@ -87,9 +83,10 @@ export class FileUploadService {
     }
   }
 
-  /**
-   * Validate Cloudinary configuration
-   */
+  
+   //Validate Cloudinary configuration
+  
+
   static validateCloudinaryConfig(): void {
     if (
       !process.env.CLOUDINARY_CLOUD_NAME ||
@@ -100,9 +97,11 @@ export class FileUploadService {
     }
   }
 
-  /**
-   * Upload image buffer to Cloudinary
-   */
+  
+   // Upload image buffer to Cloudinary
+   
+
+
   static async uploadImageToCloudinary(
     buffer: Buffer,
     mimetype: string,
@@ -126,9 +125,9 @@ export class FileUploadService {
     });
   }
 
-  /**
-   * Upload PDF/document file to Cloudinary
-   */
+  
+   // Upload PDF/document file to Cloudinary
+   
   static async uploadDocumentToCloudinary(
     filePath: string,
   ): Promise<{ secure_url: string }> {
@@ -151,9 +150,9 @@ export class FileUploadService {
     });
   }
 
-  /**
-   * Validate image file type
-   */
+  
+   // Validate image file type
+   
   static async validateImageFile(buffer: Buffer): Promise<void> {
     const detected = await FileType.fromBuffer(buffer);
 
@@ -165,9 +164,9 @@ export class FileUploadService {
     }
   }
 
-  /**
-   * Validate document file type by MIME and extension
-   */
+  
+   // Validate document file type by MIME and extension
+   
   static async validateDocumentFile(buffer: Buffer, filename?: string): Promise<void> {
     const detected = await FileType.fromBuffer(buffer);
     const detectedMime = detected?.mime ?? 'application/octet-stream';
@@ -179,14 +178,15 @@ export class FileUploadService {
 
     // If file-type failed or returned octet-stream, check filename extension
     let isAllowedByExt = false;
-    if (detectedMime === 'application/octet-stream' || !detected) {
-      if (filename) {
-        const ext = path.extname(filename).toLowerCase();
-        isAllowedByExt = this.ALLOWED_DOCUMENT_EXTENSIONS.has(ext);
-      } else {
-        isAllowedByExt = this.ALLOWED_DOCUMENT_EXTENSIONS.has(detectedExt);
-      }
-    }
+    // if (detectedMime === 'application/octet-stream' || !detected) {
+    //   if (filename) {
+    //     const ext = path.extname(filename).toLowerCase();
+    //     isAllowedByExt = this.ALLOWED_DOCUMENT_EXTENSIONS.has(ext);
+    //   } else {
+    //     isAllowedByExt = this.ALLOWED_DOCUMENT_EXTENSIONS.has(detectedExt);
+    //   }
+    // }
+     isAllowedByExt = this.ALLOWED_DOCUMENT_EXTENSIONS.has(detectedExt);
 
     if (!isAllowedMime && !isAllowedByExt) {
       throw new AppError(
@@ -196,17 +196,17 @@ export class FileUploadService {
     }
   }
 
-  /**
-   * Generate temporary file path
-   */
+  
+   // Generate temporary file path
+   
   static generateTempFilePath(originalFilename: string): string {
     const safeName = path.basename(originalFilename || 'document');
     return path.join(this.PDF_TEMP_DIR, `${Date.now()}-${safeName}`);
   }
 
-  /**
-   * Detect MIME type from file path
-   */
+  
+   // Detect MIME type from file path
+   
   static async getMimeType(filePath: string): Promise<string> {
     try {
       const buffer = await fsp.readFile(filePath, { flag: 'r' });
@@ -233,14 +233,14 @@ export class FileUploadService {
     }
   }
 
-  /**
-   * Clean up temporary file
-   */
+  
+  // Clean up temporary file
+   
   static async cleanupTempFile(filePath: string): Promise<void> {
     try {
       await fsp.unlink(filePath);
     } catch (err) {
-      // Silently ignore cleanup errors
+     
     }
   }
 }

@@ -9,10 +9,7 @@ export class FolderController extends BaseController {
     super();
   }
 
-  /**
-   * Create a new folder
-   * POST /api/folders
-   */
+ 
   public createFolder = async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
@@ -31,10 +28,7 @@ export class FolderController extends BaseController {
     }
   };
 
-  /**
-   * Get all folders for the authenticated user
-   * GET /api/folders
-   */
+ 
   public getFolders = async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
@@ -48,10 +42,7 @@ export class FolderController extends BaseController {
     }
   };
 
-  /**
-   * Update a folder
-   * PATCH /api/folders/:id
-   */
+  
   public updateFolder = async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
@@ -71,10 +62,7 @@ export class FolderController extends BaseController {
     }
   };
 
-  /**
-   * Delete a folder and all associated chats
-   * DELETE /api/folders/:id
-   */
+  
   public deleteFolder = async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
@@ -90,5 +78,5 @@ export class FolderController extends BaseController {
   };
 }
 
-// Export singleton instance for use in routes
+
 export const folderController = new FolderController();

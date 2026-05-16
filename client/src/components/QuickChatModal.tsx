@@ -17,6 +17,7 @@ import rehypeKatex from "rehype-katex";
 import { markdownComponents } from "./markdown/MarkdownComponents";
 import Draggable from "react-draggable";
 import { useQuickChat } from "../hooks/useQuickChat";
+import { MessageContent } from "./MessageContent";
 
 interface QuickChatModalProps {
   isOpen: boolean;
@@ -88,7 +89,7 @@ export const QuickChatModal: React.FC<QuickChatModalProps> = ({
   return (
     <>
       <div
-        className={`fixed inset-0 z-100 ${showBackgroundContent ? "bg-transparent pointer-events-none" : "bg-black/60 backdrop-blur-sm"}`}
+        className={`fixed inset-0 z-100 ${showBackgroundContent ? "bg-transparent pointer-events-none" : "bg-black/10 backdrop-blur-sm"}`}
         onClick={!showBackgroundContent ? onClose : undefined}
       />
 
@@ -208,20 +209,14 @@ export const QuickChatModal: React.FC<QuickChatModalProps> = ({
                     className={`max-w-[85%] px-4 py-3 rounded-2xl text-[15px] leading-relaxed ${
                       msg.role === "user"
                         ? "bg-blue-600 text-white rounded-tr-sm shadow-lg shadow-blue-900/20"
-                        : "bg-white/5 text-gray-200 rounded-tl-sm border border-white/5"
+                        : "bg-white/4 text-gray-200 rounded-tl-sm border border-white/5 w-[100vw]"
                     }`}
                   >
                     {msg.role === "user" ? (
                       msg.content
                     ) : (
                       <div className="markdown-body">
-                        <ReactMarkdown
-                          remarkPlugins={[remarkGfm, remarkMath]}
-                          rehypePlugins={[rehypeKatex]}
-                          components={markdownComponents}
-                        >
-                          {msg.content}
-                        </ReactMarkdown>
+                        <MessageContent content={msg.content}></MessageContent>
                       </div>
                     )}
                   </div>
@@ -248,13 +243,7 @@ export const QuickChatModal: React.FC<QuickChatModalProps> = ({
                 <div className="max-w-[85%] px-4 py-3 rounded-2xl text-[15px] leading-relaxed bg-white/5 text-gray-200 rounded-tl-sm border border-white/5">
                   {streamingText ? (
                     <div className="markdown-body">
-                      <ReactMarkdown
-                        remarkPlugins={[remarkGfm, remarkMath]}
-                        rehypePlugins={[rehypeKatex]}
-                        components={markdownComponents}
-                      >
-                        {streamingText}
-                      </ReactMarkdown>
+                       <MessageContent content={streamingText}></MessageContent>
                     </div>
                   ) : (
                     <span className="flex gap-1.5 items-center h-6">

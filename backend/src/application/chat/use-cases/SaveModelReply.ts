@@ -14,21 +14,24 @@ import { IChatRepository } from "../../../domain/chat/repositories/IChatReposito
 import { IMessageRepository } from "../../../domain/chat/repositories/IMessageRepository";
 import { ICodeBlockRepository } from "../../../domain/chat/repositories/ICodeBlockRepository";
 import { IOutboxEventRepository } from "../../../domain/outbox/repositories/IOutboxEventRepository";
+import { estimateTokenCount } from "../../../utils/tokenCounter";
 
 export function extractCodeBlocks(text: string) {
   const regex = /```(\w+)?\n([\s\S]*?)```/g;
   const blocks: { language: string; code: string; hash: string }[] = [];
 
   let match;
+  let filterLang = ["plantuml", "p5"];
   while ((match = regex.exec(text)) !== null) {
     const lang = (match[1] || "text").toLowerCase();
     const code = match[2].trim();
-
-    blocks.push({
-      language: lang,
-      code,
-      hash: hashCode(code),
-    });
+    if (!filterLang.includes(lang) && estimateTokenCount(code)>60) {
+      blocks.push({
+        language: lang,
+        code,
+        hash: hashCode(code),
+      });
+    }
   }
   return blocks;
 }
@@ -41,7 +44,12 @@ export class SaveModelReply {
     private outboxRepository: IOutboxEventRepository,
   ) {}
 
-  async execute(chatId: string, userId: string, modelReply: string) {
+  async execute(
+    chatId: string,
+    userId: string,
+    modelReply: string,
+    parentContext: Map<any, any>,
+  ) {
     const chat = await this.chatRepository.findByIdAndUserId(chatId, userId);
 
     if (!chat) {
@@ -68,23 +76,37 @@ export class SaveModelReply {
 
       let messageToCompress: any[] = [];
 
-      if (updatedChat && updatedChat.unsummarizedCount >= CONTEXT_WINDOW) {
+      let totalUnCount = updatedChat.unsummarizedCount;
+      const totalParentMessagesToCompress: any[] = [];
+      const lineageChatIds = [chatId];
+
+      if (parentContext && parentContext.size > 0) {
+        [...parentContext.entries()].forEach(([parentChatId, obj]) => {
+          totalUnCount += obj.count;
+          if(obj.count!==0){
+            totalParentMessagesToCompress.push(...obj.messages);
+          }
+          
+          lineageChatIds.push(parentChatId.toString());
+        });
+      }
+
+      if (updatedChat && totalUnCount >= CONTEXT_WINDOW) {
         const recent = await this.messageRepository.findRecentByChatId(
           chatId,
           CONTEXT_WINDOW,
           { session },
         );
-        messageToCompress = recent.reverse();
+        const totalRecent = [...recent, ...totalParentMessagesToCompress];
+        messageToCompress = totalRecent.reverse();
         console.log(
           "Message to compress /n hereee-------------------",
           messageToCompress,
         );
 
-        // Reset the counter atomically
-        await this.chatRepository.update(
-          chatId,
+        await this.chatRepository.bulkResetUnsummarizedCount(
+          lineageChatIds,
           userId,
-          { unsummarizedCount: 0 },
           { session },
         );
       }

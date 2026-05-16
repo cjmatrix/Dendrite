@@ -31,10 +31,8 @@ export class ChatController extends BaseController {
     return this.upload.single("image");
   }
 
-  /**
-   * Upload a chat image to Cloudinary
-   * POST /api/chats/upload/image
-   */
+ 
+  
   public uploadChatImage = async (
     req: Request,
     res: Response,
@@ -47,7 +45,7 @@ export class ChatController extends BaseController {
         throw new AppError("chatId is required and must be a string", 400);
       }
 
-      // Validate that the chat exists and belongs to the user
+     
       const chatRepository = DIContainer.getChatRepository();
       const chat = await chatRepository.findByIdAndUserId(chatId, userId);
       if (!chat) {
@@ -82,16 +80,18 @@ export class ChatController extends BaseController {
     }
   };
 
-  /**
-   * Upload a chat PDF/document to Cloudinary
-   * POST /api/chats/:id/upload/pdf
-  */
+
+
+
+
+
+
   public uploadChatPdf = async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
       const chatId = this.getRouteParam(req, "id");
 
-      // Validate that the chat exists and belongs to the user
+   
       const chatRepository = DIContainer.getChatRepository();
       const chat = await chatRepository.findByIdAndUserId(chatId, userId);
       if (!chat) {
@@ -226,12 +226,12 @@ export class ChatController extends BaseController {
             return;
           }
 
-          // userId and chatId are already validated at the top of the method
+          
 
           const documentFileName = fileName || "document";
           const documentId = crypto.randomUUID();
 
-          // QUEUE JOB - STAGE 1: UPLOAD TO CLOUDINARY
+          //  STAGE 1: UPLOAD TO CLOUDINARY
           await documentChunkingQueue.add(
             "chunk-document",
             {
@@ -303,10 +303,7 @@ export class ChatController extends BaseController {
     }
   };
 
-  /**
-   * Stream document upload/chunk progress via SSE
-   * GET /api/chats/:id/documents/:documentId/progress
-   */
+
   public streamDocumentProgress = async (
     req: Request,
     res: Response,
@@ -415,10 +412,6 @@ export class ChatController extends BaseController {
     }
   };
 
-  /**
-     Create a new chat
-     POST /api/chats
-   */
   public createChat = async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
@@ -437,10 +430,9 @@ export class ChatController extends BaseController {
     }
   };
 
-  /**
-   * Get all chats for the authenticated user
-   * GET /api/chats
-   */
+
+
+
 
   public getChats = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -455,10 +447,10 @@ export class ChatController extends BaseController {
     }
   };
 
-  /*
-    Get a specific chat by ID
-   GET /api/chats/:id
-   */
+
+
+
+
   public getChatById = async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
@@ -473,10 +465,12 @@ export class ChatController extends BaseController {
     }
   };
 
-  /*
-   Get messages for a specific chat
-   GET /api/chats/:id/messages
-   */
+
+
+
+
+
+
   public getChatMessages = async (
     req: Request,
     res: Response,
@@ -504,10 +498,10 @@ export class ChatController extends BaseController {
     }
   };
 
-  /*
-    Get uploaded documents for a chat
-    GET /api/chats/:id/documents
-   */
+
+
+ 
+
   public getChatDocuments = async (
     req: Request,
     res: Response,
@@ -530,10 +524,7 @@ export class ChatController extends BaseController {
     }
   };
 
-  /*
-    Remove a document from a chat
-    DELETE /api/chats/:id/documents
-   */
+
   public removeDocument = async (
     req: Request,
     res: Response,
@@ -576,10 +567,7 @@ export class ChatController extends BaseController {
     }
   };
 
-  /*
-    Update a chat
-    PATCH /api/chats/:id
-   */
+
   public updateChat = async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
@@ -605,10 +593,7 @@ export class ChatController extends BaseController {
     }
   };
 
-  /**
-   * Delete a chat
-   * DELETE /api/chats/:id
-   */
+ 
   public deleteChat = async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
@@ -623,10 +608,7 @@ export class ChatController extends BaseController {
     }
   };
 
-  /*
-  Send a message and get AI streaming response
-    POST /api/chats/:id/send-message
-   */
+
   public sendMessage = async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
@@ -685,7 +667,7 @@ export class ChatController extends BaseController {
 
      
       const prepareMessageUseCase = DIContainer.getPrepareMessageUseCase();
-      const { contents, userMessageId } = await prepareMessageUseCase.execute(
+      const { contents, userMessageId,parentContext } = await prepareMessageUseCase.execute(
         id,
         userId,
         queryText,
@@ -776,6 +758,7 @@ export class ChatController extends BaseController {
           id,
           userId,
           fullReply,
+          parentContext
         );
 
         res.write(
@@ -805,10 +788,7 @@ export class ChatController extends BaseController {
     }
   };
 
-  /*
-    Stream quick chat response for highlighted text
-    POST /api/chats/:id/quick-chat
-   */
+ 
   public streamQuickChat = async (
     req: Request,
     res: Response,
@@ -888,10 +868,8 @@ export class ChatController extends BaseController {
     }
   };
 
-  /*
-    Get a sub-chat (highlight conversation)
-    GET /api/chats/:id/subchat
-   */
+
+ 
   public getSubChat = async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
@@ -915,10 +893,8 @@ export class ChatController extends BaseController {
     }
   };
 
-  /*
-    Save a sub-chat (highlight conversation)
-    POST /api/chats/:id/subchat
-   */
+  
+  
 
   public saveSubChat = async (req: Request, res: Response): Promise<void> => {
     try {
