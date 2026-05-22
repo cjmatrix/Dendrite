@@ -11,3 +11,5 @@ filter out p5 code blocks during content message prep
 fix every 7 minute code block sweper for geneating decription
 
 create breathing room for summurizing
+
+recall should have outbox pettern becuase im only depend on redis which may crash and lost the jobs

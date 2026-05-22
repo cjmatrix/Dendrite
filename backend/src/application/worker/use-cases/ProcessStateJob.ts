@@ -78,7 +78,7 @@ export class ProcessStateJob {
       let updatedSummary = await this.redisConnection.get(cacheKey);
 
       if (!updatedSummary) {
-        console.log(`🧠 Calling LLM for summary (${stateOutboxEventId})`);
+        console.log(` Calling LLM for summary (${stateOutboxEventId})`);
 
         const rawSummary = await generateRecursiveSummary(
           previousSummary || null,
@@ -95,7 +95,7 @@ export class ProcessStateJob {
         );
 
       } else {
-        console.log(`♻️ Using cached summary for ${stateOutboxEventId}`);
+        console.log(` Using cached summary for ${stateOutboxEventId}`);
       }
 
       await this.chatRepository.update(

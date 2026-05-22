@@ -106,11 +106,7 @@ new Worker(
           {
             jobId: `${documentId}-chunk`,
             priority: 10,
-            attempts: 3,
-            backoff: {
-              type: 'exponential',
-              delay: 5000
-            }
+            attempts: 1,
           }
         );
 

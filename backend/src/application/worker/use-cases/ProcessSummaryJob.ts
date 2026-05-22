@@ -38,7 +38,7 @@ export class ProcessSummaryJob {
      
       if (contextChunks.length === 0) {
         console.warn(
-          `⚠️ No valid chunks for outbox ${summaryOutboxEventId} — marking processed`
+          `🛑 No valid chunks for outbox ${summaryOutboxEventId}   marking processed`
         );
         await this.outboxRepository.updateStatus(
           summaryOutboxEventId,
@@ -50,7 +50,7 @@ export class ProcessSummaryJob {
     
       if (contextChunks.length > 50) {
         console.warn(
-          `⚠️ High chunk count (${contextChunks.length}) — truncating to 50`
+          `🛑 High chunk count (${contextChunks.length})   truncating to 50`
         );
         contextChunks.splice(50);
       }

@@ -7,7 +7,7 @@ export class ProcessDescriptionJob {
   constructor(
     private codeBlockRepository: ICodeBlockRepository,
     private outboxRepository: IOutboxEventRepository,
-    private redisConnection: any, // or ICacheRepository
+    private redisConnection: any, 
     private embeddingCodeDescFunc: (event: any, content: any) => Promise<void>
   ) {}
 
@@ -15,7 +15,7 @@ export class ProcessDescriptionJob {
     const finalResults: { [key: string]: string } = {};
     const toProcessBlocks: typeof blocks = [];
 
-    // 1. Check Redis Cache
+    
     for (const block of blocks) {
       const redisKey = `code_dedup:${block.hash}`;
       const cachedDescription = await this.redisConnection.get(redisKey);
@@ -30,7 +30,7 @@ export class ProcessDescriptionJob {
     
     // 2. Generate Missing Descriptions via LLM
     if (toProcessBlocks.length > 0) {
-      console.log(`🤖 Batching description generation for ${toProcessBlocks.length} blocks...`);
+      console.log(` Batching description generation for ${toProcessBlocks.length} blocks...`);
       
       const batchResults = await generateBatchCodeDescriptions(
         toProcessBlocks.map(b => ({ id: b._id, code: b.code, language: b.language }))

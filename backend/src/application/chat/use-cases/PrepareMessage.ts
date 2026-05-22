@@ -253,6 +253,7 @@ export class PrepareMessage {
 
     if (mode === "visual") {
       dynamicSystemInstruction += `\n\n🎨 VISUAL MODE ACTIVE
+      IMPORTANT GENERATE P5 VISUALS ONLY IF USER EXPLICITLY ASKED FOR VISUALIZATION and do not gnerete visualization along with explanation Generate p5 code or Explanation not both.
 - To CREATE/EDIT a visualization → output ONLY raw JavaScript in one \`\`\`p5\`\`\` block, no extra text.
 - For conceptual/explanation questions → answer in normal text, no \`\`\`p5\`\`\` block unless explicitly requested.
 - If the user provides code to visualize → give explanation with code snippets alongside the visualization.
@@ -274,7 +275,7 @@ Shapes & Components:
 Visual Style: Maintain a clean, airy aesthetic with plenty of padding and space between visual nodes.
 - LAYOUT ZONES (use these Y boundaries to prevent overlap):
   • HEADER zone: y = 0 → 50. Title, mode label, legend go here.
-  • CONTROLS zone: y = 50 → 90. Buttons (Pause/Resume, Prev, Next, Reset) go here. Draw them as clickable rects with \`mousePressed()\`.
+  • IMPORTANT CONTROLS zone: y = 50 → 90. Buttons (Pause/Resume, Prev, Next, Reset Its IMPORTANT ATLEAST TO ADD THESE BUTTONS) go here. Draw them as clickable rects with \`mousePressed()\`.
   • BODY zone: y = 100 → height - 50. ALL drawings, animations, graphs live here. Never draw content above y=100 or below height-50.
   • FOOTER zone: y = height-50 → height. Status text, step counters, annotations.
 - Center content horizontally in the body zone. Use \`width/2\` as anchor.

@@ -1,6 +1,11 @@
 import { embeddingService } from "./EmbeddingService";
 import fs from "fs";
+import crypto from "crypto";
 import LlamaCloud from "@llamaindex/llama-cloud";
+import { redisConnection } from "../config/redis";
+
+const LLAMA_CACHE_PREFIX = "llamaparse:";
+const LLAMA_CACHE_TTL = 60 * 60 * 24; // 24 hours
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -256,7 +261,7 @@ async function semanticChunk(
     similarityThreshold = 0.45,
     windowSize = 3,
     minChunkTokens = 256,
-    maxChunkTokens = 8000,
+    maxChunkTokens = 4094,
     embedChunks = false,
   } = options;
   console.log("Intitlaizing SEMANTIC CHUNKING");
@@ -371,7 +376,6 @@ function enforceTokenLimits(
 ): RawChunk[] {
   // Merge Pass
 
-  console.log(rawChunks);
   const merged: RawChunk[] = [];
   for (const chunk of rawChunks) {
     const tokens = estimateTokens(chunk.segments.map((s) => s.text).join(" "));
@@ -423,7 +427,7 @@ export class SemanticChunkingService {
 
   constructor() {
     this.client = new LlamaCloud({
-      apiKey: process.env.LLAMA_CLOUD_API_KEY,
+      apiKey: process.env.LLAMA_CLOUD_API_KEY, 
     });
   }
 
@@ -435,13 +439,33 @@ export class SemanticChunkingService {
     return await semanticChunk(markdown, options);
   }
 
+  private hashFile(filePath: string): string {
+    const fileBuffer = fs.readFileSync(filePath);
+    return crypto.createHash("sha256").update(fileBuffer).digest("hex");
+  }
+
   private async extractMarkdown(pdfPath: string): Promise<string> {
     if (!fs.existsSync(pdfPath)) {
       throw new Error(`File not found: ${pdfPath}`);
     }
 
+    // Check Redis cache first
+    const fileHash = this.hashFile(pdfPath);
+    const cacheKey = `${LLAMA_CACHE_PREFIX}${fileHash}`;
+
     try {
-      console.log(`📤 Parsing PDF with LlamaParse: ${pdfPath}`);
+      const cached = await redisConnection.get(cacheKey);
+      if (cached) {
+        console.log(`⚡ LlamaParse cache HIT (${(cached.length / 1024).toFixed(1)} KB)`);
+        return cached;
+      }
+    } catch (err) {
+      console.warn("⚠️ Redis cache read failed, proceeding with LlamaParse:", err);
+    }
+
+    // Cache MISS 
+    try {
+      console.log(` Parsing PDF with LlamaParse (cache MISS): ${pdfPath}`);
 
       const file = await this.client.files.create({
         file: fs.createReadStream(pdfPath),
@@ -468,11 +492,20 @@ export class SemanticChunkingService {
         throw new Error("No markdown content extracted from LlamaParse");
       }
 
-      console.log(
-        `✅ LlamaParse extraction complete (${result.markdown.pages.length} pages)`,
-      );
-      console.log(markdown, "heree");
       markdown = markdown.replace(/^\[\d+\]\s?/gm, "");
+
+      console.log(
+        ` LlamaParse extraction complete (${result.markdown.pages.length} pages, ${(markdown.length / 1024).toFixed(1)} KB)`,
+      );
+
+      // Cache in Redis with TTL
+      try {
+        await redisConnection.set(cacheKey, markdown, "EX", LLAMA_CACHE_TTL);
+        console.log(`Cached LlamaParse result (key: ${fileHash.slice(0, 12)}..., TTL: 24h)`);
+      } catch (err) {
+        console.warn("⚠️ Redis cache write failed:", err);
+      }
+
       return markdown;
     } catch (error: any) {
       throw new Error(

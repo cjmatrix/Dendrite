@@ -75,11 +75,12 @@ export function useQuickChat({
   }, [selectedText, subMessages.length]);
 
   
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [subMessages, streamingText]);
+  // useEffect(() => {
+  //   if (scrollRef.current) {
+  //     scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  //   }
+  // }, [subMessages, streamingText]);
+
 
 
 

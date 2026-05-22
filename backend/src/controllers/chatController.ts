@@ -697,7 +697,7 @@ export class ChatController extends BaseController {
         }
       }
 
-      // Add image if provided
+     
       if (normalizedImageUrl) {
         const base64Data = await AIService.urlToBase64(normalizedImageUrl);
         if (base64Data) {
@@ -710,7 +710,7 @@ export class ChatController extends BaseController {
         }
       }
 
-      // Set up streaming response
+      
       res.setHeader("Content-Type", "text/event-stream");
       res.setHeader("Cache-Control", "no-cache");
       res.setHeader("Connection", "keep-alive");
@@ -740,9 +740,9 @@ export class ChatController extends BaseController {
         res.write(`data: ${JSON.stringify({ text })}\n\n`);
       }
 
-      // Guard: empty response
+   
       if (!fullReply.trim()) {
-        console.error(`⚠️ Empty AI response for chat ${id}`);
+        console.error(`Empty AI response for chat ${id}`);
         res.write(
           `data: ${JSON.stringify({ text: "\n\n**Error:** The AI returned an empty response. Please try again." })}\n\n`,
         );

@@ -115,7 +115,7 @@ export class SaveModelReply {
       let savedBlocks: any[] = [];
 
       if (codeBlocks.length > 0) {
-        // --- DEDUPLICATION: Only process truly new code blocks ---
+        // DEDUPLICATION: Only process truly new code blocks
         const newBlockDocs: any[] = [];
 
         for (const block of codeBlocks) {
@@ -124,7 +124,7 @@ export class SaveModelReply {
           const cachedDesc = await redisConnection.get(redisKey);
           if (cachedDesc) {
             console.log(
-              `[CodeDedup] Redis hit for hash ${block.hash.slice(0, 8)}... — skipping API calls.`,
+              `[CodeDedup] Redis hit for hash ${block.hash.slice(0, 8)}...  — skipping API calls.`,
             );
             continue;
           }
@@ -134,8 +134,8 @@ export class SaveModelReply {
           );
           if (existingBlock) {
             console.log(
-              `[CodeDedup] DB hit for hash ${block.hash.slice(0, 8)}... — skipping API calls.`,
-            );
+              `[CodeDedup] DB hit for hash ${block.hash.slice(0, 8)}...  — skipping API calls.`,
+            ); 
             // Redis to avoid future DB lookups
             if (existingBlock.description) {
               await redisConnection.setex(
@@ -229,7 +229,7 @@ export class SaveModelReply {
           }));
           await addDescriptionQueue(queuePayload);
           console.log(
-            `🚀 Context window overflow — batched ${undescribedBlocks.length} code blocks to description-queue!`,
+            ` 🛑Context window overflow  batched ${undescribedBlocks.length} code blocks to description-queue! 🛑`,
           );
         }
       }
