@@ -2,12 +2,14 @@ import { IFolderRepository } from '../../../domain/folder/repositories/IFolderRe
 import { IVectorRepository } from '../../../domain/vector/repositories/IVectorRepository';
 import { IChatRepository } from '../../../domain/chat/repositories/IChatRepository';
 import { AppError } from '../../../utils/AppError';
+import { injectable, inject } from 'tsyringe';
 
+@injectable()
 export class DeleteFolder {
   constructor(
-    private folderRepository: IFolderRepository,
-    private vectorRepository: IVectorRepository,
-    private chatRepository: IChatRepository
+    @inject("IFolderRepository") private folderRepository: IFolderRepository,
+    @inject("IVectorRepository") private vectorRepository: IVectorRepository,
+    @inject("IChatRepository") private chatRepository: IChatRepository
   ) {}
 
   async execute(folderId: string, userId: string) {

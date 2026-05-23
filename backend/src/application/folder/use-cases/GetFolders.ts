@@ -1,7 +1,11 @@
 import { IFolderRepository } from '../../../domain/folder/repositories/IFolderRepository';
+import { injectable, inject } from 'tsyringe';
 
+@injectable()
 export class GetFolders {
-  constructor(private folderRepository: IFolderRepository) {}
+  constructor(
+    @inject("IFolderRepository") private folderRepository: IFolderRepository
+  ) {}
 
   async execute(userId: string) {
     const folders = await this.folderRepository.findAllByUserId(userId);

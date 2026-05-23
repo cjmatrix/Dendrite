@@ -1,5 +1,5 @@
 import { IMessageRepository } from '../../../domain/chat/repositories/IMessageRepository';
-import { Message } from '../../../models/Message';
+import { Message } from '../models/MongoMessageModel';
 
 export class MongoMessageRepository implements IMessageRepository {
   async findMessages(query: any, limit: number, cursor?: string | null): Promise<any[]> {

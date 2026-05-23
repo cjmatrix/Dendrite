@@ -7,6 +7,8 @@ import { MongoOutboxEventRepository } from '../../infrastructure/outbox/reposito
 import { MongoUserRepository } from '../../infrastructure/auth/repositories/MongoUserRepository';
 import { MongoRecallRepository } from '../../infrastructure/recall/repositories/MongoRecallRepository';
 import { QdrantVectorRepository } from '../../infrastructure/vector/repositories/QdrantVectorRepository';
+import { MongooseUnitOfWork } from '../../infrastructure/shared/MongooseUnitOfWork';
+import { AuthService } from '../../infrastructure/auth/services/AuthService';
 
 import { CreateFolder } from '../../application/folder/use-cases/CreateFolder';
 import { GetFolders } from '../../application/folder/use-cases/GetFolders';
@@ -54,6 +56,8 @@ export class DIContainer {
   private static userRepository: MongoUserRepository;
   private static recallRepository: MongoRecallRepository;
   private static vectorRepository: QdrantVectorRepository;
+  private static unitOfWorkRepository: MongooseUnitOfWork;
+  private static authService: AuthService;
 
   // Folder Use Cases
   private static createFolderUseCase: CreateFolder;
@@ -159,6 +163,20 @@ export class DIContainer {
       this.vectorRepository = new QdrantVectorRepository();
     }
     return this.vectorRepository;
+  }
+
+  static getUnitOfWorkRepository(): MongooseUnitOfWork {
+    if (!this.unitOfWorkRepository) {
+      this.unitOfWorkRepository = new MongooseUnitOfWork();
+    }
+    return this.unitOfWorkRepository;
+  }
+
+  static getAuthService(): AuthService {
+    if (!this.authService) {
+      this.authService = new AuthService();
+    }
+    return this.authService;
   }
 
   
@@ -284,28 +302,42 @@ export class DIContainer {
   
   static getRegisterUserUseCase(): RegisterUser {
     if (!this.registerUserUseCase) {
-      this.registerUserUseCase = new RegisterUser(this.getUserRepository());
+      this.registerUserUseCase = new RegisterUser(
+        this.getUserRepository(),
+        this.getFolderRepository(),
+        this.getUnitOfWorkRepository(),
+        this.getAuthService()
+      );
     }
     return this.registerUserUseCase;
   }
 
   static getLoginUserUseCase(): LoginUser {
     if (!this.loginUserUseCase) {
-      this.loginUserUseCase = new LoginUser(this.getUserRepository());
+      this.loginUserUseCase = new LoginUser(
+        this.getUserRepository(),
+        this.getAuthService()
+      );
     }
     return this.loginUserUseCase;
   }
 
   static getRefreshTokenUserUseCase(): RefreshTokenUser {
     if (!this.refreshTokenUserUseCase) {
-      this.refreshTokenUserUseCase = new RefreshTokenUser(this.getUserRepository());
+      this.refreshTokenUserUseCase = new RefreshTokenUser(
+        this.getUserRepository(),
+        this.getAuthService()
+      );
     }
     return this.refreshTokenUserUseCase;
   }
 
   static getLogoutUserUseCase(): LogoutUser {
     if (!this.logoutUserUseCase) {
-      this.logoutUserUseCase = new LogoutUser(this.getUserRepository());
+      this.logoutUserUseCase = new LogoutUser(
+        this.getUserRepository(),
+        this.getAuthService()
+      );
     }
     return this.logoutUserUseCase;
   }

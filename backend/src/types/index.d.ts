@@ -1,4 +1,4 @@
-import { IUser } from '../models/User';
+import { IUser } from "../infrastructure/auth/models/MongoUserModel";
 
 export interface UserPayload {
   userId: string;

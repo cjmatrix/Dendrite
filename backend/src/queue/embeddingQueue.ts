@@ -1,6 +1,6 @@
 import { Queue } from "bullmq";
 import { redisConfig } from "../config/redis";
-import { IOutboxEvent } from "../models/OutboxEvent";
+import { IOutboxEvent } from "../infrastructure/outbox/models/MongoOutboxEventModel";
 const embeddingQueue = new Queue("embedding-queue", {
   connection: redisConfig,
 });

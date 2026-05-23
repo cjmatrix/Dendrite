@@ -1,8 +1,12 @@
 import { IFolderRepository } from '../../../domain/folder/repositories/IFolderRepository';
 import { AppError } from '../../../utils/AppError';
+import { injectable, inject } from 'tsyringe';
 
+@injectable()
 export class UpdateFolder {
-  constructor(private folderRepository: IFolderRepository) {}
+  constructor(
+    @inject("IFolderRepository") private folderRepository: IFolderRepository
+  ) {}
 
   async execute(folderId: string, userId: string, updates: { name?: string, isExpanded?: boolean }) {
     if (updates.name) {

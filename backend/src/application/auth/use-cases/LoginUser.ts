@@ -1,29 +1,38 @@
-import { IUserRepository } from '../../../domain/auth/repositories/IUserRepository';
-import { generateAccessToken, generateRefreshToken } from '../../../utils/tokenUtils';
-import { AppError } from '../../../utils/AppError';
+import { IUserRepository } from "../../../domain/auth/repositories/IUserRepository";
+import { IAuthService } from "../../../domain/auth/services/IAuthService";
+import { AppError } from "../../../utils/AppError";
+import { LoginInputDTO } from "../dtos/auth.dto";
+import { IUser } from "../../../domain/auth/entities/User";
+import { injectable, inject } from "tsyringe";
 
+@injectable()
 export class LoginUser {
-  constructor(private userRepository: IUserRepository) {}
+  constructor(
+    @inject("IUserRepository") private userRepository: IUserRepository,
+    @inject("IAuthService") private authService: IAuthService
+  ) {}
 
-  async execute(userData: any) {
+  async execute(userData: LoginInputDTO): Promise<{ user: IUser; accessToken: string; refreshToken: string }> {
     const { email, password } = userData;
+
     const user = await this.userRepository.findByEmail(email);
-    
     if (!user) {
-      throw new AppError('Invalid credentials', 401);
+      throw new AppError("Invalid credentials", 401);
     }
 
-    const isMatch = await user.comparePassword(password);
+    const isMatch = await this.authService.comparePassword(password, user.password);
     if (!isMatch) {
-      throw new AppError('Invalid credentials', 401);
+      throw new AppError("Invalid credentials", 401);
     }
 
-    const accessToken = generateAccessToken(user._id.toString());
-    const refreshToken = generateRefreshToken(user._id.toString());
+    const accessToken = this.authService.generateAccessToken(user._id.toString());
+    const refreshToken = this.authService.generateRefreshToken(user._id.toString());
 
-    await this.userRepository.addRefreshToken(user._id.toString(), refreshToken);
+    await this.userRepository.addRefreshToken(
+      user._id.toString(),
+      refreshToken,
+    );
 
-    const { password: _, refreshTokens: __, ...safeUser } = user.toObject();
-    return { user: safeUser, accessToken, refreshToken };
+    return { user, accessToken, refreshToken };
   }
 }

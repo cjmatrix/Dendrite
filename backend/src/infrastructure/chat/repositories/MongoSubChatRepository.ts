@@ -1,5 +1,5 @@
 import { ISubChatRepository } from '../../../domain/chat/repositories/ISubChatRepository';
-import { SubChat } from '../../../models/SubChat';
+import { SubChat } from '../models/MongoSubChatModel';
 import mongoose from "mongoose";
 
 export class MongoSubChatRepository implements ISubChatRepository {

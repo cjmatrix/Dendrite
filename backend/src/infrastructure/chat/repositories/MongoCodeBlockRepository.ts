@@ -1,5 +1,5 @@
 import { ICodeBlockRepository } from '../../../domain/chat/repositories/ICodeBlockRepository';
-import { CodeBlock } from '../../../models/CodeBlock';
+import { CodeBlock } from '../models/MongoCodeBlockModel';
 
 export class MongoCodeBlockRepository implements ICodeBlockRepository {
   async findStrandedBlocks(limit: number, beforeDate: Date): Promise<any[]> {

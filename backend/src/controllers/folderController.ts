@@ -1,15 +1,23 @@
 import { Request, Response } from 'express';
 import { BaseController } from './base/BaseController';
-import { DIContainer } from './container/DIContainer';
 import { AppError } from '../utils/AppError';
+import { injectable, inject, container } from 'tsyringe';
+import { CreateFolder } from '../application/folder/use-cases/CreateFolder';
+import { GetFolders } from '../application/folder/use-cases/GetFolders';
+import { UpdateFolder } from '../application/folder/use-cases/UpdateFolder';
+import { DeleteFolder } from '../application/folder/use-cases/DeleteFolder';
 
-
+@injectable()
 export class FolderController extends BaseController {
-  constructor() {
+  constructor(
+    @inject(CreateFolder) private createFolderUseCase: CreateFolder,
+    @inject(GetFolders) private getFoldersUseCase: GetFolders,
+    @inject(UpdateFolder) private updateFolderUseCase: UpdateFolder,
+    @inject(DeleteFolder) private deleteFolderUseCase: DeleteFolder
+  ) {
     super();
   }
 
- 
   public createFolder = async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
@@ -19,8 +27,7 @@ export class FolderController extends BaseController {
         throw new AppError('Folder name is required and must be a string', 400);
       }
 
-      const createFolderUseCase = DIContainer.getCreateFolderUseCase();
-      const data = await createFolderUseCase.execute(userId, name, parentId);
+      const data = await this.createFolderUseCase.execute(userId, name, parentId);
 
       this.sendSuccess(res, data, 201, 'Folder created successfully');
     } catch (error) {
@@ -28,13 +35,11 @@ export class FolderController extends BaseController {
     }
   };
 
- 
   public getFolders = async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
 
-      const getFoldersUseCase = DIContainer.getGetFoldersUseCase();
-      const data = await getFoldersUseCase.execute(userId);
+      const data = await this.getFoldersUseCase.execute(userId);
 
       this.sendSuccess(res, data, 200);
     } catch (error) {
@@ -42,7 +47,6 @@ export class FolderController extends BaseController {
     }
   };
 
-  
   public updateFolder = async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
@@ -53,8 +57,7 @@ export class FolderController extends BaseController {
         throw new AppError('At least one field (name or isExpanded) is required', 400);
       }
 
-      const updateFolderUseCase = DIContainer.getUpdateFolderUseCase();
-      const data = await updateFolderUseCase.execute(id, userId, { name, isExpanded });
+      const data = await this.updateFolderUseCase.execute(id, userId, { name, isExpanded });
 
       this.sendSuccess(res, data, 200, 'Folder updated successfully');
     } catch (error) {
@@ -62,14 +65,12 @@ export class FolderController extends BaseController {
     }
   };
 
-  
   public deleteFolder = async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
       const id = this.getRouteParam(req, 'id');
 
-      const deleteFolderUseCase = DIContainer.getDeleteFolderUseCase();
-      const data = await deleteFolderUseCase.execute(id, userId);
+      const data = await this.deleteFolderUseCase.execute(id, userId);
 
       this.sendSuccess(res, data, 200, 'Folder deleted successfully');
     } catch (error) {
@@ -78,5 +79,4 @@ export class FolderController extends BaseController {
   };
 }
 
-
-export const folderController = new FolderController();
+export const folderController = container.resolve(FolderController);

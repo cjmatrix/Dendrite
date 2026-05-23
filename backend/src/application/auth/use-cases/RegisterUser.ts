@@ -1,57 +1,76 @@
-import mongoose from 'mongoose';
-import { IUserRepository } from '../../../domain/auth/repositories/IUserRepository';
-import { Folder } from '../../../models/Folders';
-import { generateAccessToken, generateRefreshToken } from '../../../utils/tokenUtils';
-import { AppError } from '../../../utils/AppError';
+import { IUserRepository } from "../../../domain/auth/repositories/IUserRepository";
+import { IFolderRepository } from "../../../domain/folder/repositories/IFolderRepository";
+import { IAuthService } from "../../../domain/auth/services/IAuthService";
+import { AppError } from "../../../utils/AppError";
+import { RegisterInputDTO } from "../dtos/auth.dto";
+import { IUser } from "../../../domain/auth/entities/User";
 
+import { injectable, inject } from "tsyringe";
+import { IUnitOfWorkRepository } from "../../../domain/shared/IUnitOfWorkRepository";
+
+@injectable()
 export class RegisterUser {
-  constructor(private userRepository: IUserRepository) {}
+  constructor(
+    @inject("IUserRepository") private userRepository: IUserRepository,
+    @inject("IFolderRepository") private folderRepository: IFolderRepository,
+    @inject("IUnitOfWorkRepository")
+    private unitOfWorkRepository: IUnitOfWorkRepository,
+    @inject("IAuthService") private authService: IAuthService,
+  ) {}
 
-  async execute(userData: any) {
+  async execute(userData: RegisterInputDTO): Promise<{ user: IUser; accessToken: string; refreshToken: string }> {
     const { name, email, password } = userData;
 
     const existingUser = await this.userRepository.findByEmail(email);
     if (existingUser) {
-      throw new AppError('User already exists', 409);
+      throw new AppError("User already exists", 409);
     }
 
-    const session = await mongoose.startSession();
-    session.startTransaction();
-
-    try {
+    return await this.unitOfWorkRepository.runInTransaction(async () => {
       const user = await this.userRepository.create({
         name,
         email,
-        password
+        password,
       });
-
-      await this.userRepository.save(user, session);
+      
+      await this.userRepository.save(user);
 
       const systemFolders = [
-        { userId: user._id, parentId: null, name: "Documents", isSystemFolder: true },
-        { userId: user._id, parentId: null, name: "Media", isSystemFolder: true },
-        { userId: user._id, parentId: null, name: "Research", isSystemFolder: true },
-        { userId: user._id, parentId: null, name: "Chats", isSystemFolder: true }
+        {
+          userId: user._id,
+          parentId: null,
+          name: "Documents",
+          isSystemFolder: true,
+        },
+        {
+          userId: user._id,
+          parentId: null,
+          name: "Media",
+          isSystemFolder: true,
+        },
+        {
+          userId: user._id,
+          parentId: null,
+          name: "Research",
+          isSystemFolder: true,
+        },
+        {
+          userId: user._id,
+          parentId: null,
+          name: "Chats",
+          isSystemFolder: true,
+        },
       ];
 
-      await Folder.insertMany(systemFolders, { session });
+      await this.folderRepository.insertMany(systemFolders);
 
-      const accessToken = generateAccessToken(user._id.toString());
-      const refreshToken = generateRefreshToken(user._id.toString());
+      const accessToken = this.authService.generateAccessToken(user._id.toString());
+      const refreshToken = this.authService.generateRefreshToken(user._id.toString());
 
       user.refreshTokens.push(refreshToken);
-      await this.userRepository.save(user, session);
+      await this.userRepository.save(user);
 
-      await session.commitTransaction();
-      session.endSession();
-
-      const { password: _pw, refreshTokens: _rt, ...safeUser } = user.toObject();
-      return { user: safeUser, accessToken, refreshToken };
-      
-    } catch (error) {
-      await session.abortTransaction();
-      session.endSession();
-      throw error;
-    }
+      return { user, accessToken, refreshToken };
+    });
   }
 }

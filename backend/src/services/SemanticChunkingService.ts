@@ -420,7 +420,7 @@ function enforceTokenLimits(
   return result;
 }
 
-// ─── Service Wrapper ─────────────────────────────────────────────────────────
+
 
 export class SemanticChunkingService {
   private client;

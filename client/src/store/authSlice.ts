@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk, type PayloadAction } from '@reduxjs/toolkit';
 import api from '../api/axios';
 
-// --- Types ---
+
 export interface User {
   _id: string;
   name: string;
@@ -20,11 +20,11 @@ interface AuthState {
 const initialState: AuthState = {
   user: null,
   isAuthenticated: false,
-  isLoading: true, // Start true for initial checkAuth
+  isLoading: true, 
   error: null,
 };
 
-// --- Async Thunks ---
+
 export const checkAuth = createAsyncThunk('auth/checkAuth', async (_, { rejectWithValue }) => {
   try {
     const response = await api.get('/auth/me');
@@ -61,7 +61,7 @@ export const logout = createAsyncThunk('auth/logout', async (_, { rejectWithValu
   }
 });
 
-// --- Slice ---
+
 const authSlice = createSlice({
   name: 'auth',
   initialState,

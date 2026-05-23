@@ -1,5 +1,5 @@
 import { IRecallRepository } from '../../../domain/recall/repositories/IRecallRepository';
-import Recall from '../../../models/Recall';
+import Recall from '../models/MongoRecallModel';
 
 export class MongoRecallRepository implements IRecallRepository {
   async create(recallData: any): Promise<any> {

@@ -1,14 +1,19 @@
 import { IUserRepository } from '../../../domain/auth/repositories/IUserRepository';
-import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../../../utils/tokenUtils';
+import { IAuthService } from '../../../domain/auth/services/IAuthService';
 import { AppError } from '../../../utils/AppError';
+import { injectable, inject } from "tsyringe";
 
+@injectable()
 export class RefreshTokenUser {
-  constructor(private userRepository: IUserRepository) {}
+  constructor(
+    @inject("IUserRepository") private userRepository: IUserRepository,
+    @inject("IAuthService") private authService: IAuthService
+  ) {}
 
   async execute(refreshToken: string) {
     let decoded: any;
     try {
-      decoded = verifyRefreshToken(refreshToken);
+      decoded = this.authService.verifyRefreshToken(refreshToken);
     } catch (err) {
       throw new AppError('Invalid refresh token', 403);
     }
@@ -23,8 +28,8 @@ export class RefreshTokenUser {
       throw new AppError('Compromised Token', 403);
     }
 
-    const newAccessToken = generateAccessToken(user._id.toString());
-    const newRefreshToken = generateRefreshToken(user._id.toString());
+    const newAccessToken = this.authService.generateAccessToken(user._id.toString());
+    const newRefreshToken = this.authService.generateRefreshToken(user._id.toString());
 
     await this.userRepository.replaceRefreshToken(user._id.toString(), refreshToken, newRefreshToken);
 

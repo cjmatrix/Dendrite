@@ -1,5 +1,5 @@
 import { IOutboxEventRepository } from '../../../domain/outbox/repositories/IOutboxEventRepository';
-import { OutboxEvent } from '../../../models/OutboxEvent';
+import { OutboxEvent } from '../models/MongoOutboxEventModel';
 
 export class MongoOutboxEventRepository implements IOutboxEventRepository {
   async findPendingJobs(limit: number, beforeDate: Date): Promise<any[]> {

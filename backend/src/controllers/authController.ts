@@ -1,7 +1,15 @@
 import { Request, Response } from "express";
 import { BaseController } from "./base/BaseController";
-import { DIContainer } from "./container/DIContainer";
 import { AppError } from "../utils/AppError";
+import { injectable, inject } from "tsyringe";
+import { RegisterUser } from "../application/auth/use-cases/RegisterUser";
+import { LoginUser } from "../application/auth/use-cases/LoginUser";
+import { RefreshTokenUser } from "../application/auth/use-cases/RefreshTokenUser";
+import { LogoutUser } from "../application/auth/use-cases/LogoutUser";
+import { GetMe } from "../application/auth/use-cases/GetMe";
+import { UpdateFcmToken } from "../application/auth/use-cases/UpdateFcmToken";
+import { container } from "tsyringe";
+import { RegisterInputSchema, LoginInputSchema, UpdateFcmTokenInputSchema, AuthMapper } from "../application/auth/dtos/auth.dto";
 
 const isProduction = process.env.NODE_ENV === "production";
 
@@ -11,8 +19,16 @@ const cookieOptions = {
   sameSite: "strict" as const,
 };
 
+@injectable()
 export class AuthController extends BaseController {
-  constructor() {
+  constructor(
+    @inject(RegisterUser) private registerUser: RegisterUser,
+    @inject(LoginUser) private loginUser: LoginUser,
+    @inject(RefreshTokenUser) private refreshTokenUser: RefreshTokenUser,
+    @inject(LogoutUser) private logoutUser: LogoutUser,
+    @inject(GetMe) private getMeUseCase: GetMe,
+    @inject(UpdateFcmToken) private updateFcmTokenUseCase: UpdateFcmToken
+  ) {
     super();
   }
 
@@ -21,31 +37,27 @@ export class AuthController extends BaseController {
     try {
       const { name, email, password, confirmPassword } = req.body;
 
-      if (!name || !email || !password || !confirmPassword) {
-        throw new AppError("All fields are required", 400);
-      }
-
       if (password !== confirmPassword) {
         throw new AppError("Passwords do not match", 400);
       }
 
-      const registerUser = DIContainer.getRegisterUserUseCase();
-      const { user, accessToken, refreshToken } = await registerUser.execute({
-        name,
-        email,
-        password,
-      });
+      const validatedInput = RegisterInputSchema.parse({ name, email, password });
 
-      res.cookie("accessToken", accessToken, {
+      const rawResult = await this.registerUser.execute(validatedInput);
+      
+     
+      const output = AuthMapper.toAuthOutput(rawResult.user, rawResult.accessToken, rawResult.refreshToken);
+
+      res.cookie("accessToken", output.accessToken, {
         ...cookieOptions,
         maxAge: 15 * 60 * 1000,
       });
-      res.cookie("refreshToken", refreshToken, {
+      res.cookie("refreshToken", output.refreshToken, {
         ...cookieOptions,
         maxAge: 7 * 24 * 60 * 60 * 1000,
       });
 
-      this.sendSuccess(res, user, 201, "User registered successfully");
+      this.sendSuccess(res, output.user, 201, "User registered successfully");
     } catch (error) {
       this.sendError(res, error);
     }
@@ -54,28 +66,24 @@ export class AuthController extends BaseController {
  
   public login = async (req: Request, res: Response): Promise<void> => {
     try {
-      const { email, password } = req.body;
+    
+      const validatedInput = LoginInputSchema.parse(req.body);
 
-      if (!email || !password) {
-        throw new AppError("Email and password are required", 400);
-      }
+      const rawResult = await this.loginUser.execute(validatedInput);
 
-      const loginUser = DIContainer.getLoginUserUseCase();
-      const { user, accessToken, refreshToken } = await loginUser.execute({
-        email,
-        password,
-      });
+     
+      const output = AuthMapper.toAuthOutput(rawResult.user, rawResult.accessToken, rawResult.refreshToken);
 
-      res.cookie("accessToken", accessToken, {
+      res.cookie("accessToken", output.accessToken, {
         ...cookieOptions,
         maxAge: 15 * 60 * 1000,
       });
-      res.cookie("refreshToken", refreshToken, {
+      res.cookie("refreshToken", output.refreshToken, {
         ...cookieOptions,
         maxAge: 7 * 24 * 60 * 60 * 1000,
       });
 
-      this.sendSuccess(res, user, 200, "Logged in successfully");
+      this.sendSuccess(res, output.user, 200, "Logged in successfully");
     } catch (error) {
       this.sendError(res, error);
     }
@@ -89,8 +97,7 @@ export class AuthController extends BaseController {
         throw new AppError("Unauthorized", 401);
       }
 
-      const refreshTokenUser = DIContainer.getRefreshTokenUserUseCase();
-      const { accessToken, refreshToken } = await refreshTokenUser.execute(
+      const { accessToken, refreshToken } = await this.refreshTokenUser.execute(
         cookies.refreshToken,
       );
 
@@ -120,8 +127,7 @@ export class AuthController extends BaseController {
         return;
       }
 
-      const logoutUser = DIContainer.getLogoutUserUseCase();
-      await logoutUser.execute(cookies.refreshToken);
+      await this.logoutUser.execute(cookies.refreshToken);
 
       res.clearCookie("accessToken", cookieOptions);
       res.clearCookie("refreshToken", cookieOptions);
@@ -136,10 +142,11 @@ export class AuthController extends BaseController {
     try {
       const userId = this.validateUserAuth(req);
 
-      const getMeUseCase = DIContainer.getGetMeUseCase();
-      const user = await getMeUseCase.execute(userId);
+      const rawUser = await this.getMeUseCase.execute(userId);
 
-      this.sendSuccess(res, user);
+      const outputUser = AuthMapper.toUserOutput(rawUser);
+
+      this.sendSuccess(res, outputUser);
     } catch (error) {
       this.sendError(res, error);
     }
@@ -154,12 +161,9 @@ export class AuthController extends BaseController {
       const userId = this.validateUserAuth(req);
       const { fcmToken } = req.body;
 
-      if (!fcmToken) {
-        throw new AppError("FCM token is required", 400);
-      }
+      const validatedInput = UpdateFcmTokenInputSchema.parse({ userId, fcmToken });
 
-      const updateFcmTokenUseCase = DIContainer.getUpdateFcmTokenUseCase();
-      const result = await updateFcmTokenUseCase.execute(userId, fcmToken);
+      const result = await this.updateFcmTokenUseCase.execute(validatedInput);
 
       this.sendSuccess(res, result, 200, "FCM token updated successfully");
     } catch (error) {
@@ -168,5 +172,4 @@ export class AuthController extends BaseController {
   };
 }
 
-
-export const authController = new AuthController();
+export const authController = container.resolve(AuthController);

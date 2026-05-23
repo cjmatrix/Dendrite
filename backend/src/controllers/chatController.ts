@@ -14,7 +14,7 @@ import { logAIQuery } from "../utils/logger";
 import { exceedsTokenLimit, getTokenInfo } from "../utils/tokenCounter";
 import { documentChunkingQueue } from "../queue/documentChunkingQueue";
 import { documentProgressPubSub } from "../services/documentProgressPubSub";
-import { OutboxEvent } from "../models/OutboxEvent";
+import { OutboxEvent } from "../infrastructure/outbox/models/MongoOutboxEventModel";
 import CONTEXT_WINDOW from "../constants/contextWindow";
 
 export class ChatController extends BaseController {

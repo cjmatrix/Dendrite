@@ -1,16 +1,20 @@
-import { IUserRepository } from '../../../domain/auth/repositories/IUserRepository';
-import { AppError } from '../../../utils/AppError';
+import { IUserRepository } from "../../../domain/auth/repositories/IUserRepository";
+import { AppError } from "../../../utils/AppError";
+import { IUser } from "../../../domain/auth/entities/User";
+import { injectable, inject } from "tsyringe";
 
+@injectable()
 export class GetMe {
-  constructor(private userRepository: IUserRepository) {}
+  constructor(
+    @inject("IUserRepository") private userRepository: IUserRepository
+  ) {}
 
-  async execute(userId: string) {
+  async execute(userId: string): Promise<IUser> {
     const user = await this.userRepository.findById(userId);
     if (!user) {
-      throw new AppError('User not found', 404);
+      throw new AppError("User not found", 404);
     }
-    
-    const { password: _, refreshTokens: __, ...safeUser } = user.toObject();
-    return safeUser;
+
+    return user;
   }
 }

@@ -1,3 +1,5 @@
+import "reflect-metadata";
+import "./config/di";
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";

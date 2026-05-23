@@ -1,29 +1,38 @@
 import { Request, Response, NextFunction } from 'express';
-import { verifyAccessToken } from '../utils/tokenUtils';
 import { IUserRepository } from '../domain/auth/repositories/IUserRepository';
-import { MongoUserRepository } from '../infrastructure/auth/repositories/MongoUserRepository';
+import { IAuthService } from '../domain/auth/services/IAuthService';
+import { injectable, inject, container } from 'tsyringe';
 
-const userRepository: IUserRepository = new MongoUserRepository();
+@injectable()
+export class AuthMiddleware {
+  constructor(
+    @inject("IUserRepository") private userRepository: IUserRepository,
+    @inject("IAuthService") private authService: IAuthService
+  ) {}
 
-export const userProtect = async (req: Request, res: Response, next: NextFunction) => {
-  const token = req.cookies.accessToken;
+  public protect = async (req: Request, res: Response, next: NextFunction) => {
+    const token = req.cookies?.accessToken;
 
-  if (!token) {
-    return res.status(401).json({ message: 'Unauthorized: No Token Provided' });
-  }
-
-  try {
-    const decoded = verifyAccessToken(token) as { userId: string };
-
-    const user = await userRepository.findByIdSafe(decoded.userId);
-
-    if (!user) {
-      return res.status(401).json({ message: 'Unauthorized: User not found' });
+    if (!token) {
+      return res.status(401).json({ message: "Unauthorized: No Token Provided" });
     }
 
-    req.user = user;
-    next();
-  } catch (error) {
-    return res.status(401).json({ message: 'Unauthorized: Invalid Token' });
-  }
-};
+    try {
+      const decoded = this.authService.verifyAccessToken(token) as { userId: string };
+
+      const user = await this.userRepository.findByIdSafe(decoded.userId);
+
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized: User not found" });
+      }
+
+      req.user = user;
+      next();
+    } catch (error) {
+      return res.status(401).json({ message: "Unauthorized: Invalid Token" });
+    }
+  };
+}
+
+export const authMiddleware = container.resolve(AuthMiddleware);
+export const userProtect = authMiddleware.protect;

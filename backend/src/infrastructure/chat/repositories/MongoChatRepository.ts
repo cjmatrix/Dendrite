@@ -1,5 +1,5 @@
 import { IChatRepository } from '../../../domain/chat/repositories/IChatRepository';
-import { Chat } from '../../../models/Chat';
+import { Chat } from '../models/MongoChatModel';
 
 export class MongoChatRepository implements IChatRepository {
   async findByUserIdAndTitleAndFolderId(userId: string, title: string, folderId: string | null): Promise<any | null> {
