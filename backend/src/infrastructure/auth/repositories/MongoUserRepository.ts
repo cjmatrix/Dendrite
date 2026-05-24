@@ -28,7 +28,7 @@ export class MongoUserRepository implements IUserRepository {
   }
 
   async findByIdSafe(id: string): Promise<IUser | null> {
-    const doc = await User.findById(id).session(this.getSession()).select("-password -refreshTokens");
+    const doc = await User.findById(id).session(this.getSession()).select("-password -refreshTokens").lean();
     return doc ? this.mapToDomain(doc) : null;
   }
 

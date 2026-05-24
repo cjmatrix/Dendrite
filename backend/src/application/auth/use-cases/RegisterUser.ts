@@ -1,6 +1,5 @@
 import { IUserRepository } from "../../../domain/auth/repositories/IUserRepository";
 import { IFolderRepository } from "../../../domain/folder/repositories/IFolderRepository";
-import { IAuthService } from "../../../domain/auth/services/IAuthService";
 import { AppError } from "../../../utils/AppError";
 import { RegisterInputDTO } from "../dtos/auth.dto";
 import { IUser } from "../../../domain/auth/entities/User";
@@ -15,10 +14,9 @@ export class RegisterUser {
     @inject("IFolderRepository") private folderRepository: IFolderRepository,
     @inject("IUnitOfWorkRepository")
     private unitOfWorkRepository: IUnitOfWorkRepository,
-    @inject("IAuthService") private authService: IAuthService,
   ) {}
 
-  async execute(userData: RegisterInputDTO): Promise<{ user: IUser; accessToken: string; refreshToken: string }> {
+  async execute(userData: RegisterInputDTO): Promise<{ user: IUser }> {
     const { name, email, password } = userData;
 
     const existingUser = await this.userRepository.findByEmail(email);
@@ -31,6 +29,7 @@ export class RegisterUser {
         name,
         email,
         password,
+        status: "pending",
       });
       
       await this.userRepository.save(user);
@@ -64,13 +63,7 @@ export class RegisterUser {
 
       await this.folderRepository.insertMany(systemFolders);
 
-      const accessToken = this.authService.generateAccessToken(user._id.toString());
-      const refreshToken = this.authService.generateRefreshToken(user._id.toString());
-
-      user.refreshTokens.push(refreshToken);
-      await this.userRepository.save(user);
-
-      return { user, accessToken, refreshToken };
+      return { user };
     });
   }
 }

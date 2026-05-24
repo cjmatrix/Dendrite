@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { UserPlus, Mail, Lock, User, AlertCircle } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "../store/store";
 import { registerUser, clearError } from "../store/authSlice";
+import api from "../api/axios";
 import "../styles/auth.css";
 
 const Signup: React.FC = () => {
@@ -11,6 +12,7 @@ const Signup: React.FC = () => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [localError, setLocalError] = useState("");
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
 
   const dispatch = useAppDispatch();
   const { isLoading, error } = useAppSelector((state) => state.auth);
@@ -26,13 +28,24 @@ const Signup: React.FC = () => {
       return;
     }
 
+    setIsSendingOtp(true);
     try {
-      await dispatch(
-        registerUser({ name, email, password, confirmPassword }),
-      ).unwrap();
-      navigate("/");
-    } catch (err) {
-      // API Error is mapped to Redux store automatically
+      // Register user in database with 'pending' status
+      await api.post("/auth/register", { name, email, password, confirmPassword });
+
+      // Keep email details in in-flight cache
+      sessionStorage.setItem("pending_signup", JSON.stringify({ email }));
+
+      // Set cooldown locks
+      const cooldownEnd = Date.now() + 60 * 1000;
+      localStorage.setItem(`otp_cooldown_end:${email}`, cooldownEnd.toString());
+
+      // Handover control to the dynamic OtpPage
+      navigate("/verify-otp", { state: { email } });
+    } catch (err: any) {
+      setLocalError(err.response?.data?.message || "Failed to create account. Please try again.");
+    } finally {
+      setIsSendingOtp(false);
     }
   };
 
@@ -143,10 +156,10 @@ const Signup: React.FC = () => {
 
           <button
             type="submit"
-            disabled={isLoading}
+            disabled={isLoading || isSendingOtp}
             className="w-full py-3 px-4 bg-linear-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-xl font-semibold shadow-lg shadow-indigo-500/25 transition-all mt-6 active:scale-[0.98] disabled:opacity-70 flex justify-center items-center"
           >
-            {isLoading ? (
+            {isLoading || isSendingOtp ? (
               <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
             ) : (
               "Create Account"

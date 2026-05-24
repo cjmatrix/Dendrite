@@ -4,6 +4,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import ChatPage from "./pages/ChatPage";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import OtpPage from "./pages/OtpPage";
 import { useAppDispatch } from "./store/store";
 import { checkAuth, forceLogout } from "./store/authSlice";
 import { onMessageListener } from "./firebase";
@@ -24,6 +25,10 @@ const router = createBrowserRouter([
   {
     path: "/register",
     element: <Signup />,
+  },
+  {
+    path: "/verify-otp",
+    element: <OtpPage />,
   },
   {
     path: "/",

@@ -59,13 +59,14 @@ const UserSchema = new Schema<IMongoUserDocument>(
     
     role:{
        type:String,
-      enum:["admin,user"]
+       default:"user",
+      enum:["admin","user"]
 
     },
     status:{
       type:String,
-      enum:["active,banned,suspended"]
-
+      enum:["pending","active","banned","suspended"],
+      default:"pending"
     },
     tier: {
       type: String,

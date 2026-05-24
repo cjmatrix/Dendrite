@@ -25,12 +25,24 @@ export const UpdateFcmTokenInputSchema = z.object({
 
 export type UpdateFcmTokenInputDTO = z.infer<typeof UpdateFcmTokenInputSchema>;
 
+export const SendOtpInputSchema = z.object({
+  email: z.string().trim().email("Invalid email format"),
+});
+export type SendOtpInputDTO = z.infer<typeof SendOtpInputSchema>;
+
+export const VerifyOtpInputSchema = z.object({
+  email: z.string().trim().email("Invalid email format"),
+  otp: z.string().trim().length(6, "OTP must be exactly 6 digits"),
+});
+export type VerifyOtpInputDTO = z.infer<typeof VerifyOtpInputSchema>;
+
 
 
 export interface UserOutputDTO {
   _id: string;
   name: string;
   email: string;
+  status:string;
   fcmToken: string[];
   createdAt?: string;
   updatedAt?: string;
@@ -48,6 +60,7 @@ export class AuthMapper {
       _id: user._id ? user._id.toString() : (user._id || ""),
       name: user.name,
       email: user.email,
+      status:user.status,
       fcmToken: user.fcmToken || [],
       createdAt: user.createdAt?.toString(),
       updatedAt: user.updatedAt?.toString(),

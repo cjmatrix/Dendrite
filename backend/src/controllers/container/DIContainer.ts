@@ -28,6 +28,12 @@ import { GetSubChat } from '../../application/chat/use-cases/GetSubChat';
 
 import { RegisterUser } from '../../application/auth/use-cases/RegisterUser';
 import { LoginUser } from '../../application/auth/use-cases/LoginUser';
+import { SendOTP } from '../../application/auth/use-cases/SendOTP';
+import { VerifyOTP } from '../../application/auth/use-cases/VerifyOTP';
+import { RedisOTPService } from '../../infrastructure/auth/services/RedisOTPService';
+import { NodemailerEmailService } from '../../infrastructure/shared/services/NodemailerEmailService';
+import { redisConnection } from '../../config/redis';
+import { RedisCacheService } from '../../infrastructure/cache/RedisCacheService';
 import { RefreshTokenUser } from '../../application/auth/use-cases/RefreshTokenUser';
 import { LogoutUser } from '../../application/auth/use-cases/LogoutUser';
 import { GetMe } from '../../application/auth/use-cases/GetMe';
@@ -84,6 +90,11 @@ export class DIContainer {
   private static logoutUserUseCase: LogoutUser;
   private static getMeUseCase: GetMe;
   private static updateFcmTokenUseCase: UpdateFcmToken;
+  private static otpService: RedisOTPService;
+  private static cacheService: RedisCacheService;
+  private static emailService: NodemailerEmailService;
+  private static sendOtpUseCase: SendOTP;
+  private static verifyOtpUseCase: VerifyOTP;
 
   // Recall Use Cases
   private static createCardUseCase: CreateCard;
@@ -305,8 +316,7 @@ export class DIContainer {
       this.registerUserUseCase = new RegisterUser(
         this.getUserRepository(),
         this.getFolderRepository(),
-        this.getUnitOfWorkRepository(),
-        this.getAuthService()
+        this.getUnitOfWorkRepository()
       );
     }
     return this.registerUserUseCase;
@@ -354,6 +364,41 @@ export class DIContainer {
       this.updateFcmTokenUseCase = new UpdateFcmToken(this.getUserRepository());
     }
     return this.updateFcmTokenUseCase;
+  }
+
+  static getCacheService(): RedisCacheService {
+    if (!this.cacheService) {
+      this.cacheService = new RedisCacheService(redisConnection);
+    }
+    return this.cacheService;
+  }
+
+  static getOtpService(): RedisOTPService {
+    if (!this.otpService) {
+      this.otpService = new RedisOTPService(this.getCacheService());
+    }
+    return this.otpService;
+  }
+
+  static getEmailService(): NodemailerEmailService {
+    if (!this.emailService) {
+      this.emailService = new NodemailerEmailService();
+    }
+    return this.emailService;
+  }
+
+  static getSendOtpUseCase(): SendOTP {
+    if (!this.sendOtpUseCase) {
+      this.sendOtpUseCase = new SendOTP(this.getOtpService(), this.getEmailService());
+    }
+    return this.sendOtpUseCase;
+  }
+
+  static getVerifyOtpUseCase(): VerifyOTP {
+    if (!this.verifyOtpUseCase) {
+      this.verifyOtpUseCase = new VerifyOTP(this.getOtpService(), this.getUserRepository(), this.getAuthService());
+    }
+    return this.verifyOtpUseCase;
   }
 
   

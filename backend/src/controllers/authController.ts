@@ -8,8 +8,10 @@ import { RefreshTokenUser } from "../application/auth/use-cases/RefreshTokenUser
 import { LogoutUser } from "../application/auth/use-cases/LogoutUser";
 import { GetMe } from "../application/auth/use-cases/GetMe";
 import { UpdateFcmToken } from "../application/auth/use-cases/UpdateFcmToken";
+import { SendOTP } from "../application/auth/use-cases/SendOTP";
+import { VerifyOTP } from "../application/auth/use-cases/VerifyOTP";
 import { container } from "tsyringe";
-import { RegisterInputSchema, LoginInputSchema, UpdateFcmTokenInputSchema, AuthMapper } from "../application/auth/dtos/auth.dto";
+import { RegisterInputSchema, LoginInputSchema, UpdateFcmTokenInputSchema, SendOtpInputSchema, VerifyOtpInputSchema, AuthMapper } from "../application/auth/dtos/auth.dto";
 
 const isProduction = process.env.NODE_ENV === "production";
 
@@ -27,7 +29,9 @@ export class AuthController extends BaseController {
     @inject(RefreshTokenUser) private refreshTokenUser: RefreshTokenUser,
     @inject(LogoutUser) private logoutUser: LogoutUser,
     @inject(GetMe) private getMeUseCase: GetMe,
-    @inject(UpdateFcmToken) private updateFcmTokenUseCase: UpdateFcmToken
+    @inject(UpdateFcmToken) private updateFcmTokenUseCase: UpdateFcmToken,
+    @inject(SendOTP) private sendOtpUseCase: SendOTP,
+    @inject(VerifyOTP) private verifyOtpUseCase: VerifyOTP
   ) {
     super();
   }
@@ -46,18 +50,11 @@ export class AuthController extends BaseController {
       const rawResult = await this.registerUser.execute(validatedInput);
       
      
-      const output = AuthMapper.toAuthOutput(rawResult.user, rawResult.accessToken, rawResult.refreshToken);
+      await this.sendOtpUseCase.execute(validatedInput.email);
 
-      res.cookie("accessToken", output.accessToken, {
-        ...cookieOptions,
-        maxAge: 15 * 60 * 1000,
-      });
-      res.cookie("refreshToken", output.refreshToken, {
-        ...cookieOptions,
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-      });
+      const outputUser = AuthMapper.toUserOutput(rawResult.user);
 
-      this.sendSuccess(res, output.user, 201, "User registered successfully");
+      this.sendSuccess(res, outputUser, 201, "Registration initiated. Verification OTP sent.");
     } catch (error) {
       this.sendError(res, error);
     }
@@ -166,6 +163,38 @@ export class AuthController extends BaseController {
       const result = await this.updateFcmTokenUseCase.execute(validatedInput);
 
       this.sendSuccess(res, result, 200, "FCM token updated successfully");
+    } catch (error) {
+      this.sendError(res, error);
+    }
+  };
+
+  public sendOtp = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const validatedInput = SendOtpInputSchema.parse(req.body);
+      const result = await this.sendOtpUseCase.execute(validatedInput.email);
+      this.sendSuccess(res, result, 200, "OTP sent successfully");
+    } catch (error) {
+      this.sendError(res, error);
+    }
+  };
+
+  public verifyOtp = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const validatedInput = VerifyOtpInputSchema.parse(req.body);
+      const rawResult = await this.verifyOtpUseCase.execute(validatedInput.email, validatedInput.otp);
+      
+      const output = AuthMapper.toAuthOutput(rawResult.user, rawResult.accessToken, rawResult.refreshToken);
+
+      res.cookie("accessToken", output.accessToken, {
+        ...cookieOptions,
+        maxAge: 15 * 60 * 1000,
+      });
+      res.cookie("refreshToken", output.refreshToken, {
+        ...cookieOptions,
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      });
+
+      this.sendSuccess(res, output.user, 200, "OTP verified and account activated successfully");
     } catch (error) {
       this.sendError(res, error);
     }
