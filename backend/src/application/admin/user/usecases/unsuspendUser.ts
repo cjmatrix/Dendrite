@@ -2,9 +2,10 @@ import { inject, injectable } from "tsyringe";
 import { IUserRepository } from "../../../../domain/auth/repositories/IUserRepository";
 import { ICacheService } from "../../../common/ports/ICacheService";
 import { AppError } from "../../../../utils/AppError";
+import { IUnsuspendUserUseCase } from "./interfaces";
 
 @injectable()
-export class UnsuspendUser {
+export class UnsuspendUser implements IUnsuspendUserUseCase {
   constructor(
     @inject("IUserRepository") private userRepo: IUserRepository,
     @inject("ICacheService") private cacheService: ICacheService

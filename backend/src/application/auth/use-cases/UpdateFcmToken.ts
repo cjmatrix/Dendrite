@@ -2,9 +2,10 @@ import { IUserRepository } from '../../../domain/auth/repositories/IUserReposito
 import { AppError } from '../../../utils/AppError';
 import { UpdateFcmTokenInputDTO } from '../dtos/auth.dto';
 import { injectable, inject } from "tsyringe";
+import { IUpdateFcmTokenUseCase } from "./interfaces";
 
 @injectable()
-export class UpdateFcmToken {
+export class UpdateFcmToken implements IUpdateFcmTokenUseCase {
   constructor(
     @inject("IUserRepository") private userRepository: IUserRepository
   ) {}

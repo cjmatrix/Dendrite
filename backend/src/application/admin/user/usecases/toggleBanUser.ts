@@ -1,9 +1,10 @@
 import { inject, injectable } from "tsyringe";
 import { IUserRepository } from "../../../../domain/auth/repositories/IUserRepository";
 import { AppError } from "../../../../utils/AppError";
+import { IToggleBanUserUseCase } from "./interfaces";
 
 @injectable()
-export class ToggleBanUser {
+export class ToggleBanUser implements IToggleBanUserUseCase {
   constructor(
     @inject("IUserRepository") private userRepo: IUserRepository
   ) {}

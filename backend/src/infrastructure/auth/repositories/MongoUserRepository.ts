@@ -31,6 +31,7 @@ export class MongoUserRepository extends MongooseBaseRepository<IUser> implement
   if (options?.sort) {
     query = query.sort(options.sort);
   }
+
   
   if (options?.skip !== undefined) {
     query = query.skip(options.skip);

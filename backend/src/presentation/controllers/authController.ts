@@ -2,15 +2,17 @@ import { Request, Response } from "express";
 import { BaseController } from "./base/BaseController";
 import { AppError } from "../../utils/AppError";
 import { injectable, inject } from "tsyringe";
-import { RegisterUser } from "../../application/auth/use-cases/RegisterUser";
-import { LoginUser } from "../../application/auth/use-cases/LoginUser";
-import { RefreshTokenUser } from "../../application/auth/use-cases/RefreshTokenUser";
-import { LogoutUser } from "../../application/auth/use-cases/LogoutUser";
-import { GetMe } from "../../application/auth/use-cases/GetMe";
-import { UpdateFcmToken } from "../../application/auth/use-cases/UpdateFcmToken";
-import { SendOTP } from "../../application/auth/use-cases/SendOTP";
-import { VerifyOTP } from "../../application/auth/use-cases/VerifyOTP";
-import { GoogleLogin } from "../../application/auth/use-cases/GoogleLogin";
+import {
+  IGetMeUseCase,
+  IGoogleLoginUseCase,
+  ILoginUserUseCase,
+  ILogoutUserUseCase,
+  IRefreshTokenUserUseCase,
+  IRegisterUserUseCase,
+  ISendOtpUseCase,
+  IUpdateFcmTokenUseCase,
+  IVerifyOtpUseCase,
+} from "../../application/auth/use-cases/interfaces";
 import { container } from "tsyringe";
 import { AuthMapper } from "../../application/auth/dtos/auth.dto";
 import {
@@ -29,15 +31,18 @@ const cookieOptions = {
 @injectable()
 export class AuthController extends BaseController {
   constructor(
-    @inject(RegisterUser) private registerUser: RegisterUser,
-    @inject(LoginUser) private loginUser: LoginUser,
-    @inject(RefreshTokenUser) private refreshTokenUser: RefreshTokenUser,
-    @inject(LogoutUser) private logoutUser: LogoutUser,
-    @inject(GetMe) private getMeUseCase: GetMe,
-    @inject(UpdateFcmToken) private updateFcmTokenUseCase: UpdateFcmToken,
-    @inject(SendOTP) private sendOtpUseCase: SendOTP,
-    @inject(VerifyOTP) private verifyOtpUseCase: VerifyOTP,
-    @inject(GoogleLogin) private googleLoginUseCase: GoogleLogin
+    @inject("IRegisterUserUseCase") private registerUser: IRegisterUserUseCase,
+    @inject("ILoginUserUseCase") private loginUser: ILoginUserUseCase,
+    @inject("IRefreshTokenUserUseCase")
+    private refreshTokenUser: IRefreshTokenUserUseCase,
+    @inject("ILogoutUserUseCase") private logoutUser: ILogoutUserUseCase,
+    @inject("IGetMeUseCase") private getMeUseCase: IGetMeUseCase,
+    @inject("IUpdateFcmTokenUseCase")
+    private updateFcmTokenUseCase: IUpdateFcmTokenUseCase,
+    @inject("ISendOtpUseCase") private sendOtpUseCase: ISendOtpUseCase,
+    @inject("IVerifyOtpUseCase") private verifyOtpUseCase: IVerifyOtpUseCase,
+    @inject("IGoogleLoginUseCase")
+    private googleLoginUseCase: IGoogleLoginUseCase
   ) {
     super();
   }

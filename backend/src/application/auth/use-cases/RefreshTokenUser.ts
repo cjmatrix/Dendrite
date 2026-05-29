@@ -3,9 +3,10 @@ import { IAuthService } from '../../../domain/auth/services/IAuthService';
 import { ICacheService } from '../../../application/common/ports/ICacheService';
 import { AppError } from '../../../utils/AppError';
 import { injectable, inject } from "tsyringe";
+import { IRefreshTokenUserUseCase } from "./interfaces";
 
 @injectable()
-export class RefreshTokenUser {
+export class RefreshTokenUser implements IRefreshTokenUserUseCase {
   constructor(
     @inject("IUserRepository") private userRepository: IUserRepository,
     @inject("IAuthService") private authService: IAuthService,

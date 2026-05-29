@@ -2,9 +2,10 @@ import { inject, injectable } from "tsyringe";
 import { IUserRepository } from "../../../../domain/auth/repositories/IUserRepository";
 import { AppError } from "../../../../utils/AppError";
 import { IUser } from "../../../../domain/auth/entities/User";
+import { IAdminGetMeUseCase } from "./interfaces";
 
 @injectable()
-export class AdminGetMeUseCase {
+export class AdminGetMeUseCase implements IAdminGetMeUseCase {
   constructor(
     @inject("IUserRepository") private userRepository: IUserRepository
   ) {}

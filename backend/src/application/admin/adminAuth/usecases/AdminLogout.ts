@@ -1,8 +1,9 @@
 import { inject, injectable } from "tsyringe";
 import { ICacheService } from "../../../common/ports/ICacheService";
+import { IAdminLogoutUseCase } from "./interfaces";
 
 @injectable()
-export class AdminLogoutUseCase {
+export class AdminLogoutUseCase implements IAdminLogoutUseCase {
   constructor(
     @inject("ICacheService") private cacheService: ICacheService
   ) {}

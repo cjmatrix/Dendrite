@@ -2,9 +2,10 @@ import { IOTPService } from "../../../domain/auth/services/IOTPService";
 import { IUserRepository } from "../../../domain/auth/repositories/IUserRepository";
 import { AppError } from "../../../utils/AppError";
 import { injectable, inject } from "tsyringe";
+import { IVerifyOtpUseCase } from "./interfaces";
 
 @injectable()
-export class VerifyOTP {
+export class VerifyOTP implements IVerifyOtpUseCase {
   constructor(
     @inject("IOTPService") private otpService: IOTPService,
     @inject("IUserRepository") private userRepository: IUserRepository

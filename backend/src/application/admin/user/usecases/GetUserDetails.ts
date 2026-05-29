@@ -1,9 +1,10 @@
 import { inject, injectable } from "tsyringe";
 import { IUserRepository } from "../../../../domain/auth/repositories/IUserRepository";
 import { AppError } from "../../../../utils/AppError";
+import { IGetUserDetailsUseCase } from "./interfaces";
 
 @injectable()
-export class GetUserDetails {
+export class GetUserDetails implements IGetUserDetailsUseCase {
   constructor(@inject("IUserRepository") private userRepo: IUserRepository) {}
 
   async execute(userId: string) {

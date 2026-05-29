@@ -5,9 +5,10 @@ import { AppError } from "../../../utils/AppError";
 import { LoginInputDTO } from "../dtos/auth.dto";
 import { IUser } from "../../../domain/auth/entities/User";
 import { injectable, inject } from "tsyringe";
+import { ILoginUserUseCase } from "./interfaces";
 
 @injectable()
-export class LoginUser {
+export class LoginUser implements ILoginUserUseCase {
   constructor(
     @inject("IUserRepository") private userRepository: IUserRepository,
     @inject("IAuthService") private authService: IAuthService,

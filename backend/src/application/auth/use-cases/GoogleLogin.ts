@@ -8,9 +8,10 @@ import { IUser } from "../../../domain/auth/entities/User";
 import { OAuth2Client } from "google-auth-library";
 import { v4 as uuidv4 } from "uuid";
 import { injectable, inject } from "tsyringe";
+import { IGoogleLoginUseCase } from "./interfaces";
 
 @injectable()
-export class GoogleLogin {
+export class GoogleLogin implements IGoogleLoginUseCase {
   private googleClient: OAuth2Client;
 
   constructor(

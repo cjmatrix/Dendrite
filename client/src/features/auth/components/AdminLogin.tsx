@@ -115,7 +115,7 @@ const AdminLogin: React.FC = () => {
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <>
-                  Execute Auth
+                  Login In
                   <ShieldAlert className="w-4 h-4 group-hover:rotate-12 transition-transform" />
                 </>
               )}

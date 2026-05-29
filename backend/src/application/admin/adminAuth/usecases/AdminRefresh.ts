@@ -3,9 +3,10 @@ import { IUserRepository } from "../../../../domain/auth/repositories/IUserRepos
 import { IAuthService } from "../../../../domain/auth/services/IAuthService";
 import { ICacheService } from "../../../common/ports/ICacheService";
 import { AppError } from "../../../../utils/AppError";
+import { IAdminRefreshUseCase } from "./interfaces";
 
 @injectable()
-export class AdminRefreshUseCase {
+export class AdminRefreshUseCase implements IAdminRefreshUseCase {
   constructor(
     @inject("IUserRepository") private userRepository: IUserRepository,
     @inject("IAuthService") private authService: IAuthService,

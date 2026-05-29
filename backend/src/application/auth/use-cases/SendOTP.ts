@@ -2,9 +2,10 @@ import { IOTPService } from "../../../domain/auth/services/IOTPService";
 import { IEmailService } from "../../common/ports/IEmailService";
 import { AppError } from "../../../utils/AppError";
 import { injectable, inject } from "tsyringe";
+import { ISendOtpUseCase } from "./interfaces";
 
 @injectable()
-export class SendOTP {
+export class SendOTP implements ISendOtpUseCase {
   constructor(
     @inject("IOTPService") private otpService: IOTPService,
     @inject("IEmailService") private emailService: IEmailService,

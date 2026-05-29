@@ -6,9 +6,10 @@ import { IUser } from "../../../domain/auth/entities/User";
 
 import { injectable, inject } from "tsyringe";
 import { IUnitOfWorkRepository } from "../../common/ports/IUnitOfWorkRepository";
+import { IRegisterUserUseCase } from "./interfaces";
 
 @injectable()
-export class RegisterUser {
+export class RegisterUser implements IRegisterUserUseCase {
   constructor(
     @inject("IUserRepository") private userRepository: IUserRepository,
     @inject("IFolderRepository") private folderRepository: IFolderRepository,

@@ -1,14 +1,26 @@
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, UserCircle, Download } from "lucide-react";
+import { ArrowLeft, UserCircle } from "lucide-react";
 import { useGetUserById } from "./hook/useGetUserById";
 import { useState } from "react";
 import { useSuspendUser } from "./hook/useSuspendUser";
 import { useUnsuspendUser } from "./hook/useUnsuspendUser";
 import { useToggleBan } from "./hook/useToggleBan";
+import { ActionModal } from "../../../components/common/ActionModal";
 
 function UserViewPage() {
   const { id } = useParams();
   const [showSuspendOptions, setShowSuspendOptions] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<
+    | null
+    | {
+        type: "suspend";
+        durationInSeconds: number;
+        label: string;
+      }
+    | {
+        type: "ban";
+      }
+  >(null);
   const secondsMap = {
     0: 86400,
     1: 259200,
@@ -41,6 +53,20 @@ function UserViewPage() {
     if (id) {
       toggleBan(id);
     }
+  };
+
+  const handleConfirmAction = () => {
+    if (!confirmAction) return;
+
+    if (confirmAction.type === "suspend") {
+      handleSuspend(confirmAction.durationInSeconds);
+    }
+
+    if (confirmAction.type === "ban") {
+      handleToggleBan();
+    }
+
+    setConfirmAction(null);
   };
 
   if (isLoading) {
@@ -253,7 +279,14 @@ function UserViewPage() {
                       key={option.label}
                       className="w-full text-left px-4 py-3 hover:bg-blue-500/10 transition-all border-b border-blue-500/5 last:border-0 group"
                     disabled={isPending}
-                      onClick={() => handleSuspend(secondsMap[i as keyof typeof secondsMap])}
+                      onClick={() => {
+                        setShowSuspendOptions(false);
+                        setConfirmAction({
+                          type: "suspend",
+                          durationInSeconds: secondsMap[i as keyof typeof secondsMap],
+                          label: option.label,
+                        });
+                      }}
                     >
                       <div className="text-xs font-medium text-blue-200 group-hover:text-white transition-colors">
                         {option.label}
@@ -268,7 +301,13 @@ function UserViewPage() {
             </div>
           )}
           <button 
-            onClick={handleToggleBan}
+            onClick={() => {
+              if (user.status === "banned") {
+                handleToggleBan();
+                return;
+              }
+              setConfirmAction({ type: "ban" });
+            }}
             disabled={isBanning}
             className={`px-4 py-2 rounded-lg text-xs uppercase tracking-wider transition-all border disabled:opacity-50 ${
             user.status === "banned" 
@@ -279,6 +318,27 @@ function UserViewPage() {
           </button>
         </div>
       </div>
+      <ActionModal
+        isOpen={!!confirmAction}
+        variant="warning"
+        title={
+          confirmAction?.type === "suspend"
+            ? "Confirm Suspension"
+            : "Confirm Ban"
+        }
+        description={
+          confirmAction?.type === "suspend"
+            ? `This will suspend the user for ${confirmAction.label}.`
+            : "This will immediately ban the user and restrict access."
+        }
+        confirmLabel={
+          confirmAction?.type === "suspend" ? "Suspend user" : "Ban user"
+        }
+        cancelLabel="Cancel"
+        isLoading={isPending || isBanning}
+        onCancel={() => setConfirmAction(null)}
+        onConfirm={handleConfirmAction}
+      />
     </div>
   );
 }

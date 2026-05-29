@@ -5,9 +5,10 @@ import { ICacheService } from "../../../../application/common/ports/ICacheServic
 import { AppError } from "../../../../utils/AppError";
 import { AdminLoginInputDTO } from "../dtos/admin.dto";
 import { IUser } from "../../../../domain/auth/entities/User";
+import { IAdminLoginUseCase } from "./interfaces";
 
 @injectable()
-export class AdminLoginUseCase {
+export class AdminLoginUseCase implements IAdminLoginUseCase {
   constructor(
     @inject("IUserRepository") private userRepository: IUserRepository,
     @inject("IAuthService") private authService: IAuthService,

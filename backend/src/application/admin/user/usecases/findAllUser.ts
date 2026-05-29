@@ -1,9 +1,10 @@
 import { inject, injectable } from "tsyringe";
 import { IUserRepository } from "../../../../domain/auth/repositories/IUserRepository";
+import { IFindAllUserUseCase } from "./interfaces";
 
 
 @injectable()
-export class FindAllUser {
+export class FindAllUser implements IFindAllUserUseCase {
     constructor (@inject("IUserRepository") private userRepo:IUserRepository){}
 
     async execute(query: any){
@@ -35,6 +36,7 @@ export class FindAllUser {
           users,
           total
         }
+        
 
     }
 }

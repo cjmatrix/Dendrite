@@ -1,10 +1,12 @@
 import { Request, Response } from "express";
 import { container, inject, injectable } from "tsyringe";
-import { FindAllUser } from "../../../application/admin/user/usecases/findAllUser";
-import { GetUserDetails } from "../../../application/admin/user/usecases/GetUserDetails";
-import { SuspendUser } from "../../../application/admin/user/usecases/suspendUser";
-import { UnsuspendUser } from "../../../application/admin/user/usecases/unsuspendUser";
-import { ToggleBanUser } from "../../../application/admin/user/usecases/toggleBanUser";
+import {
+  IFindAllUserUseCase,
+  IGetUserDetailsUseCase,
+  ISuspendUserUseCase,
+  IToggleBanUserUseCase,
+  IUnsuspendUserUseCase,
+} from "../../../application/admin/user/usecases/interfaces";
 import { UserManagementMapper } from "../../../application/admin/user/dtos/userManagement.dto";
 
 import { BaseController } from "../base/BaseController";
@@ -18,11 +20,11 @@ class UserController extends BaseController{
 
 
     constructor (
-        @inject(FindAllUser) private findAllUser:FindAllUser,
-        @inject(GetUserDetails) private getUserDetails:GetUserDetails,
-        @inject(SuspendUser) private suspendUser:SuspendUser,
-        @inject(UnsuspendUser) private unsuspendUser:UnsuspendUser,
-        @inject(ToggleBanUser) private toggleBanUser:ToggleBanUser
+      @inject("IFindAllUserUseCase") private findAllUser:IFindAllUserUseCase,
+      @inject("IGetUserDetailsUseCase") private getUserDetails:IGetUserDetailsUseCase,
+      @inject("ISuspendUserUseCase") private suspendUser:ISuspendUserUseCase,
+      @inject("IUnsuspendUserUseCase") private unsuspendUser:IUnsuspendUserUseCase,
+      @inject("IToggleBanUserUseCase") private toggleBanUser:IToggleBanUserUseCase
     ){
         super();
     };

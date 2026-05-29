@@ -2,10 +2,12 @@ import { Request, Response } from "express";
 import { BaseController } from "../base/BaseController";
 import { AppError } from "../../../utils/AppError";
 import { inject, injectable } from "tsyringe";
-import { AdminLoginUseCase } from "../../../application/admin/adminAuth/usecases/adminLoginUsecase";
-import { AdminLogoutUseCase } from "../../../application/admin/adminAuth/usecases/AdminLogout";
-import { AdminGetMeUseCase } from "../../../application/admin/adminAuth/usecases/AdminGetMe";
-import { AdminRefreshUseCase } from "../../../application/admin/adminAuth/usecases/AdminRefresh";
+import {
+  IAdminGetMeUseCase,
+  IAdminLoginUseCase,
+  IAdminLogoutUseCase,
+  IAdminRefreshUseCase,
+} from "../../../application/admin/adminAuth/usecases/interfaces";
 import { AdminAuthMapper } from "../../../application/admin/adminAuth/dtos/admin.dto";
 import { container } from "tsyringe";
 import {
@@ -24,10 +26,14 @@ const cookieOptions = {
 @injectable()
 export class AdminAuthController extends BaseController {
   constructor(
-    @inject(AdminLoginUseCase) private adminLoginUseCase: AdminLoginUseCase,
-    @inject(AdminLogoutUseCase) private adminLogoutUseCase: AdminLogoutUseCase,
-    @inject(AdminGetMeUseCase) private adminGetMeUseCase: AdminGetMeUseCase,
-    @inject(AdminRefreshUseCase) private adminRefreshUseCase: AdminRefreshUseCase
+    @inject("IAdminLoginUseCase")
+    private adminLoginUseCase: IAdminLoginUseCase,
+    @inject("IAdminLogoutUseCase")
+    private adminLogoutUseCase: IAdminLogoutUseCase,
+    @inject("IAdminGetMeUseCase")
+    private adminGetMeUseCase: IAdminGetMeUseCase,
+    @inject("IAdminRefreshUseCase")
+    private adminRefreshUseCase: IAdminRefreshUseCase
   ) {
     super();
   }

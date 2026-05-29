@@ -2,9 +2,10 @@ import { IUserRepository } from "../../../domain/auth/repositories/IUserReposito
 import { AppError } from "../../../utils/AppError";
 import { IUser } from "../../../domain/auth/entities/User";
 import { injectable, inject } from "tsyringe";
+import { IGetMeUseCase } from "./interfaces";
 
 @injectable()
-export class GetMe {
+export class GetMe implements IGetMeUseCase {
   constructor(
     @inject("IUserRepository") private userRepository: IUserRepository
   ) {}
