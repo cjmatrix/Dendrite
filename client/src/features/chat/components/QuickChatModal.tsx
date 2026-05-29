@@ -10,11 +10,7 @@ import {
   Eye,
   EyeOff,
 } from "lucide-react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import remarkMath from "remark-math";
-import rehypeKatex from "rehype-katex";
-import { markdownComponents } from "./markdown/MarkdownComponents";
+
 import Draggable from "react-draggable";
 import { useQuickChat } from "../hooks/useQuickChat";
 import { MessageContent } from "./MessageContent";

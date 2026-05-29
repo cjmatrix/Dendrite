@@ -1,4 +1,4 @@
-import { IEmailService } from "../../../domain/shared/services/IEmailService";
+import { IEmailService } from "../../../application/common/ports/IEmailService";
 import nodemailer from "nodemailer";
 import { injectable } from "tsyringe";
 
@@ -12,18 +12,18 @@ export class NodemailerEmailService implements IEmailService {
     const user = process.env.SMTP_USER;
     const pass = process.env.SMTP_PASS;
 
-   
     this.transporter = nodemailer.createTransport({
       host,
       port,
-      secure: port === 465, 
+      secure: port === 465,
       auth: user && pass ? { user, pass } : undefined,
     });
   }
 
   async sendOTPEmail(email: string, otp: string): Promise<void> {
-    const fromAddress = process.env.SMTP_FROM || `"Dentrites AI" <noreply@dentrites.ai>`;
-    
+    const fromAddress =
+      process.env.SMTP_FROM || `"Dentrites AI" <noreply@dentrites.ai>`;
+
     const mailOptions = {
       from: fromAddress,
       to: email,
@@ -68,9 +68,7 @@ export class NodemailerEmailService implements IEmailService {
       `,
     };
 
-
     if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-    
       return;
     }
 

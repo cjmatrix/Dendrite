@@ -36,6 +36,11 @@ export const VerifyOtpInputSchema = z.object({
 });
 export type VerifyOtpInputDTO = z.infer<typeof VerifyOtpInputSchema>;
 
+export const GoogleLoginInputSchema = z.object({
+  idToken: z.string().min(1, "Google ID Token is required"),
+});
+export type GoogleLoginInputDTO = z.infer<typeof GoogleLoginInputSchema>;
+
 
 
 export interface UserOutputDTO {

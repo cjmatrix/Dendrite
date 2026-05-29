@@ -1,7 +1,7 @@
 import { Queue, Worker } from 'bullmq';
 import fs from 'fs';
 
-import { DIContainer } from '../controllers/container/DIContainer';
+import { DIContainer } from '../presentation/controllers/container/DIContainer';
 import { ProcessDocumentChunking } from '../application/worker/use-cases/ProcessDocumentChunking';
 import { FileUploadService } from '../services/FileUploadService';
 import { documentProgressPubSub } from '../services/documentProgressPubSub';

@@ -25,7 +25,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { X, MessageSquare, Folder, GitBranch, AlertTriangle } from "lucide-react";
-import type { FileNode } from "../types/types";
+import type { FileNode } from "../../explorer/types/types";
 
 const MAX_PARENTS = 5;
 

@@ -3,7 +3,62 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import P5Sandbox from "../P5Sandbox";
 import { MermaidBlock } from "react-markdown-mermaid";
+// @ts-ignore
 import plantumlEncoder from "plantuml-encoder";
+
+function detectCodeType(text) {
+  const cleanText = text.trim();
+
+  // 1. Check for PromQL / Metrics (like your example: node_memory_usage_bytes{...})
+  if (/[a-zA-Z_:][a-zA-Z0-9_:]*\{.*?\}/.test(cleanText)) {
+    return { isCode: true, lang: "promql" };
+  }
+
+  // 2. Check for JSON format
+  if (cleanText.startsWith("{") && cleanText.endsWith("}") && cleanText.includes('"')) {
+    return { isCode: true, lang: "json" };
+  }
+
+  // 3. Check for HTML / XML elements
+  if (/<\/?[a-z][\s\S]*>/i.test(cleanText)) {
+    return { isCode: true, lang: "xml" }; // xml handles html beautifully
+  }
+
+  // 4. Check for CSS rules
+  if (/\.[a-zA-Z0-9_-]+\s*\{[^}]*\}/.test(cleanText) || /#浪[a-zA-Z0-9_-]+\s*\{[^}]*\}/.test(cleanText)) {
+    return { isCode: true, lang: "css" };
+  }
+
+  // 5. Check for standard JavaScript / TypeScript features
+  if (
+    /const\s+\w+\s*=/.test(cleanText) ||
+    /let\s+\w+\s*=/.test(cleanText) ||
+    /import\s+.*\s+from/.test(cleanText) ||
+    /function\s+\w+\s*\(/.test(cleanText) ||
+    /console\.log\(/.test(cleanText) ||
+    /=>/.test(cleanText)
+  ) {
+    return { isCode: true, lang: "javascript" };
+  }
+
+  // 6. Check for Bash / Shell commands
+  if (/^(npm install|yarn add|pip install|git clone|cd\s+|ls\s+|mkdir\s+)/.test(cleanText)) {
+    return { isCode: true, lang: "bash" };
+  }
+
+  // 7. General code check (brackets, semicolons, operations) to catch random variables
+  // But ensure it's not a regular sentence with punctuation
+  const codeSymbols = (cleanText.match(/[{}()\[\];=<>+\-*\/&|]/g) || []).length;
+  const wordCount = cleanText.split(/\s+/).length;
+  
+  if (codeSymbols > 2 || (wordCount === 1 && cleanText.includes("_"))) {
+    return { isCode: true, lang: "javascript" }; // standard colorful default
+  }
+
+  // 8. If none match, treat it as a regular plain-text sentence snippet
+  return { isCode: false, lang: "text" };
+}
+
 
 export const markdownComponents = {
    MermaidBlock: ({ children }: { children: string }) => {
@@ -55,7 +110,7 @@ export const markdownComponents = {
       <div className="mermaid-container min-w-[600px] transition-all">
         <MermaidBlock code={children} />
       </div>
-      <style jsx global>{`
+      <style>{`
         /* Target the mermaid SVG to ensure text remains legible */
         .mermaid-container svg {
           height: auto !important; /* Let the height grow based on content */
@@ -117,14 +172,33 @@ export const markdownComponents = {
           {codeString}
         </SyntaxHighlighter>
       </div>
-    ) : (
-      <code
-        className="bg-zinc-700/20 px-[0.5rem] py-[0.2rem] mx-[0.3rem] my-[0.5rem] font-thin rounded-md text-amber-200/90 text-[14.5px] border border-zinc-600/30"
-        {...props}
-      >
-        {children}
-      </code>
-    );
+    ) :  (
+ 
+  <SyntaxHighlighter
+    style={vscDarkPlus as any}
+    
+    language="javascript" 
+    PreTag="span"
+    
+    codeTagProps={{
+      style: {
+        fontSize: "15px", 
+        lineHeight: "1.4",
+      }
+    }}
+    customStyle={{
+      display: "inline-block", 
+      verticalAlign: "middle",
+      margin: "0 0.3rem",
+      padding: "0.2rem 0.5rem",
+      background: "rgba(63, 63, 70, 0.2)",
+      borderRadius: "0.375rem",
+      border: "1px solid rgba(82, 82, 91, 0.3)", 
+    }}
+  >
+    {String(children).replace(/\n$/, "")}
+  </SyntaxHighlighter>
+);
   },
   pre({ children }: any) {
     return <>{children}</>;

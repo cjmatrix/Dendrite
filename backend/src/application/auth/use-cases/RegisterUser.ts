@@ -5,7 +5,7 @@ import { RegisterInputDTO } from "../dtos/auth.dto";
 import { IUser } from "../../../domain/auth/entities/User";
 
 import { injectable, inject } from "tsyringe";
-import { IUnitOfWorkRepository } from "../../../domain/shared/IUnitOfWorkRepository";
+import { IUnitOfWorkRepository } from "../../common/ports/IUnitOfWorkRepository";
 
 @injectable()
 export class RegisterUser {
@@ -20,50 +20,62 @@ export class RegisterUser {
     const { name, email, password } = userData;
 
     const existingUser = await this.userRepository.findByEmail(email);
-    if (existingUser) {
+    if (existingUser && existingUser.status !== "pending") {
       throw new AppError("User already exists", 409);
     }
+    
 
     return await this.unitOfWorkRepository.runInTransaction(async () => {
-      const user = await this.userRepository.create({
-        name,
-        email,
-        password,
-        status: "pending",
-      });
+
       
-      await this.userRepository.save(user);
+      if (existingUser && existingUser.status === "pending") {
+        existingUser.name = name;
+        existingUser.password = password; 
 
-      const systemFolders = [
-        {
-          userId: user._id,
-          parentId: null,
-          name: "Documents",
-          isSystemFolder: true,
-        },
-        {
-          userId: user._id,
-          parentId: null,
-          name: "Media",
-          isSystemFolder: true,
-        },
-        {
-          userId: user._id,
-          parentId: null,
-          name: "Research",
-          isSystemFolder: true,
-        },
-        {
-          userId: user._id,
-          parentId: null,
-          name: "Chats",
-          isSystemFolder: true,
-        },
-      ];
+       let user = await this.userRepository.save(existingUser);
 
-      await this.folderRepository.insertMany(systemFolders);
+        return {user}
+      } else {
+        const user = await this.userRepository.create({
+          name,
+          email,
+          password,
+          status: "pending",
+        });
 
-      return { user };
+        await this.userRepository.save(user);
+
+        const systemFolders = [
+          {
+            userId: user._id,
+            parentId: null,
+            name: "Documents",
+            isSystemFolder: true,
+          },
+          {
+            userId: user._id,
+            parentId: null,
+            name: "Media",
+            isSystemFolder: true,
+          },
+          {
+            userId: user._id,
+            parentId: null,
+            name: "Research",
+            isSystemFolder: true,
+          },
+          {
+            userId: user._id,
+            parentId: null,
+            name: "Chats",
+            isSystemFolder: true,
+          },
+        ];
+
+        await this.folderRepository.insertMany(systemFolders);
+
+        return { user };
+      }
     });
   }
 }

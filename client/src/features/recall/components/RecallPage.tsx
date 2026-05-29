@@ -1,12 +1,12 @@
 import { Brain, Search, Loader, CheckCircle2, Award, Clock, Trash2, PenLine, ChevronDown, ChevronUp, X } from "lucide-react";
 import ReactMarkdown from "react-markdown";
-import "../styles/markdown.css";
+import "../../chat/styles/markdown.css";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
-import { markdownComponents } from "../components/markdown/MarkdownComponents";
+import { markdownComponents } from "../../chat/components/markdown/MarkdownComponents";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import api from "../api/axios";
+import api from "../../../lib/axios";
 import React, { useState } from "react";
 
 interface RecallCardProps {

@@ -2,8 +2,8 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import {
   classifyFile,
   type DocumentProgressEvent,
-} from "../core/domain/entities/FileUpload";
-import { chatRepository } from "../core/container";
+} from "../types/FileUpload";
+import { uploadImage, uploadFile, streamDocumentProgress } from "../api/chatApi";
 
 type AttachedFile = { name: string; url: string };
 
@@ -123,13 +123,13 @@ export function useFileUpload(chatId?: string) {
     setIsUploading(true);
     try {
       if (classification === "image") {
-        const result = await chatRepository.uploadImage(file, chatId);
+        const result = await uploadImage(file, chatId);
         setSelectedImageUrl(result.url);
         setSelectedFile(null);
         setDocumentUpload(null);
         setIsUploading(false);
       } else {
-        const result = await chatRepository.uploadFile(file, chatId, file.name);
+        const result = await uploadFile(file, chatId, file.name);
         activeDocumentIdRef.current = result.documentId;
         setDocumentUpload({
           documentId: result.documentId,
@@ -150,7 +150,7 @@ export function useFileUpload(chatId?: string) {
           streamCleanupRef.current = null;
         }
 
-        streamCleanupRef.current = chatRepository.streamDocumentProgress(
+        streamCleanupRef.current = streamDocumentProgress(
           chatId,
           result.documentId,
           (event) => applyProgressUpdate(event, true),

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useContext, useState } from "react";
-import { StreamingContext } from "../contexts/StreamingContext";
+import { StreamingContext } from "../../../providers/StreamingContext";
 import { Maximize2, Minimize2 } from "lucide-react";
 
 interface P5SandboxProps {

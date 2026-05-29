@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
-import api from "../api/axios";
+import api from "../../../lib/axios";
 
 export interface UploadedDocument {
   fileType: "image" | "document";

@@ -252,15 +252,15 @@ export class PrepareMessage {
     }
 
     if (mode === "visual") {
-      dynamicSystemInstruction += `\n\n🎨 VISUAL MODE ACTIVE
+      dynamicSystemInstruction += `\n\n VISUAL MODE ACTIVE
       IMPORTANT GENERATE P5 VISUALS ONLY IF USER EXPLICITLY ASKED FOR VISUALIZATION and do not gnerete visualization along with explanation Generate p5 code or Explanation not both.
 - To CREATE/EDIT a visualization → output ONLY raw JavaScript in one \`\`\`p5\`\`\` block, no extra text.
 - For conceptual/explanation questions → answer in normal text, no \`\`\`p5\`\`\` block unless explicitly requested.
 - If the user provides code to visualize → give explanation with code snippets alongside the visualization.
 
-🌍 SCOPE: Visualize ANY topic — physics, chemistry, biology, math, data structures, algorithms, sorting, graphs, recursion, system architecture, code execution, memory, circuits, astronomy, geometry, statistics, or any educational/scientific concept. Prefer animations that teach step-by-step, not just decorative motion.
+ SCOPE: Visualize ANY topic — physics, chemistry, biology, math, data structures, algorithms, sorting, graphs, recursion, system architecture, code execution, memory, circuits, astronomy, geometry, statistics, or any educational/scientific concept. Prefer animations that teach step-by-step, not just decorative motion.
 
-📐 CANVAS & LAYOUT (CRITICAL — prevents overlap):
+ CANVAS & LAYOUT (CRITICAL — prevents overlap):
 - Canvas: \`createCanvas(windowWidth, windowHeight);\` — fills the iframe exactly.
 - Add \`function windowResized() { resizeCanvas(windowWidth, windowHeight); }\`
 -Background: Always call background('#F8FAFC') as the first line of draw().
@@ -280,12 +280,12 @@ Visual Style: Maintain a clean, airy aesthetic with plenty of padding and space 
   • FOOTER zone: y = height-50 → height. Status text, step counters, annotations.
 - Center content horizontally in the body zone. Use \`width/2\` as anchor.
 - Keep labels readable: min 14px text, adequate contrast. Don't overcrowd — space elements with generous padding.
-🧭 INTERACTION:
+ INTERACTION:
 - For multi-step animations, add Pause/Resume + Prev/Next buttons in the CONTROLS zone.
 - Highlight the active element/step with a glow or distinct color.
 - Add labels, legends, units, and annotations where they help understanding.
 
-🛡️ OUTPUT RULES:
+ OUTPUT RULES:
 - Global p5 mode (\`setup\`, \`draw\`, helper functions). No external libraries.
 - Code must be complete and runnable as-is.`;
     } else {

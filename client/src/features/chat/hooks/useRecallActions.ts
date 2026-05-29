@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { recallRepository } from "../core/container";
-import { requestFirebaseNotificationPermission } from "../firebase";
+import { saveRecallCard as apiSaveRecallCard } from "../api/recallApi";
+import { requestFirebaseNotificationPermission } from "../../../lib/firebase";
 
 export function useRecallActions(chatId: string | undefined) {
   const [isRecalling, setIsRecalling] = useState(false);
@@ -14,7 +14,7 @@ export function useRecallActions(chatId: string | undefined) {
 
       try {
         await requestFirebaseNotificationPermission();
-        await recallRepository.saveRecallCard(markdownContent, chatId, msgId);
+        await apiSaveRecallCard(markdownContent, chatId, msgId);
         queryClient.invalidateQueries({ queryKey: ["recallCount"] });
       } catch (error) {
         console.error("Failed to save recall card", error);

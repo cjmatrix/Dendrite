@@ -1,11 +1,11 @@
 import { useMemo } from "react";
-import type { Message } from "../core/domain/entities/Message";
-import type { FileNode } from "../types/types";
+import type { Message } from "../types/Message";
+import type { FileNode } from "../../explorer/types/types";
 
-/**
- * Flattens paginated infinite query data into a flat message list
- * and computes the Virtuoso firstItemIndex for prepend support.
- */
+
+
+//flattens paginated infinite query data into a flat message
+
 export function useFlattenedMessages(messagesData: any) {
   return useMemo(() => {
     if (!messagesData) return { messages: [] as Message[], firstItemIndex: 10000 };
@@ -25,9 +25,7 @@ export function useFlattenedMessages(messagesData: any) {
   }, [messagesData]);
 }
 
-/**
- * Computes breadcrumb path from file tree to the current chat id.
- */
+
 export function useBreadcrumbs(tree: FileNode, chatId: string | undefined) {
   return useMemo(() => {
     const path: { id: string; name: string }[] = [];

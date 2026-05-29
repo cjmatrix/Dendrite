@@ -1,26 +1,63 @@
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { useEffect } from "react";
 import ProtectedRoute from "./components/ProtectedRoute";
-import ChatPage from "./pages/ChatPage";
-import Login from "./pages/Login";
-import Signup from "./pages/Signup";
-import OtpPage from "./pages/OtpPage";
+import AdminProtectedRoute from "./components/AdminProtectedRoute";
+import ChatPage from "./layouts/ChatPage";
+import AdminPage from "./layouts/AdminPage";
+import Login from "./features/auth/components/Login";
+import Signup from "./features/auth/components/Signup";
+import OtpPage from "./features/auth/components/OtpPage";
+import AdminLogin from "./features/auth/components/AdminLogin";
 import { useAppDispatch } from "./store/store";
-import { checkAuth, forceLogout } from "./store/authSlice";
-import { onMessageListener } from "./firebase";
+import { checkAuth, checkAdminAuth, forceLogout } from "./features/auth/store/authSlice";
+import { onMessageListener } from "./lib/firebase";
 import toast, { Toaster } from "react-hot-toast";
 import "./App.css";
-import ChatWindow from "./components/ChatWindow";
-import EmptyChatState from "./components/EmptyChatState";
-import RecallPage from "./pages/RecallPage";
-import KnowledgeGraphPage from "./pages/KnowledgeGraphPage";
-import SplitFileViewer from "./components/SplitFileViewer";
+import ChatWindow from "./features/chat/components/ChatWindow";
+import EmptyChatState from "./features/chat/components/EmptyChatState";
+import AdminDashboardPage from "./features/admin/dashboard/AdminDashboardPage";
+import UserManagementPage from "./features/admin/user/UserManagementPage";
+import UserViewPage from "./features/admin/user/UserViewPage";
+
+import KnowledgeGraphPage from "./features/graph/components/KnowledgeGraphPage";
+import SplitFileViewer from "./features/chat/components/SplitFileViewer";
 import { useQueryClient } from "@tanstack/react-query";
+
+import * as Sentry from "@sentry/react";
+
 
 const router = createBrowserRouter([
   {
     path: "/login",
     element: <Login />,
+  },
+  {
+    path: "/admin/login",
+    element: <AdminLogin />,
+  },
+  {
+    path: "/admin",
+    element: <AdminProtectedRoute />,
+    children: [
+      {
+        path: "/admin",
+        element: <AdminPage />,
+        children: [
+          {
+            index: true,
+            element: <AdminDashboardPage />,
+          },
+          {
+            path: "users",
+            element: <UserManagementPage />,
+          },
+          {
+            path: "users/:id",
+            element: <UserViewPage />,
+          },
+        ],
+      },
+    ],
   },
   {
     path: "/register",
@@ -76,6 +113,7 @@ function App() {
 
   useEffect(() => {
     dispatch(checkAuth());
+    dispatch(checkAdminAuth());
   }, [dispatch]);
 
   useEffect(() => {
@@ -111,7 +149,6 @@ function App() {
             },
           });
           
-          // Dispatch global event for animations (Tracer/Count)
           queryClient.invalidateQueries({ queryKey: ["recallCount"] });
           window.dispatchEvent(new CustomEvent('recall:notification-pushed'));
         }
@@ -127,8 +164,14 @@ function App() {
 
   return (
     <>
-      <Toaster />
+     <Sentry.ErrorBoundary 
+      fallback={<p>Something went wrong. Our team has been notified!</p>}
+    >
+     <Toaster />
       <RouterProvider router={router} />
+      
+    </Sentry.ErrorBoundary>
+     
     </>
   );
 }

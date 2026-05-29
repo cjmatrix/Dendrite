@@ -7,7 +7,7 @@ import {
   MessageSquareQuote,
   RotateCcw,
 } from "lucide-react";
-import DendritesLogo from "./DendritesLogo";
+import DendritesLogo from "../../../components/DendritesLogo";
 
 const features = [
   {

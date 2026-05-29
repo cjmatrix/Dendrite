@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { branchRepository } from "../core/container";
-import type { FileNode } from "../types/types";
+import { inheritContext as apiInheritContext, unlinkInheritance as apiUnlinkInheritance } from "../api/branchApi";
+import type { FileNode } from "../../explorer/types/types";
 
 export function useInheritContext(chatId: string | undefined) {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -15,7 +15,7 @@ export function useInheritContext(chatId: string | undefined) {
       if (node.type !== "chat" || !chatId) return;
 
       try {
-        await branchRepository.inheritContext(chatId, node.id);
+        await apiInheritContext(chatId, node.id);
         queryClient.invalidateQueries({ queryKey: ["chat", chatId] });
         setIsModalOpen(false);
       } catch (err) {
@@ -28,7 +28,7 @@ export function useInheritContext(chatId: string | undefined) {
   const unlinkInheritance = useCallback(async () => {
     if (!chatId) return;
     try {
-      await branchRepository.unlinkInheritance(chatId);
+      await apiUnlinkInheritance(chatId);
       queryClient.invalidateQueries({ queryKey: ["chat", chatId] });
     } catch (err) {
       console.error("Failed to unlink context:", err);

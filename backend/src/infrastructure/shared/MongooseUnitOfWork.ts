@@ -1,5 +1,5 @@
 import mongoose, { ClientSession } from "mongoose";
-import { IUnitOfWorkRepository } from "../../domain/shared/IUnitOfWorkRepository";
+import { IUnitOfWorkRepository } from "../../application/common/ports/IUnitOfWorkRepository";
 
 import { AsyncLocalStorage } from "async_hooks";
 import { injectable } from "tsyringe";
@@ -8,7 +8,7 @@ export const transactionStorage = new AsyncLocalStorage<ClientSession>();
 
 @injectable()
 export class MongooseUnitOfWork implements IUnitOfWorkRepository {
- async runInTransaction<T>(work: () => Promise<T>): Promise<T> {
+  async runInTransaction<T>(work: () => Promise<T>): Promise<T> {
     let session = await mongoose.startSession();
     let result: T;
 

@@ -5,10 +5,10 @@ const api = axios.create({
   withCredentials: true, 
 });
 
-// Set JSON header by default, but allow FormData to override for multipart uploads
+
 api.defaults.headers.post['Content-Type'] = 'application/json';
 api.interceptors.request.use((config) => {
-  // If data is FormData, don't set Content-Type (let browser set multipart/form-data with boundary)
+  
   if (config.data instanceof FormData) {
     delete config.headers['Content-Type'];
   }
@@ -36,18 +36,24 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // Skip interceptor for auth endpoints to avoid infinite loops
-    const skipUrls = ['/auth/login', '/auth/register', '/auth/refresh', '/auth/logout'];
+
+    const skipUrls = [
+      '/auth/login',
+      '/auth/register',
+      '/auth/refresh',
+      '/auth/logout',
+      '/admin/auth/login',
+      '/admin/auth/refresh',
+      '/admin/auth/logout',
+    ];
     if (skipUrls.some((url) => originalRequest.url?.includes(url))) {
       return Promise.reject(error);
     }
 
-    // Only intercept 401 (expired access token), and only retry once
     if (error.response?.status !== 401 || originalRequest._retry) {
       return Promise.reject(error);
     }
 
-    // If a refresh is already in progress, queue this request
     if (isRefreshing) {
       return new Promise((resolve, reject) => {
         failedQueue.push({ resolve, reject });
@@ -58,13 +64,13 @@ api.interceptors.response.use(
     isRefreshing = true;
 
     try {
-      await api.post('/auth/refresh');
+      const isAdminRequest = originalRequest.url?.includes('/admin');
+      const refreshEndpoint = isAdminRequest ? '/admin/auth/refresh' : '/auth/refresh';
+      await api.post(refreshEndpoint);
       processQueue(null);
       return api(originalRequest); 
     } catch (refreshError) {
       processQueue(refreshError);
-      // Refresh failed — token is invalid/expired, force logout
-      // Dispatch a window event so Redux can clear state
       window.dispatchEvent(new CustomEvent('auth:session-expired'));
       return Promise.reject(refreshError);
     } finally {

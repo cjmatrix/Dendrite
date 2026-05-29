@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { getMarkdownFromDOMSelection } from "../utils/markdownUtils";
+import { getMarkdownFromDOMSelection } from "../../../utils/markdownUtils";
 
 export interface TextSelection {
   text: string;

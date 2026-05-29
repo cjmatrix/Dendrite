@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { ShieldCheck, ArrowLeft, RotateCw, AlertCircle, CheckCircle } from "lucide-react";
-import api from "../api/axios";
-import { useAppDispatch } from "../store/store";
-import { checkAuth } from "../store/authSlice";
+import api from "../../../lib/axios";
 import "../styles/auth.css";
 
 const OtpPage: React.FC = () => {
@@ -16,9 +14,8 @@ const OtpPage: React.FC = () => {
 
   const navigate = useNavigate();
   const location = useLocation();
-  const dispatch = useAppDispatch();
 
-  // Retrieve pending registration email
+  
   const pendingData = location.state || JSON.parse(sessionStorage.getItem("pending_signup") || "null");
   const email = pendingData?.email || "";
 
@@ -28,10 +25,9 @@ const OtpPage: React.FC = () => {
       return;
     }
 
-    // Auto-focus on the first field
     inputRefs.current[0]?.focus();
 
-    // Check if there is an active cooldown saved
+   
     const savedCooldownEnd = localStorage.getItem(`otp_cooldown_end:${email}`);
     if (savedCooldownEnd) {
       const remaining = Math.ceil((Number(savedCooldownEnd) - Date.now()) / 1000);
@@ -41,7 +37,7 @@ const OtpPage: React.FC = () => {
     }
   }, [email, navigate]);
 
-  // Handle countdown interval
+
   useEffect(() => {
     if (cooldown <= 0) return;
 
@@ -59,13 +55,13 @@ const OtpPage: React.FC = () => {
   }, [cooldown]);
 
   const handleChange = (index: number, value: string) => {
-    if (!/^\d*$/.test(value)) return; // Only allow numbers
+    if (!/^\d*$/.test(value)) return; 
 
     const newOtp = [...otp];
     newOtp[index] = value.slice(-1);
     setOtp(newOtp);
 
-    // Auto-focus next field
+    
     if (value && index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
@@ -121,18 +117,19 @@ const OtpPage: React.FC = () => {
     setSuccess(null);
 
     try {
-      // 1. Verify OTP and authenticate user
+      
       await api.post("/auth/verify-otp", { email, otp: otpString });
 
-      // 2. Fetch authenticated user details and synchronize session state
-      await dispatch(checkAuth()).unwrap();
-
-      // Clean up cached states
+    
       sessionStorage.removeItem("pending_signup");
       localStorage.removeItem(`otp_cooldown_end:${email}`);
 
-      // 3. Navigate home
-      navigate("/");
+
+      setSuccess("Account activated successfully! Redirecting you to login...");
+      
+      setTimeout(() => {
+        navigate("/login");
+      }, 2500);
     } catch (err: any) {
       setError(err.response?.data?.message || err.message || "Invalid or expired OTP");
     } finally {
@@ -188,7 +185,9 @@ const OtpPage: React.FC = () => {
             {otp.map((digit, idx) => (
               <input
                 key={idx}
-                ref={(el) => (inputRefs.current[idx] = el)}
+                ref={(el: HTMLInputElement | null) => {
+                  if (el) inputRefs.current[idx] = el;
+                }}
                 type="text"
                 maxLength={1}
                 value={digit}

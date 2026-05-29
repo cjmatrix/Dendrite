@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useAppSelector, useAppDispatch } from '../store/store';
+import { useAppSelector, useAppDispatch } from '../../../store/store';
 import { Folder, MessageSquare, ChevronRight, MessageCircle, FolderPlus, Edit, Trash, Check, Sparkles, Brain, Component, Database, Cpu, X } from 'lucide-react';
 import type { FileNode, FileType } from '../types/types';
 import { setActiveSidebarRootId, toggleExplorerModal } from '../store/explorerSlice';

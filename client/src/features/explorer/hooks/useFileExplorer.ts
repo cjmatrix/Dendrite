@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { folderRepository, chatListRepository, recallCountRepository } from "../core/container";
+import { getFolders, getChats, getDueCount, createFolder as apiCreateFolder, createChat as apiCreateChat } from "../api/explorerApi";
 import { useEffect } from "react";
-import { useAppDispatch } from "../store/store";
+import { useAppDispatch } from "../../../store/store";
 import { setTree } from "../store/explorerSlice";
 import type { FileNode } from "../types/types";
 
@@ -14,17 +14,17 @@ export function useFileTree() {
   console.log("rerending usecases")
   const { data: folders } = useQuery({
     queryKey: ["folders"],
-    queryFn: () => folderRepository.getFolders(),
+    queryFn: () => getFolders(),
   });
 
   const { data: chats } = useQuery({
     queryKey: ["chats"],
-    queryFn: () => chatListRepository.getChats(),
+    queryFn: () => getChats(),
   });
 
   const { data: recallCount, refetch: refetchRecallCount } = useQuery({
     queryKey: ["recallCount"],
-    queryFn: () => recallCountRepository.getDueCount(),
+    queryFn: () => getDueCount(),
   });
 
   console.log(recallCount,"in usecase")
@@ -96,7 +96,7 @@ export function useExplorerMutations() {
 
   const { mutate: createFolder } = useMutation({
     mutationFn: ({ name, parentId }: { name: string; parentId: string | null }) =>
-      folderRepository.createFolder(name, parentId),
+      apiCreateFolder(name, parentId),
     onMutate: async ({ name, parentId }) => {
       await queryClient.cancelQueries({ queryKey: ["folders"] });
       const previous = queryClient.getQueryData(["folders"]);
@@ -119,7 +119,7 @@ export function useExplorerMutations() {
 
   const { mutate: createChat } = useMutation({
     mutationFn: ({ title, folderId }: { title: string; folderId: string | null }) =>
-      chatListRepository.createChat(title, folderId),
+      apiCreateChat(title, folderId),
     onMutate: async ({ title, folderId }) => {
       await queryClient.cancelQueries({ queryKey: ["chats"] });
       const previous = queryClient.getQueryData(["chats"]);

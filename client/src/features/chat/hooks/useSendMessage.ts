@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { chatRepository } from "../core/container";
-import type { StreamChunk, Message } from "../core/domain/entities/Message";
+import { sendMessageStream } from "../api/chatApi";
+import type { StreamChunk, Message } from "../types/Message";
 
 interface UseSendMessageOptions {
   chatId: string | undefined;
@@ -23,9 +23,10 @@ export function useSendMessage({ chatId, mode, onStreamStart, onStreamEnd }: Use
       const userTempId = `temp-${Date.now()}`;
       const fallbackText = selectedFile ? `Uploaded file: ${selectedFile.name}` : "Analyze this image";
 
-      // Optimistically add user message to the cache
+     
       queryClient.setQueryData(["chatMessages", chatId], (old: any) => {
         if (!old?.pages?.length) return old;
+        console.log(old?.pages,"Old pages")
         const newPages = [...old.pages];
         newPages[0] = {
           ...newPages[0],
@@ -53,7 +54,7 @@ export function useSendMessage({ chatId, mode, onStreamStart, onStreamEnd }: Use
       let fullReply = "";
 
       try {
-        await chatRepository.sendMessageStream(
+        await sendMessageStream(
           chatId,
           userMessage,
           mode,

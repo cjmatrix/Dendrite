@@ -4,7 +4,7 @@ import { markdownComponents } from "./markdown/MarkdownComponents";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
-import { rehypeMermaid } from 'react-markdown-mermaid';
+
 
 interface MessageContentProps {
   content: string;

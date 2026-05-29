@@ -50,7 +50,7 @@ export class EmbeddingService {
 
       return embedding;
     } catch (error: any) {
-      console.error("🔥 Jina Local Embedding failed:", error.message);
+      console.error(" Jina Local Embedding failed:", error.message);
       throw error;
     }
   }
@@ -82,7 +82,7 @@ export class EmbeddingService {
 
       return embeddings;
     } catch (error: any) {
-      console.error("🔥 Jina Local Batch Embedding failed:", error.message);
+      console.error(" Jina Local Batch Embedding failed:", error.message);
       throw error;
     }
   }

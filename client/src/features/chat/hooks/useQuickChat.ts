@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { quickChatRepository, recallRepository } from "../core/container";
-import { getMarkdownFromDOMSelection } from "../utils/markdownUtils";
-import { requestFirebaseNotificationPermission } from "../firebase";
+import { getSubChat, stickToChat, streamQuickChat } from "../api/quickChatApi";
+import { saveRecallCard } from "../api/recallApi";
+import { getMarkdownFromDOMSelection } from "../../../utils/markdownUtils";
+import { requestFirebaseNotificationPermission } from "../../../lib/firebase";
 
 interface UseQuickChatParams {
   chatId: string | undefined;
@@ -44,7 +45,7 @@ export function useQuickChat({
   // ── Fetch existing subchat ───────────────────────
   const { data: existingSubChat, isLoading: isHistoryLoading } = useQuery({
     queryKey: ["subchat", chatId, sourceMessageId, subChatId],
-    queryFn: () => quickChatRepository.getSubChat(chatId!, subChatId!),
+    queryFn: () => getSubChat(chatId!, subChatId!),
     enabled: !!chatId && !!sourceMessageId && isOpen && !!subChatId,
   });
 
@@ -89,7 +90,7 @@ export function useQuickChat({
   // Stick to chat mutation ────────────────────────────────
   const stickToChatMutation = useMutation({
     mutationFn: async () => {
-      await quickChatRepository.stickToChat({
+      await stickToChat({
         chatId: chatId!,
         subChatId: subChatId!,
         anchorMessageId: sourceMessageId,
@@ -110,7 +111,7 @@ export function useQuickChat({
   // Stream quick chat mutation ───────────────────
   const streamChatMutation = useMutation({
     mutationFn: async ({ userPrompt }: { userPrompt: string }) => {
-      return quickChatRepository.streamQuickChat({
+      return streamQuickChat({
         chatId: chatId!,
         anchorMessageId: sourceMessageId,
         highlightedText: selectedText,
@@ -191,7 +192,7 @@ export function useQuickChat({
         content = subMessages[msgIndex].content;
       }
 
-      await recallRepository.saveRecallCard(content || null, chatId!, sourceMessageId);
+      await saveRecallCard(content || null, chatId!, sourceMessageId);
       setRecallSelection(null);
     } catch (error) {
       console.error("Failed to save recall card from subchat", error);

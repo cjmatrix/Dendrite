@@ -1,4 +1,4 @@
-import type { FileNode, FileType } from '../types/types'
+import type { FileNode, FileType } from '../features/explorer/types/types'
 
 
 function AddNewNode(data:FileNode,parentId:string,type:FileType,name:string):FileNode {
@@ -19,7 +19,7 @@ function AddNewNode(data:FileNode,parentId:string,type:FileType,name:string):Fil
 
     return {
       ...data,
-      children:data.children.map((child)=>{
+      children:data.children.map((child: FileNode)=>{
         return AddNewNode(child,parentId,type,name)
       })
     }
@@ -42,7 +42,7 @@ function RenameNode(data:FileNode, targetId:string, newName:string):FileNode {
   if(data.children){
     return {
       ...data,
-      children: data.children.map((child) => {
+      children: data.children.map((child: FileNode) => {
         return RenameNode(child, targetId, newName)
       })
     }
@@ -55,8 +55,8 @@ function DeleteNode(data: FileNode, targetId: string): FileNode {
     return {
       ...data,
       children: data.children
-        .filter((child) => child.id !== targetId)
-        .map((child) => DeleteNode(child, targetId))
+        .filter((child: FileNode) => child.id !== targetId)
+        .map((child: FileNode) => DeleteNode(child, targetId))
     }
   }
   return data;

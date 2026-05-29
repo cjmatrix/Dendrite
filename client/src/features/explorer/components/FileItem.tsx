@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { setActiveSidebarRootId } from "../store/explorerSlice";
-import { useAppDispatch } from "../store/store";
+import { useAppDispatch } from "../../../store/store";
 
 // Clean Architecture Hook
 import { useFileItemMutations } from "../hooks/useFileItemMutations";

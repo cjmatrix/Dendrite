@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { folderRepository, chatListRepository } from "../core/container";
+import { createFolder as apiCreateFolder, updateFolder as apiUpdateFolder, deleteFolder as apiDeleteFolder, createChat as apiCreateChat, updateChat as apiUpdateChat, deleteChat as apiDeleteChat } from "../api/explorerApi";
 
 export function useFileItemMutations() {
   const queryClient = useQueryClient();
@@ -8,7 +8,7 @@ export function useFileItemMutations() {
 
   const { mutate: createFolder } = useMutation({
     mutationFn: ({ name, parentId }: { name: string; parentId: string | null }) =>
-      folderRepository.createFolder(name, parentId),
+      apiCreateFolder(name, parentId),
     onMutate: async ({ name, parentId }) => {
       await queryClient.cancelQueries({ queryKey: ["folders"] });
       const previous = queryClient.getQueryData(["folders"]);
@@ -31,7 +31,7 @@ export function useFileItemMutations() {
 
   const { mutate: updateFolder } = useMutation({
     mutationFn: ({ folderId, updates }: { folderId: string; updates: { name?: string; isExpanded?: boolean } }) =>
-      folderRepository.updateFolder(folderId, updates),
+      apiUpdateFolder(folderId, updates),
     onMutate: async ({ folderId, updates }) => {
       await queryClient.cancelQueries({ queryKey: ["folders"] });
       const previous = queryClient.getQueryData(["folders"]);
@@ -52,7 +52,7 @@ export function useFileItemMutations() {
   });
 
   const { mutate: deleteFolder } = useMutation({
-    mutationFn: (folderId: string) => folderRepository.deleteFolder(folderId),
+    mutationFn: (folderId: string) => apiDeleteFolder(folderId),
     onMutate: async (folderId) => {
       await queryClient.cancelQueries({ queryKey: ["folders"] });
       const previous = queryClient.getQueryData(["folders"]);
@@ -74,7 +74,7 @@ export function useFileItemMutations() {
 
   const { mutate: createChat } = useMutation({
     mutationFn: ({ title, folderId }: { title: string; folderId: string | null }) =>
-      chatListRepository.createChat(title, folderId),
+      apiCreateChat(title, folderId),
     onMutate: async ({ title, folderId }) => {
       await queryClient.cancelQueries({ queryKey: ["chats"] });
       const previous = queryClient.getQueryData(["chats"]);
@@ -91,7 +91,7 @@ export function useFileItemMutations() {
 
   const { mutate: updateChat } = useMutation({
     mutationFn: ({ chatId, updates }: { chatId: string; updates: { title?: string; folderId?: string | null } }) =>
-      chatListRepository.updateChat(chatId, updates),
+      apiUpdateChat(chatId, updates),
     onMutate: async ({ chatId, updates }) => {
       await queryClient.cancelQueries({ queryKey: ["chats"] });
       const previous = queryClient.getQueryData(["chats"]);
@@ -106,7 +106,7 @@ export function useFileItemMutations() {
   });
 
   const { mutate: deleteChat } = useMutation({
-    mutationFn: (chatId: string) => chatListRepository.deleteChat(chatId),
+    mutationFn: (chatId: string) => apiDeleteChat(chatId),
     onMutate: async (chatId) => {
       await queryClient.cancelQueries({ queryKey: ["chats"] });
       const previous = queryClient.getQueryData(["chats"]);

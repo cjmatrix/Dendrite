@@ -45,13 +45,15 @@ export interface IUser {
   tier: "free" | "pro" | "enterprise";
   tokensUsed: number;
   settings: {
-    theme: "light" | "dark" | "system";
-    defaultModel: string;
-    saveHistory: boolean;
+    global?: boolean;
+    inline?: boolean;
+    diagram?: boolean;
+    saveHistory?: boolean;
+    theme?: "light" | "dark" | "system";
+    defaultModel?: string;
   };
   role:string,
   status:string,
-  refreshTokens: string[];
   fcmToken: string[];
   byok_keys: IByokKey[];
   featureUsage: IFeatureUsage;

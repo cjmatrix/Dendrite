@@ -34,7 +34,7 @@ export function useFileDisplayTree(tree: FileNode, activeFolderId: string | null
       }
     }
 
-    // Normalise root label
+
     if (target.id === "root") {
       currentPath = [{ ...tree, id: "root", name: "Root" }];
     } else if (currentPath[0]) {

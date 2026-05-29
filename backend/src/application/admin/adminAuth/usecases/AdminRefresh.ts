@@ -1,0 +1,59 @@
+import { inject, injectable } from "tsyringe";
+import { IUserRepository } from "../../../../domain/auth/repositories/IUserRepository";
+import { IAuthService } from "../../../../domain/auth/services/IAuthService";
+import { ICacheService } from "../../../common/ports/ICacheService";
+import { AppError } from "../../../../utils/AppError";
+
+@injectable()
+export class AdminRefreshUseCase {
+  constructor(
+    @inject("IUserRepository") private userRepository: IUserRepository,
+    @inject("IAuthService") private authService: IAuthService,
+    @inject("ICacheService") private cacheService: ICacheService,
+  ) {}
+
+  async execute(refreshToken: string) {
+    let decoded: any;
+    try {
+      decoded = this.authService.verifyRefreshToken(refreshToken);
+    } catch (err) {
+      throw new AppError("Invalid refresh token", 403);
+    }
+
+    const storedUserId = await this.cacheService.get(
+      `refresh_token:${refreshToken}`,
+    );
+    if (!storedUserId || storedUserId !== decoded.userId) {
+      throw new AppError("Invalid or expired refresh token", 403);
+    }
+
+    const user = await this.userRepository.findById(decoded.userId);
+    if (!user) {
+      throw new AppError("User not found", 404);
+    }
+
+    if (user.role !== "admin") {
+      throw new AppError("Access denied: Admin credentials required", 403);
+    }
+
+    if (user.status !== "active") {
+      throw new AppError("Account is inactive", 403);
+    }
+
+    const newAccessToken = this.authService.generateAccessToken(
+      user._id.toString(),
+    );
+    const newRefreshToken = this.authService.generateRefreshToken(
+      user._id.toString(),
+    );
+
+    await this.cacheService.del(`refresh_token:${refreshToken}`);
+    await this.cacheService.set(
+      `refresh_token:${newRefreshToken}`,
+      user._id.toString(),
+      { EX: 604800 },
+    );
+
+    return { accessToken: newAccessToken, refreshToken: newRefreshToken };
+  }
+}

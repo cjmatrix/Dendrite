@@ -1,11 +1,13 @@
 import { useRef, useState, useEffect } from "react";
-import { Plus, FolderPlus, MessageSquare, Check, Folder, ChevronLeft, Sparkles, Brain, Menu } from "lucide-react";
+import { Plus, FolderPlus, MessageSquare, Check, Folder, ChevronLeft, Sparkles, Brain, Menu, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+
 import type { FileType } from "../types/types";
 import { FileItem } from "./FileItem";
-import { useAppDispatch, useAppSelector } from "../store/store";
+import { useAppDispatch, useAppSelector } from "../../../store/store";
 import { setActiveSidebarRootId, toggleExplorerModal, toggleRecallOverlay } from "../store/explorerSlice";
-import DendritesLogo from "./DendritesLogo";
+import DendritesLogo from "../../../components/DendritesLogo";
+import { logout } from "../../auth/store/authSlice";
 
 import { useFileTree, useExplorerMutations } from "../hooks/useFileExplorer";
 
@@ -101,7 +103,6 @@ export default function FileExplorer() {
     setRootNewName("");
   };
 
-  // Blank area context menu 
   const [blankContextMenu, setBlankContextMenu] = useState<{ x: number; y: number } | null>(null);
   useEffect(() => {
     if (!blankContextMenu) return;
@@ -109,6 +110,15 @@ export default function FileExplorer() {
     window.addEventListener("click", close);
     return () => window.removeEventListener("click", close);
   }, [blankContextMenu]);
+
+  const handleLogout = async () => {
+    try {
+      await dispatch(logout()).unwrap();
+      navigate("/login");
+    } catch (err) {
+      console.error("Failed to logout:", err);
+    }
+  };
 
   const handleBlankContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -118,15 +128,23 @@ export default function FileExplorer() {
   return (
     <div className=" flex ">
       <div
-        className="relative h-[100vh] z-40 flex items-center justify-center bg-neutral-950/40 border-2 border-zinc-900 "
+        className="relative h-[100vh] z-40 flex flex-col items-center bg-neutral-950/40 border-r border-zinc-900 pt-3 gap-3"
         style={{ width: 50 }}
       >
         <button
           onClick={() => setIsCollapsed((s) => !s)}
-          className=" absolute top-2 w-8 h-8 rounded-md text-zinc-200 flex items-center justify-center bg"
+          className="w-8 h-8 rounded-lg text-zinc-400 hover:text-zinc-200 flex items-center justify-center hover:bg-zinc-800/40 transition-colors"
           title={isCollapsed ? "Open Explorer" : "Collapse Explorer"}
         >
           {isCollapsed ? <Menu size={16} /> : <ChevronLeft size={16} />}
+        </button>
+
+        <button
+          onClick={handleLogout}
+          className="w-8 h-8 rounded-lg text-red-400/80 hover:text-red-400 flex items-center justify-center hover:bg-red-500/10 transition-colors"
+          title="Sign Out"
+        >
+          <LogOut size={16} />
         </button>
       </div>
 

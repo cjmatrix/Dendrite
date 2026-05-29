@@ -26,17 +26,17 @@ import { useParams, useNavigate } from "react-router-dom";
 import type { VirtuosoHandle } from "react-virtuoso";
 import { Virtuoso } from "react-virtuoso";
 import "../styles/markdown.css";
-import { useAppSelector, useAppDispatch } from "../store/store";
-import { setActiveSidebarRootId, toggleRecallOverlay } from "../store/explorerSlice";
-import DendritesLogo from "./DendritesLogo";
+import { useAppSelector, useAppDispatch } from "../../../store/store";
+import { setActiveSidebarRootId, toggleRecallOverlay } from "../../explorer/store/explorerSlice";
+import DendritesLogo from "../../../components/DendritesLogo";
 import { MessageContent } from "./MessageContent";
-import { StreamingContext } from "../contexts/StreamingContext";
+import { StreamingContext } from "../../../providers/StreamingContext";
 import { QuickChatModal } from "./QuickChatModal.tsx";
 import { DocumentBrowser } from "./DocumentBrowser";
-import FileDisplay from "./FileDisplay";
-import RecallPage from "../pages/RecallPage";
+import FileDisplay from "../../explorer/components/FileDisplay";
+import RecallPage from "../../recall/components/RecallPage";
 
-// Clean Architecture Hooks
+
 import { useChatDetails, useChatMessages } from "../hooks/useChatQueries";
 import { useSendMessage } from "../hooks/useSendMessage";
 import { useFileUpload } from "../hooks/useFileUpload";
@@ -45,11 +45,11 @@ import { useInheritContext } from "../hooks/useInheritContext";
 import { useTextSelection } from "../hooks/useTextSelection";
 import { useDocumentHistory } from "../hooks/useDocumentHistory";
 import { useFlattenedMessages, useBreadcrumbs } from "../hooks/useChatHelpers";
-import { useDebouncedValue } from "../hooks/useDebouncedValue";
+import { useDebouncedValue } from "../../../components/common/useDebouncedValue.ts";
 import { useQueryClient } from "@tanstack/react-query";
 
-// Domain types
-import type { Message } from "../core/domain/entities/Message";
+
+import type { Message } from "../types/Message";
 
 
 const clampText = (text: string, maxLines: number = 3) => {
@@ -322,7 +322,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const { id } = useParams();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const { tree, activeSidebarRootId, isRecallOverlayOpen } = useAppSelector((state) => state.explorer);
+  const { tree, isRecallOverlayOpen } = useAppSelector((state) => state.explorer);
   const queryClient = useQueryClient();
 
   const { data: chat, isLoading: isChatLoading } = useChatDetails(id);
@@ -589,6 +589,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     if (!msg.fileUrl || !msg.fileName) return undefined;
     return { fileUrl: msg.fileUrl, fileName: msg.fileName };
   }, []);
+
+  
   const activeSelectedFile = selectedFile ?? externalSelectedFile;
   const documentStageLabel =
     documentUpload?.status === "queued"

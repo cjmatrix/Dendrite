@@ -1,10 +1,10 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useAppSelector } from "../store/store";
-import type { FileNode } from "../types/types";
-import KnowledgeGraph from "../components/KnowledgeGraph";
+import { useAppSelector } from "../../../store/store";
+import type { FileNode } from "../../explorer/types/types";
+import KnowledgeGraph from "./KnowledgeGraph";
 import { GitBranch } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import api from "../api/axios";
+import api from "../../../lib/axios";
 
 function findNodeById(node: FileNode, id: string): FileNode | null {
   if (node.id === id) return node;

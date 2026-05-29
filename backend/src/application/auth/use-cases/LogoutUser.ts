@@ -1,22 +1,22 @@
-import { IUserRepository } from '../../../domain/auth/repositories/IUserRepository';
 import { IAuthService } from '../../../domain/auth/services/IAuthService';
+import { ICacheService } from '../../../application/common/ports/ICacheService';
 import { injectable, inject } from "tsyringe";
 
 @injectable()
 export class LogoutUser {
   constructor(
-    @inject("IUserRepository") private userRepository: IUserRepository,
-    @inject("IAuthService") private authService: IAuthService
+    @inject("IAuthService") private authService: IAuthService,
+    @inject("ICacheService") private cacheService: ICacheService
   ) {}
 
   async execute(refreshToken: string) {
     try {
-      const decoded: any = this.authService.verifyRefreshToken(refreshToken);
-      if (decoded && decoded.userId) {
-        await this.userRepository.removeRefreshToken(decoded.userId, refreshToken);
-      }
-    } catch(err) {
+      this.authService.verifyRefreshToken(refreshToken);
       
+   
+      await this.cacheService.del(`refresh_token:${refreshToken}`);
+    } catch(err) {
+ 
     }
   }
 }

@@ -23,3 +23,7 @@ container.registerSingleton("IChatRepository", MongoChatRepository);
 container.registerSingleton("IVectorRepository", QdrantVectorRepository);
 container.registerSingleton("IOTPService", RedisOTPService);
 container.registerSingleton("IEmailService", NodemailerEmailService);
+
+//admin
+
+

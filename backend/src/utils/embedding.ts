@@ -43,7 +43,7 @@ export async function generateEmbedding(
 
     return embedding;
   } catch (error: any) {
-    console.error("🔥 Jina Local Embedding failed:", error.message);
+    console.error(" Jina Local Embedding failed:", error.message);
     throw error;
   }
 

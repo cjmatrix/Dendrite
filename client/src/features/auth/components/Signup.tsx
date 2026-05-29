@@ -1,55 +1,30 @@
-import React, { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { UserPlus, Mail, Lock, User, AlertCircle } from "lucide-react";
-import { useAppDispatch, useAppSelector } from "../store/store";
-import { registerUser, clearError } from "../store/authSlice";
-import api from "../api/axios";
+import React from "react";
+import { Link } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { UserPlus, Mail, Lock, User, AlertCircle, Loader2 } from "lucide-react";
+import { useAppDispatch, useAppSelector } from "../../../store/store";
+import { clearError } from "../store/authSlice";
+import { GoogleSignInButton } from "./GoogleSignInButton";
+import { useAuthMutations } from "../hooks/useAuthMutations";
+import type { SignupRequest } from "../types/auth.types";
 import "../styles/auth.css";
 
 const Signup: React.FC = () => {
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [localError, setLocalError] = useState("");
-  const [isSendingOtp, setIsSendingOtp] = useState(false);
-
   const dispatch = useAppDispatch();
-  const { isLoading, error } = useAppSelector((state) => state.auth);
-  const navigate = useNavigate();
+  const { error } = useAppSelector((state) => state.auth);
+  const { signupMutation } = useAuthMutations();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLocalError("");
+  const {
+    register,
+    handleSubmit,
+    watch,
+    formState: { errors },
+  } = useForm<SignupRequest>();
+
+  const onSubmit = (data: SignupRequest) => {
     dispatch(clearError());
-
-    if (password !== confirmPassword) {
-      setLocalError("Passwords do not match");
-      return;
-    }
-
-    setIsSendingOtp(true);
-    try {
-      // Register user in database with 'pending' status
-      await api.post("/auth/register", { name, email, password, confirmPassword });
-
-      // Keep email details in in-flight cache
-      sessionStorage.setItem("pending_signup", JSON.stringify({ email }));
-
-      // Set cooldown locks
-      const cooldownEnd = Date.now() + 60 * 1000;
-      localStorage.setItem(`otp_cooldown_end:${email}`, cooldownEnd.toString());
-
-      // Handover control to the dynamic OtpPage
-      navigate("/verify-otp", { state: { email } });
-    } catch (err: any) {
-      setLocalError(err.response?.data?.message || "Failed to create account. Please try again.");
-    } finally {
-      setIsSendingOtp(false);
-    }
+    signupMutation.mutate(data);
   };
-
-  const displayError = localError || error;
 
   return (
     <div className="auth-container min-h-screen flex items-center justify-center relative overflow-hidden bg-[var(--theme-bg-base)]">
@@ -70,14 +45,16 @@ const Signup: React.FC = () => {
           <p className="text-gray-400">Join Dentrites AI today</p>
         </div>
 
-        {displayError && (
+        {(error || signupMutation.error) && (
           <div className="mb-6 p-4 rounded-lg bg-red-500/10 border border-red-500/20 flex items-start gap-3">
             <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
-            <p className="text-sm text-red-400">{displayError}</p>
+            <p className="text-sm text-red-400">
+              {(signupMutation.error as any)?.response?.data?.message || (signupMutation.error as any)?.message || error}
+            </p>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           <div className="space-y-1">
             <label className="text-sm font-medium text-gray-300 ml-1">
               Full Name
@@ -88,13 +65,12 @@ const Signup: React.FC = () => {
               </div>
               <input
                 type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
+                {...register("name", { required: "Name is required" })}
                 className="w-full pl-11 pr-4 py-3 bg-[var(--theme-bg-elevated)] border border-white/5 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all"
                 placeholder="John Doe"
               />
             </div>
+            {errors.name && <p className="text-xs text-red-500 mt-1 ml-1">{errors.name.message}</p>}
           </div>
 
           <div className="space-y-1">
@@ -107,13 +83,18 @@ const Signup: React.FC = () => {
               </div>
               <input
                 type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
+                {...register("email", { 
+                  required: "Email is required",
+                  pattern: {
+                    value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                    message: "Invalid email address"
+                  }
+                })}
                 className="w-full pl-11 pr-4 py-3 bg-[var(--theme-bg-elevated)] border border-white/5 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all"
                 placeholder="you@example.com"
               />
             </div>
+            {errors.email && <p className="text-xs text-red-500 mt-1 ml-1">{errors.email.message}</p>}
           </div>
 
           <div className="space-y-1">
@@ -126,13 +107,15 @@ const Signup: React.FC = () => {
               </div>
               <input
                 type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
+                {...register("password", { 
+                  required: "Password is required",
+                  minLength: { value: 6, message: "Password must be at least 6 characters" }
+                })}
                 className="w-full pl-11 pr-4 py-3 bg-[var(--theme-bg-elevated)] border border-white/5 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all"
                 placeholder="••••••••"
               />
             </div>
+            {errors.password && <p className="text-xs text-red-500 mt-1 ml-1">{errors.password.message}</p>}
           </div>
 
           <div className="space-y-1">
@@ -145,33 +128,54 @@ const Signup: React.FC = () => {
               </div>
               <input
                 type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
+                {...register("confirmPassword", { 
+                  required: "Please confirm your password",
+                  validate: (val: string | undefined) =>
+                    watch("password") === val || "Your passwords do not match",
+                })}
                 className="w-full pl-11 pr-4 py-3 bg-[var(--theme-bg-elevated)] border border-white/5 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all"
                 placeholder="••••••••"
               />
             </div>
+            {errors.confirmPassword && <p className="text-xs text-red-500 mt-1 ml-1">{errors.confirmPassword.message}</p>}
           </div>
 
           <button
             type="submit"
-            disabled={isLoading || isSendingOtp}
-            className="w-full py-3 px-4 bg-linear-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-xl font-semibold shadow-lg shadow-indigo-500/25 transition-all mt-6 active:scale-[0.98] disabled:opacity-70 flex justify-center items-center"
+            disabled={signupMutation.isPending}
+            className="w-full py-3.5 bg-linear-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-semibold rounded-xl shadow-lg shadow-indigo-500/25 transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 group"
           >
-            {isLoading || isSendingOtp ? (
-              <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            {signupMutation.isPending ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
             ) : (
-              "Create Account"
+              <>
+                Create Account
+                <UserPlus className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              </>
             )}
           </button>
         </form>
 
-        <p className="mt-8 text-center text-sm text-gray-400">
+        <div className="mt-8">
+          <div className="relative mb-8">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-white/5"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-4 bg-[var(--theme-bg-surface)] text-gray-500">
+                Or continue with
+              </span>
+            </div>
+          </div>
+
+          <GoogleSignInButton />
+        </div>
+
+        <p className="mt-8 text-center text-gray-400">
           Already have an account?{" "}
           <Link
             to="/login"
-            className="text-indigo-400 hover:text-indigo-300 font-medium transition-colors"
+            className="text-indigo-400 font-semibold hover:text-indigo-300 transition-colors"
           >
             Sign in
           </Link>

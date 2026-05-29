@@ -1,13 +1,13 @@
 export interface CacheSetOptions {
-  /** Time-to-live in seconds */
+  // Time-to-live in seconds 
   EX?: number;
-  /** Time-to-live in milliseconds */
+  // Time-to-live in milliseconds 
   PX?: number;
-  /** Only set the key if it does NOT exist */
+  // Only set the key if it does NOT exist 
   NX?: boolean;
-  /** Only set the key if it ALREADY exists */
+  // Only set the key if it ALREADY exists 
   XX?: boolean;
-  /** Keep the old expiration time */
+  // Keep the old expiration time 
   KEEPTTL?: boolean;
 }
 

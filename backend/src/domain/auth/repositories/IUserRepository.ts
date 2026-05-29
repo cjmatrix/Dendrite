@@ -1,18 +1,12 @@
-import {IUser} from '../entities/User'
+import { IBaseRepository } from '../../../application/common/ports/IBaseRepository';
+import { IUser } from '../entities/User';
 
-export interface IUserRepository {
-  findByEmail(email: string): Promise<IUser | null>;
+export interface IUserRepository extends IBaseRepository<IUser> {
   findById(id: string): Promise<IUser | null>;
   findByIdSafe(id: string): Promise<IUser | null>;
+  findByIdAndUpdate(id: string, update: any): Promise<IUser | null>;
+  findByEmail(email: string): Promise<IUser | null>;
   create(userData: any): Promise<IUser>;
-  save(user: IUser, session?: any): Promise<IUser>;
-  updateRefreshTokens(userId: string, tokens: string[]): Promise<void>;
-  addRefreshToken(userId: string, token: string): Promise<void>;
-  replaceRefreshToken(
-    userId: string,
-    oldToken: string,
-    newToken: string,
-  ): Promise<void>;
-  removeRefreshToken(userId: string, token: string): Promise<void>;
-  clearRefreshTokens(userId: string): Promise<void>;
+  findAll(filter?: any, options?: { limit?: number; skip?: number; sort?: any }): Promise<IUser[]>;
+  count(filter?: any): Promise<number>;
 }

@@ -56,17 +56,16 @@ const UserSchema = new Schema<IMongoUserDocument>(
     },
     password: { type: String, required: true },
     avatarUrl: { type: String, default: "" },
-    
-    role:{
-       type:String,
-       default:"user",
-      enum:["admin","user"]
 
+    role: {
+      type: String,
+      default: "user",
+      enum: ["admin", "user"],
     },
-    status:{
-      type:String,
-      enum:["pending","active","banned","suspended"],
-      default:"pending"
+    status: {
+      type: String,
+      enum: ["pending", "active", "banned", "suspended"],
+      default: "pending",
     },
     tier: {
       type: String,
@@ -76,16 +75,11 @@ const UserSchema = new Schema<IMongoUserDocument>(
     tokensUsed: { type: Number, default: 0 },
 
     settings: {
-      theme: {
-        type: String,
-        enum: ["light", "dark", "system"],
-        default: "dark",
-      },
-      defaultModel: { type: String, default: "gemini-1.5-pro" },
+      global: { type: Boolean, default: true },
+      inline: { type: Boolean, default: true },
+      diagram: { type: Boolean, default: true },
       saveHistory: { type: Boolean, default: true },
     },
-
-    refreshTokens: { type: [String], default: [] },
     fcmToken: {
       type: [String],
       default: [],
