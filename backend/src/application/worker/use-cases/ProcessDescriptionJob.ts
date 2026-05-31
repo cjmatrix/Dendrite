@@ -1,14 +1,17 @@
+import { injectable, inject } from "tsyringe";
 import { ICodeBlockRepository } from '../../../domain/chat/repositories/ICodeBlockRepository';
 import { IOutboxEventRepository } from '../../../domain/outbox/repositories/IOutboxEventRepository';
+import { IEmbeddingPublisher } from '../../common/ports/IEmbeddingPublisher';
 import { generateBatchCodeDescriptions } from '../../../utils/AIDescription';
 import mongoose from "mongoose";
 
+@injectable()
 export class ProcessDescriptionJob {
   constructor(
-    private codeBlockRepository: ICodeBlockRepository,
-    private outboxRepository: IOutboxEventRepository,
-    private redisConnection: any, 
-    private embeddingCodeDescFunc: (event: any, content: any) => Promise<void>
+    @inject("ICodeBlockRepository") private codeBlockRepository: ICodeBlockRepository,
+    @inject("IOutboxEventRepository") private outboxRepository: IOutboxEventRepository,
+    @inject("RedisClient") private redisConnection: any, 
+    @inject("IEmbeddingPublisher") private embeddingPublisher: IEmbeddingPublisher
   ) {}
 
   async execute(blocks: any[]) {
@@ -28,7 +31,7 @@ export class ProcessDescriptionJob {
       }
     }
     
-    // 2. Generate Missing Descriptions via LLM
+  
     if (toProcessBlocks.length > 0) {
       console.log(` Batching description generation for ${toProcessBlocks.length} blocks...`);
       
@@ -45,7 +48,7 @@ export class ProcessDescriptionJob {
       }
     }
 
-    // 3. Prepare Updates
+    
     const codeBlockUpdates = [];
     const outboxEventsToPush = [];
 
@@ -76,7 +79,7 @@ export class ProcessDescriptionJob {
       });
     }
 
-    // 4. Execute Transaction
+    
     if (codeBlockUpdates.length > 0) {
       const session = await mongoose.startSession();
       session.startTransaction();
@@ -90,13 +93,13 @@ export class ProcessDescriptionJob {
       
         for (const event of savedOutboxEvents) {
           try {
-            await this.embeddingCodeDescFunc(event, event.payload.content);
+            await this.embeddingPublisher.publish(event._id.toString(), event.payload.content);
           } catch (e: any) {
             console.error(`Status: Failed to push to embedding queue for ${event.payload.sourceId}:`, e.message);
           }
         }
       } catch (txnError) {
-        console.log("❌❌ Code Block update or Outbox event creation failed ❌❌");
+        console.log(" Code Block update or Outbox event creation failed ");
         await session.abortTransaction();
         throw txnError;
       } finally {

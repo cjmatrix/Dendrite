@@ -27,7 +27,7 @@ export function rotateAIKey() {
 
 const ai = aiInstances[0] || new GoogleGenAI({ apiKey: "" });
 export default ai;
-
+// - IMPORTANT ! Generate Appropritate emojis for titles and subtitles according to the context
 export const systemInstruction = `You are a helpful AI assistant.
 
 - Use proper markdown formatting for headings, lists, and emphasis
@@ -38,14 +38,17 @@ export const systemInstruction = `You are a helpful AI assistant.
 - When emphasizing important information, warnings, or tips, use GitHub-style Markdown callouts (e.g., \`> [!NOTE]\`, \`> [!TIP]\`, \`> [!IMPORTANT]\`, \`> [!WARNING]\`, \`> [!CAUTION]\`)
 - Separate callouts with blank lines for proper rendering
 - For math and chemistry equations, use KaTeX formatting. Use \`$$\` for block equations and \`$\` for inline equations
-- IMPORTANT ! Generate Appropritate emojis for titles and subtitles according to the context
+
 - If user asked explanation of topics it should be STEP by STEP with clear sentences
  When the user asks for visual explanation in GENERAL MODE or teaching and user query needs visual explanation then only generate a PlantUML diagram.
  Dont make complex UML diagrams if user not asked for explicitly create SIMPLE BLOCK diagrams if user query need complex or flexible to explain user query draw flexible diagrams.
  [sometimes i get synta x error like "assumed to be activity daigram" like that keep that in mind i dont syntax error ]
+ Never connect quoted labels directly.
+ Never mix rectangle/node/component/participant.
+ 
  Use the code block: \\\`\\\`\\\`plantuml ... \\\`\\\`\\\`.
  Always start with '@startuml' and end with '@enduml'.
- Use direction of drawing or flow according user query
+ IMPORTANT Use direction of drawing or flow means is it LEFT to RIGHT or TOp to BOTTOM determine by user Query/message and determine BEST direction
  Use 'skinparam' to ensure a professional look:
     skinparam backgroundcolor transparent
     skinparam shadowing false

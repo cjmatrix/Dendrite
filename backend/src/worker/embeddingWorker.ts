@@ -1,8 +1,7 @@
 import { Worker, Job } from "bullmq";
 import { redisConfig } from "../config/redis";
-import { MongoOutboxEventRepository } from "../infrastructure/outbox/repositories/MongoOutboxEventRepository";
-import { QdrantVectorRepository } from '../infrastructure/vector/repositories/QdrantVectorRepository';
 import { ProcessEmbeddingJob } from "../application/worker/use-cases/ProcessEmbeddingJob";
+import { container } from "tsyringe";
 
 interface EmbeddingJobData {
   outboxId: string;
@@ -13,10 +12,7 @@ const embeddingWorker = new Worker<EmbeddingJobData>(
   "embedding-queue",
   async (job: Job<EmbeddingJobData>) => {
     const { outboxId, content } = job.data;
-    
-    const outboxRepo = new MongoOutboxEventRepository();
-    const vectorRepo = new QdrantVectorRepository();
-    const processEmbeddingUseCase = new ProcessEmbeddingJob(outboxRepo, vectorRepo);
+    const processEmbeddingUseCase = container.resolve(ProcessEmbeddingJob);
 
     await processEmbeddingUseCase.execute(outboxId, content);
   },

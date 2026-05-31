@@ -1,32 +1,42 @@
 import { ISubChatRepository } from '../../../domain/chat/repositories/ISubChatRepository';
 import { SubChat } from '../models/MongoSubChatModel';
 import mongoose from "mongoose";
+import { MongooseBaseRepository } from '../../shared/MongooseBaseRepository';
+import { ISubChat } from '../../../domain/chat/entities/SubChat';
 
-export class MongoSubChatRepository implements ISubChatRepository {
-  async findByAnchorMessageIdsAndChatId(anchorMessageIds: any[], chatId: string): Promise<any[]> {
-    return SubChat.find({
-      anchorMessageId: { $in: anchorMessageIds },
-      chatId: new mongoose.Types.ObjectId(chatId)
-    }).select('anchorMessageId relativeY').lean();
+export class MongoSubChatRepository extends MongooseBaseRepository<ISubChat> implements ISubChatRepository {
+  constructor() {
+    super(SubChat);
   }
 
-  async findByIdAndUserId(subChatId: string, chatId: string, userId: string): Promise<any | null> {
-    return SubChat.findOne({
+  async findByAnchorMessageIdsAndChatId(anchorMessageIds: any[], chatId: string, userId: string): Promise<ISubChat[]> {
+    const docs = await this.model.find({
+      anchorMessageId: { $in: anchorMessageIds },
+      chatId: new mongoose.Types.ObjectId(chatId),
+      userId: new mongoose.Types.ObjectId(userId)
+    }).select('anchorMessageId relativeY').lean();
+    return docs.map((doc: any) => this.mapToDomain(doc));
+  }
+
+  async findByIdAndUserId(subChatId: string, chatId: string, userId: string): Promise<ISubChat | null> {
+    const doc = await this.model.findOne({
       chatId,
       _id: subChatId,
       userId
     }).lean();
+    return doc ? this.mapToDomain(doc) : null;
   }
 
-  async update(subChatId: string, userId: string, updates: any): Promise<any | null> {
-    return SubChat.findOneAndUpdate(
+  async update(subChatId: string, userId: string, updates: any): Promise<ISubChat | null> {
+    const doc = await this.model.findOneAndUpdate(
       { _id: subChatId, userId },
       updates,
       { new: true }
-    );
+    ).lean();
+    return doc ? this.mapToDomain(doc) : null;
   }
 
-  async create(subChatData: any): Promise<any> {
-    return SubChat.create(subChatData);
+  async deleteByChatId(chatId: string, userId: string): Promise<void> {
+    await this.model.deleteMany({ chatId, userId }).session(this.getSession());
   }
 }

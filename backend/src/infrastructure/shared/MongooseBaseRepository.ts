@@ -25,8 +25,8 @@ export class MongooseBaseRepository<T extends { _id: string }> implements IBaseR
   }
 
   async create(data: any): Promise<T> {
-    const doc = new this.model(data);
-    return this.mapToDomain(doc.toObject());
+    const doc = await this.model.create(data);
+    return this.mapToDomain(doc.toObject ? doc.toObject() : doc);
   }
 
   async save(entity: T): Promise<T> {

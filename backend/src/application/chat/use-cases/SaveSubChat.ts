@@ -1,17 +1,15 @@
 import { ISubChatRepository } from '../../../domain/chat/repositories/ISubChatRepository';
+import { ISaveSubChatUseCase } from './interfaces';
+import { SaveSubChatInputDTO } from '../dtos/chat.dto';
+import { injectable, inject } from 'tsyringe';
 
-export class SaveSubChat {
-  constructor(private subChatRepository: ISubChatRepository) {}
+@injectable()
+export class SaveSubChat implements ISaveSubChatUseCase {
+  constructor(@inject("ISubChatRepository") private subChatRepository: ISubChatRepository) {}
 
-  async execute(
-    chatId: string, 
-    userId: string, 
-    subChatId: string | undefined, 
-    anchorMessageId: string, 
-    highlightedText: string, 
-    messages: any[], 
-    relativeY: number
-  ) {
+  async execute(input: SaveSubChatInputDTO) {
+    const { chatId, userId, subChatId, anchorMessageId, highlightedText, messages, relativeY } = input;
+
     const sanitizedMessages = messages.map((msg: any) => {
       if (msg._id && typeof msg._id === "string" && msg._id.startsWith("temp-")) {
         const { _id, ...cleanMessage } = msg;

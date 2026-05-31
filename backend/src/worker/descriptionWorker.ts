@@ -1,9 +1,7 @@
 import { Worker, Job } from "bullmq";
-import { redisConfig, redisConnection } from "../config/redis";
-import embeddingCodeDesc from "../queue/embeddingQueue";
-import { MongoCodeBlockRepository } from "../infrastructure/chat/repositories/MongoCodeBlockRepository";
-import { MongoOutboxEventRepository } from "../infrastructure/outbox/repositories/MongoOutboxEventRepository";
+import { redisConfig } from "../config/redis";
 import { ProcessDescriptionJob } from "../application/worker/use-cases/ProcessDescriptionJob";
+import { container } from "tsyringe";
 
 interface DescriptionJobData {
   blocks: {
@@ -20,16 +18,9 @@ const descriptionWorker = new Worker<DescriptionJobData>(
   "description-queue",
   async (job: Job<DescriptionJobData>) => {
     const { blocks } = job.data;
-    const codeBlockRepo = new MongoCodeBlockRepository();
-    const outboxRepo = new MongoOutboxEventRepository();
-    const processDescUseCase = new ProcessDescriptionJob(
-      codeBlockRepo,
-      outboxRepo,
-      redisConnection,
-      embeddingCodeDesc
-    );
+    const processDescUseCase = container.resolve(ProcessDescriptionJob);
 
-    await processDescUseCase.execute(job.data.blocks);
+    await processDescUseCase.execute(blocks);
   },
   {
     connection: redisConfig,

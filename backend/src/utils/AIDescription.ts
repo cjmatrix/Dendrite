@@ -15,12 +15,13 @@ export async function generateBatchCodeDescriptions(
   const queryText = `Summarize each of the following ${blocks.length} code snippets in exactly 1 sentence (max 30 words).
 Mention key function/variable names.
 Return the results as a JSON object where keys are the Snippet IDs and values are the descriptions.
+IMPORTANT: Return ONLY valid JSON with no markdown, no code fences, no additional text, no explanations.
 
 CODE SNIPPETS:
 ${snippetsText}`;
 
   const response = await ai.models.generateContent({
-  model: "gemini-2.5-flash-lite",
+  model: "gemma-4-31b-it",
   contents: [
     {
       role: "user",
@@ -42,9 +43,21 @@ ${snippetsText}`;
   if (response.usageMetadata) {
     logAIQuery(`Batch Description (${blocks.length} blocks)`, response.usageMetadata);
   }
-
+  console.log(response.text)
   try {
-    let rawJson = JSON.parse(response.text || "{}");
+  
+    let cleanText = (response.text || "{}").trim();
+    
+   
+    cleanText = cleanText.replace(/```(json)?\n?/g, '').trim();
+    
+    
+    const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      cleanText = jsonMatch[0];
+    }
+    
+    let rawJson = JSON.parse(cleanText || "{}");
     
  
     if (rawJson.result) {
@@ -52,20 +65,18 @@ ${snippetsText}`;
         try {
           rawJson = JSON.parse(rawJson.result);
         } catch {
-        
+         
         }
       } else {
         rawJson = rawJson.result;
       }
     }
     
- 
     return blocks.map(b => ({
       id: b.id,
       description: rawJson[b.id] || "No description generated."
     }));
   } catch (err) {
-
     console.error("Failed to parse batch AI response:", err);
     return blocks.map(b => ({ id: b.id, description: "Error generating description." }));
   }
@@ -75,7 +86,7 @@ async function generateCodeDescription(code: string, language: string) {
   const queryText = `Summarize this ${language} code in 1 sentence (max 30 words). Mention function names, variable names, and what it does. No markdown:\n\n${code}`;
 
   const response = await ai.models.generateContent({
-    model: "gemini-2.5-flash-lite",
+    model: "gemma-4-31b-it",
     contents: [
       {
         role: "user",

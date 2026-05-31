@@ -70,7 +70,7 @@ export class QdrantVectorRepository implements IVectorRepository {
       }));
     } catch (error: any) {
       const errorDetails = error.data || error.response?.data || error.message;
-      console.error("❌ Qdrant search failed:", errorDetails);
+      console.error(" Qdrant search failed:", errorDetails);
       return [];
     }
   }
@@ -110,7 +110,7 @@ export class QdrantVectorRepository implements IVectorRepository {
       }));
     } catch (error: any) {
       const errorDetails = error.data || error.response?.data || error.message;
-      console.error("❌ Qdrant summary search failed:", errorDetails);
+      console.error(" Qdrant summary search failed:", errorDetails);
       return [];
     }
   }
@@ -130,7 +130,7 @@ export class QdrantVectorRepository implements IVectorRepository {
       await qdrantClient.delete(SUMMARY_COLLECTION_NAME, { filter });
       console.log(`✅ Deleted Qdrant vectors for ${chatIds.length} chats`);
     } catch (err: any) {
-      console.error("❌ Qdrant delete failed:", err?.message ?? err);
+      console.error(" Qdrant delete failed:", err?.message ?? err);
       
       throw err; 
     }
@@ -148,7 +148,7 @@ export class QdrantVectorRepository implements IVectorRepository {
       await qdrantClient.delete(DOCUMENT_COLLECTION_NAME, { filter });
       console.log(`✅ Deleted Qdrant document vectors for fileUrl: ${fileUrl}`);
     } catch (err: any) {
-      console.error("❌ Qdrant document delete failed:", err?.message ?? err);
+      console.error(" Qdrant document delete failed:", err?.message ?? err);
       throw err;
     }
   }
@@ -225,7 +225,7 @@ export class QdrantVectorRepository implements IVectorRepository {
       await qdrantClient.upsert(DOCUMENT_COLLECTION_NAME, { points });
       console.log(`✅ Upserted ${points.length} document vectors to Qdrant`);
     } catch (error: any) {
-      console.error("❌ Failed to upsert document vectors:", error?.message ?? error);
+      console.error(" Failed to upsert document vectors:", error?.message ?? error);
       throw error;
     }
   }
@@ -301,7 +301,7 @@ export class QdrantVectorRepository implements IVectorRepository {
     
   
   } catch (error: any) {
-    console.error("❌ Document hybrid search failed:", error?.message ?? error);
+    console.error(" Document hybrid search failed:", error?.message ?? error);
     return [];
   }
 }

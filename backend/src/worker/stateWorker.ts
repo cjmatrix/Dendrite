@@ -1,8 +1,7 @@
 import { Worker, Job } from "bullmq";
-import { redisConfig, redisConnection } from "../config/redis";
-import { MongoOutboxEventRepository } from "../infrastructure/outbox/repositories/MongoOutboxEventRepository";
-import { MongoChatRepository } from "../infrastructure/chat/repositories/MongoChatRepository";
+import { redisConfig } from "../config/redis";
 import { ProcessStateJob } from "../application/worker/use-cases/ProcessStateJob";
+import { container } from "tsyringe";
 
 interface StateJobData {
   stateOutboxEventId: string;
@@ -14,10 +13,7 @@ const stateWorker = new Worker<StateJobData>(
   "stateQueue",
   async (job: Job<StateJobData>) => {
     const { stateOutboxEventId, messageToCompress, previousSummary } = job.data;
-    
-    const outboxRepo = new MongoOutboxEventRepository();
-    const chatRepo = new MongoChatRepository();
-    const processStateUseCase = new ProcessStateJob(outboxRepo, chatRepo, redisConnection);
+    const processStateUseCase = container.resolve(ProcessStateJob);
 
     await processStateUseCase.execute(stateOutboxEventId, messageToCompress, previousSummary);
   },

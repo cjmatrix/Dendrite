@@ -1,8 +1,7 @@
 import { Worker, Job } from "bullmq";
 import { redisConfig } from "../config/redis";
-import { MongoRecallRepository } from "../infrastructure/recall/repositories/MongoRecallRepository";
-import { MongoUserRepository } from "../infrastructure/auth/repositories/MongoUserRepository";
 import { ProcessRecallJob } from "../application/worker/use-cases/ProcessRecallJob";
+import { container } from "tsyringe";
 
 interface RecallJobData {
   userId: string;
@@ -13,10 +12,7 @@ const recallWorker = new Worker<RecallJobData>(
   "recall-queue",
   async (job: Job<RecallJobData>) => {
     const { userId, cardId } = job.data;
-    
-    const recallRepo = new MongoRecallRepository();
-    const userRepo = new MongoUserRepository();
-    const processRecallUseCase = new ProcessRecallJob(recallRepo, userRepo);
+    const processRecallUseCase = container.resolve(ProcessRecallJob);
 
     await processRecallUseCase.execute(userId, cardId);
   },

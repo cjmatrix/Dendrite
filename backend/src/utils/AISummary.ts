@@ -89,7 +89,7 @@ EXTRACTION RULES:
           electron transport chains but in opposite 
           energy directions"
 
-7. SEPARATOR: Use ||| between every fact
+7. [VERY IMPORTANT] SEPARATOR: Use ||| between every fact
 8. OUTPUT: Facts only. Zero labels, zero preamble, 
    zero newlines between facts.
 
@@ -97,7 +97,7 @@ Messages:
 ${textMessages}`;
 
   const response = await ai.models.generateContent({
-    model: "gemini-2.5-flash-lite",
+    model: "gemma-4-31b-it",
     contents: [
       {
         role: "user",
@@ -186,7 +186,7 @@ GOOD OUTPUT EXAMPLE (non-coding):
 Output ONLY the bullet points. No "Updated Summary:" label. No explanation.`;
 
   const response = await ai.models.generateContent({
-    model: "gemini-2.5-flash-lite",
+    model: "gemma-4-31b-it",
     contents: [
       {
         role: "user",

@@ -382,7 +382,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     [id, navigate],
   );
 
-  // Scroll helper
+ 
   const scrollToBottom = useCallback(
     (behavior: "smooth" | "auto" = "smooth") => {
       setTimeout(() => {
@@ -440,7 +440,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
   const debouncedStreamingText = useDebouncedValue(streamingText, 50);
 
-  // Track document uploads and invalidate documents query
+  
   useEffect(() => {
     if (
       documentUpload?.status === "completed" &&
@@ -451,12 +451,17 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     }
   }, [documentUpload?.documentId, documentUpload?.status, queryClient, id]);
 
-  // Track image uploads to document history
+
+
+
   useEffect(() => {
     if (selectedImageUrl && selectedFile) {
       queryClient.invalidateQueries({ queryKey: ["documents", id] });
     }
   }, [selectedImageUrl, selectedFile, queryClient, id]);
+
+
+
 
   // Tracer animation on Firebase push notification
   useEffect(() => {
@@ -471,6 +476,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         handleNotification,
       );
   }, []);
+
+
+
 
   const handleSend = useCallback(() => {
     const effectiveSelectedFile = selectedFile ?? externalSelectedFile;

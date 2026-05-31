@@ -1,11 +1,16 @@
+import { injectable, inject } from "tsyringe";
 import { IRecallRepository } from '../../../domain/recall/repositories/IRecallRepository';
 import { AppError } from '../../../utils/AppError';
-import { scheduleRecallNotification } from '../../../queue/recallQueue';
+import { IRecallPublisher } from '../../common/ports/IRecallPublisher';
 
 const steps = [1, 10, 30]; 
 
+@injectable()
 export class UpdateCard {
-  constructor(private recallRepository: IRecallRepository) {}
+  constructor(
+    @inject("IRecallRepository") private recallRepository: IRecallRepository,
+    @inject("IRecallPublisher") private recallPublisher: IRecallPublisher
+  ) {}
 
   async execute(userId: string, cardId: string, rating: number) {
     const card = await this.recallRepository.findByIdAndUserId(cardId, userId);
@@ -54,7 +59,7 @@ export class UpdateCard {
     }
 
     const delayInMs = Math.max(0, card.nextReview.getTime() - Date.now());
-    const newJobId = await scheduleRecallNotification(userId, card._id.toString(), delayInMs, card.jobId);
+    const newJobId = await this.recallPublisher.publish(userId, card._id.toString(), delayInMs, card.jobId);
     
     if (newJobId) {
       card.jobId = newJobId;

@@ -9,6 +9,14 @@ import { MongoRecallRepository } from '../../../infrastructure/recall/repositori
 import { QdrantVectorRepository } from '../../../infrastructure/vector/repositories/QdrantVectorRepository';
 import { MongooseUnitOfWork } from '../../../infrastructure/shared/MongooseUnitOfWork';
 import { AuthService } from '../../../infrastructure/auth/services/AuthService';
+import { BullMQRecallPublisher } from '../../../infrastructure/shared/publishers/BullMQRecallPublisher';
+import { IRecallPublisher } from '../../../application/common/ports/IRecallPublisher';
+import { BullMQDescriptionPublisher } from '../../../infrastructure/shared/publishers/BullMQDescriptionPublisher';
+import { IDescriptionPublisher } from '../../../application/common/ports/IDescriptionPublisher';
+import { BullMQSummaryPublisher } from '../../../infrastructure/shared/publishers/BullMQSummaryPublisher';
+import { ISummaryPublisher } from '../../../application/common/ports/ISummaryPublisher';
+import { BullMQStatePublisher } from '../../../infrastructure/shared/publishers/BullMQStatePublisher';
+import { IStatePublisher } from '../../../application/common/ports/IStatePublisher';
 
 import { CreateFolder } from '../../../application/folder/use-cases/CreateFolder';
 import { GetFolders } from '../../../application/folder/use-cases/GetFolders';
@@ -65,6 +73,10 @@ export class DIContainer {
   private static vectorRepository: QdrantVectorRepository;
   private static unitOfWorkRepository: MongooseUnitOfWork;
   private static authService: AuthService;
+  private static recallPublisher: BullMQRecallPublisher;
+  private static descriptionPublisher: BullMQDescriptionPublisher;
+  private static summaryPublisher: BullMQSummaryPublisher;
+  private static statePublisher: BullMQStatePublisher;
 
   // Folder Use Cases
   private static createFolderUseCase: CreateFolder;
@@ -270,6 +282,10 @@ export class DIContainer {
       this.deleteChatUseCase = new DeleteChat(
         this.getChatRepository(),
         this.getVectorRepository(),
+        this.getSubChatRepository(),
+        this.getMessageRepository(),
+        this.getCodeBlockRepository(),
+        this.getUnitOfWorkRepository(),
       );
     }
     return this.deleteChatUseCase;
@@ -293,6 +309,9 @@ export class DIContainer {
         this.getMessageRepository(),
         this.getCodeBlockRepository(),
         this.getOutboxEventRepository(),
+        this.getDescriptionPublisher(),
+        this.getSummaryPublisher(),
+        this.getStatePublisher(),
       );
     }
     return this.saveModelReplyUseCase;
@@ -391,6 +410,34 @@ export class DIContainer {
     return this.emailService;
   }
 
+  static getRecallPublisher(): IRecallPublisher {
+    if (!this.recallPublisher) {
+      this.recallPublisher = new BullMQRecallPublisher();
+    }
+    return this.recallPublisher;
+  }
+
+  static getDescriptionPublisher(): IDescriptionPublisher {
+    if (!this.descriptionPublisher) {
+      this.descriptionPublisher = new BullMQDescriptionPublisher();
+    }
+    return this.descriptionPublisher;
+  }
+
+  static getSummaryPublisher(): ISummaryPublisher {
+    if (!this.summaryPublisher) {
+      this.summaryPublisher = new BullMQSummaryPublisher();
+    }
+    return this.summaryPublisher;
+  }
+
+  static getStatePublisher(): IStatePublisher {
+    if (!this.statePublisher) {
+      this.statePublisher = new BullMQStatePublisher();
+    }
+    return this.statePublisher;
+  }
+
   static getSendOtpUseCase(): SendOTP {
     if (!this.sendOtpUseCase) {
       this.sendOtpUseCase = new SendOTP(this.getOtpService(), this.getEmailService());
@@ -421,14 +468,14 @@ export class DIContainer {
   
   static getCreateCardUseCase(): CreateCard {
     if (!this.createCardUseCase) {
-      this.createCardUseCase = new CreateCard(this.getRecallRepository());
+      this.createCardUseCase = new CreateCard(this.getRecallRepository(), this.getRecallPublisher());
     }
     return this.createCardUseCase;
   }
 
   static getUpdateCardUseCase(): UpdateCard {
     if (!this.updateCardUseCase) {
-      this.updateCardUseCase = new UpdateCard(this.getRecallRepository());
+      this.updateCardUseCase = new UpdateCard(this.getRecallRepository(), this.getRecallPublisher());
     }
     return this.updateCardUseCase;
   }
@@ -442,14 +489,14 @@ export class DIContainer {
 
   static getDeleteCardUseCase(): DeleteCard {
     if (!this.deleteCardUseCase) {
-      this.deleteCardUseCase = new DeleteCard(this.getRecallRepository());
+      this.deleteCardUseCase = new DeleteCard(this.getRecallRepository(), this.getRecallPublisher());
     }
     return this.deleteCardUseCase;
   }
 
   static getClearAllCardsUseCase(): ClearAllCards {
     if (!this.clearAllCardsUseCase) {
-      this.clearAllCardsUseCase = new ClearAllCards(this.getRecallRepository());
+      this.clearAllCardsUseCase = new ClearAllCards(this.getRecallRepository(), this.getRecallPublisher());
     }
     return this.clearAllCardsUseCase;
   }

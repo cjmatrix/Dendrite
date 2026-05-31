@@ -1,8 +1,7 @@
 import { Worker, Job } from "bullmq";
-import { redisConfig, redisConnection } from "../config/redis";
-import { MongoOutboxEventRepository } from "../infrastructure/outbox/repositories/MongoOutboxEventRepository";
-import { QdrantVectorRepository } from '../infrastructure/vector/repositories/QdrantVectorRepository';
+import { redisConfig } from "../config/redis";
 import { ProcessSummaryJob } from "../application/worker/use-cases/ProcessSummaryJob";
+import { container } from "tsyringe";
 
 interface SummaryJobData {
   summaryOutboxEventId: string;
@@ -13,10 +12,7 @@ const summaryWorker = new Worker<SummaryJobData>(
   "summaryQueue",
   async (job: Job<SummaryJobData>) => {
     const { summaryOutboxEventId, messageToCompress } = job.data;
-    
-    const outboxRepo = new MongoOutboxEventRepository();
-    const vectorRepo = new QdrantVectorRepository();
-    const processSummaryUseCase = new ProcessSummaryJob(outboxRepo, vectorRepo);
+    const processSummaryUseCase = container.resolve(ProcessSummaryJob);
 
     await processSummaryUseCase.execute(summaryOutboxEventId, messageToCompress);
   },

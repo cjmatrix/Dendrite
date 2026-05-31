@@ -1,8 +1,10 @@
 import { ISubChatRepository } from '../../../domain/chat/repositories/ISubChatRepository';
-import { AppError } from '../../../utils/AppError';
+import { IGetSubChatUseCase } from './interfaces';
+import { injectable, inject } from 'tsyringe';
 
-export class GetSubChat {
-  constructor(private subChatRepository: ISubChatRepository) {}
+@injectable()
+export class GetSubChat implements IGetSubChatUseCase {
+  constructor(@inject("ISubChatRepository") private subChatRepository: ISubChatRepository) {}
 
   async execute(chatId: string, subChatId: string, userId: string) {
     const subChat = await this.subChatRepository.findByIdAndUserId(subChatId, chatId, userId);

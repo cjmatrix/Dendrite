@@ -1,11 +1,16 @@
+import { injectable, inject } from "tsyringe";
 import { IRecallRepository } from '../../../domain/recall/repositories/IRecallRepository';
-import { scheduleRecallNotification } from '../../../queue/recallQueue';
+import { IRecallPublisher } from '../../common/ports/IRecallPublisher';
 
+@injectable()
 export class CreateCard {
-  constructor(private recallRepository: IRecallRepository) {}
+  constructor(
+    @inject("IRecallRepository") private recallRepository: IRecallRepository,
+    @inject("IRecallPublisher") private recallPublisher: IRecallPublisher
+  ) {}
 
   async execute(userId: string, content: string, chatId: string) {
-    const nextReview = new Date(Date.now() + 60000); // 1 minute default (5 seconds effectively for demo?)
+    const nextReview = new Date(Date.now() + 60000); 
 
     
     const recall = await this.recallRepository.create({
@@ -16,7 +21,7 @@ export class CreateCard {
     });
 
     const delayInMs = recall.nextReview.getTime() - Date.now();
-    const jobId = await scheduleRecallNotification(userId, recall._id.toString(), delayInMs);
+    const jobId = await this.recallPublisher.publish(userId, recall._id.toString(), delayInMs);
     
     if (jobId) {
       recall.jobId = jobId;

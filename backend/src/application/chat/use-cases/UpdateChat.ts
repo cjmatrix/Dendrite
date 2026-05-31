@@ -1,14 +1,20 @@
 import { IChatRepository } from '../../../domain/chat/repositories/IChatRepository';
+import { IUpdateChatUseCase } from './interfaces';
+import { UpdateChatInputDTO, ChatOutputDTO, ChatMapper } from '../dtos/chat.dto';
 import { AppError } from '../../../utils/AppError';
+import { injectable, inject } from 'tsyringe';
 
-export class UpdateChat {
-  constructor(private chatRepository: IChatRepository) {}
+@injectable()
+export class UpdateChat implements IUpdateChatUseCase {
+  constructor(@inject("IChatRepository") private chatRepository: IChatRepository) {}
 
-  async execute(chatId: string, userId: string, updates: { title?: string; folderId?: string | null }) {
-    const chat = await this.chatRepository.update(chatId, userId, updates);
+  async execute(input: UpdateChatInputDTO): Promise<ChatOutputDTO> {
+    const { chatId, userId, title, folderId } = input;
+
+    const chat = await this.chatRepository.update(chatId, userId, { title, folderId });
     if (!chat) {
       throw new AppError("Chat not found", 404);
     }
-    return chat;
+    return ChatMapper.toChatOutput(chat);
   }
 }

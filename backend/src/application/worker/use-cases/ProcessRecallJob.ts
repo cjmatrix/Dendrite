@@ -1,11 +1,13 @@
+import { injectable, inject } from "tsyringe";
 import { IRecallRepository } from '../../../domain/recall/repositories/IRecallRepository';
 import { IUserRepository } from '../../../domain/auth/repositories/IUserRepository';
 import admin from '../../../config/firebase';
 
+@injectable()
 export class ProcessRecallJob {
   constructor(
-    private recallRepository: IRecallRepository,
-    private userRepository: IUserRepository
+    @inject("IRecallRepository") private recallRepository: IRecallRepository,
+    @inject("IUserRepository") private userRepository: IUserRepository
   ) {}
 
   async execute(userId: string, cardId: string) {

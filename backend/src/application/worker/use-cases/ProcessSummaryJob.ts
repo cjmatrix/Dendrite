@@ -1,3 +1,4 @@
+import { injectable, inject } from "tsyringe";
 import { IOutboxEventRepository } from '../../../domain/outbox/repositories/IOutboxEventRepository';
 import { IVectorRepository } from '../../../domain/vector/repositories/IVectorRepository';
 import generateCompressedChat from '../../../utils/AISummary';
@@ -9,10 +10,11 @@ interface MessageToCompress {
   content: string;
 }
 
+@injectable()
 export class ProcessSummaryJob {
   constructor(
-    private outboxRepository: IOutboxEventRepository,
-    private vectorRepository: IVectorRepository
+    @inject("IOutboxEventRepository") private outboxRepository: IOutboxEventRepository,
+    @inject("IVectorRepository") private vectorRepository: IVectorRepository
   ) {}
 
   async execute(
@@ -38,7 +40,7 @@ export class ProcessSummaryJob {
      
       if (contextChunks.length === 0) {
         console.warn(
-          `🛑 No valid chunks for outbox ${summaryOutboxEventId}   marking processed`
+          ` No valid chunks for outbox ${summaryOutboxEventId}   marking processed`
         );
         await this.outboxRepository.updateStatus(
           summaryOutboxEventId,
@@ -50,7 +52,7 @@ export class ProcessSummaryJob {
     
       if (contextChunks.length > 50) {
         console.warn(
-          `🛑 High chunk count (${contextChunks.length})   truncating to 50`
+          `High chunk count (${contextChunks.length})   truncating to 50`
         );
         contextChunks.splice(50);
       }

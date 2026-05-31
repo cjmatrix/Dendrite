@@ -5,7 +5,7 @@ import CONTEXT_WINDOW from "../constants/contextWindow";
 
 export class AIService {
  
-   //Determine if internet search is needed for a query
+  
    
   static async shouldUseInternetSearch(queryText: string): Promise<boolean> {
     const routingPrompt = `Determine if the following user query requires an internet search to be answered accurately. 
@@ -38,8 +38,7 @@ User query: "${queryText}"`;
     return false;
   }
 
-  
-   // Get internet context for a query using search
+ 
   
   static async getInternetContext(
     queryText: string,

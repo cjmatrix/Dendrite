@@ -6,12 +6,17 @@ import { embeddingService } from "../../../services/EmbeddingService";
 import CONTEXT_WINDOW from "../../../constants/contextWindow";
 import { systemInstruction } from "../../../config/AIConfig";
 import { redisConfig, redisConnection } from "../../../config/redis";
+import { injectable, inject } from "tsyringe";
+import { IPrepareMessageUseCase } from "./interfaces";
+import { getTokenInfo } from "../../../utils/tokenCounter";
+import { AIService } from "../../../services/AIService";
 
-export class PrepareMessage {
+@injectable()
+export class PrepareMessage implements IPrepareMessageUseCase {
   constructor(
-    private vectorRepository: IVectorRepository,
-    private chatRepository: IChatRepository,
-    private messageRepository: IMessageRepository,
+    @inject("IVectorRepository") private vectorRepository: IVectorRepository,
+    @inject("IChatRepository") private chatRepository: IChatRepository,
+    @inject("IMessageRepository") private messageRepository: IMessageRepository,
   ) {}
 
   private stripP5CodeBlocks(text: string): string {
@@ -25,17 +30,17 @@ export class PrepareMessage {
       .trim();
   }
 
-  async execute(
-    chatId: string,
-    userId: string,
-    userMessage: string,
-    mode?: string,
-    codeQueryVector?: number[],
-    descQueryVector?: number[],
-    imageUrl?: string,
-    fileUrl?: string,
-    fileName?: string,
-  ) {
+  async execute(input: import("../dtos/chat.dto").PrepareMessageInputDTO) {
+    const {
+      chatId,
+      userId,
+      userMessage,
+      mode,
+      imageUrl,
+      fileUrl,
+      fileName,
+    } = input;
+    
     const chat = await this.chatRepository.findByIdAndUserId(chatId, userId);
 
     if (!chat) {
@@ -80,8 +85,10 @@ export class PrepareMessage {
 
       if (parentChat) {
         map.set(parentChat._id, {count:parentChat.unsummarizedCount,messages:[...parentMessages]});
+        parentChatId = parentChat.contextParent;
+      } else {
+        parentChatId = null;
       }
-      parentChatId = parentChat.contextParent;
 
       safetyDepth++;
     }
@@ -98,8 +105,24 @@ export class PrepareMessage {
       )
       .join("\n");
 
-    const finalCodeQueryVector = codeQueryVector;
-    const finalDescQueryVector = descQueryVector;
+    let finalCodeQueryVector ;
+    let finalDescQueryVector ;
+    if (!finalCodeQueryVector || !finalDescQueryVector) {
+      const MAX_EMBEDDING_TOKENS = 1024;
+      const tokenInfo = getTokenInfo(normalizedMessage, MAX_EMBEDDING_TOKENS);
+
+      if (tokenInfo.isExceeded) {
+        console.warn(`[Token Limit Warning] Query text exceeds ${MAX_EMBEDDING_TOKENS} tokens. Estimated: ${tokenInfo.estimatedTokens} tokens. Skipping embedding generation.`);
+      } else {
+        console.log(`[Token Info] Query text: ${tokenInfo.estimatedTokens}/${MAX_EMBEDDING_TOKENS} tokens`);
+        const [codeVec, descVec] = await Promise.all([
+          embeddingService.embed(normalizedMessage, "CODE_RETRIEVAL_QUERY"),
+          embeddingService.embed(normalizedMessage, "RETRIEVAL_QUERY"),
+        ]);
+        finalCodeQueryVector = codeVec;
+        finalDescQueryVector = descVec;
+      }
+    }
 
     const chatIdsToSearch: string[] = [chatId];
     const inheritedSummaries: { title: string; summary: string }[] = [];
@@ -131,7 +154,7 @@ export class PrepareMessage {
     }
 
     console.log(
-      `\n🌲 [BRANCH ARCHITECTURE] Searching across ${chatIdsToSearch.length} chats in full lineage:`,
+      `\n [BRANCH ARCHITECTURE] Searching across ${chatIdsToSearch.length} chats in full lineage:`,
       chatIdsToSearch,
     );
 
@@ -143,7 +166,7 @@ export class PrepareMessage {
 
     if (!canRunVectorSearch) {
       console.warn(
-        "⚠️ [RAG] Embedding vectors missing/undefined, skipping vector retrieval for this request.",
+        " Embedding vectors missing, skipping vector retrieval for this request.",
       );
     }
 
@@ -151,19 +174,19 @@ export class PrepareMessage {
       canRunVectorSearch
         ? await Promise.all([
             this.vectorRepository.searchSimilarCode(
-              finalCodeQueryVector,
-              finalDescQueryVector,
+              finalCodeQueryVector!,
+              finalDescQueryVector!,
               userId,
               chatIdsToSearch,
             ),
             this.vectorRepository.searchSimilarChatChunk(
-              finalDescQueryVector,
+              finalDescQueryVector!,
               userId,
               chatIdsToSearch,
             ),
             this.vectorRepository.searchDocuments(
               normalizedMessage,
-              finalDescQueryVector,
+              finalDescQueryVector!,
               userId,
               chatIdsToSearch,
             ),
@@ -171,17 +194,17 @@ export class PrepareMessage {
         : [[], [], []];
 
     console.log(documentChunks, "raw document");
-    // --- DIAGNOSTIC LOGS ---
-    console.log(`\n🔍 [RAG DIAGNOSTICS]`);
-    console.log(`📡 User Message: "${normalizedMessage}"`);
-    console.log(`🧠 Long-Term Facts Found: ${chatContextStats.length}`);
+ 
+    console.log(`\n [RAG DIAGNOSTICS]`);
+    console.log(` User Message: "${normalizedMessage}"`);
+    console.log(` Long-Term Facts Found: ${chatContextStats.length}`);
     chatContextStats.slice(0, 3).forEach((f, i) => {
       console.log(
         `   [Fact ${i + 1}] Score: ${f.score.toFixed(3)} | Content: ${f.fact.fact.substring(0, 100)}...`,
       );
     });
-    console.log(`💻 Code Snippets Found: ${rawSimilarCode.length}`);
-    console.log(`📄 Document Chunks Found: ${documentChunks.length}`);
+    console.log(` Code Snippets Found: ${rawSimilarCode.length}`);
+    console.log(` Document Chunks Found: ${documentChunks.length}`);
     console.log(`------------------------\n`);
 
     const deduplicatedSimilarCode = rawSimilarCode.filter((item) => {
@@ -292,7 +315,7 @@ Visual Style: Maintain a clean, airy aesthetic with plenty of padding and space 
       dynamicSystemInstruction += `\n\nIMPORTANT: The user is currently in GENERAL mode. Do NOT produce any raw p5 code blocks or runnable visualization code. Under no circumstances output a fenced code block labeled \`p5\` or any JavaScript code intended to be executed as a visualization. If the user asks about a previous visualization, provide only a high-level textual description or pseudo-code, and NEVER include runnable p5 code unless the user explicitly switches to Visual Mode.`;
     }
 
-    // Helper function image URL to base64
+  
     const urlToBase64 = async (
       url: string,
     ): Promise<{ base64: string; mimeType: string }> => {
@@ -352,6 +375,20 @@ Visual Style: Maintain a clean, airy aesthetic with plenty of padding and space 
           } catch (error) {
             console.error("Error processing image:", error);
           }
+        }
+      }
+    }
+
+    let internetContext: string | undefined;
+    if (finalDescQueryVector) {
+      internetContext = await AIService.getInternetContext(normalizedMessage, finalDescQueryVector);
+    }
+
+    if (internetContext) {
+      for (let i = contents.length - 1; i >= 0; i--) {
+        if (contents[i].text && typeof contents[i].text === "string") {
+          contents[i].text += internetContext;
+          break;
         }
       }
     }

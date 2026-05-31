@@ -6,58 +6,7 @@ import { MermaidBlock } from "react-markdown-mermaid";
 // @ts-ignore
 import plantumlEncoder from "plantuml-encoder";
 
-function detectCodeType(text) {
-  const cleanText = text.trim();
 
-  // 1. Check for PromQL / Metrics (like your example: node_memory_usage_bytes{...})
-  if (/[a-zA-Z_:][a-zA-Z0-9_:]*\{.*?\}/.test(cleanText)) {
-    return { isCode: true, lang: "promql" };
-  }
-
-  // 2. Check for JSON format
-  if (cleanText.startsWith("{") && cleanText.endsWith("}") && cleanText.includes('"')) {
-    return { isCode: true, lang: "json" };
-  }
-
-  // 3. Check for HTML / XML elements
-  if (/<\/?[a-z][\s\S]*>/i.test(cleanText)) {
-    return { isCode: true, lang: "xml" }; // xml handles html beautifully
-  }
-
-  // 4. Check for CSS rules
-  if (/\.[a-zA-Z0-9_-]+\s*\{[^}]*\}/.test(cleanText) || /#浪[a-zA-Z0-9_-]+\s*\{[^}]*\}/.test(cleanText)) {
-    return { isCode: true, lang: "css" };
-  }
-
-  // 5. Check for standard JavaScript / TypeScript features
-  if (
-    /const\s+\w+\s*=/.test(cleanText) ||
-    /let\s+\w+\s*=/.test(cleanText) ||
-    /import\s+.*\s+from/.test(cleanText) ||
-    /function\s+\w+\s*\(/.test(cleanText) ||
-    /console\.log\(/.test(cleanText) ||
-    /=>/.test(cleanText)
-  ) {
-    return { isCode: true, lang: "javascript" };
-  }
-
-  // 6. Check for Bash / Shell commands
-  if (/^(npm install|yarn add|pip install|git clone|cd\s+|ls\s+|mkdir\s+)/.test(cleanText)) {
-    return { isCode: true, lang: "bash" };
-  }
-
-  // 7. General code check (brackets, semicolons, operations) to catch random variables
-  // But ensure it's not a regular sentence with punctuation
-  const codeSymbols = (cleanText.match(/[{}()\[\];=<>+\-*\/&|]/g) || []).length;
-  const wordCount = cleanText.split(/\s+/).length;
-  
-  if (codeSymbols > 2 || (wordCount === 1 && cleanText.includes("_"))) {
-    return { isCode: true, lang: "javascript" }; // standard colorful default
-  }
-
-  // 8. If none match, treat it as a regular plain-text sentence snippet
-  return { isCode: false, lang: "text" };
-}
 
 
 export const markdownComponents = {

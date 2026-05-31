@@ -1,9 +1,10 @@
+import { injectable, inject } from "tsyringe";
 import { IOutboxEventRepository } from '../../../domain/outbox/repositories/IOutboxEventRepository';
 import { IChatRepository } from '../../../domain/chat/repositories/IChatRepository';
 import { generateRecursiveSummary } from '../../../utils/AISummary';
 
 
-const SUMMARY_MAX_TOKENS = 800;
+const SUMMARY_MAX_TOKENS = 900;
 
 function enforceSummaryBudget(summary: string, maxTokens: number = SUMMARY_MAX_TOKENS): string {
   const estimatedTokens = Math.ceil(summary.length / 4);
@@ -13,7 +14,7 @@ function enforceSummaryBudget(summary: string, maxTokens: number = SUMMARY_MAX_T
   }
 
   console.warn(
-    `⚠️ Summary over budget — est. ${estimatedTokens} tokens, trimming to ${maxTokens}`
+    ` Summary over budget — est. ${estimatedTokens} tokens, trimming to ${maxTokens}`
   );
 
   const lines = summary
@@ -56,11 +57,12 @@ interface MessageToCompress {
 }
 
 
+@injectable()
 export class ProcessStateJob {
   constructor(
-    private outboxRepository: IOutboxEventRepository,
-    private chatRepository: IChatRepository,
-    private redisConnection: any
+    @inject("IOutboxEventRepository") private outboxRepository: IOutboxEventRepository,
+    @inject("IChatRepository") private chatRepository: IChatRepository,
+    @inject("RedisClient") private redisConnection: any
   ) {}
 
   async execute(

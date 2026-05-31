@@ -13,3 +13,40 @@ fix every 7 minute code block sweper for geneating decription
 create breathing room for summurizing
 
 recall should have outbox pettern becuase im only depend on redis which may crash and lost the jobs
+
+deleting folder or chat wont delete data from cloudinary
+
+
+
+
+
+
+Final system prompt sent to Gemini:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[PRODUCT CORE — never overrideable]
+You are Dendrites, an AI learning companion.
+[Memory system instructions]
+[Code extraction instructions]
+[Output format instructions]
+
+[GLOBAL MEMORY — always injected]
+User name: Arun
+Primary stack: Node.js, React, TypeScript
+Learning goal: Build production SaaS
+
+[FOLDER BEHAVIOR — nearest ancestor]
+You are a React performance expert.
+Always show bundle size impact.
+Never suggest class components.
+
+[ACTIVE CONVERSATION STATE — Layer 2]
+[GOAL] User is optimizing re-renders...
+
+[RETRIEVED CONTEXT — Layer 3]
+[relevant code/fact/doc chunks]
+
+[CONVERSATION HISTORY — Layer 1]
+Last 20 messages
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+User message
+

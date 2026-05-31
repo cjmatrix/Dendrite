@@ -1,12 +1,14 @@
+import { injectable, inject } from "tsyringe";
 import { IOutboxEventRepository } from '../../../domain/outbox/repositories/IOutboxEventRepository';
 import { IVectorRepository } from '../../../domain/vector/repositories/IVectorRepository';
 import { embeddingService } from '../../../services/EmbeddingService';
 import crypto from 'crypto';
 
+@injectable()
 export class ProcessEmbeddingJob {
   constructor(
-    private outboxRepository: IOutboxEventRepository,
-    private vectorRepository: IVectorRepository
+    @inject("IOutboxEventRepository") private outboxRepository: IOutboxEventRepository,
+    @inject("IVectorRepository") private vectorRepository: IVectorRepository
   ) {}
 
   async execute(outboxId: string, content: any) {

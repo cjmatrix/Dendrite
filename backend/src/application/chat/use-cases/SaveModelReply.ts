@@ -2,15 +2,17 @@ import { AppError } from "../../../utils/AppError";
 import { hashCode } from "../../../utils/stripComments";
 import { redisConnection } from "../../../config/redis";
 import mongoose from "mongoose";
-import addDescriptionQueue from "../../../queue/descriptionQueue";
-import addSummaryQueue from "../../../queue/summaryQueue";
-import addStateQueue from "../../../queue/stateQueue";
 import CONTEXT_WINDOW from "../../../constants/contextWindow";
 import { IChatRepository } from "../../../domain/chat/repositories/IChatRepository";
 import { IMessageRepository } from "../../../domain/chat/repositories/IMessageRepository";
 import { ICodeBlockRepository } from "../../../domain/chat/repositories/ICodeBlockRepository";
 import { IOutboxEventRepository } from "../../../domain/outbox/repositories/IOutboxEventRepository";
+import { IDescriptionPublisher } from "../../common/ports/IDescriptionPublisher";
+import { ISummaryPublisher } from "../../common/ports/ISummaryPublisher";
+import { IStatePublisher } from "../../common/ports/IStatePublisher";
 import { estimateTokenCount } from "../../../utils/tokenCounter";
+import { injectable, inject } from "tsyringe";
+import { ISaveModelReplyUseCase } from "./interfaces";
 
 export function extractCodeBlocks(text: string) {
   const regex = /```(\w+)?\n([\s\S]*?)```/g;
@@ -21,7 +23,7 @@ export function extractCodeBlocks(text: string) {
   while ((match = regex.exec(text)) !== null) {
     const lang = (match[1] || "text").toLowerCase();
     const code = match[2].trim();
-    if (!filterLang.includes(lang) && estimateTokenCount(code)>60) {
+    if (!filterLang.includes(lang) && estimateTokenCount(code) > 60) {
       blocks.push({
         language: lang,
         code,
@@ -32,26 +34,29 @@ export function extractCodeBlocks(text: string) {
   return blocks;
 }
 
-export class SaveModelReply {
+@injectable()
+export class SaveModelReply implements ISaveModelReplyUseCase {
   constructor(
-    private chatRepository: IChatRepository,
-    private messageRepository: IMessageRepository,
+    @inject("IChatRepository") private chatRepository: IChatRepository,
+    @inject("IMessageRepository") private messageRepository: IMessageRepository,
+    @inject("ICodeBlockRepository")
     private codeBlockRepository: ICodeBlockRepository,
+    @inject("IOutboxEventRepository")
     private outboxRepository: IOutboxEventRepository,
+    @inject("IDescriptionPublisher")
+    private descriptionPublisher: IDescriptionPublisher,
+    @inject("ISummaryPublisher") private summaryPublisher: ISummaryPublisher,
+    @inject("IStatePublisher") private statePublisher: IStatePublisher,
   ) {}
 
-  async execute(
-    chatId: string,
-    userId: string,
-    modelReply: string,
-    parentContext: Map<any, any>,
-  ) {
+  async execute(input: import("../dtos/chat.dto").SaveModelReplyInputDTO) {
+    const { chatId, userId, modelReply, parentContext } = input;
+
     const chat = await this.chatRepository.findByIdAndUserId(chatId, userId);
 
     if (!chat) {
       throw new AppError("Chat not found", 404);
     }
-
     const session = await mongoose.startSession();
     session.startTransaction();
 
@@ -72,6 +77,10 @@ export class SaveModelReply {
 
       let messageToCompress: any[] = [];
 
+      if (!updatedChat) {
+        throw new AppError("Failed to update chat", 500);
+      }
+
       let totalUnCount = updatedChat.unsummarizedCount;
       const totalParentMessagesToCompress: any[] = [];
       const lineageChatIds = [chatId];
@@ -79,10 +88,10 @@ export class SaveModelReply {
       if (parentContext && parentContext.size > 0) {
         [...parentContext.entries()].forEach(([parentChatId, obj]) => {
           totalUnCount += obj.count;
-          if(obj.count!==0){
+          if (obj.count !== 0) {
             totalParentMessagesToCompress.push(...obj.messages);
           }
-          
+
           lineageChatIds.push(parentChatId.toString());
         });
       }
@@ -111,16 +120,14 @@ export class SaveModelReply {
       let savedBlocks: any[] = [];
 
       if (codeBlocks.length > 0) {
-        // DEDUPLICATION: Only process truly new code blocks
         const newBlockDocs: any[] = [];
-
         for (const block of codeBlocks) {
           const redisKey = `code_dedup:${block.hash}`;
 
           const cachedDesc = await redisConnection.get(redisKey);
           if (cachedDesc) {
             console.log(
-              `[CodeDedup] Redis hit for hash ${block.hash.slice(0, 8)}...  — skipping API calls.`,
+              `[CodeDedup] Redis hit for hash ${block.hash.slice(0, 8)}  skipping API calls.`,
             );
             continue;
           }
@@ -130,9 +137,9 @@ export class SaveModelReply {
           );
           if (existingBlock) {
             console.log(
-              `[CodeDedup] DB hit for hash ${block.hash.slice(0, 8)}...  — skipping API calls.`,
-            ); 
-            // Redis to avoid future DB lookups
+              `[CodeDedup] DB hit for hash ${block.hash.slice(0, 8)}   skipping API calls.`,
+            );
+
             if (existingBlock.description) {
               await redisConnection.setex(
                 redisKey,
@@ -209,8 +216,6 @@ export class SaveModelReply {
 
       await session.commitTransaction();
 
-      // Batch-describe code blocks ONLY at the summarization threshold.
-
       if (messageToCompress.length > 0) {
         const undescribedBlocks =
           await this.codeBlockRepository.findUndescribedByChatId(chatId);
@@ -223,26 +228,29 @@ export class SaveModelReply {
             language: b.language,
             hash: b.hash,
           }));
-          await addDescriptionQueue(queuePayload);
+          await this.descriptionPublisher.publish(queuePayload);
           console.log(
-            ` 🛑Context window overflow  batched ${undescribedBlocks.length} code blocks to description-queue! 🛑`,
+            `Context window overflow  batched ${undescribedBlocks.length} code blocks to description-queue!`,
           );
         }
       }
 
       if (summaryOutboxEvent && stateOutboxEvent) {
         //Longterm retrival facts
-        addSummaryQueue(summaryOutboxEvent._id.toString(), messageToCompress);
+        await this.summaryPublisher.publish(
+          summaryOutboxEvent._id.toString(),
+          messageToCompress,
+        );
 
         // Middleterm recursive chunk
-        addStateQueue(
+        await this.statePublisher.publish(
           stateOutboxEvent._id.toString(),
           messageToCompress,
           chat.summary,
         );
 
         console.log(
-          `🚀 Triggered Dual-Memory Compression for Chat ${chat._id}! Outbox IDs: ${summaryOutboxEvent._id}, ${stateOutboxEvent._id}`,
+          `Triggered Dual-Memory Compression for Chat ${chat._id} Outbox IDs: ${summaryOutboxEvent._id}, ${stateOutboxEvent._id}`,
         );
       }
     } catch (error) {

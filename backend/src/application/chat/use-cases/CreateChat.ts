@@ -1,14 +1,22 @@
 import { IChatRepository } from '../../../domain/chat/repositories/IChatRepository';
+import { ICreateChatUseCase } from './interfaces';
+import { CreateChatInputDTO, ChatOutputDTO, ChatMapper } from '../dtos/chat.dto';
 import { AppError } from '../../../utils/AppError';
+import { injectable, inject } from 'tsyringe';
 
-export class CreateChat {
-  constructor(private chatRepository: IChatRepository) {}
+@injectable()
+export class CreateChat implements ICreateChatUseCase {
+  constructor(@inject("IChatRepository") private chatRepository: IChatRepository) {}
 
-  async execute(userId: string, title: string, folderId: string | null) {
-    const chat = await this.chatRepository.findByUserIdAndTitleAndFolderId(userId, title, folderId);
-    if (chat) {
+  async execute(input: CreateChatInputDTO): Promise<ChatOutputDTO> {
+    const { userId, title, folderId } = input;
+
+    const existing = await this.chatRepository.findByUserIdAndTitleAndFolderId(userId, title, folderId || null);
+    if (existing) {
       throw new AppError("Chat with this title already exists in this folder", 400);
     }
-    return await this.chatRepository.create({ userId, title, folderId });
+
+    const chat = await this.chatRepository.create({ userId, title, folderId });
+    return ChatMapper.toChatOutput(chat);
   }
 }
