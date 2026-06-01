@@ -8,9 +8,11 @@ const summaryQueue = new Queue("summaryQueue", {
 export default async function addSummaryQueue(
   summaryOutboxEventId: string,
   messageToCompress: any[],
+  previousSummary: string | null = null,
 ) {
   await summaryQueue.add("process-summary", {
     summaryOutboxEventId,
     messageToCompress,
+    previousSummary,
   });
 }

@@ -15,8 +15,6 @@ import { BullMQDescriptionPublisher } from '../../../infrastructure/shared/publi
 import { IDescriptionPublisher } from '../../../application/common/ports/IDescriptionPublisher';
 import { BullMQSummaryPublisher } from '../../../infrastructure/shared/publishers/BullMQSummaryPublisher';
 import { ISummaryPublisher } from '../../../application/common/ports/ISummaryPublisher';
-import { BullMQStatePublisher } from '../../../infrastructure/shared/publishers/BullMQStatePublisher';
-import { IStatePublisher } from '../../../application/common/ports/IStatePublisher';
 
 import { CreateFolder } from '../../../application/folder/use-cases/CreateFolder';
 import { GetFolders } from '../../../application/folder/use-cases/GetFolders';
@@ -76,7 +74,6 @@ export class DIContainer {
   private static recallPublisher: BullMQRecallPublisher;
   private static descriptionPublisher: BullMQDescriptionPublisher;
   private static summaryPublisher: BullMQSummaryPublisher;
-  private static statePublisher: BullMQStatePublisher;
 
   // Folder Use Cases
   private static createFolderUseCase: CreateFolder;
@@ -311,7 +308,6 @@ export class DIContainer {
         this.getOutboxEventRepository(),
         this.getDescriptionPublisher(),
         this.getSummaryPublisher(),
-        this.getStatePublisher(),
       );
     }
     return this.saveModelReplyUseCase;
@@ -429,13 +425,6 @@ export class DIContainer {
       this.summaryPublisher = new BullMQSummaryPublisher();
     }
     return this.summaryPublisher;
-  }
-
-  static getStatePublisher(): IStatePublisher {
-    if (!this.statePublisher) {
-      this.statePublisher = new BullMQStatePublisher();
-    }
-    return this.statePublisher;
   }
 
   static getSendOtpUseCase(): SendOTP {

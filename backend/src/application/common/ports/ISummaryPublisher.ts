@@ -1,3 +1,3 @@
 export interface ISummaryPublisher {
-  publish(summaryOutboxEventId: string, messageToCompress: any[]): Promise<void>;
+  publish(summaryOutboxEventId: string, messageToCompress: any[], previousSummary?: string | null): Promise<void>;
 }

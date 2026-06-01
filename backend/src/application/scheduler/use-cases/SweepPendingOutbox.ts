@@ -5,8 +5,7 @@ export class SweepPendingOutbox {
     private outboxRepository: IOutboxEventRepository,
     private queueFunctions: {
       embeddingCodeDesc: (job: any, content: any) => Promise<void>;
-      addSummaryQueue: (id: string, messages: any) => Promise<void>;
-      addStateQueue: (id: string, messages: any, previousSummary: any) => Promise<void>;
+      addSummaryQueue: (id: string, messages: any, previousSummary: any) => Promise<void>;
     }
   ) {}
 
@@ -29,9 +28,7 @@ export class SweepPendingOutbox {
         if (job.eventType === "CODE_BLOCK_CREATED") {
           await this.queueFunctions.embeddingCodeDesc(job, job.payload.content);
         } else if (job.eventType === "CHAT_SUMMARY_CREATED") {
-          await this.queueFunctions.addSummaryQueue(job._id.toString(), job.payload.content.messages);
-        } else if (job.eventType === "CHAT_STATE_UPDATED") {
-          await this.queueFunctions.addStateQueue(
+          await this.queueFunctions.addSummaryQueue(
             job._id.toString(),
             job.payload.content.messages,
             job.payload.metadata?.previousSummary,

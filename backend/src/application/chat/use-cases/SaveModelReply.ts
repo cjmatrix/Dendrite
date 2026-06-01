@@ -9,7 +9,6 @@ import { ICodeBlockRepository } from "../../../domain/chat/repositories/ICodeBlo
 import { IOutboxEventRepository } from "../../../domain/outbox/repositories/IOutboxEventRepository";
 import { IDescriptionPublisher } from "../../common/ports/IDescriptionPublisher";
 import { ISummaryPublisher } from "../../common/ports/ISummaryPublisher";
-import { IStatePublisher } from "../../common/ports/IStatePublisher";
 import { estimateTokenCount } from "../../../utils/tokenCounter";
 import { injectable, inject } from "tsyringe";
 import { ISaveModelReplyUseCase } from "./interfaces";
@@ -46,7 +45,6 @@ export class SaveModelReply implements ISaveModelReplyUseCase {
     @inject("IDescriptionPublisher")
     private descriptionPublisher: IDescriptionPublisher,
     @inject("ISummaryPublisher") private summaryPublisher: ISummaryPublisher,
-    @inject("IStatePublisher") private statePublisher: IStatePublisher,
   ) {}
 
   async execute(input: import("../dtos/chat.dto").SaveModelReplyInputDTO) {
@@ -176,42 +174,25 @@ export class SaveModelReply implements ISaveModelReplyUseCase {
       }
 
       let summaryOutboxEvent = null;
-      let stateOutboxEvent = null;
       if (messageToCompress.length > 0) {
-        const outboxDocs = [
-          {
-            eventType: "CHAT_SUMMARY_CREATED",
-            payload: {
-              sourceId: chat._id,
-              sourceType: "chat_summary",
-              userId,
-              content: {
-                messages: messageToCompress,
-              },
-              metadata: { chatId },
+        const outboxDoc = {
+          eventType: "CHAT_SUMMARY_CREATED",
+          payload: {
+            sourceId: chat._id,
+            sourceType: "chat_summary",
+            userId,
+            content: {
+              messages: messageToCompress,
             },
-            status: "pending",
+            metadata: { chatId, previousSummary: chat.summary },
           },
-          {
-            eventType: "CHAT_STATE_UPDATED",
-            payload: {
-              sourceId: chat._id,
-              sourceType: "chat_state",
-              userId,
-              content: {
-                messages: messageToCompress,
-              },
-              metadata: { chatId, previousSummary: chat.summary },
-            },
-            status: "pending",
-          },
-        ];
+          status: "pending",
+        };
         const savedOutbox = await this.outboxRepository.insertMany(
-          outboxDocs,
+          [outboxDoc],
           session,
         );
         summaryOutboxEvent = savedOutbox[0];
-        stateOutboxEvent = savedOutbox[1];
       }
 
       await session.commitTransaction();
@@ -235,22 +216,15 @@ export class SaveModelReply implements ISaveModelReplyUseCase {
         }
       }
 
-      if (summaryOutboxEvent && stateOutboxEvent) {
-        //Longterm retrival facts
+      if (summaryOutboxEvent) {
         await this.summaryPublisher.publish(
           summaryOutboxEvent._id.toString(),
-          messageToCompress,
-        );
-
-        // Middleterm recursive chunk
-        await this.statePublisher.publish(
-          stateOutboxEvent._id.toString(),
           messageToCompress,
           chat.summary,
         );
 
         console.log(
-          `Triggered Dual-Memory Compression for Chat ${chat._id} Outbox IDs: ${summaryOutboxEvent._id}, ${stateOutboxEvent._id}`,
+          `Triggered Dual-Memory Compression for Chat ${chat._id} Outbox ID: ${summaryOutboxEvent._id}`,
         );
       }
     } catch (error) {

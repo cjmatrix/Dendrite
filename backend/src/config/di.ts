@@ -17,7 +17,6 @@ import { BullMQEmbeddingPublisher } from "../infrastructure/shared/publishers/Bu
 import { BullMQRecallPublisher } from "../infrastructure/shared/publishers/BullMQRecallPublisher";
 import { BullMQDescriptionPublisher } from "../infrastructure/shared/publishers/BullMQDescriptionPublisher";
 import { BullMQSummaryPublisher } from "../infrastructure/shared/publishers/BullMQSummaryPublisher";
-import { BullMQStatePublisher } from "../infrastructure/shared/publishers/BullMQStatePublisher";
 import { NodemailerEmailService } from "../infrastructure/shared/services/NodemailerEmailService";
 import { redisConnection } from "./redis";
 import { RedisCacheService } from "../infrastructure/cache/RedisCacheService";
@@ -77,7 +76,6 @@ container.registerSingleton("IEmbeddingPublisher", BullMQEmbeddingPublisher);
 container.registerSingleton("IRecallPublisher", BullMQRecallPublisher);
 container.registerSingleton("IDescriptionPublisher", BullMQDescriptionPublisher);
 container.registerSingleton("ISummaryPublisher", BullMQSummaryPublisher);
-container.registerSingleton("IStatePublisher", BullMQStatePublisher);
 
 container.registerSingleton("IRegisterUserUseCase", RegisterUser);
 container.registerSingleton("ILoginUserUseCase", LoginUser);

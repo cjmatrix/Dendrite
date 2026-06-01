@@ -82,6 +82,8 @@ ${snippetsText}`;
   }
 }
 
+
+
 async function generateCodeDescription(code: string, language: string) {
   const queryText = `Summarize this ${language} code in 1 sentence (max 30 words). Mention function names, variable names, and what it does. No markdown:\n\n${code}`;
 

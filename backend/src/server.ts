@@ -12,7 +12,6 @@ import branchRoutes from "./presentation/routes/branchRoutes";
 import "./worker/embeddingWorker";
 import "./worker/descriptionWorker";
 import "./worker/summaryWorker";
-import "./worker/stateWorker";
 import "./worker/recallWorker";
 import "./queue/documentChunkingQueue";
 import "./cron/outboxSweeper";

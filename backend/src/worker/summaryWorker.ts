@@ -6,15 +6,16 @@ import { container } from "tsyringe";
 interface SummaryJobData {
   summaryOutboxEventId: string;
   messageToCompress: any[];
+  previousSummary?: string | null;
 }
 
 const summaryWorker = new Worker<SummaryJobData>(
   "summaryQueue",
   async (job: Job<SummaryJobData>) => {
-    const { summaryOutboxEventId, messageToCompress } = job.data;
+    const { summaryOutboxEventId, messageToCompress, previousSummary } = job.data;
     const processSummaryUseCase = container.resolve(ProcessSummaryJob);
 
-    await processSummaryUseCase.execute(summaryOutboxEventId, messageToCompress);
+    await processSummaryUseCase.execute(summaryOutboxEventId, messageToCompress, previousSummary);
   },
   {
     connection: redisConfig,
@@ -27,11 +28,11 @@ const summaryWorker = new Worker<SummaryJobData>(
 );
 
 summaryWorker.on("completed", (job) => {
-  console.log(`📦 Summary Job ${job.id} completed`);
+  console.log(`Summary Job ${job.id} completed`);
 });
 
 summaryWorker.on("failed", (job, err) => {
-  console.error(`📦 Summary Job ${job?.id} failed:`, err.message);
+  console.error(`Summary Job ${job?.id} failed:`, err.message);
 });
 
 export default summaryWorker;

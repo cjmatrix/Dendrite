@@ -9,6 +9,6 @@ cron.schedule("0 * * * *", async () => {
         await vectorRepo.deleteOldSearchCache(twelveHoursAgo);
         console.log("🧹 Qdrant search cache swept explicitly (outdated points cleared).");
     } catch (err) {
-        console.error("❌ Failed to sweep Qdrant search cache:", err);
+        console.error(" Failed to sweep Qdrant search cache:", err);
     }
 });
