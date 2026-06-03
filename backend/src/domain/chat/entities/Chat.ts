@@ -13,7 +13,7 @@ export interface IChat {
   userId: string;
   folderId: string | null;
   title: string;
-  contextParent: string | null;
+  contextParent: { _id: string; title: string | null } | null;
   summary: string | null;
   tokenCount: number;
   unsummarizedCount: number;

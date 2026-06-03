@@ -4,6 +4,7 @@ import { IOutboxEventRepository } from '../../../domain/outbox/repositories/IOut
 import { IEmbeddingPublisher } from '../../common/ports/IEmbeddingPublisher';
 import { generateBatchCodeDescriptions } from '../../../utils/AIDescription';
 import mongoose from "mongoose";
+import { ILogger } from '../../common/ports/ILogger';
 
 @injectable()
 export class ProcessDescriptionJob {
@@ -11,7 +12,8 @@ export class ProcessDescriptionJob {
     @inject("ICodeBlockRepository") private codeBlockRepository: ICodeBlockRepository,
     @inject("IOutboxEventRepository") private outboxRepository: IOutboxEventRepository,
     @inject("RedisClient") private redisConnection: any, 
-    @inject("IEmbeddingPublisher") private embeddingPublisher: IEmbeddingPublisher
+    @inject("IEmbeddingPublisher") private embeddingPublisher: IEmbeddingPublisher,
+    @inject("ILogger") private logger: ILogger
   ) {}
 
   async execute(blocks: any[]) {
@@ -24,7 +26,7 @@ export class ProcessDescriptionJob {
       const cachedDescription = await this.redisConnection.get(redisKey);
       
       if (cachedDescription) {
-        console.log(`[DescWorker] Hash cache hit for ${block.hash.slice(0, 8)}... — skipping Gemini call.`);
+        this.logger.info(`[DescWorker] Hash cache hit for ${block.hash.slice(0, 8)}... — skipping Gemini call.`);
         finalResults[block._id] = cachedDescription;
       } else {
         toProcessBlocks.push(block);
@@ -33,7 +35,7 @@ export class ProcessDescriptionJob {
     
   
     if (toProcessBlocks.length > 0) {
-      console.log(` Batching description generation for ${toProcessBlocks.length} blocks...`);
+      this.logger.info(` Batching description generation for ${toProcessBlocks.length} blocks...`);
       
       const batchResults = await generateBatchCodeDescriptions(
         toProcessBlocks.map(b => ({ id: b._id, code: b.code, language: b.language }))
@@ -95,11 +97,11 @@ export class ProcessDescriptionJob {
           try {
             await this.embeddingPublisher.publish(event._id.toString(), event.payload.content);
           } catch (e: any) {
-            console.error(`Status: Failed to push to embedding queue for ${event.payload.sourceId}:`, e.message);
+            this.logger.error(`Status: Failed to push to embedding queue for ${event.payload.sourceId}:`, e);
           }
         }
       } catch (txnError) {
-        console.log(" Code Block update or Outbox event creation failed ");
+        this.logger.error(" Code Block update or Outbox event creation failed ", txnError);
         await session.abortTransaction();
         throw txnError;
       } finally {

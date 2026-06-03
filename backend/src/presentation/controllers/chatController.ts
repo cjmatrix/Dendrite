@@ -13,6 +13,7 @@ import { getTokenInfo } from "../../utils/tokenCounter";
 import { documentChunkingQueue } from "../../queue/documentChunkingQueue";
 import { documentProgressPubSub } from "../../services/documentProgressPubSub";
 import CONTEXT_WINDOW from "../../constants/contextWindow";
+import { ILogger } from "../../application/common/ports/ILogger";
 
 import { injectable, inject, container } from "tsyringe";
 import { 
@@ -54,7 +55,7 @@ export class ChatController extends BaseController {
     @inject("ISaveSubChatUseCase") private saveSubChatUseCase: ISaveSubChatUseCase,
     @inject("IUpdateChatUseCase") private updateChatUseCase: IUpdateChatUseCase,
     @inject("IUploadChatImageUseCase") private uploadChatImageUseCase: IUploadChatImageUseCase,
- 
+    @inject("ILogger") private logger: ILogger,
     @inject("IChatRepository") private chatRepository: IChatRepository,
     @inject("IMessageRepository") private messageRepository: IMessageRepository
   ) {
@@ -169,7 +170,7 @@ export class ChatController extends BaseController {
 
       const input = this.normalizeInput(req.body);
 
-      const { contents, userMessageId, parentContext } = await this.prepareMessageUseCase.execute({
+      const { contents, userMessageId, parentContext ,parentSummary} = await this.prepareMessageUseCase.execute({
         chatId,
         userId,
         userMessage: input.queryText,
@@ -179,7 +180,7 @@ export class ChatController extends BaseController {
         fileName: input.fileName,
       });
 
-      await this.streamAndSave(res, contents, chatId, userId, userMessageId, parentContext, req.body.message);
+      await this.streamAndSave(res, contents, chatId, userId, userMessageId, parentContext, req.body.message,parentSummary);
     } catch (error: any) {
       if (!res.headersSent) {
         res.setHeader("Content-Type", "text/event-stream");
@@ -235,7 +236,7 @@ export class ChatController extends BaseController {
       try {
         stream = await AIService.streamAIContent(contents,"gemini-2.5-flash");
       } catch (error: any) {
-        console.log(error)
+        this.logger.error("AI streaming failed", error, { contents });
         res.write(`data: ${JSON.stringify({ text: "\n\n**Quota Exhausted:** All your provided Gemini API keys have exceeded their free-tier limits. Please wait, or add a new key." })}\n\n`);
         res.write("data: [DONE]\n\n");
         res.end();
@@ -547,7 +548,7 @@ export class ChatController extends BaseController {
             message: "Document queued for processing",
           });
 
-          console.log(`Document upload queued: ${documentId}`);
+          this.logger.info(`Document upload queued`, { documentId, fileName: documentFileName, chatId });
 
           sendJson(202, {
             success: true,
@@ -707,7 +708,7 @@ export class ChatController extends BaseController {
       if (!fileUrl || typeof fileUrl !== "string") {
         throw new AppError("fileUrl is required and must be a string", 400);
       }
-
+      
       const data = await this.removeDocumentUseCase.execute({ userId, chatId, fileUrl });
       this.sendSuccess(res, data);
     } catch (error) {
@@ -743,7 +744,8 @@ export class ChatController extends BaseController {
     userId: string,
     userMessageId: string,
     parentContext: any,
-    originalMessage: string
+    originalMessage: string,
+    parentSummary:string|null
   ) {
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
@@ -785,7 +787,8 @@ export class ChatController extends BaseController {
         chatId,
         userId,
         modelReply: fullReply,
-        parentContext
+        parentContext,
+        parentSummary
       });
 
       res.write(`data: ${JSON.stringify({ type: "metadata", userMessageId, modelMessageId })}\n\n`);

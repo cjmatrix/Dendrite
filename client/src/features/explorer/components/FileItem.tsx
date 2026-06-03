@@ -8,8 +8,9 @@ import { useNavigate } from "react-router-dom";
 import { setActiveSidebarRootId } from "../store/explorerSlice";
 import { useAppDispatch } from "../../../store/store";
 
-// Clean Architecture Hook
+
 import { useFileItemMutations } from "../hooks/useFileItemMutations";
+import { FolderBehaviorModal } from "./FolderBehaviorModal";
 
 interface FileItemProps {
   node: FileNode;
@@ -19,16 +20,17 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
   const [isOpen, setIsOpen] = useState(node.isExpanded);
   const [isCreating, setIsCreating] = useState<FileType | null>(null);
   const [isRenaming, setIsRenaming] = useState<FileType | null>(null);
+  const [isBehaviorOpen, setIsBehaviorOpen] = useState(false);
   const [newItemName, setNewItemName] = useState("");
   const [renameItemName, setRenameItemName] = useState("");
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const isFolder = node.type === "folder";
 
-  // ── Clean Architecture (no direct api.* calls here) ──
+
   const { createFolder, updateFolder, deleteFolder, createChat, updateChat, deleteChat } = useFileItemMutations();
 
-  // ── Handlers ────────────────────────────────────────────────────────────
+
 
   const handleCreate = () => {
     if (newItemName.trim()) {
@@ -87,7 +89,7 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
     handleOpenWindow(node);
   };
 
-  // ── Context menu ─────────────────────────────────────────────────────────
+
 
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
@@ -104,7 +106,7 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
     return () => window.removeEventListener("click", close);
   });
 
-  // ── Render ───────────────────────────────────────────────────────────────
+ 
 
   return (
     <div className="select-none relative" onContextMenu={handleContextMenu}>
@@ -280,6 +282,12 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
                 <Edit size={14} /> Rename
               </button>
             )}
+             <button
+              className="w-full text-left px-3 py-1.5 hover:bg-amber-600 hover:text-white flex items-center gap-2 transition-colors"
+              onClick={(e) => { e.stopPropagation(); setIsBehaviorOpen(true); setContextMenu(null); }}
+            >
+              <GitBranch size={14} /> Behaviour
+            </button>
             {node.id !== "root" && !node.isSystemFolder && (
               <button
                 className="w-full text-left px-3 py-2 hover:bg-red-500/20 hover:text-red-300 flex items-center gap-2 text-red-400 transition-colors"
@@ -290,6 +298,13 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
             )}
           </div>
         </>
+      )}
+      {isBehaviorOpen && (
+        <FolderBehaviorModal
+          isOpen={isBehaviorOpen}
+          onClose={() => setIsBehaviorOpen(false)}
+          folder={node}
+        />
       )}
     </div>
   );

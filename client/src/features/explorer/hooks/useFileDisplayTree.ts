@@ -1,12 +1,7 @@
 import { useMemo } from "react";
 import type { FileNode } from "../types/types";
 
-/**
- * Given the Redux tree and an active folder ID, returns the current folder
- * node and the breadcrumb path to it.
- *
- * Extracted from FileDisplay so the component is a pure UI shell.
- */
+
 export function useFileDisplayTree(tree: FileNode, activeFolderId: string | null | undefined) {
   return useMemo(() => {
     let target = tree;

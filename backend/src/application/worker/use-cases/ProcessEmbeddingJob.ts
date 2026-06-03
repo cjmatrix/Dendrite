@@ -3,12 +3,14 @@ import { IOutboxEventRepository } from '../../../domain/outbox/repositories/IOut
 import { IVectorRepository } from '../../../domain/vector/repositories/IVectorRepository';
 import { embeddingService } from '../../../services/EmbeddingService';
 import crypto from 'crypto';
+import { ILogger } from '../../common/ports/ILogger';
 
 @injectable()
 export class ProcessEmbeddingJob {
   constructor(
     @inject("IOutboxEventRepository") private outboxRepository: IOutboxEventRepository,
-    @inject("IVectorRepository") private vectorRepository: IVectorRepository
+    @inject("IVectorRepository") private vectorRepository: IVectorRepository,
+    @inject("ILogger") private logger: ILogger
   ) {}
 
   async execute(outboxId: string, content: any) {
@@ -38,12 +40,12 @@ export class ProcessEmbeddingJob {
         payload
       );
 
-      console.log(`✅ Embedded outbox ${outboxId} dims)`);
+      this.logger.info(`✅ Embedded outbox ${outboxId}`);
 
       await this.outboxRepository.updateStatus(outboxId, "processed");
     } catch (error: any) {
       await this.outboxRepository.updateStatus(outboxId, "failed", { error: error.message, incrementRetry: true });
-      console.log(error.message);
+      this.logger.error(`Failed to embed outbox event: ${outboxId}`, error);
       throw error; // BullMQ will retry
     }
   }

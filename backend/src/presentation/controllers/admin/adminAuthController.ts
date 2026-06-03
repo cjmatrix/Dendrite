@@ -13,7 +13,7 @@ import { container } from "tsyringe";
 import {
   ADMIN_AUTH_MESSAGES,
   HTTP_STATUS,
-} from "../constants/authController.constants";
+} from "../../constants/authController.constants";
 
 const isProduction = process.env.NODE_ENV === "production";
 
@@ -33,7 +33,7 @@ export class AdminAuthController extends BaseController {
     @inject("IAdminGetMeUseCase")
     private adminGetMeUseCase: IAdminGetMeUseCase,
     @inject("IAdminRefreshUseCase")
-    private adminRefreshUseCase: IAdminRefreshUseCase
+    private adminRefreshUseCase: IAdminRefreshUseCase,
   ) {
     super();
   }
@@ -43,19 +43,27 @@ export class AdminAuthController extends BaseController {
       const validatedInput = req.body;
       const rawResult = await this.adminLoginUseCase.execute(validatedInput);
 
-      const output = AdminAuthMapper.toAuthOutput(rawResult.user, rawResult.accessToken, rawResult.refreshToken);
+      const output = AdminAuthMapper.toAuthOutput(
+        rawResult.user,
+        rawResult.accessToken,
+        rawResult.refreshToken,
+      );
 
-      
       res.cookie("adminAccessToken", output.accessToken, {
         ...cookieOptions,
-        maxAge: 15 * 60 * 1000, 
+        maxAge: 15 * 60 * 1000,
       });
       res.cookie("adminRefreshToken", output.refreshToken, {
         ...cookieOptions,
-        maxAge: 7 * 24 * 60 * 60 * 1000, 
+        maxAge: 7 * 24 * 60 * 60 * 1000,
       });
 
-      this.sendSuccess(res, output.user, HTTP_STATUS.OK, ADMIN_AUTH_MESSAGES.LOGGED_IN);
+      this.sendSuccess(
+        res,
+        output.user,
+        HTTP_STATUS.OK,
+        ADMIN_AUTH_MESSAGES.LOGGED_IN,
+      );
     } catch (error) {
       this.sendError(res, error);
     }
@@ -71,7 +79,12 @@ export class AdminAuthController extends BaseController {
       res.clearCookie("adminAccessToken", cookieOptions);
       res.clearCookie("adminRefreshToken", cookieOptions);
 
-      this.sendSuccess(res, null, HTTP_STATUS.OK, ADMIN_AUTH_MESSAGES.LOGGED_OUT);
+      this.sendSuccess(
+        res,
+        null,
+        HTTP_STATUS.OK,
+        ADMIN_AUTH_MESSAGES.LOGGED_OUT,
+      );
     } catch (error) {
       this.sendError(res, error);
     }
@@ -81,7 +94,10 @@ export class AdminAuthController extends BaseController {
     try {
       const refreshToken = req.cookies?.adminRefreshToken;
       if (!refreshToken) {
-        throw new AppError(ADMIN_AUTH_MESSAGES.UNAUTHORIZED, HTTP_STATUS.UNAUTHORIZED);
+        throw new AppError(
+          ADMIN_AUTH_MESSAGES.UNAUTHORIZED,
+          HTTP_STATUS.UNAUTHORIZED,
+        );
       }
 
       const { accessToken, refreshToken: newRefreshToken } =
@@ -96,7 +112,9 @@ export class AdminAuthController extends BaseController {
         maxAge: 7 * 24 * 60 * 60 * 1000,
       });
 
-      res.status(HTTP_STATUS.OK).json({ message: ADMIN_AUTH_MESSAGES.TOKEN_REFRESHED });
+      res
+        .status(HTTP_STATUS.OK)
+        .json({ message: ADMIN_AUTH_MESSAGES.TOKEN_REFRESHED });
     } catch (error) {
       res.clearCookie("adminAccessToken", cookieOptions);
       res.clearCookie("adminRefreshToken", cookieOptions);

@@ -67,6 +67,7 @@ export interface PrepareMessageOutputDTO {
   contents: any[];
   userMessageId: string;
   parentContext: Map<any, any>;
+  parentSummary:string|null
 }
 
 export interface SaveModelReplyInputDTO {
@@ -74,6 +75,7 @@ export interface SaveModelReplyInputDTO {
   userId: string;
   modelReply: string;
   parentContext: Map<any, any>;
+  parentSummary:string|null;
 }
 
 export interface SaveModelReplyOutputDTO {
@@ -115,7 +117,7 @@ export interface RemoveDocumentInputDTO {
   fileUrl: string;
 }
 
-// ─── Mapper ─────────────────────────────────────────────────────
+
 
 export class ChatMapper {
   static toChatOutput(raw: any): ChatOutputDTO {
@@ -125,7 +127,11 @@ export class ChatMapper {
       userId: raw.userId?.toString(),
       folderId: raw.folderId?.toString() || null,
       title: raw.title,
-      contextParent: raw.contextParent?.toString() || null,
+      contextParent: raw.contextParent
+        ? (typeof raw.contextParent === 'object' && raw.contextParent._id
+          ? { _id: raw.contextParent._id.toString(), title: raw.contextParent.title || null }
+          : { _id: raw.contextParent.toString(), title: null })
+        : null,
       summary: raw.summary || null,
       tokenCount: raw.tokenCount || 0,
       unsummarizedCount: raw.unsummarizedCount || 0,

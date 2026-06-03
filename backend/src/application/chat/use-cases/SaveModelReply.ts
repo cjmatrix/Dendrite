@@ -10,6 +10,7 @@ import { IOutboxEventRepository } from "../../../domain/outbox/repositories/IOut
 import { IDescriptionPublisher } from "../../common/ports/IDescriptionPublisher";
 import { ISummaryPublisher } from "../../common/ports/ISummaryPublisher";
 import { estimateTokenCount } from "../../../utils/tokenCounter";
+import { ILogger } from "../../common/ports/ILogger";
 import { injectable, inject } from "tsyringe";
 import { ISaveModelReplyUseCase } from "./interfaces";
 
@@ -45,10 +46,11 @@ export class SaveModelReply implements ISaveModelReplyUseCase {
     @inject("IDescriptionPublisher")
     private descriptionPublisher: IDescriptionPublisher,
     @inject("ISummaryPublisher") private summaryPublisher: ISummaryPublisher,
+    @inject("ILogger") private logger: ILogger,
   ) {}
 
   async execute(input: import("../dtos/chat.dto").SaveModelReplyInputDTO) {
-    const { chatId, userId, modelReply, parentContext } = input;
+    const { chatId, userId, modelReply, parentContext ,parentSummary} = input;
 
     const chat = await this.chatRepository.findByIdAndUserId(chatId, userId);
 
@@ -90,7 +92,6 @@ export class SaveModelReply implements ISaveModelReplyUseCase {
             totalParentMessagesToCompress.push(...obj.messages);
           }
 
-          lineageChatIds.push(parentChatId.toString());
         });
       }
 
@@ -102,10 +103,7 @@ export class SaveModelReply implements ISaveModelReplyUseCase {
         );
         const totalRecent = [...recent, ...totalParentMessagesToCompress];
         messageToCompress = totalRecent.reverse();
-        console.log(
-          "Message to compress /n hereee-------------------",
-          messageToCompress,
-        );
+        this.logger.debug(`Compressed messages for chat`, { chatId, messageCount: messageToCompress.length });
 
         await this.chatRepository.bulkResetUnsummarizedCount(
           lineageChatIds,
@@ -124,9 +122,7 @@ export class SaveModelReply implements ISaveModelReplyUseCase {
 
           const cachedDesc = await redisConnection.get(redisKey);
           if (cachedDesc) {
-            console.log(
-              `[CodeDedup] Redis hit for hash ${block.hash.slice(0, 8)}  skipping API calls.`,
-            );
+            this.logger.debug(`[CodeDedup] Redis cache hit for code block`, { hash: block.hash.slice(0, 8) });
             continue;
           }
 
@@ -134,9 +130,7 @@ export class SaveModelReply implements ISaveModelReplyUseCase {
             block.hash,
           );
           if (existingBlock) {
-            console.log(
-              `[CodeDedup] DB hit for hash ${block.hash.slice(0, 8)}   skipping API calls.`,
-            );
+            this.logger.debug(`[CodeDedup] Database cache hit for code block`, { hash: block.hash.slice(0, 8), blockId: existingBlock._id });
 
             if (existingBlock.description) {
               await redisConnection.setex(
@@ -163,13 +157,9 @@ export class SaveModelReply implements ISaveModelReplyUseCase {
             newBlockDocs,
             session,
           );
-          console.log(
-            `[CodeDedup] ${newBlockDocs.length} new / ${codeBlocks.length - newBlockDocs.length} duplicate blocks in this reply.`,
-          );
+          this.logger.info(`[CodeDedup] New code blocks processed`, { newBlocks: newBlockDocs.length, duplicates: codeBlocks.length - newBlockDocs.length, total: codeBlocks.length });
         } else {
-          console.log(
-            `[CodeDedup] All ${codeBlocks.length} code block(s) were duplicates — zero API calls needed.`,
-          );
+          this.logger.info(`[CodeDedup] All code blocks were duplicates`, { count: codeBlocks.length, chatId });
         }
       }
 
@@ -184,7 +174,7 @@ export class SaveModelReply implements ISaveModelReplyUseCase {
             content: {
               messages: messageToCompress,
             },
-            metadata: { chatId, previousSummary: chat.summary },
+            metadata: { chatId, previousSummary: chat.summary||parentSummary },
           },
           status: "pending",
         };
@@ -210,9 +200,7 @@ export class SaveModelReply implements ISaveModelReplyUseCase {
             hash: b.hash,
           }));
           await this.descriptionPublisher.publish(queuePayload);
-          console.log(
-            `Context window overflow  batched ${undescribedBlocks.length} code blocks to description-queue!`,
-          );
+          this.logger.info(`Context window overflow - batched blocks for description`, { blockCount: undescribedBlocks.length, chatId });
         }
       }
 
@@ -223,9 +211,7 @@ export class SaveModelReply implements ISaveModelReplyUseCase {
           chat.summary,
         );
 
-        console.log(
-          `Triggered Dual-Memory Compression for Chat ${chat._id} Outbox ID: ${summaryOutboxEvent._id}`,
-        );
+        this.logger.info(`Triggered memory compression`, { chatId: chat._id.toString(), outboxEventId: summaryOutboxEvent._id.toString() });
       }
     } catch (error) {
       await session.abortTransaction();

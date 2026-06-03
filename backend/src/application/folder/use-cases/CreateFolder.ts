@@ -14,7 +14,7 @@ export class CreateFolder {
       throw new AppError("Folder Already Exist", 400);
     }
 
-    const newFolder = await this.folderRepository.create({ userId, name, parentId });
+    const newFolder = await this.folderRepository.create({ userId, name, parentId,ownerId:userId });
     return newFolder;
   }
 }

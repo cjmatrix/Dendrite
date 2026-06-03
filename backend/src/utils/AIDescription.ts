@@ -12,13 +12,31 @@ export async function generateBatchCodeDescriptions(
     .map((b, i) => `[Snippet ${i + 1} - ID: ${b.id} - Language: ${b.language}]\n${b.code}`)
     .join("\n\n---\n\n");
 
-  const queryText = `Summarize each of the following ${blocks.length} code snippets in exactly 1 sentence (max 30 words).
-Mention key function/variable names.
-Return the results as a JSON object where keys are the Snippet IDs and values are the descriptions.
-IMPORTANT: Return ONLY valid JSON with no markdown, no code fences, no additional text, no explanations.
+  const queryText = `Summarize each code snippet for semantic retrieval and RAG indexing.
+
+For each snippet generate exactly ONE sentence (max 50 words) that includes:
+- The primary purpose of the code.
+- Important function, class, variable, endpoint, or component names.
+- Key technologies, libraries, frameworks, or patterns used.
+- The type of problem it solves.
+- Terms a developer would naturally search for to find this code.
+
+Focus on retrieval usefulness rather than code explanation.
+
+Return a JSON object where:
+- Keys are Snippet IDs.
+- Values are the generated descriptions.
+
+IMPORTANT:
+- Return ONLY valid JSON.
+- No markdown.
+- No code fences.
+- No explanations.
+- No extra text.
 
 CODE SNIPPETS:
 ${snippetsText}`;
+
 
   const response = await ai.models.generateContent({
   model: "gemma-4-31b-it",

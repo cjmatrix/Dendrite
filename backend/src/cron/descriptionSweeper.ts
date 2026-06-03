@@ -3,7 +3,7 @@ import addDescriptionQueue from "../queue/descriptionQueue";
 import { MongoCodeBlockRepository } from "../infrastructure/chat/repositories/MongoCodeBlockRepository";
 import { SweepStrandedBlocks } from "../application/scheduler/use-cases/SweepStrandedBlocks";
 
-cron.schedule("*/1 * * * *", async () => {
+cron.schedule("*/5 * * * *", async () => {
   try {
     const codeBlockRepo = new MongoCodeBlockRepository();
     const sweeperUseCase = new SweepStrandedBlocks(codeBlockRepo, addDescriptionQueue);

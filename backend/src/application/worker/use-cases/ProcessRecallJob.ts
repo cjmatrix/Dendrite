@@ -2,12 +2,14 @@ import { injectable, inject } from "tsyringe";
 import { IRecallRepository } from '../../../domain/recall/repositories/IRecallRepository';
 import { IUserRepository } from '../../../domain/auth/repositories/IUserRepository';
 import admin from '../../../config/firebase';
+import { ILogger } from '../../common/ports/ILogger';
 
 @injectable()
 export class ProcessRecallJob {
   constructor(
     @inject("IRecallRepository") private recallRepository: IRecallRepository,
-    @inject("IUserRepository") private userRepository: IUserRepository
+    @inject("IUserRepository") private userRepository: IUserRepository,
+    @inject("ILogger") private logger: ILogger
   ) {}
 
   async execute(userId: string, cardId: string) {
@@ -16,14 +18,14 @@ export class ProcessRecallJob {
 
       const now = new Date();
       if (!recall || recall.nextReview > now) {
-        console.log(`Recall ${cardId} is no longer due or was deleted.`);
+        this.logger.warn(`Recall ${cardId} is no longer due or was deleted.`);
         return;
       }
 
       const user = await this.userRepository.findById(userId);
       
       if (!user || !user.fcmToken || user.fcmToken.length === 0) {
-        console.log(`User ${userId} has no FCM token. Notification skipped.`);
+        this.logger.warn(`User ${userId} has no FCM token. Notification skipped.`);
         return;
       }
 
@@ -36,10 +38,10 @@ export class ProcessRecallJob {
       };
 
       const response = await admin.messaging().sendEachForMulticast(message);
-      console.log(`Successfully sent recall notification to User: ${userId}`);
+      this.logger.info(`Successfully sent recall notification to User: ${userId}`);
       
     } catch (error: any) {
-      console.log(`Failed to process recall notification for ${cardId}:`, error.message);
+      this.logger.error(`Failed to process recall notification for ${cardId}`, error);
       throw error; 
     }
   }

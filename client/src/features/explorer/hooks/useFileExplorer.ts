@@ -6,9 +6,7 @@ import { useAppDispatch } from "../../../store/store";
 import { setTree } from "../store/explorerSlice";
 import type { FileNode } from "../types/types";
 
-/**
- * Fetches folders and chats, merges them into the Redux file tree.
- */
+
 export function useFileTree() {
   const dispatch = useAppDispatch();
   console.log("rerending usecases")
@@ -28,7 +26,7 @@ export function useFileTree() {
   });
 
   console.log(recallCount,"in usecase")
-  // Listen for recall notifications and refetch the count
+
   useEffect(() => {
     const handleRecallNotification = () => {
       refetchRecallCount();
@@ -38,7 +36,7 @@ export function useFileTree() {
     return () => window.removeEventListener("recall:notification-pushed", handleRecallNotification);
   }, [refetchRecallCount]);
 
-  // Build Redux tree whenever folders or chats change
+  
   useEffect(() => {
     if (!folders) return;
 

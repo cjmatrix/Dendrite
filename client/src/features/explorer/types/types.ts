@@ -12,4 +12,18 @@ export interface FileNode {
     sourceHandle: string;
     targetHandle: string;
   }[];
+  ownerId?: string;
+  behavior?: {
+    current: {
+      content: string;
+      updatedAt: string;
+    };
+    history: Array<{
+      content: string;
+      archivedAt: string;
+    }>;
+    settings?: {
+      sharingPolicy: string;
+    };
+  };
 }

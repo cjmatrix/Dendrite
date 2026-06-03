@@ -3,6 +3,7 @@ import { IVectorRepository } from "../../../domain/vector/repositories/IVectorRe
 import { IDeleteChatUseCase } from "./interfaces";
 import { DeleteChatOutputDTO } from "../dtos/chat.dto";
 import { AppError } from "../../../utils/AppError";
+import { ILogger } from "../../common/ports/ILogger";
 import { injectable, inject } from "tsyringe";
 import { ISubChatRepository } from "../../../domain/chat/repositories/ISubChatRepository";
 import { IMessageRepository } from "../../../domain/chat/repositories/IMessageRepository";
@@ -19,6 +20,7 @@ export class DeleteChat implements IDeleteChatUseCase {
     @inject("ICodeBlockRepository")
     private codeBlockRepository: ICodeBlockRepository,
     @inject("IUnitOfWorkRepository") private unitOfWork: IUnitOfWorkRepository,
+    @inject("ILogger") private logger: ILogger,
   ) {}
 
   async execute(chatId: string, userId: string): Promise<DeleteChatOutputDTO> {
@@ -38,7 +40,7 @@ export class DeleteChat implements IDeleteChatUseCase {
     try {
       await this.vectorRepository.deleteVectorsByChatIds(userId, [chatId]);
     } catch (err) {
-      console.error(`[WARN] Failed to delete vectors for chat ${chatId}:`, err);
+      this.logger.warn(`Failed to delete vectors for chat`, { chatId, userId, error: err instanceof Error ? err.message : String(err) });
     }
 
     return { deleted: true };

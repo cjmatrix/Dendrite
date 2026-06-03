@@ -2,57 +2,124 @@ import { injectable, inject } from "tsyringe";
 import { IOutboxEventRepository } from "../../../domain/outbox/repositories/IOutboxEventRepository";
 import { IVectorRepository } from "../../../domain/vector/repositories/IVectorRepository";
 import { IChatRepository } from "../../../domain/chat/repositories/IChatRepository";
-import { generateDualMemoryOutput } from "../../../utils/AISummary";
+import { IUserRepository } from "../../../domain/auth/repositories/IUserRepository";
+import {
+  generateTripleMemoryOutput,
+  TripleMemoryOutput,
+  SummaryItem,
+  ProfileDelta,
+} from "../../../utils/AISummary";
 import { embeddingService } from "../../../services/EmbeddingService";
+import { IGlobalProfile } from "../../../domain/auth/entities/User";
+import { estimateTokenCount } from "../../../utils/tokenCounter";
 import crypto from "crypto";
+import { ILogger } from "../../common/ports/ILogger";
 
-const SUMMARY_MAX_TOKENS = 900;
+const MAX_SUMMARY_TOKENS = 900;
 
-function enforceSummaryBudget(
-  summary: string,
-  maxTokens: number = SUMMARY_MAX_TOKENS,
-): string {
-  const estimatedTokens = Math.ceil(summary.length / 4);
+function renderSummaryItems(items: SummaryItem[]): string {
+  return items.map((item) => `[${item.type}] ${item.content}`).join("\n");
+}
 
-  if (estimatedTokens <= maxTokens) {
-    return summary;
+function enforceSummaryBudget(items: SummaryItem[], logger: ILogger): SummaryItem[] {
+  const initialText = renderSummaryItems(items);
+  let estimatedTokens = estimateTokenCount(initialText);
+
+  if (estimatedTokens <= MAX_SUMMARY_TOKENS) {
+    return items;
   }
 
-  console.warn(
-    `Summary over budget — est. ${estimatedTokens} tokens, trimming to ${maxTokens}`,
+  logger.warn(
+    `Summary is about ${estimatedTokens} tokens — trimming to ${MAX_SUMMARY_TOKENS}`,
   );
 
-  const lines = summary
-    .split("\n")
-    .map((l) => l.trim())
-    .filter((l) => l.length > 0);
+  const dropOrder: SummaryItem["type"][] = [
+    "CONTEXT",
+    "CONCEPT",
+    "PROBLEM",
+    "PROGRESS",
+  ];
 
-  const dropOrder = ["[CONTEXT]", "[CONCEPT]", "[PROBLEM]", "[PROGRESS]"];
-  let trimmed = [...lines];
+  let trimmed = [...items];
 
   for (const tag of dropOrder) {
-    const currentTokens = Math.ceil(trimmed.join("\n").length / 4);
-    if (currentTokens <= maxTokens) break;
+    if (estimatedTokens <= MAX_SUMMARY_TOKENS) break;
 
     for (let i = trimmed.length - 1; i >= 0; i--) {
-      if (trimmed[i].startsWith(tag)) {
+      if (trimmed[i].type === tag) {
         trimmed.splice(i, 1);
-        break;
+        estimatedTokens = estimateTokenCount(renderSummaryItems(trimmed));
+        if (estimatedTokens <= MAX_SUMMARY_TOKENS) break;
       }
     }
   }
 
-  const result = trimmed.join("\n");
-  const finalTokens = Math.ceil(result.length / 4);
-
-  if (finalTokens > maxTokens) {
-    const charLimit = maxTokens * 4;
-    const sliced = result.slice(0, charLimit);
-    const lastNewline = sliced.lastIndexOf("\n");
-    return lastNewline > 0 ? sliced.slice(0, lastNewline) : sliced;
+  while (estimatedTokens > MAX_SUMMARY_TOKENS && trimmed.length > 0) {
+    trimmed.pop();
+    estimatedTokens = estimateTokenCount(renderSummaryItems(trimmed));
   }
 
-  return result;
+  return trimmed;
+}
+
+function mergeProfileDelta(
+  existing: IGlobalProfile | null,
+  delta: ProfileDelta,
+): Record<string, any> | null {
+  const updates: Record<string, string | string[]> = {};
+  const profile = existing || {
+    tech_stack: [],
+    environment: [],
+    user_preferences: [],
+    current_projects: [],
+    long_term_goals: [],
+    constraints: [],
+    entities: [],
+  };
+
+  const scalarFields = [
+    "user_name",
+    "location",
+    "role",
+    "expertise_level",
+    "response_style",
+  ] as const;
+
+  for (const field of scalarFields) {
+    if (delta[field] && delta[field] !== (profile as any)[field]) {
+      updates[`globalProfile.${field}`] = delta[field];
+    }
+  }
+
+  
+  const arrayFields = [
+    "tech_stack",
+    "environment",
+    "current_projects",
+    "long_term_goals",
+    "constraints",
+    "user_preferences",
+    "entities",
+  ] as const;
+
+  for (const field of arrayFields) {
+    const deltaItems = delta[field];
+    if (deltaItems && deltaItems.length > 0) {
+      const existingItems = (profile as any)[field] || [];
+      const existingSet = new Set(
+        existingItems.map((item: string) => item.toLowerCase()),
+      );
+      const newItems = deltaItems.filter(
+        (item) => !existingSet.has(item.toLowerCase()),
+      );
+
+      if (newItems.length > 0) {
+        updates[`globalProfile.${field}`] = [...existingItems, ...newItems];
+      }
+    }
+  }
+
+  return Object.keys(updates).length > 0 ? updates : null;
 }
 
 interface MessageToCompress {
@@ -63,10 +130,13 @@ interface MessageToCompress {
 @injectable()
 export class ProcessSummaryJob {
   constructor(
-    @inject("IOutboxEventRepository") private outboxRepository: IOutboxEventRepository,
+    @inject("IOutboxEventRepository")
+    private outboxRepository: IOutboxEventRepository,
     @inject("IVectorRepository") private vectorRepository: IVectorRepository,
     @inject("IChatRepository") private chatRepository: IChatRepository,
+    @inject("IUserRepository") private userRepository: IUserRepository,
     @inject("RedisClient") private redisConnection: any,
+    @inject("ILogger") private logger: ILogger,
   ) {}
 
   async execute(
@@ -81,90 +151,53 @@ export class ProcessSummaryJob {
         throw new Error(`Outbox event not found: ${summaryOutboxEventId}`);
       }
 
-      const cacheKey = `dual_memory:${summaryOutboxEventId}`;
+      const userId = outboxEvent.payload.userId.toString();
+
+      const cacheKey = `triple_memory:${summaryOutboxEventId}`;
       let cachedResult = await this.redisConnection.get(cacheKey);
 
-      let compressedFacts: string;
-      let recursiveSummary: string;
+      let tripleOutput: TripleMemoryOutput;
 
       if (cachedResult) {
-        console.log(
-          `Using cached dual-memory output for ${summaryOutboxEventId}`,
+        this.logger.info(
+          `Using cached triple-memory output for ${summaryOutboxEventId}`,
         );
-        const parsed = JSON.parse(cachedResult);
-        compressedFacts = parsed.compressedFacts;
-        recursiveSummary = parsed.recursiveSummary;
+        tripleOutput = JSON.parse(cachedResult);
       } else {
-        console.log(
-          `Calling LLM for dual-memory output (${summaryOutboxEventId})`,
+        this.logger.info(
+          `Calling LLM for triple-memory output (${summaryOutboxEventId})`,
         );
-        const dualOutput = await generateDualMemoryOutput(
+
+        const user = await this.userRepository.findById(userId);
+        const existingProfile = user?.globalProfile || null;
+
+        tripleOutput = await generateTripleMemoryOutput(
           messageToCompress,
           previousSummary || null,
+          existingProfile,
         );
-        compressedFacts = dualOutput.compressedFacts;
-        recursiveSummary = dualOutput.recursiveSummary;
 
         await this.redisConnection.setex(
           cacheKey,
           24 * 60 * 60,
-          JSON.stringify({ compressedFacts, recursiveSummary }),
+          JSON.stringify(tripleOutput),
         );
       }
 
-      const contextChunks = compressedFacts
-        .split(/\s*(?:\|\|\||\n+)\s*/)
-        .map((chunk) => chunk.trim())
-        .filter((chunk) => chunk.length > 20);
+      await this.processCompressedFacts(
+        tripleOutput.compressedFacts,
+        outboxEvent,
+        summaryOutboxEventId,
+      );
 
-      if (contextChunks.length > 50) {
-        console.warn(
-          `High chunk count (${contextChunks.length}) — truncating to 50`,
-        );
-        contextChunks.splice(50);
-      }
+  
+      await this.processRecursiveSummary(
+        tripleOutput.recursiveSummary,
+        outboxEvent,
+      );
 
-      if (contextChunks.length > 0) {
-        const embeddings = await embeddingService.embedBatch(
-          contextChunks,
-          "RETRIEVAL_DOCUMENT",
-        );
-
-        const points = contextChunks.map((chunk, i) => ({
-          id: crypto.randomUUID(),
-          vector: embeddings[i],
-          payload: {
-            ...outboxEvent.payload.metadata,
-            sourceId: outboxEvent.payload.sourceId.toString(),
-            sourceType: outboxEvent.payload.sourceType,
-            userId: outboxEvent.payload.userId.toString(),
-            content: { fact: chunk },
-          },
-        }));
-
-        await this.vectorRepository.upsertSummaryVectors(points);
-        console.log(
-          `Embedded ${points.length} fact chunks for outbox ${summaryOutboxEventId}`,
-        );
-      } else {
-        console.warn(`No valid chunks for outbox ${summaryOutboxEventId}`);
-      }
-
-    
-      if (recursiveSummary) {
-        const budgetedSummary = enforceSummaryBudget(recursiveSummary);
-
-        await this.chatRepository.update(
-          outboxEvent.payload.sourceId.toString(),
-          outboxEvent.payload.userId.toString(),
-          { summary: budgetedSummary },
-        );
-
-        console.log(
-          `Summary updated for chat ${outboxEvent.payload.sourceId} ` +
-            `(est. ${Math.ceil(budgetedSummary.length / 4)} tokens)`,
-        );
-      }
+   
+      await this.processProfileDelta(tripleOutput.profileDelta, userId);
 
       await this.outboxRepository.updateStatus(
         summaryOutboxEventId,
@@ -175,8 +208,105 @@ export class ProcessSummaryJob {
         error: error.message,
         incrementRetry: true,
       });
-      console.error(`ProcessSummaryJob failed:`, error.message);
+      this.logger.error(`ProcessSummaryJob failed:`, error);
       throw error;
+    }
+  }
+
+  
+
+  private async processCompressedFacts(
+    facts: string[],
+    outboxEvent: any,
+    summaryOutboxEventId: string,
+  ) {
+    const validFacts = facts.filter((f) => f.trim().length > 20);
+
+    if (validFacts.length === 0) {
+      this.logger.warn(`No valid facts for outbox ${summaryOutboxEventId}`);
+      return;
+    }
+
+    const factsToEmbed = validFacts.slice(0, 50);
+    if (validFacts.length > 50) {
+      this.logger.warn(`High fact count (${validFacts.length}) — truncating to 50`);
+    }
+
+    const embeddings = await embeddingService.embedBatch(
+      factsToEmbed,
+      "RETRIEVAL_DOCUMENT",
+    );
+
+    const points = factsToEmbed.map((fact, i) => ({
+      id: crypto.randomUUID(),
+      vector: embeddings[i],
+      payload: {
+        ...outboxEvent.payload.metadata,
+        sourceId: outboxEvent.payload.sourceId.toString(),
+        sourceType: outboxEvent.payload.sourceType,
+        userId: outboxEvent.payload.userId.toString(),
+        content: { fact },
+      },
+    }));
+
+    await this.vectorRepository.upsertSummaryVectors(points);
+    this.logger.info(
+      `Embedded ${points.length} fact chunks for outbox ${summaryOutboxEventId}`,
+    );
+  }
+
+ 
+
+  private async processRecursiveSummary(
+    summaryItems: SummaryItem[],
+    outboxEvent: any,
+  ) {
+    if (!summaryItems || summaryItems.length === 0) return;
+
+    const budgetedItems = enforceSummaryBudget(summaryItems, this.logger);
+
+    
+    const summaryText = renderSummaryItems(budgetedItems);
+
+    await this.chatRepository.update(
+      outboxEvent.payload.sourceId.toString(),
+      outboxEvent.payload.userId.toString(),
+      { summary: summaryText },
+    );
+
+    this.logger.info(
+      `Summary updated for chat ${outboxEvent.payload.sourceId} ` +
+        `(${budgetedItems.length} items, est. ${Math.ceil(summaryText.length / 4)} tokens)`,
+    );
+  }
+
+
+  private async processProfileDelta(delta: ProfileDelta, userId: string) {
+    if (!delta || Object.keys(delta).length === 0) {
+      return;
+    }
+
+    const user = await this.userRepository.findById(userId);
+
+    if (!user) {
+      this.logger.warn(`User not found for profile delta: ${userId}`);
+      return;
+    }
+
+    const profileUpdates = mergeProfileDelta(user.globalProfile, delta);
+
+    if (profileUpdates) {
+      await this.userRepository.findByIdAndUpdate(userId, {
+        $set: profileUpdates,
+      });
+
+      const updatedFields = Object.keys(profileUpdates)
+        .map((k) => k.replace("globalProfile.", ""))
+        .join(", ");
+
+      this.logger.info(
+        `Global profile updated for user ${userId}: ${updatedFields}`,
+      );
     }
   }
 }

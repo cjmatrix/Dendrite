@@ -2,6 +2,8 @@ import "reflect-metadata";
 import { container } from "tsyringe";
 import { MongoUserRepository } from "../infrastructure/auth/repositories/MongoUserRepository";
 import { MongooseUnitOfWork } from "../infrastructure/shared/MongooseUnitOfWork";
+import { WinstonLoggerAdapter } from "../infrastructure/logger/WinstonLoggerAdapter";
+import { ILogger } from "../application/common/ports/ILogger";
 
 import { MongoFolderRepository } from "../infrastructure/folder/repositories/MongoFolderRepository";
 import { MongoChatRepository } from "../infrastructure/chat/repositories/MongoChatRepository";
@@ -55,6 +57,9 @@ import { UploadChatImage } from "../application/chat/use-cases/UploadChatImage";
 
 container.registerInstance("RedisClient", redisConnection);
 container.registerSingleton("ICacheService", RedisCacheService);
+container.registerSingleton<ILogger>("ILogger", WinstonLoggerAdapter);
+
+
 
 container.registerSingleton("IUserRepository", MongoUserRepository);
 container.registerSingleton("IUnitOfWorkRepository", MongooseUnitOfWork);

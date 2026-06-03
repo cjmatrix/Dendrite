@@ -5,13 +5,15 @@ import { FileUploadService } from '../../../services/FileUploadService';
 import crypto from 'crypto';
 import fs from 'fs';
 import { textToSparseVector } from '../../../utils/BM25Healper';
+import { ILogger } from '../../common/ports/ILogger';
 
 export class ProcessDocumentChunking {
   private chunkingService: SemanticChunkingService;
 
   constructor(
     private outboxRepository: IOutboxEventRepository,
-    private vectorRepository: IVectorRepository
+    private vectorRepository: IVectorRepository,
+    private logger: ILogger
   ) {
     this.chunkingService = new SemanticChunkingService();
   }
@@ -75,7 +77,7 @@ export class ProcessDocumentChunking {
    
       await this.vectorRepository.upsertDocumentVectors(points);
 
-      console.log(`Processed ${chunks.length} semantic chunks from document: ${fileName}`);
+      this.logger.info(`Processed ${chunks.length} semantic chunks from document: ${fileName}`);
     } catch (error: any) {
       throw error;
     }

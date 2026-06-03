@@ -42,3 +42,14 @@ export const getDueCount = async (): Promise<number> => {
   const res = await api.get("/recall/count");
   return res.data.data.count;
 };
+
+// Folder Behavior
+export const getFolderBehavior = async (folderId: string): Promise<any> => {
+  const res = await api.get(`/folders/${folderId}/behavior`);
+  return res.data.data;
+};
+
+export const updateFolderBehavior = async (folderId: string, content: string): Promise<any> => {
+  const res = await api.patch(`/folders/${folderId}/behavior`, { content });
+  return res.data.data;
+};

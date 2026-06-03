@@ -147,7 +147,7 @@ new Worker(
         const outboxRepo = DIContainer.getOutboxEventRepository();
         const vectorRepo = DIContainer.getVectorRepository();
 
-        const processor = new ProcessDocumentChunking(outboxRepo, vectorRepo);
+        const processor = new ProcessDocumentChunking(outboxRepo, vectorRepo, DIContainer.getLogger());
 
         // Execute chunking
         cloudinaryUrl && await processor.execute(

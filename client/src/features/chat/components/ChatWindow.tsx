@@ -759,33 +759,33 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                   <button
                     onClick={openInheritModal}
                     className={`flex items-center gap-3 px-6 py-3 rounded-2xl transition-all duration-500 border backdrop-blur-xl hover:scale-105 active:scale-95 ${
-                      chat && (chat as any).contextParent
+                      chat?.contextParent
                         ? "bg-blue-500/10 border-blue-500/30 text-blue-400 shadow-[0_0_30px_-10px_rgba(59,130,246,0.5)]"
                         : "bg-white/5 border-white/10 text-zinc-400 hover:text-amber-200/90 hover:border-amber-500/40 hover:bg-amber-500/10 hover:shadow-[0_0_30px_-10px_rgba(245,158,11,0.3)]"
                     }`}
                   >
                     <div className={`p-2 rounded-xl transition-colors ${
-                       chat && (chat as any).contextParent ? "bg-blue-500/20" : "bg-white/5"
+                       chat?.contextParent ? "bg-blue-500/20" : "bg-white/5"
                     }`}>
                       <GitBranch
                         size={18}
-                        className={`${chat && (chat as any).contextParent ? "animate-pulse" : ""}`}
+                        className={`${chat?.contextParent ? "animate-pulse" : ""}`}
                       />
                     </div>
                     <div className="flex flex-col items-start min-w-[120px]">
                        <span className="text-[10px] font-black uppercase tracking-widest opacity-50 mb-0.5">
-                         {chat && (chat as any).contextParent ? "Active Link" : "Context"}
+                         {chat?.contextParent ? "Active Link" : "Context"}
                        </span>
                        <span className="text-[13px] font-bold truncate max-w-[160px]">
-                        {chat && (chat as any).contextParent
-                          ? (chat as any).contextParent.title
+                        {chat?.contextParent
+                          ? (chat.contextParent.title || "Linked Chat")
                           : "Inherit Branch"}
                       </span>
                     </div>
                   </button>
 
                   {/* Unlink Button */}
-                  {chat && (chat as any).contextParent && (
+                  {chat?.contextParent && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();

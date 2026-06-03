@@ -6,6 +6,8 @@ export function useFileItemMutations() {
 
   // ── Folder mutations ──────────────────────────────────────────────
 
+
+
   const { mutate: createFolder } = useMutation({
     mutationFn: ({ name, parentId }: { name: string; parentId: string | null }) =>
       apiCreateFolder(name, parentId),
@@ -28,6 +30,7 @@ export function useFileItemMutations() {
     onError: (_e, _v, ctx) => { if (ctx?.previous) queryClient.setQueryData(["folders"], ctx.previous); },
     onSettled: () => queryClient.invalidateQueries({ queryKey: ["folders"] }),
   });
+
 
   const { mutate: updateFolder } = useMutation({
     mutationFn: ({ folderId, updates }: { folderId: string; updates: { name?: string; isExpanded?: boolean } }) =>
@@ -70,7 +73,21 @@ export function useFileItemMutations() {
     onSettled: () => queryClient.invalidateQueries({ queryKey: ["folders"] }),
   });
 
+
+
+
+
+
+
+
+
+
+
+
   // ── Chat mutations ───────────────────────────────────────────────────────
+
+
+  
 
   const { mutate: createChat } = useMutation({
     mutationFn: ({ title, folderId }: { title: string; folderId: string | null }) =>

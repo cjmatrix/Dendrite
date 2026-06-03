@@ -18,7 +18,7 @@ export const markdownComponents = {
     );
   },
 
-  code({ className, children, ...props }: any) {
+  code({ className, children }: any) {
     const match = /language-(\w+)/.exec(className || "");
    const codeString = Array.isArray(children) 
     ? children.join("") 

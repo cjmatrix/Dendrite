@@ -6,6 +6,8 @@ import { CreateFolder } from '../../application/folder/use-cases/CreateFolder';
 import { GetFolders } from '../../application/folder/use-cases/GetFolders';
 import { UpdateFolder } from '../../application/folder/use-cases/UpdateFolder';
 import { DeleteFolder } from '../../application/folder/use-cases/DeleteFolder';
+import { UpdateFolderBehavior } from '../../application/folder/use-cases/UpdateFolderBehavior';
+import { Getbehavior } from '../../application/folder/use-cases/getBehaviour';
 
 @injectable()
 export class FolderController extends BaseController {
@@ -13,10 +15,25 @@ export class FolderController extends BaseController {
     @inject(CreateFolder) private createFolderUseCase: CreateFolder,
     @inject(GetFolders) private getFoldersUseCase: GetFolders,
     @inject(UpdateFolder) private updateFolderUseCase: UpdateFolder,
-    @inject(DeleteFolder) private deleteFolderUseCase: DeleteFolder
+    @inject(DeleteFolder) private deleteFolderUseCase: DeleteFolder,
+    @inject(UpdateFolderBehavior) private updateFolderBehaviorUseCase: UpdateFolderBehavior,
+    @inject(Getbehavior) private getBehavior:Getbehavior
   ) {
     super();
   }
+
+
+  public getBehaviorOfFolder=async(req:Request,res:Response)=>{
+
+    const userId=this.validateUserAuth(req);
+
+    const folderId=req.params.id as string
+
+    const data=await this.getBehavior.execute(folderId,userId)
+    this.sendSuccess(res,data,200,"Folder behavior");
+
+  }
+
 
   public createFolder = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -60,6 +77,24 @@ export class FolderController extends BaseController {
       const data = await this.updateFolderUseCase.execute(id, userId, { name, isExpanded });
 
       this.sendSuccess(res, data, 200, 'Folder updated successfully');
+    } catch (error) {
+      this.sendError(res, error);
+    }
+  };
+
+  public updateBehavior = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const userId = this.validateUserAuth(req);
+      const id = this.getRouteParam(req, 'id');
+      const { content } = req.body;
+
+      if (content === undefined || typeof content !== 'string') {
+        throw new AppError('content is required and must be a string', 400);
+      }
+
+      const data = await this.updateFolderBehaviorUseCase.execute(id, userId, content);
+
+      this.sendSuccess(res, data, 200, 'Folder behavior updated successfully');
     } catch (error) {
       this.sendError(res, error);
     }

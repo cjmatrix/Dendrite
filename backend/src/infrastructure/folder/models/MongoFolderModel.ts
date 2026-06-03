@@ -33,6 +33,34 @@ const FolderSchema = new Schema({
   isExpanded: { 
     type: Boolean, 
     default: false 
+  },
+  ownerId:{
+    type: Schema.Types.ObjectId, 
+    ref: 'User', 
+    required: true, 
+    index: true 
+  },
+  behavior: {
+  
+    current: {
+      content: { type: String, default: "" }, 
+      updatedAt: { type: Date, default: Date.now }
+    },
+
+   
+    history: [{
+      content: String,
+      archivedAt: { type: Date, default: Date.now }
+    }],
+
+    settings: {
+      
+      sharingPolicy: { 
+        type: String, 
+        enum: ['READ_ONLY', 'READ_WRITE', 'INVISIBLE'], 
+        default: 'READ_WRITE' 
+      },
+    }
   }
 }, { 
   timestamps: true 

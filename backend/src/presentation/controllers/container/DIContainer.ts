@@ -15,11 +15,14 @@ import { BullMQDescriptionPublisher } from '../../../infrastructure/shared/publi
 import { IDescriptionPublisher } from '../../../application/common/ports/IDescriptionPublisher';
 import { BullMQSummaryPublisher } from '../../../infrastructure/shared/publishers/BullMQSummaryPublisher';
 import { ISummaryPublisher } from '../../../application/common/ports/ISummaryPublisher';
+import { WinstonLoggerAdapter } from '../../../infrastructure/logger/WinstonLoggerAdapter';
+import { ILogger } from '../../../application/common/ports/ILogger';
 
 import { CreateFolder } from '../../../application/folder/use-cases/CreateFolder';
 import { GetFolders } from '../../../application/folder/use-cases/GetFolders';
 import { UpdateFolder } from '../../../application/folder/use-cases/UpdateFolder';
 import { DeleteFolder } from '../../../application/folder/use-cases/DeleteFolder';
+import { UpdateFolderBehavior } from '../../../application/folder/use-cases/UpdateFolderBehavior';
 
 import { CreateChat } from '../../../application/chat/use-cases/CreateChat';
 import { GetChats } from '../../../application/chat/use-cases/GetChats';
@@ -74,12 +77,14 @@ export class DIContainer {
   private static recallPublisher: BullMQRecallPublisher;
   private static descriptionPublisher: BullMQDescriptionPublisher;
   private static summaryPublisher: BullMQSummaryPublisher;
+  private static logger: ILogger;
 
   // Folder Use Cases
   private static createFolderUseCase: CreateFolder;
   private static getFoldersUseCase: GetFolders;
   private static updateFolderUseCase: UpdateFolder;
   private static deleteFolderUseCase: DeleteFolder;
+  private static updateFolderBehaviorUseCase: UpdateFolderBehavior;
 
   // Chat Use Cases
   private static createChatUseCase: CreateChat;
@@ -223,6 +228,13 @@ export class DIContainer {
     return this.updateFolderUseCase;
   }
 
+  static getUpdateFolderBehaviorUseCase(): UpdateFolderBehavior {
+    if (!this.updateFolderBehaviorUseCase) {
+      this.updateFolderBehaviorUseCase = new UpdateFolderBehavior(this.getFolderRepository());
+    }
+    return this.updateFolderBehaviorUseCase;
+  }
+
   static getDeleteFolderUseCase(): DeleteFolder {
     if (!this.deleteFolderUseCase) {
       this.deleteFolderUseCase = new DeleteFolder(
@@ -283,6 +295,7 @@ export class DIContainer {
         this.getMessageRepository(),
         this.getCodeBlockRepository(),
         this.getUnitOfWorkRepository(),
+        this.getLogger(),
       );
     }
     return this.deleteChatUseCase;
@@ -294,6 +307,9 @@ export class DIContainer {
         this.getVectorRepository(),
         this.getChatRepository(),
         this.getMessageRepository(),
+        this.getUserRepository(),
+        this.getFolderRepository(),
+        this.getLogger(),
       );
     }
     return this.prepareMessageUseCase;
@@ -308,6 +324,7 @@ export class DIContainer {
         this.getOutboxEventRepository(),
         this.getDescriptionPublisher(),
         this.getSummaryPublisher(),
+        this.getLogger(),
       );
     }
     return this.saveModelReplyUseCase;
@@ -427,6 +444,13 @@ export class DIContainer {
     return this.summaryPublisher;
   }
 
+  static getLogger(): ILogger {
+    if (!this.logger) {
+      this.logger = new WinstonLoggerAdapter("Dentrites");
+    }
+    return this.logger;
+  }
+
   static getSendOtpUseCase(): SendOTP {
     if (!this.sendOtpUseCase) {
       this.sendOtpUseCase = new SendOTP(this.getOtpService(), this.getEmailService());
@@ -515,7 +539,8 @@ export class DIContainer {
     if (!this.processDocumentChunkingUseCase) {
       this.processDocumentChunkingUseCase = new ProcessDocumentChunking(
         this.getOutboxEventRepository(),
-        this.getVectorRepository()
+        this.getVectorRepository(),
+        this.getLogger()
       );
     }
     return this.processDocumentChunkingUseCase;

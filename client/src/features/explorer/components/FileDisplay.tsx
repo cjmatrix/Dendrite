@@ -93,7 +93,7 @@ export default function FileDisplay({
     return () => window.removeEventListener("click", close);
   }, [contextMenu, isRenaming]);
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  
   return (
     <div
       className={`h-full text-gray-200 flex flex-col ${isModal ? "p-0 bg-transparent" : "pt-8 px-8 bg-[radial-gradient(ellipse_at_top,var(--tw-gradient-stops))] from-zinc-900 via-(--theme-bg-surface) to-(--theme-bg-base) overflow-y-auto"}`}

@@ -41,6 +41,7 @@
     "tsyringe": "^4.10.0",
     "uuid": "^13.0.0",
     "voyageai": "^0.2.1",
+    "winston": "^3.19.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
