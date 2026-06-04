@@ -6,14 +6,11 @@ import crypto from "crypto";
 import { BaseController } from "./base/BaseController";
 import { AppError } from "../../utils/AppError";
 import { FileUploadService } from "../../services/FileUploadService";
-import { AIService } from "../../services/AIService";
-import { embeddingService } from "../../services/EmbeddingService";
 import { logAIQuery } from "../../utils/logger";
 import { getTokenInfo } from "../../utils/tokenCounter";
-import { documentChunkingQueue } from "../../queue/documentChunkingQueue";
 import { documentProgressPubSub } from "../../services/documentProgressPubSub";
-import CONTEXT_WINDOW from "../../constants/contextWindow";
 import { ILogger } from "../../application/common/ports/ILogger";
+import { IAIService } from "../../application/common/ports/IAIService";
 
 import { injectable, inject, container } from "tsyringe";
 import { 
@@ -29,10 +26,11 @@ import {
   ISaveModelReplyUseCase, 
   ISaveSubChatUseCase, 
   IUpdateChatUseCase, 
-  IUploadChatImageUseCase 
+  IUploadChatImageUseCase,
+  IStreamQuickChatUseCase,
+  IUploadDocumentUseCase,
+  IValidateChatAccessUseCase
 } from "../../application/chat/use-cases/interfaces";
-import { IChatRepository } from "../../domain/chat/repositories/IChatRepository";
-import { IMessageRepository } from "../../domain/chat/repositories/IMessageRepository";
 
 @injectable()
 export class ChatController extends BaseController {
@@ -55,9 +53,11 @@ export class ChatController extends BaseController {
     @inject("ISaveSubChatUseCase") private saveSubChatUseCase: ISaveSubChatUseCase,
     @inject("IUpdateChatUseCase") private updateChatUseCase: IUpdateChatUseCase,
     @inject("IUploadChatImageUseCase") private uploadChatImageUseCase: IUploadChatImageUseCase,
+    @inject("IStreamQuickChatUseCase") private streamQuickChatUseCase: IStreamQuickChatUseCase,
+    @inject("IUploadDocumentUseCase") private uploadDocumentUseCase: IUploadDocumentUseCase,
+    @inject("IValidateChatAccessUseCase") private validateChatAccessUseCase: IValidateChatAccessUseCase,
     @inject("ILogger") private logger: ILogger,
-    @inject("IChatRepository") private chatRepository: IChatRepository,
-    @inject("IMessageRepository") private messageRepository: IMessageRepository
+    @inject("IAIService") private aiService: IAIService
   ) {
     super();
   }
@@ -180,7 +180,7 @@ export class ChatController extends BaseController {
         fileName: input.fileName,
       });
 
-      await this.streamAndSave(res, contents, chatId, userId, userMessageId, parentContext, req.body.message,parentSummary);
+      await this.streamAndSave(req, res, contents, chatId, userId, userMessageId, parentContext, req.body.message, parentSummary);
     } catch (error: any) {
       if (!res.headersSent) {
         res.setHeader("Content-Type", "text/event-stream");
@@ -203,57 +203,50 @@ export class ChatController extends BaseController {
       const userId = this.validateUserAuth(req);
       const { chatId, anchorMessageId, highlightedText, quickChatHistory } = req.body;
 
-      const recentHistory = (quickChatHistory || []).slice(-CONTEXT_WINDOW);
-
-      const backgroundContext = await AIService.getAnchorContext(
-        chatId,
-        anchorMessageId,
-        this.messageRepository,
-      );
-
-      const historicalString = backgroundContext
-        .map((msg: any) => `[${msg.role}]: ${msg.content}`)
-        .join("\n\n");
-
-      const systemPrompt = AIService.buildQuickChatSystemPrompt(
-        historicalString,
-        highlightedText,
-      );
-
-      const contents = [
-        { role: "user", parts: [{ text: systemPrompt }] },
-        ...recentHistory.map((msg: any) => ({
-          role: msg.role === "model" ? "model" : "user",
-          parts: [{ text: msg.content }],
-        })),
-      ];
-
       res.setHeader("Content-Type", "text/event-stream");
       res.setHeader("Cache-Control", "no-cache");
       res.setHeader("Connection", "keep-alive");
+      res.flushHeaders();
 
       let stream;
       try {
-        stream = await AIService.streamAIContent(contents,"gemini-2.5-flash");
+        stream = await this.streamQuickChatUseCase.execute({
+          userId,
+          chatId,
+          anchorMessageId,
+          highlightedText,
+          quickChatHistory
+        });
       } catch (error: any) {
-        this.logger.error("AI streaming failed", error, { contents });
-        res.write(`data: ${JSON.stringify({ text: "\n\n**Quota Exhausted:** All your provided Gemini API keys have exceeded their free-tier limits. Please wait, or add a new key." })}\n\n`);
+        if (error.statusCode === 429) {
+          res.write(`data: ${JSON.stringify({ text: "\n\n**Quota Exhausted:** " + error.message })}\n\n`);
+        } else {
+          res.write(`data: ${JSON.stringify({ text: "\n\n**System Error:** " + error.message })}\n\n`);
+        }
         res.write("data: [DONE]\n\n");
         res.end();
         return;
       }
 
-      res.flushHeaders();
+      let clientDisconnected = false;
+      req.on("close", () => {
+        clientDisconnected = true;
+      });
 
       for await (const chunk of stream) {
+        if (clientDisconnected) {
+          break;
+        }
         const text = chunk.text || "";
         if (text) {
           res.write(`data: ${JSON.stringify({ text })}\n\n`);
         }
       }
 
-      res.write("data: [DONE]\n\n");
-      res.end();
+      if (!clientDisconnected) {
+        res.write("data: [DONE]\n\n");
+        res.end();
+      }
     } catch (error: any) {
       if (!res.headersSent) {
         res.setHeader("Content-Type", "text/event-stream");
@@ -376,13 +369,6 @@ export class ChatController extends BaseController {
     try {
       const userId = this.validateUserAuth(req);
       const chatId = this.getRouteParam(req, "id");
-
-      const chat = await this.chatRepository.findByIdAndUserId(chatId, userId);
-      if (!chat) {
-        throw new AppError("Chat not found or access denied", 404);
-      }
-
-      FileUploadService.validateCloudinaryConfig();
 
       const busboy = Busboy({
         headers: req.headers,
@@ -509,57 +495,19 @@ export class ChatController extends BaseController {
             return;
           }
 
-          const documentFileName = fileName || "document";
-          const documentId = crypto.randomUUID();
-
-          await documentChunkingQueue.add(
-            "chunk-document",
-            {
-              stage: "upload",
-              documentId,
-              tempFilePath: filePath,
-              fileName: documentFileName,
-              userId,
-              chatId,
-              createdAt: new Date().toISOString(),
-            },
-            {
-              jobId: documentId,
-              priority: 10,
-              attempts: 3,
-              backoff: {
-                type: "exponential",
-                delay: 5000,
-              },
-              removeOnComplete: {
-                age: 3600,
-              },
-            },
-          );
-
-          await documentProgressPubSub.publish({
-            documentId,
-            chatId,
+          const result = await this.uploadDocumentUseCase.execute({
             userId,
-            fileName: documentFileName,
-            stage: "upload",
-            status: "queued",
-            progress: 0,
-            message: "Document queued for processing",
+            chatId,
+            filePath,
+            fileName: fileName || "document"
           });
-
-          this.logger.info(`Document upload queued`, { documentId, fileName: documentFileName, chatId });
 
           sendJson(202, {
             success: true,
-            data: {
-              documentId,
-              fileName: documentFileName,
-              status: "uploading",
-            },
+            data: result,
           });
         } catch (error: any) {
-          console.error("Document queue failed:", error);
+          this.logger.error("Document queue failed:", error);
           if (!responseSent) {
             const message = error.statusCode
               ? error.message
@@ -592,10 +540,7 @@ export class ChatController extends BaseController {
       const chatId = this.getRouteParam(req, "id");
       const documentId = this.getRouteParam(req, "documentId");
 
-      const chat = await this.chatRepository.findByIdAndUserId(chatId, userId);
-      if (!chat) {
-        throw new AppError("Chat not found", 404);
-      }
+      await this.validateChatAccessUseCase.execute({ chatId, userId });
 
       res.setHeader("Content-Type", "text/event-stream");
       res.setHeader("Cache-Control", "no-cache, no-transform");
@@ -738,6 +683,7 @@ export class ChatController extends BaseController {
   }
 
   private async streamAndSave(
+    req: Request,
     res: Response,
     contents: any[],
     chatId: string,
@@ -745,7 +691,7 @@ export class ChatController extends BaseController {
     userMessageId: string,
     parentContext: any,
     originalMessage: string,
-    parentSummary:string|null
+    parentSummary: string | null
   ) {
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
@@ -753,7 +699,7 @@ export class ChatController extends BaseController {
 
     let stream;
     try {
-      stream = await AIService.streamAIContent(contents);
+      stream = await this.aiService.streamAIContent(contents);
     } catch (error: any) {
       res.write(`data: ${JSON.stringify({ text: "\n\n**Quota Exhausted:** All your provided Gemini API keys have exceeded their free-tier limits. Please wait, or add a new key." })}\n\n`);
       res.write("data: [DONE]\n\n");
@@ -765,7 +711,16 @@ export class ChatController extends BaseController {
     let finalUsageMetadata: any = null;
     res.flushHeaders();
 
+    let clientDisconnected = false;
+    req.on("close", () => {
+      clientDisconnected = true;
+    });
+
     for await (const chunk of stream) {
+      if (clientDisconnected) {
+        this.logger.info(`AI streaming aborted by client for chat ${chatId}`);
+        break;
+      }
       const text = chunk.text || "";
       fullReply += text;
       if (chunk.usageMetadata) {
@@ -775,10 +730,12 @@ export class ChatController extends BaseController {
     }
 
     if (!fullReply.trim()) {
-      console.error(`Empty AI response for chat ${chatId}`);
-      res.write(`data: ${JSON.stringify({ text: "\n\n**Error:** The AI returned an empty response. Please try again." })}\n\n`);
-      res.write("data: [DONE]\n\n");
-      res.end();
+      this.logger.error(`Empty AI response for chat ${chatId}`);
+      if (!clientDisconnected) {
+        res.write(`data: ${JSON.stringify({ text: "\n\n**Error:** The AI returned an empty response. Please try again." })}\n\n`);
+        res.write("data: [DONE]\n\n");
+        res.end();
+      }
       return;
     }
 
@@ -791,17 +748,20 @@ export class ChatController extends BaseController {
         parentSummary
       });
 
-      res.write(`data: ${JSON.stringify({ type: "metadata", userMessageId, modelMessageId })}\n\n`);
-
-      if (finalUsageMetadata) {
-        logAIQuery(originalMessage, finalUsageMetadata);
+      if (!clientDisconnected) {
+        res.write(`data: ${JSON.stringify({ type: "metadata", userMessageId, modelMessageId })}\n\n`);
+        if (finalUsageMetadata) {
+          logAIQuery(originalMessage, finalUsageMetadata);
+        }
       }
     } catch (err) {
-      console.error("Failed to save model reply or log usage:", err);
+      this.logger.error("Failed to save model reply or log usage:", err);
     }
 
-    res.write("data: [DONE]\n\n");
-    res.end();
+    if (!clientDisconnected) {
+      res.write("data: [DONE]\n\n");
+      res.end();
+    }
   }
 
 }

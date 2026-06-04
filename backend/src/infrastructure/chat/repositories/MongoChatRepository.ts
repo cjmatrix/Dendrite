@@ -19,14 +19,18 @@ export class MongoChatRepository extends MongooseBaseRepository<IChat> implement
   }
 
   async findByIdAndUserId(chatId: string, userId: string, options?: any): Promise<IChat | null> {
-    const doc = await this.model.findOne({ _id: chatId, userId }, null, options)
+    const activeSession = (options && options.session) || this.getSession();
+    const finalOptions = activeSession ? { session: activeSession, ...options } : options;
+    const doc = await this.model.findOne({ _id: chatId, userId }, null, finalOptions)
       .populate('contextParent', 'title _id')
       .lean();
     return doc ? this.mapToDomain(doc) : null;
   }
 
   async update(chatId: string, userId: string, updates: any, options?: any): Promise<IChat | null> {
-    const doc = await this.model.findOneAndUpdate({ _id: chatId, userId }, updates, { new: true, ...options }).lean();
+    const activeSession = (options && options.session) || this.getSession();
+    const finalOptions = activeSession ? { session: activeSession, ...options } : options;
+    const doc = await this.model.findOneAndUpdate({ _id: chatId, userId }, updates, { new: true, ...finalOptions }).lean();
     return doc ? this.mapToDomain(doc) : null;
   }
 
@@ -42,7 +46,9 @@ export class MongoChatRepository extends MongooseBaseRepository<IChat> implement
       },
     }));
 
-    return this.model.bulkWrite(updates, options);
+    const activeSession = (options && options.session) || this.getSession();
+    const finalOptions = activeSession ? { session: activeSession, ...options } : options;
+    return this.model.bulkWrite(updates, finalOptions);
   }
 
   async delete(chatId: string, userId: string): Promise<IChat | null> {

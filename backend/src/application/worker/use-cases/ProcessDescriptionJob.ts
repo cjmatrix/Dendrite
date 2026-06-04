@@ -3,8 +3,8 @@ import { ICodeBlockRepository } from '../../../domain/chat/repositories/ICodeBlo
 import { IOutboxEventRepository } from '../../../domain/outbox/repositories/IOutboxEventRepository';
 import { IEmbeddingPublisher } from '../../common/ports/IEmbeddingPublisher';
 import { generateBatchCodeDescriptions } from '../../../utils/AIDescription';
-import mongoose from "mongoose";
 import { ILogger } from '../../common/ports/ILogger';
+import { IUnitOfWorkRepository } from "../../common/ports/IUnitOfWorkRepository";
 
 @injectable()
 export class ProcessDescriptionJob {
@@ -13,6 +13,7 @@ export class ProcessDescriptionJob {
     @inject("IOutboxEventRepository") private outboxRepository: IOutboxEventRepository,
     @inject("RedisClient") private redisConnection: any, 
     @inject("IEmbeddingPublisher") private embeddingPublisher: IEmbeddingPublisher,
+    @inject("IUnitOfWorkRepository") private unitOfWork: IUnitOfWorkRepository,
     @inject("ILogger") private logger: ILogger
   ) {}
 
@@ -51,8 +52,8 @@ export class ProcessDescriptionJob {
     }
 
     
-    const codeBlockUpdates = [];
-    const outboxEventsToPush = [];
+    const codeBlockUpdates: any[] = [];
+    const outboxEventsToPush: any[] = [];
 
     for (const block of blocks) {
       const description = finalResults[block._id];
@@ -83,29 +84,19 @@ export class ProcessDescriptionJob {
 
     
     if (codeBlockUpdates.length > 0) {
-      const session = await mongoose.startSession();
-      session.startTransaction();
+      let savedOutboxEvents: any[] = [];
 
-      try {
-        await this.codeBlockRepository.bulkUpdateDescriptions(codeBlockUpdates, session);
-        const savedOutboxEvents = await this.outboxRepository.insertMany(outboxEventsToPush, session);
+      await this.unitOfWork.runInTransaction(async () => {
+        await this.codeBlockRepository.bulkUpdateDescriptions(codeBlockUpdates);
+        savedOutboxEvents = await this.outboxRepository.insertMany(outboxEventsToPush);
+      });
 
-        await session.commitTransaction();
-
-      
-        for (const event of savedOutboxEvents) {
-          try {
-            await this.embeddingPublisher.publish(event._id.toString(), event.payload.content);
-          } catch (e: any) {
-            this.logger.error(`Status: Failed to push to embedding queue for ${event.payload.sourceId}:`, e);
-          }
+      for (const event of savedOutboxEvents) {
+        try {
+          await this.embeddingPublisher.publish(event._id.toString(), event.payload.content);
+        } catch (e: any) {
+          this.logger.error(`Status: Failed to push to embedding queue for ${event.payload.sourceId}:`, e);
         }
-      } catch (txnError) {
-        this.logger.error(" Code Block update or Outbox event creation failed ", txnError);
-        await session.abortTransaction();
-        throw txnError;
-      } finally {
-        session.endSession();
       }
     }
   }

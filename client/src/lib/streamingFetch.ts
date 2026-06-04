@@ -1,11 +1,12 @@
 import api from "./axios";
 
 
-export const streamingFetch = async (url: string, options: RequestInit = {}): Promise<Response> => {
+export const streamingFetch = async (url: string, options: RequestInit = {}, controller?: AbortController): Promise<Response> => {
  
   const response = await fetch(url, {
     ...options,
     credentials: "include", 
+    signal: controller?.signal
   });
 
   if (response.status === 401) {
@@ -19,6 +20,7 @@ export const streamingFetch = async (url: string, options: RequestInit = {}): Pr
       return await fetch(url, {
         ...options,
         credentials: "include",
+        signal: controller?.signal
       });
     } catch (refreshError) {
       console.error("[StreamingFetch] Silent refresh failed:", refreshError);

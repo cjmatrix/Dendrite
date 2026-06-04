@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { sendMessageStream } from "../api/chatApi";
 import type { StreamChunk, Message } from "../types/Message";
@@ -10,24 +10,49 @@ interface UseSendMessageOptions {
   onStreamEnd?: () => void;
 }
 
-export function useSendMessage({ chatId, mode, onStreamStart, onStreamEnd }: UseSendMessageOptions) {
+export function useSendMessage({
+  chatId,
+  mode,
+  onStreamStart,
+  onStreamEnd,
+}: UseSendMessageOptions) {
   const [streamingText, setStreamingText] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const queryClient = useQueryClient();
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  const stopStreaming = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      setIsStreaming(false);
+    }
+  }, []);
 
   const send = useCallback(
-    async (input: string, imageUrl: string | null, selectedFile?: { name: string; url: string } | null) => {
-      if (!chatId || (!input.trim() && !imageUrl && !selectedFile) || isStreaming) return;
+    async (
+      input: string,
+      imageUrl: string | null,
+      selectedFile?: { name: string; url: string } | null,
+    ) => {
+      if (
+        !chatId ||
+        (!input.trim() && !imageUrl && !selectedFile) ||
+        isStreaming
+      )
+        return;
 
       const userMessage = input.trim();
       const userTempId = `temp-${Date.now()}`;
-      const fallbackText = selectedFile ? `Uploaded file: ${selectedFile.name}` : "Analyze this image";
+      const fallbackText = selectedFile
+        ? `Uploaded file: ${selectedFile.name}`
+        : "Analyze this image";
 
-     
       queryClient.setQueryData(["chatMessages", chatId], (old: any) => {
-        if (!old?.pages?.length) return old;
-        console.log(old?.pages,"Old pages")
-        const newPages = [...old.pages];
+        const existing = old?.pages?.length
+          ? old
+          : { pages: [{ messages: [], nextCursor: null }], pageParams: [null] };
+
+        const newPages = [...existing.pages];
         newPages[0] = {
           ...newPages[0],
           messages: [
@@ -42,7 +67,7 @@ export function useSendMessage({ chatId, mode, onStreamStart, onStreamEnd }: Use
             } satisfies Message,
           ],
         };
-        return { ...old, pages: newPages };
+        return { ...existing, pages: newPages };
       });
 
       setIsStreaming(true);
@@ -50,6 +75,9 @@ export function useSendMessage({ chatId, mode, onStreamStart, onStreamEnd }: Use
       let streamUserMessageId: string | undefined;
       let streamModelMessageId: string | undefined;
       onStreamStart?.();
+
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
 
       let fullReply = "";
 
@@ -61,6 +89,7 @@ export function useSendMessage({ chatId, mode, onStreamStart, onStreamEnd }: Use
           imageUrl,
           selectedFile?.url || null,
           selectedFile?.name || null,
+          controller,
           (chunk: StreamChunk) => {
             if (chunk.type === "metadata") {
               streamUserMessageId = chunk.userMessageId;
@@ -76,7 +105,7 @@ export function useSendMessage({ chatId, mode, onStreamStart, onStreamEnd }: Use
       } catch (error) {
         console.error("Streaming error:", error);
       } finally {
-        // Finalize: insert AI message into cache
+        abortControllerRef.current = null;
         const modelMessageId = streamModelMessageId;
         const userMessageId = streamUserMessageId;
 
@@ -93,7 +122,6 @@ export function useSendMessage({ chatId, mode, onStreamStart, onStreamEnd }: Use
             } satisfies Message);
           }
 
-          // Replace temp user ID with real DB ID
           if (userMessageId) {
             newMessages = newMessages.map((m: Message) =>
               m._id === userTempId ? { ...m, _id: userMessageId } : m,
@@ -112,5 +140,5 @@ export function useSendMessage({ chatId, mode, onStreamStart, onStreamEnd }: Use
     [chatId, mode, isStreaming, queryClient, onStreamStart, onStreamEnd],
   );
 
-  return { send, isStreaming, streamingText };
+  return { send, isStreaming, streamingText ,stopStreaming};
 }

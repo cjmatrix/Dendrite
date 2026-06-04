@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { X, GitBranch, Calendar, RotateCcw, AlertCircle, Save, Check } from "lucide-react";
 import type { FileNode } from "../types/types";
-import { useAppSelector } from "../../../store/store";
 import toast from "react-hot-toast";
 import { useFolderBehavior } from "../hooks/useFolderBehavior";
 

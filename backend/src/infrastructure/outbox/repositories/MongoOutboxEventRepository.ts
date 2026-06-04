@@ -1,5 +1,6 @@
 import { IOutboxEventRepository } from '../../../domain/outbox/repositories/IOutboxEventRepository';
 import { OutboxEvent } from '../models/MongoOutboxEventModel';
+import { transactionStorage } from '../../shared/MongooseUnitOfWork';
 
 export class MongoOutboxEventRepository implements IOutboxEventRepository {
   async findPendingJobs(limit: number, beforeDate: Date): Promise<any[]> {
@@ -31,8 +32,9 @@ export class MongoOutboxEventRepository implements IOutboxEventRepository {
   }
 
   async insertMany(events: any[], session?: any): Promise<any[]> {
-    if (session) {
-      return OutboxEvent.insertMany(events, { session });
+    const activeSession = session || transactionStorage.getStore();
+    if (activeSession) {
+      return OutboxEvent.insertMany(events, { session: activeSession });
     }
     return OutboxEvent.insertMany(events);
   }

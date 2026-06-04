@@ -25,13 +25,14 @@ export const sendMessageStream = async (
   imageUrl: string | null,
   fileUrl: string | null,
   fileName: string | null,
+  controller:AbortController,
   onChunk: (chunk: StreamChunk) => void,
 ): Promise<void> => {
   const response = await streamingFetch(`${API_URL}/chats/${chatId}/message`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ message, mode, imageUrl, fileUrl, fileName }),
-  });
+  },controller);
 
   if (!response.ok || !response.body) {
     throw new Error("Stream failed");

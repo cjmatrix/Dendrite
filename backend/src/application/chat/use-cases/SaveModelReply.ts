@@ -11,6 +11,7 @@ import { IDescriptionPublisher } from "../../common/ports/IDescriptionPublisher"
 import { ISummaryPublisher } from "../../common/ports/ISummaryPublisher";
 import { estimateTokenCount } from "../../../utils/tokenCounter";
 import { ILogger } from "../../common/ports/ILogger";
+import { IUnitOfWorkRepository } from "../../common/ports/IUnitOfWorkRepository";
 import { injectable, inject } from "tsyringe";
 import { ISaveModelReplyUseCase } from "./interfaces";
 
@@ -46,6 +47,7 @@ export class SaveModelReply implements ISaveModelReplyUseCase {
     @inject("IDescriptionPublisher")
     private descriptionPublisher: IDescriptionPublisher,
     @inject("ISummaryPublisher") private summaryPublisher: ISummaryPublisher,
+    @inject("IUnitOfWorkRepository") private unitOfWork: IUnitOfWorkRepository,
     @inject("ILogger") private logger: ILogger,
   ) {}
 
@@ -57,25 +59,21 @@ export class SaveModelReply implements ISaveModelReplyUseCase {
     if (!chat) {
       throw new AppError("Chat not found", 404);
     }
-    const session = await mongoose.startSession();
-    session.startTransaction();
-
     let modelMessageId: string | null = null;
-    try {
+    let summaryOutboxEvent: any = null;
+    let messageToCompress: any[] = [];
+
+    await this.unitOfWork.runInTransaction(async () => {
       const [modelMsg] = await this.messageRepository.createMany(
-        [{ chatId, userId, role: "model", content: modelReply }],
-        { session },
+        [{ chatId, userId, role: "model", content: modelReply }]
       );
       modelMessageId = modelMsg._id.toString();
 
       const updatedChat = await this.chatRepository.update(
         chatId,
         userId,
-        { $inc: { unsummarizedCount: 2 } },
-        { session },
+        { $inc: { unsummarizedCount: 2 } }
       );
-
-      let messageToCompress: any[] = [];
 
       if (!updatedChat) {
         throw new AppError("Failed to update chat", 500);
@@ -91,15 +89,13 @@ export class SaveModelReply implements ISaveModelReplyUseCase {
           if (obj.count !== 0) {
             totalParentMessagesToCompress.push(...obj.messages);
           }
-
         });
       }
 
       if (updatedChat && totalUnCount >= CONTEXT_WINDOW) {
         const recent = await this.messageRepository.findRecentByChatId(
           chatId,
-          CONTEXT_WINDOW,
-          { session },
+          CONTEXT_WINDOW
         );
         const totalRecent = [...recent, ...totalParentMessagesToCompress];
         messageToCompress = totalRecent.reverse();
@@ -107,8 +103,7 @@ export class SaveModelReply implements ISaveModelReplyUseCase {
 
         await this.chatRepository.bulkResetUnsummarizedCount(
           lineageChatIds,
-          userId,
-          { session },
+          userId
         );
       }
 
@@ -154,8 +149,7 @@ export class SaveModelReply implements ISaveModelReplyUseCase {
 
         if (newBlockDocs.length > 0) {
           savedBlocks = await this.codeBlockRepository.insertMany(
-            newBlockDocs,
-            session,
+            newBlockDocs
           );
           this.logger.info(`[CodeDedup] New code blocks processed`, { newBlocks: newBlockDocs.length, duplicates: codeBlocks.length - newBlockDocs.length, total: codeBlocks.length });
         } else {
@@ -163,7 +157,6 @@ export class SaveModelReply implements ISaveModelReplyUseCase {
         }
       }
 
-      let summaryOutboxEvent = null;
       if (messageToCompress.length > 0) {
         const outboxDoc = {
           eventType: "CHAT_SUMMARY_CREATED",
@@ -179,45 +172,37 @@ export class SaveModelReply implements ISaveModelReplyUseCase {
           status: "pending",
         };
         const savedOutbox = await this.outboxRepository.insertMany(
-          [outboxDoc],
-          session,
+          [outboxDoc]
         );
         summaryOutboxEvent = savedOutbox[0];
       }
+    });
 
-      await session.commitTransaction();
-
-      if (messageToCompress.length > 0) {
-        const undescribedBlocks =
-          await this.codeBlockRepository.findUndescribedByChatId(chatId);
-        if (undescribedBlocks.length > 0) {
-          const queuePayload = undescribedBlocks.map((b: any) => ({
-            _id: b._id.toString(),
-            userId: b.userId,
-            chatId: b.chatId,
-            code: b.code,
-            language: b.language,
-            hash: b.hash,
-          }));
-          await this.descriptionPublisher.publish(queuePayload);
-          this.logger.info(`Context window overflow - batched blocks for description`, { blockCount: undescribedBlocks.length, chatId });
-        }
+    if (messageToCompress.length > 0) {
+      const undescribedBlocks =
+        await this.codeBlockRepository.findUndescribedByChatId(chatId);
+      if (undescribedBlocks.length > 0) {
+        const queuePayload = undescribedBlocks.map((b: any) => ({
+          _id: b._id.toString(),
+          userId: b.userId,
+          chatId: b.chatId,
+          code: b.code,
+          language: b.language,
+          hash: b.hash,
+        }));
+        await this.descriptionPublisher.publish(queuePayload);
+        this.logger.info(`Context window overflow - batched blocks for description`, { blockCount: undescribedBlocks.length, chatId });
       }
+    }
 
-      if (summaryOutboxEvent) {
-        await this.summaryPublisher.publish(
-          summaryOutboxEvent._id.toString(),
-          messageToCompress,
-          chat.summary,
-        );
+    if (summaryOutboxEvent) {
+      await this.summaryPublisher.publish(
+        summaryOutboxEvent._id.toString(),
+        messageToCompress,
+        chat.summary,
+      );
 
-        this.logger.info(`Triggered memory compression`, { chatId: chat._id.toString(), outboxEventId: summaryOutboxEvent._id.toString() });
-      }
-    } catch (error) {
-      await session.abortTransaction();
-      throw error;
-    } finally {
-      session.endSession();
+      this.logger.info(`Triggered memory compression`, { chatId: chat._id.toString(), outboxEventId: summaryOutboxEvent._id.toString() });
     }
 
     return { chat, modelMessageId };

@@ -68,7 +68,7 @@ User query: "${queryText}"`;
     }
   }
 
-   // Stream AI content with automatic fallback and quota handling
+  
    
   static async streamAIContent(
     contents: any[],
@@ -107,7 +107,7 @@ User query: "${queryText}"`;
   }
 
   
-   // Get cached anchor context or fetch it
+ 
    
   static async getAnchorContext(
     chatId: string,
@@ -142,8 +142,7 @@ User query: "${queryText}"`;
     }
   }
 
-  
-   // Build system prompt for quick chat
+
    
   static buildQuickChatSystemPrompt(
     historicalContext: string,
@@ -187,7 +186,7 @@ RESPONSE GUIDELINES:
   }
 
   
-   // Convert image URL to base64
+ 
    
   static async urlToBase64(url: string): Promise<string> {
     try {

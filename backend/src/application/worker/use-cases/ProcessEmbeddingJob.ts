@@ -46,7 +46,7 @@ export class ProcessEmbeddingJob {
     } catch (error: any) {
       await this.outboxRepository.updateStatus(outboxId, "failed", { error: error.message, incrementRetry: true });
       this.logger.error(`Failed to embed outbox event: ${outboxId}`, error);
-      throw error; // BullMQ will retry
+      throw error; 
     }
   }
 }

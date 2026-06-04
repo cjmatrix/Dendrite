@@ -22,8 +22,9 @@ export class MongoCodeBlockRepository extends MongooseBaseRepository<ICodeBlock>
   }
 
   async bulkUpdateDescriptions(updates: any[], session?: any): Promise<any> {
-    if (session) {
-      return this.model.bulkWrite(updates, { session });
+    const activeSession = session || this.getSession();
+    if (activeSession) {
+      return this.model.bulkWrite(updates, { session: activeSession });
     }
     return this.model.bulkWrite(updates);
   }
@@ -35,8 +36,9 @@ export class MongoCodeBlockRepository extends MongooseBaseRepository<ICodeBlock>
 
   async insertMany(blocks: any[], session?: any): Promise<ICodeBlock[]> {
     let docs;
-    if (session) {
-      docs = await this.model.insertMany(blocks, { session });
+    const activeSession = session || this.getSession();
+    if (activeSession) {
+      docs = await this.model.insertMany(blocks, { session: activeSession });
     } else {
       docs = await this.model.insertMany(blocks);
     }

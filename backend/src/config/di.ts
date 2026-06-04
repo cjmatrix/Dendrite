@@ -55,6 +55,12 @@ import { SaveSubChat } from "../application/chat/use-cases/SaveSubChat";
 import { UpdateChat } from "../application/chat/use-cases/UpdateChat";
 import { UploadChatImage } from "../application/chat/use-cases/UploadChatImage";
 
+import { StreamQuickChat } from "../application/chat/use-cases/StreamQuickChat";
+import { UploadDocument } from "../application/chat/use-cases/UploadDocument";
+import { ValidateChatAccess } from "../application/chat/use-cases/ValidateChatAccess";
+import { AIServiceAdapter } from "../infrastructure/services/AIServiceAdapter";
+import { BullMQDocumentQueue } from "../infrastructure/queue/BullMQDocumentQueue";
+
 container.registerInstance("RedisClient", redisConnection);
 container.registerSingleton("ICacheService", RedisCacheService);
 container.registerSingleton<ILogger>("ILogger", WinstonLoggerAdapter);
@@ -81,6 +87,8 @@ container.registerSingleton("IEmbeddingPublisher", BullMQEmbeddingPublisher);
 container.registerSingleton("IRecallPublisher", BullMQRecallPublisher);
 container.registerSingleton("IDescriptionPublisher", BullMQDescriptionPublisher);
 container.registerSingleton("ISummaryPublisher", BullMQSummaryPublisher);
+container.registerSingleton("IAIService", AIServiceAdapter);
+container.registerSingleton("IDocumentQueue", BullMQDocumentQueue);
 
 container.registerSingleton("IRegisterUserUseCase", RegisterUser);
 container.registerSingleton("ILoginUserUseCase", LoginUser);
@@ -116,3 +124,8 @@ container.registerSingleton("ISaveModelReplyUseCase", SaveModelReply);
 container.registerSingleton("ISaveSubChatUseCase", SaveSubChat);
 container.registerSingleton("IUpdateChatUseCase", UpdateChat);
 container.registerSingleton("IUploadChatImageUseCase", UploadChatImage);
+container.registerSingleton("IStreamQuickChatUseCase", StreamQuickChat);
+container.registerSingleton("IUploadDocumentUseCase", UploadDocument);
+container.registerSingleton("IValidateChatAccessUseCase", ValidateChatAccess);
+
+export { container };

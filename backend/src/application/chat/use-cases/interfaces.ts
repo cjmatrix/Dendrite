@@ -13,6 +13,10 @@ import {
   UploadChatImageInputDTO,
   UploadChatImageOutputDTO,
   RemoveDocumentInputDTO,
+  StreamQuickChatInputDTO,
+  UploadDocumentInputDTO,
+  UploadDocumentOutputDTO,
+  ValidateChatAccessInputDTO
 } from "../dtos/chat.dto";
 import { ChatDocument, IChat } from "../../../domain/chat/entities/Chat";
 
@@ -66,4 +70,16 @@ export interface IRemoveDocumentUseCase {
 
 export interface IUploadChatImageUseCase {
   execute(input: UploadChatImageInputDTO): Promise<UploadChatImageOutputDTO>;
+}
+
+export interface IStreamQuickChatUseCase {
+  execute(input: StreamQuickChatInputDTO): Promise<AsyncIterable<any>>;
+}
+
+export interface IUploadDocumentUseCase {
+  execute(input: UploadDocumentInputDTO): Promise<UploadDocumentOutputDTO>;
+}
+
+export interface IValidateChatAccessUseCase {
+  execute(input: ValidateChatAccessInputDTO): Promise<ChatOutputDTO>;
 }

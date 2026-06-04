@@ -18,14 +18,17 @@ export class MongoMessageRepository extends MongooseBaseRepository<IMessage> imp
   }
 
   async createMany(messagesData: any[], options?: any): Promise<IMessage[]> {
-    const docs = await this.model.create(messagesData, options);
+    const activeSession = (options && options.session) || this.getSession();
+    const finalOptions = activeSession ? { session: activeSession, ...options } : options;
+    const docs = await this.model.create(messagesData, finalOptions);
     return docs.map((doc: any) => this.mapToDomain(doc.toObject ? doc.toObject() : doc));
   }
 
   async findRecentByChatId(chatId: string, limit: number, options?: any): Promise<IMessage[]> {
     let query = this.model.find({ chatId }).sort({ createdAt: -1 }).limit(limit);
-    if (options && options.session) {
-      query = query.session(options.session);
+    const activeSession = (options && options.session) || this.getSession();
+    if (activeSession) {
+      query = query.session(activeSession);
     }
     const docs = await query.lean();
     return docs.map((doc: any) => this.mapToDomain(doc));
@@ -33,8 +36,9 @@ export class MongoMessageRepository extends MongooseBaseRepository<IMessage> imp
 
   async countByChatId(chatId: string, options?: any): Promise<number> {
     let query = this.model.countDocuments({ chatId });
-    if (options && options.session) {
-      query = query.session(options.session);
+    const activeSession = (options && options.session) || this.getSession();
+    if (activeSession) {
+      query = query.session(activeSession);
     }
     return query.exec();
   }

@@ -21,6 +21,7 @@ import {
   Brain,
   X,
   GitBranch,
+  Square,
 } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
 import type { VirtuosoHandle } from "react-virtuoso";
@@ -391,12 +392,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           align: "end",
           behavior,
         });
-      }, 100);
+      }, 200);
     },
     [],
   );
 
-  const { send, isStreaming, streamingText } = useSendMessage({
+  const { send, isStreaming, streamingText ,stopStreaming} = useSendMessage({
     chatId: id,
     mode,
     onStreamStart: () => scrollToBottom("smooth"),
@@ -810,10 +811,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             data={messages}
             firstItemIndex={firstItemIndex}
             initialTopMostItemIndex={
-              messages.length > 0 ? messages.length - 2 : 0
+              messages.length > 0 ? messages.length - 1 : 0
             }
             computeItemKey={(index, item) => item._id || String(index)}
-            followOutput={false}
+            followOutput={isStreaming ? "smooth" : false}
             increaseViewportBy={{ top: 4000, bottom: 4000 }}
             atBottomStateChange={(bottom) => setAtBottom(bottom)}
             context={{
@@ -1051,21 +1052,24 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 Cmd + Enter
               </span>
               <button
-                onClick={handleSend}
+                onClick={isStreaming ? stopStreaming : handleSend}
                 disabled={
-                  isStreaming ||
                   isUploading ||
-                  (!input.trim() && !selectedImageUrl && !activeSelectedFile)
+                  (!isStreaming && !input.trim() && !selectedImageUrl && !activeSelectedFile)
                 }
                 className={`p-2 rounded-xl transition-all flex items-center justify-center ${
-                  (input.trim() || selectedImageUrl || activeSelectedFile) &&
-                  !isStreaming &&
-                  !isUploading
-                    ? "bg-blue-600 text-white hover:bg-blue-500 shadow-md shadow-blue-500/20"
-                    : "bg-white/5 text-gray-500 cursor-not-allowed"
+                  isStreaming
+                    ? "bg-red-600 text-white hover:bg-red-500 shadow-md shadow-red-500/20"
+                    : (input.trim() || selectedImageUrl || activeSelectedFile) && !isUploading
+                      ? "bg-blue-600 text-white hover:bg-blue-500 shadow-md shadow-blue-500/20"
+                      : "bg-white/5 text-gray-500 cursor-not-allowed"
                 }`}
               >
-                <ArrowUp size={18} strokeWidth={2.5} />
+                {isStreaming ? (
+                  <Square size={16} fill="currentColor" strokeWidth={0} />
+                ) : (
+                  <ArrowUp size={18} strokeWidth={2.5} />
+                )}
               </button>
             </div>
           </div>

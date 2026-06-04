@@ -324,6 +324,7 @@ export class DIContainer {
         this.getOutboxEventRepository(),
         this.getDescriptionPublisher(),
         this.getSummaryPublisher(),
+        this.getUnitOfWorkRepository(),
         this.getLogger(),
       );
     }

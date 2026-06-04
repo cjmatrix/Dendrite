@@ -117,6 +117,32 @@ export interface RemoveDocumentInputDTO {
   fileUrl: string;
 }
 
+export interface StreamQuickChatInputDTO {
+  userId: string;
+  chatId: string;
+  anchorMessageId: string;
+  highlightedText: string;
+  quickChatHistory: any[];
+}
+
+export interface UploadDocumentInputDTO {
+  userId: string;
+  chatId: string;
+  filePath: string;
+  fileName: string;
+}
+
+export interface UploadDocumentOutputDTO {
+  documentId: string;
+  fileName: string;
+  status: string;
+}
+
+export interface ValidateChatAccessInputDTO {
+  userId: string;
+  chatId: string;
+}
+
 
 
 export class ChatMapper {
