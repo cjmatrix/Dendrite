@@ -34,7 +34,7 @@ export function truncateToTokenLimit(
   text: string,
   maxTokens: number = 512
 ): string {
-  const maxChars = maxTokens * 4; // Reverse calculation
+  const maxChars = maxTokens * 4; 
   if (text.length <= maxChars) return text;
   return text.substring(0, maxChars) + "...";
 }

@@ -7,7 +7,7 @@ import {
   IToggleBanUserUseCase,
   IUnsuspendUserUseCase,
 } from "../../../application/admin/user/usecases/interfaces";
-import { UserManagementMapper } from "../../../application/admin/user/dtos/userManagement.dto";
+
 
 import { BaseController } from "../base/BaseController";
 import {
@@ -41,14 +41,7 @@ class UserController extends BaseController {
       sortOrder: sortOrder || "desc",
     };
 
-    const result = await this.findAllUser.execute(parsedQuery);
-
-    const output = UserManagementMapper.toPaginationOutput(
-      result.users,
-      result.total,
-      parsedQuery.page,
-      parsedQuery.limit,
-    );
+    const output = await this.findAllUser.execute(parsedQuery);
 
     this.sendSuccess(
       res,
@@ -62,9 +55,7 @@ class UserController extends BaseController {
     const { id } = req.params;
     const userId = id as string;
 
-    const user = await this.getUserDetails.execute(userId);
-
-    const output = UserManagementMapper.toUserDetailOutput(user);
+    const output = await this.getUserDetails.execute(userId);
 
     this.sendSuccess(
       res,

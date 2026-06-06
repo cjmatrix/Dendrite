@@ -1,12 +1,7 @@
-import { IUser } from "../../../../domain/auth/entities/User";
-import { AdminLoginInputDTO } from "../dtos/admin.dto";
+import { AdminLoginInputDTO, AdminUserOutputDTO, AdminAuthOutputDTO } from "../dtos/admin.dto";
 
 export interface IAdminLoginUseCase {
-  execute(input: AdminLoginInputDTO): Promise<{
-    user: IUser;
-    accessToken: string;
-    refreshToken: string;
-  }>;
+  execute(input: AdminLoginInputDTO): Promise<AdminAuthOutputDTO>;
 }
 
 export interface IAdminLogoutUseCase {
@@ -14,7 +9,7 @@ export interface IAdminLogoutUseCase {
 }
 
 export interface IAdminGetMeUseCase {
-  execute(adminId: string): Promise<IUser>;
+  execute(adminId: string): Promise<AdminUserOutputDTO>;
 }
 
 export interface IAdminRefreshUseCase {
@@ -23,3 +18,4 @@ export interface IAdminRefreshUseCase {
     refreshToken: string;
   }>;
 }
+

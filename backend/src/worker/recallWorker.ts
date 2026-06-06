@@ -23,11 +23,11 @@ const recallWorker = new Worker<RecallJobData>(
 );
 
 recallWorker.on("completed", (job) => {
-  console.log(`🔔 Recall Notification Job ${job.id} completed`);
+  console.log(` Recall Notification Job ${job.id} completed`);
 });
 
 recallWorker.on("failed", (job, err) => {
-  console.error(`🔔 Recall Notification Job ${job?.id} failed:`, err.message);
+  console.error(` Recall Notification Job ${job?.id} failed:`, err.message);
 });
 
 export default recallWorker;

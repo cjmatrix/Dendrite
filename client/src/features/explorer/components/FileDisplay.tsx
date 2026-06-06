@@ -1,27 +1,39 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../../../store/store';
-import { Folder, MessageSquare, ChevronRight, MessageCircle, FolderPlus, Edit, Trash, Check, Sparkles, Brain, Component, Database, Cpu, X } from 'lucide-react';
+import { Folder, MessageSquare, ChevronRight, MessageCircle, FolderPlus, Edit, Trash, Check, Sparkles, Brain, Component, Database, Cpu, X, Move } from 'lucide-react';
 import type { FileNode, FileType } from '../types/types';
 import { setActiveSidebarRootId, toggleExplorerModal } from '../store/explorerSlice';
 
 
 import { useFileItemMutations } from '../hooks/useFileItemMutations';
 import { useFileDisplayTree } from '../hooks/useFileDisplayTree';
+import { MoveItemModal } from './MoveItemModal';
 
 export default function FileDisplay({
   isModal = false,
   onSelect,
-  currentFolderId
+  currentFolderId,
+  onFolderChange,
+  showFoldersOnly = false,
+  excludeFolderId
 }: {
   isModal?: boolean,
   onSelect?: (node: FileNode) => void,
-  currentFolderId:string |undefined
+  currentFolderId?: string | null,
+  onFolderChange?: (folderId: string) => void,
+  showFoldersOnly?: boolean,
+  excludeFolderId?: string
 }) {
   const { folderId: routeFolderId } = useParams();
   const [localFolderId, setLocalFolderId] = useState<string | null>(currentFolderId || 'root');
 
- console.log(isModal)
+  useEffect(() => {
+    if (currentFolderId) {
+      setLocalFolderId(currentFolderId);
+    }
+  }, [currentFolderId]);
+
   const activeFolderId = isModal ? localFolderId : routeFolderId;
 
   const navigate = useNavigate();
@@ -37,6 +49,8 @@ export default function FileDisplay({
   const [isRenaming, setIsRenaming] = useState<string | null>(null);
   const [newItemName, setNewItemName] = useState("");
   const [renameItemName, setRenameItemName] = useState("");
+  const [isMoveOpen, setIsMoveOpen] = useState(false);
+  const [itemToMove, setItemToMove] = useState<FileNode | null>(null);
 
 
   const handleCreate = () => {
@@ -113,7 +127,9 @@ export default function FileDisplay({
                   <span
                     onClick={() => {
                       if (isModal) {
-                        setLocalFolderId(node.id === 'root' ? 'root' : node.id);
+                        const nextId = node.id === 'root' ? 'root' : node.id;
+                        setLocalFolderId(nextId);
+                        if (onFolderChange) onFolderChange(nextId);
                       } else {
                         navigate(node.id === 'root' ? '/explorer' : `/explorer/${node.id}`);
                       }
@@ -174,7 +190,13 @@ export default function FileDisplay({
         )}
 
         {currentFolder.children && currentFolder.children.length > 0 ? (
-          currentFolder.children.map(child => {
+          currentFolder.children
+            .filter(child => {
+              if (showFoldersOnly && child.type !== 'folder') return false;
+              if (excludeFolderId && child.id === excludeFolderId) return false;
+              return true;
+            })
+            .map(child => {
             const isFolder = child.type === 'folder';
 
             // Badge styling for system folders
@@ -203,8 +225,10 @@ export default function FileDisplay({
                 onClick={() => {
                   if (isBeingRenamed) return;
                   if (isFolder) {
-                    if (isModal) { setLocalFolderId(child.id); }
-                    else { navigate(`/explorer/${child.id}`); }
+                    if (isModal) {
+                      setLocalFolderId(child.id);
+                      if (onFolderChange) onFolderChange(child.id);
+                    } else { navigate(`/explorer/${child.id}`); }
                   } else {
                     if (isModal && onSelect) { onSelect(child); }
                     else if (isModal && !onSelect) { dispatch(toggleExplorerModal()); navigate(`/${child.id}`); }
@@ -286,6 +310,14 @@ export default function FileDisplay({
                     <Edit size={15} /> Rename
                   </button>
                 )}
+                {contextMenu.node.id !== "root" && !contextMenu.node.isSystemFolder && contextMenu.node.type === "chat" && (
+                  <button
+                    className="w-full text-left px-3 py-2 hover:bg-indigo-600 hover:text-white flex items-center gap-2 transition-colors"
+                    onClick={(e) => { e.stopPropagation(); setItemToMove(contextMenu.node); setIsMoveOpen(true); setContextMenu(null); }}
+                  >
+                    <Move size={15} /> Move
+                  </button>
+                )}
                 {contextMenu.node.id !== "root" && !contextMenu.node.isSystemFolder && (
                   <button className="w-full text-left px-3 py-2 hover:bg-red-500/20 hover:text-red-300 flex items-center gap-2 text-red-400 transition-colors" onClick={(e) => { e.stopPropagation(); handleDelete(); }}>
                     <Trash size={15} /> Delete
@@ -304,6 +336,24 @@ export default function FileDisplay({
             )}
           </div>
         </>
+      )}
+      {isMoveOpen && itemToMove && (
+        <MoveItemModal
+          isOpen={isMoveOpen}
+          onClose={() => { setIsMoveOpen(false); setItemToMove(null); }}
+          itemToMove={{
+            id: itemToMove.id,
+            name: itemToMove.name,
+            type: itemToMove.type,
+          }}
+          onMove={(destFolderId) => {
+            if (itemToMove.type === "folder") {
+              updateFolder({ folderId: itemToMove.id, updates: { parentId: destFolderId } });
+            } else {
+              updateChat({ chatId: itemToMove.id, updates: { folderId: destFolderId } });
+            }
+          }}
+        />
       )}
     </div>
   );

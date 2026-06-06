@@ -2,8 +2,7 @@ import { IUserRepository } from "../../../domain/auth/repositories/IUserReposito
 import { IAuthService } from "../../../domain/auth/services/IAuthService";
 import { ICacheService } from "../../../application/common/ports/ICacheService";
 import { AppError } from "../../../utils/AppError";
-import { LoginInputDTO } from "../dtos/auth.dto";
-import { IUser } from "../../../domain/auth/entities/User";
+import { LoginInputDTO, AuthMapper, AuthOutputDTO } from "../dtos/auth.dto";
 import { injectable, inject } from "tsyringe";
 import { ILoginUserUseCase } from "./interfaces";
 
@@ -15,7 +14,7 @@ export class LoginUser implements ILoginUserUseCase {
     @inject("ICacheService") private cacheService: ICacheService
   ) {}
 
-  async execute(userData: LoginInputDTO): Promise<{ user: IUser; accessToken: string; refreshToken: string }> {
+  async execute(userData: LoginInputDTO): Promise<AuthOutputDTO> {
     const { email, password } = userData;
 
     const user = await this.userRepository.findByEmail(email);
@@ -52,6 +51,7 @@ export class LoginUser implements ILoginUserUseCase {
     
     await this.cacheService.set(`refresh_token:${refreshToken}`, user._id.toString(), { EX: 604800 });
 
-    return { user, accessToken, refreshToken };
+    return AuthMapper.toAuthOutput(user, accessToken, refreshToken);
   }
 }
+

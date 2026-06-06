@@ -1,11 +1,11 @@
-import { IUser } from "../../../../domain/auth/entities/User";
+import { UserPaginationOutputDTO, AdminUserDetailOutputDTO } from "../dtos/userManagement.dto";
 
 export interface IFindAllUserUseCase {
-  execute(query: any): Promise<{ users: IUser[]; total: number }>;
+  execute(query: any): Promise<UserPaginationOutputDTO>;
 }
 
 export interface IGetUserDetailsUseCase {
-  execute(userId: string): Promise<IUser>;
+  execute(userId: string): Promise<AdminUserDetailOutputDTO>;
 }
 
 export interface ISuspendUserUseCase {
@@ -19,3 +19,4 @@ export interface IUnsuspendUserUseCase {
 export interface IToggleBanUserUseCase {
   execute(userId: string): Promise<string>;
 }
+

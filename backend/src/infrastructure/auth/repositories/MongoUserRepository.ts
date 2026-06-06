@@ -3,45 +3,54 @@ import { IUserRepository } from "../../../domain/auth/repositories/IUserReposito
 import { IUser } from "../../../domain/auth/entities/User";
 import { injectable } from "tsyringe";
 import { transactionStorage } from "../../shared/MongooseUnitOfWork";
-import { MongooseBaseRepository } from "../../shared/MongooseBaseRepository";
+import { MongooseBaseRepository } from "../../shared/BaseRepository";
 
 @injectable()
-export class MongoUserRepository extends MongooseBaseRepository<IUser> implements  IUserRepository {
+export class MongoUserRepository
+  extends MongooseBaseRepository<IUser>
+  implements IUserRepository
+{
   constructor() {
-   
-    super(User); 
+    super(User);
   }
 
-
   async findByEmail(email: string): Promise<IUser | null> {
-    const doc = await this.model.findOne({ email }).session(this.getSession()).lean();
+    const doc = await this.model
+      .findOne({ email })
+      .session(this.getSession())
+      .lean();
     return doc ? this.mapToDomain(doc) : null;
   }
 
   async findByIdSafe(id: string): Promise<IUser | null> {
-    const doc = await this.model.findById(id).session(this.getSession()).select("-password").lean();
+    const doc = await this.model
+      .findById(id)
+      .session(this.getSession())
+      .select("-password")
+      .lean();
     return doc ? this.mapToDomain(doc) : null;
   }
 
-  async findAll(filter: any = {}, options?: { limit?: number; skip?: number; sort?: any }): Promise<IUser[]> {
-  const activeSession = this.getSession(); 
+  async findAll(
+    filter: any = {},
+    options?: { limit?: number; skip?: number; sort?: any },
+  ): Promise<IUser[]> {
+    const activeSession = this.getSession();
 
-  let query = this.model.find(filter).session(activeSession); 
-  
-  if (options?.sort) {
-    query = query.sort(options.sort);
+    let query = this.model.find(filter).session(activeSession);
+
+    if (options?.sort) {
+      query = query.sort(options.sort);
+    }
+
+    if (options?.skip !== undefined) {
+      query = query.skip(options.skip);
+    }
+    if (options?.limit !== undefined) {
+      query = query.limit(options.limit);
+    }
+    const docs = await query.lean();
+
+    return docs.map((doc) => this.mapToDomain(doc));
   }
-
-  
-  if (options?.skip !== undefined) {
-    query = query.skip(options.skip);
-  }
-  if (options?.limit !== undefined) {
-    query = query.limit(options.limit);
-  }
-  const docs = await query.lean();
-
-  return docs.map(doc => this.mapToDomain(doc));
-}
-
 }

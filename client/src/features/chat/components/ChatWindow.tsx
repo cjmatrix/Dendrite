@@ -14,7 +14,6 @@ import {
   Sparkles,
   ChevronDown,
   Check,
-  StickyNote,
   Folder,
   Home,
   ChevronRight,
@@ -30,13 +29,14 @@ import "../styles/markdown.css";
 import { useAppSelector, useAppDispatch } from "../../../store/store";
 import { setActiveSidebarRootId, toggleRecallOverlay } from "../../explorer/store/explorerSlice";
 import DendritesLogo from "../../../components/DendritesLogo";
-import { MessageContent } from "./MessageContent";
-import { StreamingContext } from "../../../providers/StreamingContext";
 import { QuickChatModal } from "./QuickChatModal.tsx";
 import { DocumentBrowser } from "./DocumentBrowser";
 import FileDisplay from "../../explorer/components/FileDisplay";
 import RecallPage from "../../recall/components/RecallPage";
 
+import { MessageBubble } from "./MessageBubble";
+import { VirtuosoHeader } from "./VirtuosoHeader";
+import { VirtuosoFooter } from "./VirtuosoFooter";
 
 import { useChatDetails, useChatMessages } from "../hooks/useChatQueries";
 import { useSendMessage } from "../hooks/useSendMessage";
@@ -46,260 +46,11 @@ import { useInheritContext } from "../hooks/useInheritContext";
 import { useTextSelection } from "../hooks/useTextSelection";
 import { useDocumentHistory } from "../hooks/useDocumentHistory";
 import { useFlattenedMessages, useBreadcrumbs } from "../hooks/useChatHelpers";
-import { useDebouncedValue } from "../../../components/common/useDebouncedValue.ts";
 import { useQueryClient } from "@tanstack/react-query";
 
 
 import type { Message } from "../types/Message";
 
-
-const clampText = (text: string, maxLines: number = 3) => {
-  const lines = text.split("\n");
-  const isClamped = lines.length > maxLines;
-  const clampedLines = lines.slice(0, maxLines).join("\n");
-  return { clampedLines, isClamped, fullText: text };
-};
-
-const MessageBubble = React.memo(
-  ({
-    msg,
-    onOpenSubChat,
-    onCreateRecall,
-    fileAttachment,
-    onOpenSplitView,
-  }: {
-    msg: Message;
-    onOpenSubChat: (msgId: string, subChatId: string) => void;
-    onCreateRecall: (msgId: string) => void;
-    fileAttachment?: { fileUrl: string; fileName: string };
-    onOpenSplitView: (fileUrl: string, fileName: string) => void;
-  }) => {
-    const isUser = msg.role === "user";
-    const time = new Date().toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-    const [isExpanded, setIsExpanded] = useState(false);
-    const { clampedLines, isClamped, fullText } = clampText(msg.content, 3);
-
-    return (
-      <div
-        data-message-id={msg._id}
-        className={` flex w-full message-bubble-container group/bubble relative ${isUser ? "justify-end" : "justify-start"}`}
-      >
-        {isUser ? (
-          <div className="flex flex-col items-end max-w-[85%] md:max-w-[70%] relative">
-            <div className="flex items-center gap-2 mb-1.5 px-1">
-              <span className="text-[12px] text-gray-500 font-medium">
-                {time}
-              </span>
-              <span className="text-[13px] font-semibold text-gray-300">
-                Researcher
-              </span>
-            </div>
-            <div className="px-5 py-3.5 rounded-2xl rounded-tr-sm bg-(--theme-bg-surface) border border-zinc-800 text-[16px] leading-relaxed whitespace-pre-wrap text-gray-200 shadow-sm">
-              {msg.imageUrl && (
-                <img
-                  src={msg.imageUrl}
-                  alt="Uploaded"
-                  className="mb-3 rounded-xl border border-zinc-700 max-h-72 object-contain"
-                />
-              )}
-              <div className="relative">
-                {isExpanded ? fullText : clampedLines}
-                {isClamped && !isExpanded && (
-                  <span className="text-gray-400">...</span>
-                )}
-              </div>
-            </div>
-            {isClamped && (
-              <button
-                onClick={() => setIsExpanded(!isExpanded)}
-                className="mt-2 p-1.5 rounded-lg bg-zinc-800/50 text-gray-400 hover:bg-zinc-700 hover:text-gray-200 transition-colors"
-                title={isExpanded ? "Collapse message" : "Expand message"}
-              >
-                <ArrowUp
-                  size={16}
-                  className={`transition-transform ${isExpanded ? "rotate-180" : ""}`}
-                />
-              </button>
-            )}
-
-            {fileAttachment && (
-              <div className="mt-2 inline-flex items-center gap-2 rounded-xl border border-zinc-700 bg-zinc-900/70 px-3 py-2 backdrop-blur-sm">
-                <span className="text-xs text-zinc-300 font-medium">
-                  📎 File uploaded: {fileAttachment.fileName}
-                </span>
-                <button
-                  onClick={() =>
-                    onOpenSplitView(
-                      fileAttachment.fileUrl,
-                      fileAttachment.fileName,
-                    )
-                  }
-                  className="text-xs text-blue-400 hover:text-blue-300 font-semibold px-2 py-1 hover:bg-blue-500/10 rounded transition-colors border border-blue-500/30 hover:border-blue-400/50"
-                  title="Open file in split-screen view"
-                >
-                  View Split
-                </button>
-                <a
-                  href={fileAttachment.fileUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-xs text-gray-400 hover:text-gray-300 font-medium"
-                >
-                  Open
-                </a>
-              </div>
-            )}
-
-            {/* Sticky Notes for User Message */}
-            {msg.hasSubChat &&
-              msg.subChats?.map((sc) => (
-                <button
-                  key={sc.subChatId}
-                  onClick={() => onOpenSubChat(msg._id!, sc.subChatId)}
-                  className="absolute left-full ml-4 p-1.5 rounded-lg bg-blue-600/20 border border-blue-500/30 text-blue-400 hover:bg-blue-600 hover:text-white transition-all group shadow-xl backdrop-blur-sm z-10"
-                  style={{ top: sc.relY }}
-                  title="View sticky deep-dive"
-                >
-                  <StickyNote
-                    size={14}
-                    className="group-hover:scale-110 transition-transform"
-                  />
-                </button>
-              ))}
-            {/* Recall Button for User Message */}
-            <div className="absolute top-0 right-full mr-2 opacity-0 group-hover/bubble:opacity-100 transition-opacity">
-              <button
-                onClick={() => onCreateRecall(msg._id!)}
-                className="p-1.5 rounded-lg bg-zinc-800 text-purple-400 hover:bg-purple-600 hover:text-white transition-colors"
-                title="Save as Recall Card"
-              >
-                <Brain size={14} />
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="flex w-full gap-4 max-w-[95%] md:max-w-full group/bubble relative">
-            <DendritesLogo className="mt-1 hidden sm:flex shrink-0" />
-
-            <div className="flex-1 flex flex-col min-w-0 relative">
-              <div className="flex items-center gap-2 mb-1.5">
-                <span className="text-[13px] font-semibold text-gray-200">
-                  AI ASSISTANT
-                </span>
-                <span className="text-[12px] text-gray-500 font-medium">
-                  {time}
-                </span>
-              </div>
-              <MessageContent content={msg.content} />
-
-              {/* Sticky Note Icons */}
-              {msg.hasSubChat &&
-                msg.subChats?.map((sc) => (
-                  <button
-                    key={sc.subChatId}
-                    onClick={() => onOpenSubChat(msg._id!, sc.subChatId)}
-                    className="absolute right-full mr-4 p-1.5 rounded-lg bg-blue-600/20 border border-blue-500/30 text-blue-400 hover:bg-blue-600 hover:text-white transition-all group shadow-xl backdrop-blur-sm z-10"
-                    style={{ top: sc.relY }}
-                    title="View sticky deep-dive"
-                  >
-                    <StickyNote
-                      size={14}
-                      className="group-hover:scale-110 transition-transform"
-                    />
-                  </button>
-                ))}
-
-              {/* Recall Button for AI Message */}
-              <div className="absolute top-0 left-full ml-2 opacity-0 group-hover/bubble:opacity-100 transition-opacity">
-                <button
-                  onClick={() => onCreateRecall(msg._id!)}
-                  className="p-1.5 rounded-lg bg-zinc-800 text-purple-400 hover:bg-purple-600 hover:text-white transition-colors shadow-md"
-                  title="Save as Recall Card"
-                >
-                  <Brain size={14} />
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  },
-);
-
-const VirtuosoHeader = ({ context }: any) => {
-  const { isFetchingNextPage } = context;
-  return (
-    <div className="h-20 flex items-center justify-center">
-      {isFetchingNextPage && (
-        <div className="py-4 text-center text-sm font-medium text-gray-500 flex items-center gap-2">
-          <div className="w-4 h-4 rounded-full border-2 border-gray-500 border-t-transparent animate-spin" />
-          Loading history...
-        </div>
-      )}
-    </div>
-  );
-};
-
-const VirtuosoFooter = ({ context }: any) => {
-  const { isStreaming, streamingText } = context;
-  return (
-    <div
-      className={` ${isStreaming ? "pb-[80vh]" : "pb-32 "} ${isStreaming ? "md:pb-[80vh]" : "pb-32 "} max-w-4xl mx-auto w-full px-4 md:px-8 `}
-    >
-      {/* Streaming response */}
-      {streamingText && (
-        <div className="flex w-full gap-4 max-w-[95%] md:max-w-[85%] streaming-bubble mt-6">
-          <DendritesLogo
-            isLoading={true}
-            className="mt-1 hidden sm:flex shrink-0"
-          />
-          <div className="flex-1 flex flex-col min-w-0">
-            <div className="flex items-center gap-2 mb-1.5">
-              <span className="text-[13px] font-semibold text-gray-200 uppercase tracking-wider">
-                Dendrites AI
-              </span>
-            </div>
-            <div className="markdown-body text-[16px] leading-relaxed text-gray-300 w-full overflow-hidden">
-              <StreamingContext.Provider value={true}>
-                <MessageContent content={streamingText} />
-              </StreamingContext.Provider>
-              <span className="inline-block w-2 h-4 bg-blue-400 ml-1 rounded-sm streaming-cursor align-middle" />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Typing indicator */}
-      {isStreaming && !streamingText && (
-        <div className="flex w-full gap-4 max-w-[95%] md:max-w-[85%] streaming-bubble mt-6">
-          <DendritesLogo
-            isLoading={true}
-            className="mt-1 hidden sm:flex shrink-0"
-          />
-          <div className="flex-1 flex flex-col justify-center">
-            <div className="flex items-center gap-3">
-              <span className="text-[13px] font-bold text-gray-300 tracking-widest uppercase">
-                Thinking
-              </span>
-              <span className="flex gap-1.5">
-                <span className="w-1 h-1 bg-blue-400 rounded-full animate-bounce [animation-delay:-0.3s]" />
-                <span className="w-1 h-1 bg-blue-400 rounded-full animate-bounce [animation-delay:-0.15s]" />
-                <span className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" />
-              </span>
-            </div>
-            <span className="text-[11px] text-gray-500 font-medium italic mt-0.5">
-              Mapping neural pathways...
-            </span>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
 
 interface ExternalSelectionAction {
   type: "ask" | "quick";
@@ -438,8 +189,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     setIsShowingBrowser,
     removeDocument,
   } = useDocumentHistory(id);
-
-  const debouncedStreamingText = useDebouncedValue(streamingText, 50);
 
   
   useEffect(() => {
@@ -820,7 +569,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             context={{
               isFetchingNextPage,
               isStreaming,
-              streamingText: debouncedStreamingText,
+              streamingText: streamingText,
             }}
             startReached={() => {
               if (hasNextPage && !isFetchingNextPage) fetchNextPage();

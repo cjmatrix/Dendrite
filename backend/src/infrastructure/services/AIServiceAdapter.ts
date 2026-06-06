@@ -1,11 +1,24 @@
-import { injectable } from "tsyringe";
+import { injectable, inject } from "tsyringe";
 import { IAIService } from "../../application/common/ports/IAIService";
+import { IMetricsService } from "../../application/common/ports/IMetricsService";
 import { AIService } from "../../services/AIService";
 
 @injectable()
 export class AIServiceAdapter implements IAIService {
-  async streamAIContent(contents: any[], model?: string): Promise<AsyncIterable<any>> {
-    return AIService.streamAIContent(contents, model);
+  constructor(
+    @inject("IMetricsService") private readonly metricsService: IMetricsService
+  ) {}
+
+  async streamAIContent(contents: any[], model?: string,signal?:AbortSignal): Promise<AsyncIterable<any>> {
+    const activeModel = model || "gemini-3-flash-preview";
+    try {
+      const stream = await AIService.streamAIContent(contents, model,signal);
+      this.metricsService.incrementAICall("success", activeModel,model==="gemini-3-flash-preview"?"main":"sub");
+      return stream;
+    } catch (error) {
+      this.metricsService.incrementAICall("failure", activeModel,model?"sub":"main");
+      throw error;
+    }
   }
 
   async getAnchorContext(chatId: string, anchorMessageId: string, messageRepo: any): Promise<any[]> {

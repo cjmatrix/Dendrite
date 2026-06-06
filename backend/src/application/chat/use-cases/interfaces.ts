@@ -83,3 +83,15 @@ export interface IUploadDocumentUseCase {
 export interface IValidateChatAccessUseCase {
   execute(input: ValidateChatAccessInputDTO): Promise<ChatOutputDTO>;
 }
+
+export interface StreamResult {
+  type: "text" | "metadata" | "error";
+  value: any;
+}
+
+export interface IStreamAndSaveChatUseCase {
+  execute(
+    params: any, 
+    signal: AbortSignal
+  ): AsyncGenerator<StreamResult>;
+}

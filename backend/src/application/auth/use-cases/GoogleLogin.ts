@@ -4,7 +4,7 @@ import { IAuthService } from "../../../domain/auth/services/IAuthService";
 import { ICacheService } from "../../../application/common/ports/ICacheService";
 import { IUnitOfWorkRepository } from "../../common/ports/IUnitOfWorkRepository";
 import { AppError } from "../../../utils/AppError";
-import { IUser } from "../../../domain/auth/entities/User";
+import { AuthMapper, AuthOutputDTO } from "../dtos/auth.dto";
 import { OAuth2Client } from "google-auth-library";
 import { v4 as uuidv4 } from "uuid";
 import { injectable, inject } from "tsyringe";
@@ -27,7 +27,7 @@ export class GoogleLogin implements IGoogleLoginUseCase {
 
   async execute(
     idToken: string,
-  ): Promise<{ user: IUser; accessToken: string; refreshToken: string }> {
+  ): Promise<AuthOutputDTO> {
     let payload;
     try {
       const ticket = await this.googleClient.verifyIdToken({
@@ -111,6 +111,7 @@ export class GoogleLogin implements IGoogleLoginUseCase {
       { EX: 604800 },
     );
 
-    return { user, accessToken, refreshToken };
+    return AuthMapper.toAuthOutput(user, accessToken, refreshToken);
   }
 }
+

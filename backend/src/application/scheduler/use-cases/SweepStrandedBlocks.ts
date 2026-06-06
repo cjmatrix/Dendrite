@@ -1,9 +1,12 @@
+import { injectable, inject } from 'tsyringe';
 import { ICodeBlockRepository } from '../../../domain/chat/repositories/ICodeBlockRepository';
+import { IDescriptionPublisher } from '../../common/ports/IDescriptionPublisher';
 
+@injectable()
 export class SweepStrandedBlocks {
   constructor(
-    private codeBlockRepository: ICodeBlockRepository,
-    private queueAddFunction: (payload: any[]) => Promise<void>
+    @inject("ICodeBlockRepository") private codeBlockRepository: ICodeBlockRepository,
+    @inject("IDescriptionPublisher") private descriptionPublisher: IDescriptionPublisher
   ) {}
 
   async execute() {
@@ -25,7 +28,7 @@ export class SweepStrandedBlocks {
       hash: b.hash,
     }));
 
-    await this.queueAddFunction(queuePayload);
+    await this.descriptionPublisher.publish(queuePayload);
     console.log(`[Description Sweeper] Re-queued ${queuePayload.length} stranded blocks successfully!`);
   }
 }

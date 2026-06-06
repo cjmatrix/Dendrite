@@ -1,7 +1,7 @@
 import { inject, injectable } from "tsyringe";
 import { IUserRepository } from "../../../../domain/auth/repositories/IUserRepository";
 import { AppError } from "../../../../utils/AppError";
-import { IUser } from "../../../../domain/auth/entities/User";
+import { AdminAuthMapper, AdminUserOutputDTO } from "../dtos/admin.dto";
 import { IAdminGetMeUseCase } from "./interfaces";
 
 @injectable()
@@ -10,7 +10,7 @@ export class AdminGetMeUseCase implements IAdminGetMeUseCase {
     @inject("IUserRepository") private userRepository: IUserRepository
   ) {}
 
-  async execute(adminId: string): Promise<IUser> {
+  async execute(adminId: string): Promise<AdminUserOutputDTO> {
     const user = await this.userRepository.findById(adminId);
     if (!user) {
       throw new AppError("Admin not found", 404);
@@ -20,6 +20,7 @@ export class AdminGetMeUseCase implements IAdminGetMeUseCase {
       throw new AppError("Access denied: Not an admin", 403);
     }
 
-    return user;
+    return AdminAuthMapper.toUserOutput(user);
   }
 }
+

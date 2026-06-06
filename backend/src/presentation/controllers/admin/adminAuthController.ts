@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { BaseController } from "../base/BaseController";
 import { AppError } from "../../../utils/AppError";
+import { setAuthCookies, clearAuthCookies } from "../../../utils/cookieUtils";
 import { inject, injectable } from "tsyringe";
 import {
   IAdminGetMeUseCase,
@@ -8,20 +9,14 @@ import {
   IAdminLogoutUseCase,
   IAdminRefreshUseCase,
 } from "../../../application/admin/adminAuth/usecases/interfaces";
-import { AdminAuthMapper } from "../../../application/admin/adminAuth/dtos/admin.dto";
+
 import { container } from "tsyringe";
 import {
   ADMIN_AUTH_MESSAGES,
   HTTP_STATUS,
 } from "../../constants/authController.constants";
 
-const isProduction = process.env.NODE_ENV === "production";
 
-const cookieOptions = {
-  httpOnly: true,
-  secure: isProduction,
-  sameSite: "strict" as const,
-};
 
 @injectable()
 export class AdminAuthController extends BaseController {
@@ -41,22 +36,9 @@ export class AdminAuthController extends BaseController {
   public login = async (req: Request, res: Response): Promise<void> => {
     try {
       const validatedInput = req.body;
-      const rawResult = await this.adminLoginUseCase.execute(validatedInput);
+      const output = await this.adminLoginUseCase.execute(validatedInput);
 
-      const output = AdminAuthMapper.toAuthOutput(
-        rawResult.user,
-        rawResult.accessToken,
-        rawResult.refreshToken,
-      );
-
-      res.cookie("adminAccessToken", output.accessToken, {
-        ...cookieOptions,
-        maxAge: 15 * 60 * 1000,
-      });
-      res.cookie("adminRefreshToken", output.refreshToken, {
-        ...cookieOptions,
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-      });
+      setAuthCookies(res, { accessToken: output.accessToken, refreshToken: output.refreshToken }, true);
 
       this.sendSuccess(
         res,
@@ -76,8 +58,7 @@ export class AdminAuthController extends BaseController {
         await this.adminLogoutUseCase.execute(refreshToken);
       }
 
-      res.clearCookie("adminAccessToken", cookieOptions);
-      res.clearCookie("adminRefreshToken", cookieOptions);
+      clearAuthCookies(res, true);
 
       this.sendSuccess(
         res,
@@ -103,21 +84,13 @@ export class AdminAuthController extends BaseController {
       const { accessToken, refreshToken: newRefreshToken } =
         await this.adminRefreshUseCase.execute(refreshToken);
 
-      res.cookie("adminAccessToken", accessToken, {
-        ...cookieOptions,
-        maxAge: 15 * 60 * 1000,
-      });
-      res.cookie("adminRefreshToken", newRefreshToken, {
-        ...cookieOptions,
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-      });
+      setAuthCookies(res, { accessToken, refreshToken: newRefreshToken }, true);
 
       res
         .status(HTTP_STATUS.OK)
         .json({ message: ADMIN_AUTH_MESSAGES.TOKEN_REFRESHED });
     } catch (error) {
-      res.clearCookie("adminAccessToken", cookieOptions);
-      res.clearCookie("adminRefreshToken", cookieOptions);
+      clearAuthCookies(res, true);
       this.sendError(res, error);
     }
   };
@@ -125,8 +98,8 @@ export class AdminAuthController extends BaseController {
   public getMe = async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
-      const user = await this.adminGetMeUseCase.execute(userId);
-      this.sendSuccess(res, AdminAuthMapper.toUserOutput(user));
+      const userOutput = await this.adminGetMeUseCase.execute(userId);
+      this.sendSuccess(res, userOutput);
     } catch (error) {
       this.sendError(res, error);
     }

@@ -17,6 +17,8 @@ import { BullMQSummaryPublisher } from '../../../infrastructure/shared/publisher
 import { ISummaryPublisher } from '../../../application/common/ports/ISummaryPublisher';
 import { WinstonLoggerAdapter } from '../../../infrastructure/logger/WinstonLoggerAdapter';
 import { ILogger } from '../../../application/common/ports/ILogger';
+import { IMetricsService } from '../../../application/common/ports/IMetricsService';
+import { PrometheusMetricsService } from '../../../infrastructure/monitoring/PrometheusMetricsService';
 
 import { CreateFolder } from '../../../application/folder/use-cases/CreateFolder';
 import { GetFolders } from '../../../application/folder/use-cases/GetFolders';
@@ -78,6 +80,7 @@ export class DIContainer {
   private static descriptionPublisher: BullMQDescriptionPublisher;
   private static summaryPublisher: BullMQSummaryPublisher;
   private static logger: ILogger;
+  private static metricsService: IMetricsService;
 
   // Folder Use Cases
   private static createFolderUseCase: CreateFolder;
@@ -450,6 +453,13 @@ export class DIContainer {
       this.logger = new WinstonLoggerAdapter("Dentrites");
     }
     return this.logger;
+  }
+
+  static getMetricsService(): IMetricsService {
+    if (!this.metricsService) {
+      this.metricsService = new PrometheusMetricsService();
+    }
+    return this.metricsService;
   }
 
   static getSendOtpUseCase(): SendOTP {

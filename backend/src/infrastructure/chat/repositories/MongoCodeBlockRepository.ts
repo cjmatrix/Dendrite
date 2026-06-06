@@ -1,24 +1,49 @@
-import { ICodeBlockRepository } from '../../../domain/chat/repositories/ICodeBlockRepository';
-import { CodeBlock } from '../models/MongoCodeBlockModel';
-import { MongooseBaseRepository } from '../../shared/MongooseBaseRepository';
-import { ICodeBlock } from '../../../domain/chat/entities/CodeBlock';
+import { ICodeBlockRepository } from "../../../domain/chat/repositories/ICodeBlockRepository";
+import { CodeBlock } from "../models/MongoCodeBlockModel";
+import { MongooseBaseRepository } from "../../shared/BaseRepository";
+import { ICodeBlock } from "../../../domain/chat/entities/CodeBlock";
 
-export class MongoCodeBlockRepository extends MongooseBaseRepository<ICodeBlock> implements ICodeBlockRepository {
+export class MongoCodeBlockRepository
+  extends MongooseBaseRepository<ICodeBlock>
+  implements ICodeBlockRepository
+{
   constructor() {
     super(CodeBlock);
   }
 
-  async findStrandedBlocks(limit: number, beforeDate: Date): Promise<ICodeBlock[]> {
-    const docs = await this.model.find({
-      description: "",
-      createdAt: { $lt: beforeDate },
-    }).limit(limit).lean();
+  async findStrandedBlocks(
+    limit: number,
+    beforeDate: Date,
+  ): Promise<ICodeBlock[]> {
+    const docs = await this.model
+      .find({
+        description: "",
+        needsDescription: true,
+        createdAt: { $lt: beforeDate },
+      })
+      .limit(limit)
+      .lean();
     return docs.map((doc: any) => this.mapToDomain(doc));
   }
 
   async findUndescribedByChatId(chatId: string): Promise<ICodeBlock[]> {
     const docs = await this.model.find({ chatId, description: "" }).lean();
     return docs.map((doc: any) => this.mapToDomain(doc));
+  }
+
+  async markUndescribedAsNeedingDescription(
+    chatId: string,
+    session?: any,
+  ): Promise<void> {
+    const activeSession = session || this.getSession();
+    const query = this.model.updateMany(
+      { chatId, description: "" },
+      { $set: { needsDescription: true } },
+    );
+    if (activeSession) {
+      query.session(activeSession);
+    }
+    await query;
   }
 
   async bulkUpdateDescriptions(updates: any[], session?: any): Promise<any> {
@@ -42,7 +67,9 @@ export class MongoCodeBlockRepository extends MongooseBaseRepository<ICodeBlock>
     } else {
       docs = await this.model.insertMany(blocks);
     }
-    return docs.map((doc: any) => this.mapToDomain(doc.toObject ? doc.toObject() : doc));
+    return docs.map((doc: any) =>
+      this.mapToDomain(doc.toObject ? doc.toObject() : doc),
+    );
   }
 
   async deleteByChatId(chatId: string, userId: string): Promise<void> {

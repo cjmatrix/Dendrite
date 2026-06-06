@@ -18,7 +18,7 @@ export class StreamQuickChat implements IStreamQuickChatUseCase {
   async execute(input: StreamQuickChatInputDTO): Promise<AsyncIterable<any>> {
     const { chatId, anchorMessageId, highlightedText, quickChatHistory } = input;
 
-    const recentHistory = (quickChatHistory || []).slice(-CONTEXT_WINDOW);
+    const recentHistory = (quickChatHistory || []).slice(-2);
 
     const backgroundContext = await this.aiService.getAnchorContext(
       chatId,

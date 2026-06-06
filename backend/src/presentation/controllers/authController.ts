@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { BaseController } from "./base/BaseController";
 import { AppError } from "../../utils/AppError";
+import { setAuthCookies, clearAuthCookies } from "../../utils/cookieUtils";
 import { injectable, inject } from "tsyringe";
 import {
   IGetMeUseCase,
@@ -14,19 +15,13 @@ import {
   IVerifyOtpUseCase,
 } from "../../application/auth/use-cases/interfaces";
 import { container } from "tsyringe";
-import { AuthMapper } from "../../application/auth/dtos/auth.dto";
+
 import {
   AUTH_MESSAGES,
   HTTP_STATUS,
 } from "../constants/authController.constants";
 
-const isProduction = process.env.NODE_ENV === "production";
 
-const cookieOptions = {
-  httpOnly: true,
-  secure: isProduction,
-  sameSite: "strict" as const,
-};
 
 @injectable()
 export class AuthController extends BaseController {
@@ -50,15 +45,13 @@ export class AuthController extends BaseController {
   public register = async (req: Request, res: Response): Promise<void> => {
     const { name, email, password } = req.body;
 
-    const rawResult = await this.registerUser.execute({
+    const outputUser = await this.registerUser.execute({
       name,
       email,
       password,
     });
 
     await this.sendOtpUseCase.execute(email);
-
-    const outputUser = AuthMapper.toUserOutput(rawResult.user);
 
     this.sendSuccess(
       res,
@@ -71,22 +64,9 @@ export class AuthController extends BaseController {
   public login = async (req: Request, res: Response): Promise<void> => {
     const validatedInput = req.body;
 
-    const rawResult = await this.loginUser.execute(validatedInput);
+    const output = await this.loginUser.execute(validatedInput);
 
-    const output = AuthMapper.toAuthOutput(
-      rawResult.user,
-      rawResult.accessToken,
-      rawResult.refreshToken,
-    );
-
-    res.cookie("accessToken", output.accessToken, {
-      ...cookieOptions,
-      maxAge: 15 * 60 * 1000,
-    });
-    res.cookie("refreshToken", output.refreshToken, {
-      ...cookieOptions,
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
+    setAuthCookies(res, { accessToken: output.accessToken, refreshToken: output.refreshToken });
 
     this.sendSuccess(res, output.user, HTTP_STATUS.OK, AUTH_MESSAGES.LOGGED_IN);
   };
@@ -105,21 +85,13 @@ export class AuthController extends BaseController {
         cookies.refreshToken,
       );
 
-      res.cookie("accessToken", accessToken, {
-        ...cookieOptions,
-        maxAge: 15 * 60 * 1000,
-      });
-      res.cookie("refreshToken", refreshToken, {
-        ...cookieOptions,
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-      });
+      setAuthCookies(res, { accessToken, refreshToken });
 
       res
         .status(HTTP_STATUS.OK)
         .json({ message: AUTH_MESSAGES.TOKEN_REFRESHED });
     } catch (err: any) {
-      res.clearCookie("accessToken", cookieOptions);
-      res.clearCookie("refreshToken", cookieOptions);
+      clearAuthCookies(res);
       this.sendError(res, err);
     }
   };
@@ -133,17 +105,14 @@ export class AuthController extends BaseController {
 
     await this.logoutUser.execute(cookies.refreshToken);
 
-    res.clearCookie("accessToken", cookieOptions);
-    res.clearCookie("refreshToken", cookieOptions);
+    clearAuthCookies(res);
     res.status(HTTP_STATUS.OK).json({ message: AUTH_MESSAGES.LOGGED_OUT });
   };
 
   public getMe = async (req: Request, res: Response): Promise<void> => {
     const userId = this.validateUserAuth(req);
 
-    const rawUser = await this.getMeUseCase.execute(userId);
-
-    const outputUser = AuthMapper.toUserOutput(rawUser);
+    const outputUser = await this.getMeUseCase.execute(userId);
 
     this.sendSuccess(res, outputUser);
   };
@@ -185,24 +154,11 @@ export class AuthController extends BaseController {
 
   public googleLogin = async (req: Request, res: Response): Promise<void> => {
     const validatedInput = req.body;
-    const rawResult = await this.googleLoginUseCase.execute(
+    const output = await this.googleLoginUseCase.execute(
       validatedInput.idToken,
     );
 
-    const output = AuthMapper.toAuthOutput(
-      rawResult.user,
-      rawResult.accessToken,
-      rawResult.refreshToken,
-    );
-
-    res.cookie("accessToken", output.accessToken, {
-      ...cookieOptions,
-      maxAge: 15 * 60 * 1000,
-    });
-    res.cookie("refreshToken", output.refreshToken, {
-      ...cookieOptions,
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
+    setAuthCookies(res, { accessToken: output.accessToken, refreshToken: output.refreshToken });
 
     this.sendSuccess(
       res,

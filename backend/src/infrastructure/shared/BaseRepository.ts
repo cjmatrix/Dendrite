@@ -1,12 +1,11 @@
 import { Model } from "mongoose";
-import { IBaseRepository } from "../../application/common/ports/IBaseRepository"
-import { transactionStorage } from "../shared/MongooseUnitOfWork";
+import { IBaseRepository } from "../../application/common/ports/IBaseRepository";
+import { transactionStorage } from "./MongooseUnitOfWork";
 
-
-export class MongooseBaseRepository<T extends { _id: string }> implements IBaseRepository<T> {
-  
+export class MongooseBaseRepository<
+  T extends { _id: string },
+> implements IBaseRepository<T> {
   constructor(protected model: Model<any>) {}
-
 
   protected getSession(): any {
     return transactionStorage.getStore() || undefined;

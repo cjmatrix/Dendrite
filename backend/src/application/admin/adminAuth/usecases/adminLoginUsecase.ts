@@ -3,8 +3,7 @@ import { IUserRepository } from "../../../../domain/auth/repositories/IUserRepos
 import { IAuthService } from "../../../../domain/auth/services/IAuthService";
 import { ICacheService } from "../../../../application/common/ports/ICacheService";
 import { AppError } from "../../../../utils/AppError";
-import { AdminLoginInputDTO } from "../dtos/admin.dto";
-import { IUser } from "../../../../domain/auth/entities/User";
+import { AdminLoginInputDTO, AdminAuthMapper, AdminAuthOutputDTO } from "../dtos/admin.dto";
 import { IAdminLoginUseCase } from "./interfaces";
 
 @injectable()
@@ -15,7 +14,7 @@ export class AdminLoginUseCase implements IAdminLoginUseCase {
     @inject("ICacheService") private cacheService: ICacheService
   ) {}
 
-  async execute(input: AdminLoginInputDTO): Promise<{ user: IUser; accessToken: string; refreshToken: string }> {
+  async execute(input: AdminLoginInputDTO): Promise<AdminAuthOutputDTO> {
     const { email, password } = input;
 
   
@@ -47,6 +46,6 @@ export class AdminLoginUseCase implements IAdminLoginUseCase {
     
     await this.cacheService.set(`refresh_token:${refreshToken}`, user._id.toString(), { EX: 604800 });
 
-    return { user, accessToken, refreshToken };
+    return AdminAuthMapper.toAuthOutput(user, accessToken, refreshToken);
   }
 }

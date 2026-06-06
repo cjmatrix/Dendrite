@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import type { FileNode, FileType } from "../types/types";
 import {
   Folder, ChevronDown, MessageSquare, Plus, FolderPlus, Check,
-  Edit, Trash, FileText, Image as ImageIcon, BookOpen, MessageCircle, GitBranch,
+  Edit, Trash, FileText, Image as ImageIcon, BookOpen, MessageCircle, GitBranch, Move,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { setActiveSidebarRootId } from "../store/explorerSlice";
@@ -11,6 +11,7 @@ import { useAppDispatch } from "../../../store/store";
 
 import { useFileItemMutations } from "../hooks/useFileItemMutations";
 import { FolderBehaviorModal } from "./FolderBehaviorModal";
+import { MoveItemModal } from "./MoveItemModal";
 
 interface FileItemProps {
   node: FileNode;
@@ -21,6 +22,7 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
   const [isCreating, setIsCreating] = useState<FileType | null>(null);
   const [isRenaming, setIsRenaming] = useState<FileType | null>(null);
   const [isBehaviorOpen, setIsBehaviorOpen] = useState(false);
+  const [isMoveOpen, setIsMoveOpen] = useState(false);
   const [newItemName, setNewItemName] = useState("");
   const [renameItemName, setRenameItemName] = useState("");
   const navigate = useNavigate();
@@ -290,6 +292,14 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
             </button>
             {node.id !== "root" && !node.isSystemFolder && (
               <button
+                className="w-full text-left px-3 py-1.5 hover:bg-cyan-600 hover:text-white flex items-center gap-2 transition-colors"
+                onClick={(e) => { e.stopPropagation(); setIsMoveOpen(true); setContextMenu(null); }}
+              >
+                <Move size={14} /> Move
+              </button>
+            )}
+            {node.id !== "root" && !node.isSystemFolder && (
+              <button
                 className="w-full text-left px-3 py-2 hover:bg-red-500/20 hover:text-red-300 flex items-center gap-2 text-red-400 transition-colors"
                 onClick={(e) => { e.stopPropagation(); setContextMenu(null); handleDelete(); }}
               >
@@ -304,6 +314,24 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
           isOpen={isBehaviorOpen}
           onClose={() => setIsBehaviorOpen(false)}
           folder={node}
+        />
+      )}
+      {isMoveOpen && (
+        <MoveItemModal
+          isOpen={isMoveOpen}
+          onClose={() => setIsMoveOpen(false)}
+          itemToMove={{
+            id: node.id,
+            name: node.name,
+            type: node.type,
+          }}
+          onMove={(destFolderId) => {
+            if (isFolder) {
+              updateFolder({ folderId: node.id, updates: { parentId: destFolderId } });
+            } else {
+              updateChat({ chatId: node.id, updates: { folderId: destFolderId } });
+            }
+          }}
         />
       )}
     </div>

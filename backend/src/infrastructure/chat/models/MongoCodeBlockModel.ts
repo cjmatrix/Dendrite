@@ -7,7 +7,8 @@ export interface ICodeBlock extends Document {
   code: string;
   language: string;
   description: string;
-  hash: string; // SHA-256 of the comment-stripped, normalized code
+  hash: string; // SHA-256 
+  needsDescription: boolean;
   createdAt: Date;
 }
 
@@ -18,6 +19,7 @@ const codeBlockSchema = new Schema<ICodeBlock>({
   language: { type: String, default: "text" },
   description: { type: String, default: "" },
   hash: { type: String, required: true, index: true },
+  needsDescription: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
 });
 

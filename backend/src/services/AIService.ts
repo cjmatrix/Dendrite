@@ -2,6 +2,7 @@ import { redisConnection } from "../config/redis";
 import { getTavilySearchContext } from "./searchCacheService";
 import { getRotatedAI, rotateAIKey, aiInstances, systemInstruction } from "../config/AIConfig";
 import CONTEXT_WINDOW from "../constants/contextWindow";
+import { estimateTokenCount } from "../utils/tokenCounter";
 
 export class AIService {
  
@@ -73,6 +74,7 @@ User query: "${queryText}"`;
   static async streamAIContent(
     contents: any[],
     model: string = "gemini-3-flash-preview",
+    signal?:AbortSignal
   ) {
     let stream;
     let attempts = 0;
@@ -148,32 +150,40 @@ User query: "${queryText}"`;
     historicalContext: string,
     highlightedText: string,
   ): string {
+    console.log(estimateTokenCount(historicalContext));
+
     return `You are a surgical AI Assistant specialized in analyzing highlights within a side-modal.
     IMPORTANT- Use this format by default First breifly answer what user asked in one sentence and then format for all answers: [Concept] - [1-sentence definition]. Key points: [bullet points].YTou can check USER'S Query to see if user explitly asked in detail explanation you could provide detail explanation
      When providing code, always use fenced code blocks with the language specified
      IF User asked detailed explanation or user says user doesnt understand the concept Use below Rules that i given
 - Use only short, minimal inline comments in code. Do NOT use JSDoc, @param, @returns, or block comment annotations
 - For inline code references, use single backticks
-- Keep responses clear, well-structured, and concise
 - When emphasizing important information, warnings, or tips, use GitHub-style Markdown callouts (e.g., \`> [!NOTE]\`, \`> [!TIP]\`, \`> [!IMPORTANT]\`, \`> [!WARNING]\`, \`> [!CAUTION]\`)
 - Separate callouts with blank lines for proper rendering
 - For math and chemistry equations, use KaTeX formatting. Use \`$$\` for block equations and \`$\` for inline equations
 - IMPORTANT ! Generate Appropritate emojis for titles and subtitles according to the context
-- When the user asks for explanation or teaching, 
--  When the user asks for  explanation or teaching and [IMPORTANT] user query needs visual explanation then only generate generate a PlantUML diagram.
+
+[Rules for plantuml diagram below]
+ - When the user asks for explanation or teaching,  and user query needs visual explanation then only generate a PlantUML diagram.
+ Dont make complex UML diagrams if user not asked for explicitly create SIMPLE Diagrams if user query need complex or flexible to explain user query draw flexible diagrams.
+ [sometimes i get synta x error like "assumed to be activity daigram" like that keep that in mind i dont syntax error ]
+ Never connect quoted labels directly.
+ Never mix rectangle/node/component/participant.
  Use the code block: \\\`\\\`\\\`plantuml ... \\\`\\\`\\\`.
  Always start with '@startuml' and end with '@enduml'.
- Use direction of drawing or flow according user query
+ IMPORTANT Use direction of drawing or flow means is it LEFT to RIGHT or TOp to BOTTOM determine by user Query/message and determine BEST direction
  Use 'skinparam' to ensure a professional look:
+    skinparam backgroundcolor transparent
     skinparam shadowing false
     skinparam monochrome true
     skinparam packageStyle rectangle
- Keep labels concise (max 5-7 words per node).
+    CRITICAL: In Sequence Diagrams, use only -> for solid arrows or --> for dotted arrows. Never use -- or ->> as they may cause "Illegal sequence arrow" errors.
+ Keep labels concise (max 5-7 words per node) and DO NOT OVERLAPS Labels it should be readable.
  If user explicitly asked for step by step explanation generate mutiple diagrams so that user could understand the concept 
  IMPORTANT Background must be transparent for plantuml
  
 ---
-HISTORICAL CONTEXT (for background only):
+HISTORICAL CONTEXT use historical context to answer user questions(for background only):
 ${historicalContext}
 
 USER'S HIGHLIGHT (your primary focus):
@@ -181,7 +191,7 @@ USER'S HIGHLIGHT (your primary focus):
 ---
 RESPONSE GUIDELINES:
 - DEFAULT:IMPORTANT Be brief. Use crisp bullet points and short, punchy sentences and give example according to the context..
-- ONLY provide an expansive/detailed explanation if the user specifically asks to explanation in detailed manner or any other specific style according to user query".
+- DO NOT PROVIDE DETAILED EXPLANATION. ONLY provide an expansive/detailed explanation if the user specifically asks to explanation in detail".
 .`;
   }
 

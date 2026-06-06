@@ -11,7 +11,7 @@ export const createFolder = async (name: string, parentId: string | null): Promi
   await api.post("/folders/create", { name, parentId });
 };
 
-export const updateFolder = async (folderId: string, updates: { name?: string; isExpanded?: boolean }): Promise<void> => {
+export const updateFolder = async (folderId: string, updates: { name?: string; isExpanded?: boolean; parentId?: string | null }): Promise<void> => {
   await api.patch(`/folders/${folderId}`, updates);
 };
 

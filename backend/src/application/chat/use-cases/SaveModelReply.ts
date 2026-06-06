@@ -158,6 +158,8 @@ export class SaveModelReply implements ISaveModelReplyUseCase {
       }
 
       if (messageToCompress.length > 0) {
+        await this.codeBlockRepository.markUndescribedAsNeedingDescription(chatId);
+
         const outboxDoc = {
           eventType: "CHAT_SUMMARY_CREATED",
           payload: {

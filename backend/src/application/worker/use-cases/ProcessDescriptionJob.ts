@@ -62,7 +62,7 @@ export class ProcessDescriptionJob {
       codeBlockUpdates.push({
         updateOne: {
           filter: { _id: block._id },
-          update: { $set: { description } },
+          update: { $set: { description, needsDescription: false } },
         },
       });
 

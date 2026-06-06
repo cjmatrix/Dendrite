@@ -68,13 +68,13 @@ export class FolderController extends BaseController {
     try {
       const userId = this.validateUserAuth(req);
       const id = this.getRouteParam(req, 'id');
-      const { name, isExpanded } = req.body;
+      const { name, isExpanded, parentId } = req.body;
 
-      if (!name && isExpanded === undefined) {
-        throw new AppError('At least one field (name or isExpanded) is required', 400);
+      if (name === undefined && isExpanded === undefined && parentId === undefined) {
+        throw new AppError('At least one field (name, isExpanded or parentId) is required', 400);
       }
 
-      const data = await this.updateFolderUseCase.execute(id, userId, { name, isExpanded });
+      const data = await this.updateFolderUseCase.execute(id, userId, { name, isExpanded, parentId });
 
       this.sendSuccess(res, data, 200, 'Folder updated successfully');
     } catch (error) {

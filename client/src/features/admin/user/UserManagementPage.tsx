@@ -2,8 +2,9 @@ import { useGetAllUsers, type UserFilters } from "./hook/useGetAllUsers";
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Pagination } from "../../../components/common/Pagination";
-import { Search, Filter, ArrowUpDown } from "lucide-react";
+import { Search, Filter } from "lucide-react";
 import { useDebouncedValue } from "../../../components/common/useDebouncedValue";
+import { Table, type Column } from "../../../components/common/Table";
 
 interface AdminUser {
   _id: string;
@@ -41,6 +42,64 @@ function UserManagementPage() {
       sortOrder: prev.sortBy === column && prev.sortOrder === "desc" ? "asc" : "desc",
     }));
   };
+
+  const columns: Column<AdminUser>[] = [
+    {
+      header: "User",
+      key: "name",
+      render: (user) => (
+        <>
+          <div className="font-medium text-white">{user.name}</div>
+          <div className="text-xs text-zinc-400">{user.email}</div>
+        </>
+      ),
+    },
+    {
+      header: "Role",
+      key: "role",
+      render: (user) => <span className="capitalize text-zinc-200">{user.role}</span>,
+    },
+    {
+      header: "Status",
+      key: "status",
+      render: (user) => (
+        <span
+          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold capitalize ${
+            user.status === "active"
+              ? "bg-emerald-500/10 text-emerald-300"
+              : user.status === "pending"
+              ? "bg-amber-500/10 text-amber-300"
+              : user.status === "suspended"
+              ? "bg-orange-500/10 text-orange-300"
+              : "bg-rose-500/10 text-rose-300"
+          }`}
+        >
+          {user.status}
+        </span>
+      ),
+    },
+    {
+      header: "Tokens",
+      key: "totalTokens",
+      sortable: true,
+      render: (user) => user.totalTokens.toLocaleString(),
+    },
+    {
+      header: "Created",
+      key: "createdAt",
+      sortable: true,
+      render: (user) => new Date(user.createdAt).toISOString().split("T")[0],
+    },
+    {
+      header: "Actions",
+      key: "actions",
+      render: (user) => (
+        <button className="text-blue-300 hover:text-blue-200 text-sm font-medium">
+          <Link to={`/admin/users/${user._id}`}>View</Link>
+        </button>
+      ),
+    },
+  ];
 
   if (error) {
     return <div className="p-8 text-rose-500 text-sm">Error loading users...</div>;
@@ -85,100 +144,25 @@ function UserManagementPage() {
         </div>
       </div>
 
-      <div className="bg-zinc-950/70 border border-blue-500/10 rounded-2xl overflow-hidden shadow-lg shadow-blue-500/5">
-        <table className="w-full text-sm">
-          <thead className="bg-zinc-900/40 text-zinc-300">
-            <tr>
-              <th className="text-left px-6 py-4 font-medium">User</th>
-              <th className="text-left px-6 py-4 font-medium">Role</th>
-              <th className="text-left px-6 py-4 font-medium">Status</th>
-              <th
-                className="text-left px-6 py-4 font-medium cursor-pointer hover:text-white transition-colors"
-                onClick={() => toggleSort("totalTokens")}
-              >
-                <div className="flex items-center gap-2">
-                  Tokens
-                  <ArrowUpDown className="w-3 h-3" />
-                </div>
-              </th>
-              <th
-                className="text-left px-6 py-4 font-medium cursor-pointer hover:text-white transition-colors"
-                onClick={() => toggleSort("createdAt")}
-              >
-                <div className="flex items-center gap-2">
-                  Created
-                  <ArrowUpDown className="w-3 h-3" />
-                </div>
-              </th>
-              <th className="text-left px-6 py-4 font-medium">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-blue-500/10">
-            {isLoading ? (
-              <tr>
-                <td colSpan={6} className="px-6 py-12 text-center text-zinc-500 animate-pulse uppercase tracking-widest text-xs">
-                  Updating User List...
-                </td>
-              </tr>
-            ) : data && data.users.length > 0 ? (
-              data.users.map((user: AdminUser) => (
-                <tr
-                  key={user._id}
-                  className="bg-zinc-900/60 hover:bg-blue-500/5 transition-colors"
-                >
-                  <td className="px-6 py-4">
-                    <div className="font-medium text-white">{user.name}</div>
-                    <div className="text-xs text-zinc-400">{user.email}</div>
-                  </td>
-                  <td className="px-6 py-4 capitalize text-zinc-200">
-                    {user.role}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span
-                      className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold capitalize ${
-                        user.status === "active"
-                          ? "bg-emerald-500/10 text-emerald-300"
-                          : user.status === "pending"
-                          ? "bg-amber-500/10 text-amber-300"
-                          : user.status === "suspended"
-                          ? "bg-orange-500/10 text-orange-300"
-                          : "bg-rose-500/10 text-rose-300"
-                      }`}
-                    >
-                      {user.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-zinc-300">
-                    {user.totalTokens.toLocaleString()}
-                  </td>
-                  <td className="px-6 py-4 text-zinc-300">
-                    {new Date(user.createdAt).toISOString().split("T")[0]}
-                  </td>
-                  <td className="px-6 py-4">
-                    <button className="text-blue-300 hover:text-blue-200 text-sm font-medium">
-                      <Link to={`/admin/users/${user._id}`}>View</Link>
-                    </button>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={6} className="px-6 py-12 text-center text-zinc-500">
-                  No users found matching your criteria.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-        {data && (
+      <Table
+        columns={columns}
+        data={data?.users || []}
+        keyExtractor={(user) => user._id}
+        isLoading={isLoading}
+        sortBy={filters.sortBy}
+        sortOrder={filters.sortOrder}
+        onSort={toggleSort}
+      />
+      {data && (
+        <div className="mt-4">
           <Pagination
             currentPage={page}
             totalPages={data.totalPages}
             onPageChange={(newPage) => setPage(newPage)}
             isLoading={isLoading}
           />
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -33,7 +33,7 @@ export function useFileItemMutations() {
 
 
   const { mutate: updateFolder } = useMutation({
-    mutationFn: ({ folderId, updates }: { folderId: string; updates: { name?: string; isExpanded?: boolean } }) =>
+    mutationFn: ({ folderId, updates }: { folderId: string; updates: { name?: string; isExpanded?: boolean; parentId?: string | null } }) =>
       apiUpdateFolder(folderId, updates),
     onMutate: async ({ folderId, updates }) => {
       await queryClient.cancelQueries({ queryKey: ["folders"] });

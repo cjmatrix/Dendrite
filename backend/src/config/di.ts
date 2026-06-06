@@ -60,10 +60,14 @@ import { UploadDocument } from "../application/chat/use-cases/UploadDocument";
 import { ValidateChatAccess } from "../application/chat/use-cases/ValidateChatAccess";
 import { AIServiceAdapter } from "../infrastructure/services/AIServiceAdapter";
 import { BullMQDocumentQueue } from "../infrastructure/queue/BullMQDocumentQueue";
+import { PrometheusMetricsService } from "../infrastructure/monitoring/PrometheusMetricsService";
+import { StreamAndSaveChatUseCase } from "../application/chat/use-cases/StreamAndSaveChatUseCase";
+
 
 container.registerInstance("RedisClient", redisConnection);
 container.registerSingleton("ICacheService", RedisCacheService);
 container.registerSingleton<ILogger>("ILogger", WinstonLoggerAdapter);
+container.registerSingleton("IMetricsService", PrometheusMetricsService);
 
 
 
@@ -127,5 +131,6 @@ container.registerSingleton("IUploadChatImageUseCase", UploadChatImage);
 container.registerSingleton("IStreamQuickChatUseCase", StreamQuickChat);
 container.registerSingleton("IUploadDocumentUseCase", UploadDocument);
 container.registerSingleton("IValidateChatAccessUseCase", ValidateChatAccess);
+container.registerSingleton("IStreamAndSaveChatUseCase",StreamAndSaveChatUseCase)
 
 export { container };

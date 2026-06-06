@@ -1,20 +1,17 @@
-import { IUser } from "../../../domain/auth/entities/User";
 import {
   LoginInputDTO,
   RegisterInputDTO,
   UpdateFcmTokenInputDTO,
+  UserOutputDTO,
+  AuthOutputDTO,
 } from "../dtos/auth.dto";
 
 export interface IRegisterUserUseCase {
-  execute(userData: RegisterInputDTO): Promise<{ user: IUser }>;
+  execute(userData: RegisterInputDTO): Promise<UserOutputDTO>;
 }
 
 export interface ILoginUserUseCase {
-  execute(userData: LoginInputDTO): Promise<{
-    user: IUser;
-    accessToken: string;
-    refreshToken: string;
-  }>;
+  execute(userData: LoginInputDTO): Promise<AuthOutputDTO>;
 }
 
 export interface IRefreshTokenUserUseCase {
@@ -29,7 +26,7 @@ export interface ILogoutUserUseCase {
 }
 
 export interface IGetMeUseCase {
-  execute(userId: string): Promise<IUser>;
+  execute(userId: string): Promise<UserOutputDTO>;
 }
 
 export interface IUpdateFcmTokenUseCase {
@@ -50,9 +47,6 @@ export interface IVerifyOtpUseCase {
 }
 
 export interface IGoogleLoginUseCase {
-  execute(idToken: string): Promise<{
-    user: IUser;
-    accessToken: string;
-    refreshToken: string;
-  }>;
+  execute(idToken: string): Promise<AuthOutputDTO>;
 }
+

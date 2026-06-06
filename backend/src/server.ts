@@ -24,11 +24,27 @@ import { setupSuspensionListener } from "./infrastructure/cache/suspendListener"
 import { connectDatabase } from "./infrastructure/database/mongoose";
 import adminAuthRoutes from "./presentation/routes/admin/adminAuthRoutes";
 import { errorHandler } from "./presentation/middleware/errorHandler";
-
+import { container } from "tsyringe";
+import { IMetricsService } from "./application/common/ports/IMetricsService";
+import { metricsMiddleware } from "./infrastructure/monitoring/middleware/middleware";
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+app.use(metricsMiddleware);
+
+
+app.get('/metrics', async (req, res) => {
+  try {
+    const metricsService = container.resolve<IMetricsService>("IMetricsService");
+    res.setHeader('Content-Type', metricsService.getContentType());
+    res.send(await metricsService.getMetrics());
+  } catch (error) {
+    res.status(500).send("Error generating metrics");
+  }
+});
+
+
 
 app.use(express.json());
 app.use(cookieParser());
@@ -38,6 +54,9 @@ app.use(
     credentials: true,
   }),
 );
+
+
+
 
 
 app.use("/api/v1/auth", authRoutes);

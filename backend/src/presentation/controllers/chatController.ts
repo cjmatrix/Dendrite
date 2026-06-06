@@ -6,6 +6,7 @@ import crypto from "crypto";
 import { BaseController } from "./base/BaseController";
 import { AppError } from "../../utils/AppError";
 import { FileUploadService } from "../../services/FileUploadService";
+import { CHAT_MESSAGES } from "../constants/chatMessages";
 import { logAIQuery } from "../../utils/logger";
 import { getTokenInfo } from "../../utils/tokenCounter";
 import { documentProgressPubSub } from "../../services/documentProgressPubSub";
@@ -13,23 +14,24 @@ import { ILogger } from "../../application/common/ports/ILogger";
 import { IAIService } from "../../application/common/ports/IAIService";
 
 import { injectable, inject, container } from "tsyringe";
-import { 
-  ICreateChatUseCase, 
-  IDeleteChatUseCase, 
-  IGetChatByIdUseCase, 
-  IGetChatDocumentsUseCase, 
-  IGetChatMessagesUseCase, 
-  IGetChatsUseCase, 
-  IGetSubChatUseCase, 
-  IPrepareMessageUseCase, 
-  IRemoveDocumentUseCase, 
-  ISaveModelReplyUseCase, 
-  ISaveSubChatUseCase, 
-  IUpdateChatUseCase, 
+import {
+  ICreateChatUseCase,
+  IDeleteChatUseCase,
+  IGetChatByIdUseCase,
+  IGetChatDocumentsUseCase,
+  IGetChatMessagesUseCase,
+  IGetChatsUseCase,
+  IGetSubChatUseCase,
+  IPrepareMessageUseCase,
+  IRemoveDocumentUseCase,
+  ISaveModelReplyUseCase,
+  ISaveSubChatUseCase,
+  IUpdateChatUseCase,
   IUploadChatImageUseCase,
   IStreamQuickChatUseCase,
   IUploadDocumentUseCase,
-  IValidateChatAccessUseCase
+  IValidateChatAccessUseCase,
+  IStreamAndSaveChatUseCase,
 } from "../../application/chat/use-cases/interfaces";
 
 @injectable()
@@ -42,27 +44,38 @@ export class ChatController extends BaseController {
   constructor(
     @inject("ICreateChatUseCase") private createChatUseCase: ICreateChatUseCase,
     @inject("IDeleteChatUseCase") private deleteChatUseCase: IDeleteChatUseCase,
-    @inject("IGetChatByIdUseCase") private getChatByIdUseCase: IGetChatByIdUseCase,
-    @inject("IGetChatDocumentsUseCase") private getChatDocumentsUseCase: IGetChatDocumentsUseCase,
-    @inject("IGetChatMessagesUseCase") private getChatMessagesUseCase: IGetChatMessagesUseCase,
+    @inject("IGetChatByIdUseCase")
+    private getChatByIdUseCase: IGetChatByIdUseCase,
+    @inject("IGetChatDocumentsUseCase")
+    private getChatDocumentsUseCase: IGetChatDocumentsUseCase,
+    @inject("IGetChatMessagesUseCase")
+    private getChatMessagesUseCase: IGetChatMessagesUseCase,
     @inject("IGetChatsUseCase") private getChatsUseCase: IGetChatsUseCase,
     @inject("IGetSubChatUseCase") private getSubChatUseCase: IGetSubChatUseCase,
-    @inject("IPrepareMessageUseCase") private prepareMessageUseCase: IPrepareMessageUseCase,
-    @inject("IRemoveDocumentUseCase") private removeDocumentUseCase: IRemoveDocumentUseCase,
-    @inject("ISaveModelReplyUseCase") private saveModelReplyUseCase: ISaveModelReplyUseCase,
-    @inject("ISaveSubChatUseCase") private saveSubChatUseCase: ISaveSubChatUseCase,
+    @inject("IPrepareMessageUseCase")
+    private prepareMessageUseCase: IPrepareMessageUseCase,
+    @inject("IRemoveDocumentUseCase")
+    private removeDocumentUseCase: IRemoveDocumentUseCase,
+    @inject("ISaveModelReplyUseCase")
+    private saveModelReplyUseCase: ISaveModelReplyUseCase,
+    @inject("ISaveSubChatUseCase")
+    private saveSubChatUseCase: ISaveSubChatUseCase,
     @inject("IUpdateChatUseCase") private updateChatUseCase: IUpdateChatUseCase,
-    @inject("IUploadChatImageUseCase") private uploadChatImageUseCase: IUploadChatImageUseCase,
-    @inject("IStreamQuickChatUseCase") private streamQuickChatUseCase: IStreamQuickChatUseCase,
-    @inject("IUploadDocumentUseCase") private uploadDocumentUseCase: IUploadDocumentUseCase,
-    @inject("IValidateChatAccessUseCase") private validateChatAccessUseCase: IValidateChatAccessUseCase,
+    @inject("IUploadChatImageUseCase")
+    private uploadChatImageUseCase: IUploadChatImageUseCase,
+    @inject("IStreamQuickChatUseCase")
+    private streamQuickChatUseCase: IStreamQuickChatUseCase,
+    @inject("IUploadDocumentUseCase")
+    private uploadDocumentUseCase: IUploadDocumentUseCase,
+    @inject("IValidateChatAccessUseCase")
+    private validateChatAccessUseCase: IValidateChatAccessUseCase,
     @inject("ILogger") private logger: ILogger,
-    @inject("IAIService") private aiService: IAIService
+    @inject("IAIService") private aiService: IAIService,
+    @inject("IStreamAndSaveChatUseCase")
+    private streamAndSaveChatUseCase: IStreamAndSaveChatUseCase,
   ) {
     super();
   }
-
- 
 
   public createChat = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -70,21 +83,20 @@ export class ChatController extends BaseController {
       const { title, folderId } = req.body;
 
       if (!title || typeof title !== "string") {
-        throw new AppError("Chat title is required and must be a string", 400);
+        throw new AppError(CHAT_MESSAGES.TITLE_REQUIRED, 400);
       }
 
-      const data = await this.createChatUseCase.execute({ userId, title, folderId });
+      const data = await this.createChatUseCase.execute({
+        userId,
+        title,
+        folderId,
+      });
 
-      this.sendSuccess(res, data, 201, "Chat created successfully");
+      this.sendSuccess(res, data, 201, CHAT_MESSAGES.CHAT_CREATED);
     } catch (error) {
       this.sendError(res, error);
     }
   };
-
-
-
-
-  
 
   public getChats = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -108,7 +120,10 @@ export class ChatController extends BaseController {
     }
   };
 
-  public getChatMessages = async (req: Request, res: Response): Promise<void> => {
+  public getChatMessages = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
       const id = this.getRouteParam(req, "id");
@@ -128,8 +143,6 @@ export class ChatController extends BaseController {
     }
   };
 
-  
-
   public updateChat = async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
@@ -137,11 +150,19 @@ export class ChatController extends BaseController {
       const { title, folderId } = req.body;
 
       if (!title && folderId === undefined) {
-        throw new AppError("At least one field (title or folderId) is required", 400);
+        throw new AppError(
+          CHAT_MESSAGES.FIELDS_REQUIRED,
+          400,
+        );
       }
 
-      const data = await this.updateChatUseCase.execute({ chatId: id, userId, title, folderId });
-      this.sendSuccess(res, data, 200, "Chat updated successfully");
+      const data = await this.updateChatUseCase.execute({
+        chatId: id,
+        userId,
+        title,
+        folderId,
+      });
+      this.sendSuccess(res, data, 200, CHAT_MESSAGES.CHAT_UPDATED);
     } catch (error) {
       this.sendError(res, error);
     }
@@ -153,55 +174,87 @@ export class ChatController extends BaseController {
       const id = this.getRouteParam(req, "id");
 
       const data = await this.deleteChatUseCase.execute(id, userId);
-      this.sendSuccess(res, data, 200, "Chat deleted successfully");
+      this.sendSuccess(res, data, 200, CHAT_MESSAGES.CHAT_DELETED);
     } catch (error) {
       this.sendError(res, error);
     }
   };
 
-
-
-
-
   public sendMessage = async (req: Request, res: Response): Promise<void> => {
+    const abortController = new AbortController();
+
+      res.on("close", () => {
+    if (!res.writableEnded) {
+      abortController.abort();
+      this.logger.info("Client closed connection, aborting use case from res");
+    }
+  });
+
+  req.on("aborted", () => {
+    abortController.abort();
+    this.logger.info("Client aborted request, aborting use case from req");
+  });
+
+
     try {
       const userId = this.validateUserAuth(req);
       const chatId = this.getRouteParam(req, "id");
-
       const input = this.normalizeInput(req.body);
 
-      const { contents, userMessageId, parentContext ,parentSummary} = await this.prepareMessageUseCase.execute({
+      const messageContext = await this.prepareMessageUseCase.execute({
         chatId,
         userId,
         userMessage: input.queryText,
-        mode: input.mode,
-        imageUrl: input.imageUrl,
-        fileUrl: input.fileUrl,
-        fileName: input.fileName,
       });
 
-      await this.streamAndSave(req, res, contents, chatId, userId, userMessageId, parentContext, req.body.message, parentSummary);
-    } catch (error: any) {
-      if (!res.headersSent) {
-        res.setHeader("Content-Type", "text/event-stream");
-        res.setHeader("Cache-Control", "no-cache");
-        res.setHeader("Connection", "keep-alive");
+      const stream = this.streamAndSaveChatUseCase.execute(
+        {
+          ...messageContext,
+          chatId,
+          userId,
+          originalMessage: req.body.message,
+        },
+        abortController.signal,
+      );
+
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache");
+      res.flushHeaders();
+
+      for await (const chunk of stream) {
+        if (chunk.type === "text") {
+          res.write(`data: ${JSON.stringify({ text: chunk.value })}\n\n`);
+        } else if (chunk.type === "metadata") {
+          res.write(
+            `data: ${JSON.stringify({ type: "metadata", ...chunk.value })}\n\n`,
+          );
+
+          if (chunk.value.usage)
+            logAIQuery(chunk.value.originalMessage, chunk.value.usage);
+        } else if (chunk.type === "error") {
+          res.write(`data: ${JSON.stringify({ text: chunk.value })}\n\n`);
+        }
       }
-      res.write(`data: ${JSON.stringify({ text: "\n\n**System Error:** " + error.message })}\n\n`);
+
       res.write("data: [DONE]\n\n");
+      res.end();
+    } catch (error: any) {
+      if (!res.headersSent) res.status(500);
+      res.write(
+        `data: ${JSON.stringify({ text: "Error: " + error.message })}\n\n`,
+      );
       res.end();
     }
   };
 
-
-
-
-
-  
-  public streamQuickChat = async (req: Request, res: Response): Promise<void> => {
+  public streamQuickChat = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
-      const { chatId, anchorMessageId, highlightedText, quickChatHistory } = req.body;
+      const { chatId, anchorMessageId, highlightedText, quickChatHistory } =
+        req.body;
 
       res.setHeader("Content-Type", "text/event-stream");
       res.setHeader("Cache-Control", "no-cache");
@@ -215,13 +268,17 @@ export class ChatController extends BaseController {
           chatId,
           anchorMessageId,
           highlightedText,
-          quickChatHistory
+          quickChatHistory,
         });
       } catch (error: any) {
         if (error.statusCode === 429) {
-          res.write(`data: ${JSON.stringify({ text: "\n\n**Quota Exhausted:** " + error.message })}\n\n`);
+          res.write(
+            `data: ${JSON.stringify({ text: "\n\n**Quota Exhausted:** " + error.message })}\n\n`,
+          );
         } else {
-          res.write(`data: ${JSON.stringify({ text: "\n\n**System Error:** " + error.message })}\n\n`);
+          res.write(
+            `data: ${JSON.stringify({ text: "\n\n**System Error:** " + error.message })}\n\n`,
+          );
         }
         res.write("data: [DONE]\n\n");
         res.end();
@@ -253,14 +310,13 @@ export class ChatController extends BaseController {
         res.setHeader("Cache-Control", "no-cache");
         res.setHeader("Connection", "keep-alive");
       }
-      res.write(`data: ${JSON.stringify({ text: "\n\n**System Error:** " + error.message })}\n\n`);
+      res.write(
+        `data: ${JSON.stringify({ text: "\n\n**System Error:** " + error.message })}\n\n`,
+      );
       res.write("data: [DONE]\n\n");
       res.end();
     }
   };
-
-
-
 
   public getSubChat = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -269,10 +325,14 @@ export class ChatController extends BaseController {
       const subChatId = this.getQueryParam(req, "subChatId");
 
       if (!subChatId) {
-        throw new AppError("Sub-chat ID is required", 400);
+        throw new AppError(CHAT_MESSAGES.SUBCHAT_ID_REQUIRED, 400);
       }
 
-      const subChat = await this.getSubChatUseCase.execute(chatId, subChatId, userId);
+      const subChat = await this.getSubChatUseCase.execute(
+        chatId,
+        subChatId,
+        userId,
+      );
       this.sendSuccess(res, subChat);
     } catch (error) {
       this.sendError(res, error);
@@ -283,10 +343,19 @@ export class ChatController extends BaseController {
     try {
       const userId = this.validateUserAuth(req);
       const chatId = this.getRouteParam(req, "id");
-      const { subChatId, anchorMessageId, highlightedText, messages, relativeY } = req.body;
+      const {
+        subChatId,
+        anchorMessageId,
+        highlightedText,
+        messages,
+        relativeY,
+      } = req.body;
 
       if (!anchorMessageId) {
-        throw new AppError("Sub-chat ID and anchor message ID are required", 400);
+        throw new AppError(
+          CHAT_MESSAGES.SUBCHAT_ANCHOR_REQUIRED,
+          400,
+        );
       }
 
       const subChat = await this.saveSubChatUseCase.execute({
@@ -299,48 +368,34 @@ export class ChatController extends BaseController {
         relativeY,
       });
 
-      this.sendSuccess(res, subChat, 201, "Sub-chat saved successfully");
+      this.sendSuccess(res, subChat, 201, CHAT_MESSAGES.SUBCHAT_SAVED);
     } catch (error) {
       this.sendError(res, error);
     }
   };
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-   public get uploadChatImageMiddleware() {
+  public get uploadChatImageMiddleware() {
     return this.upload.single("image");
   }
 
-  public uploadChatImage = async (req: Request, res: Response): Promise<void> => {
+  public uploadChatImage = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
       const chatId = req.body.chatId;
 
       if (!chatId || typeof chatId !== "string") {
-        throw new AppError("chatId is required and must be a string", 400);
+        throw new AppError(CHAT_MESSAGES.CHAT_ID_REQUIRED, 400);
       }
 
       if (!req.file) {
-        throw new AppError("Image file is required", 400);
+        throw new AppError(CHAT_MESSAGES.IMAGE_REQUIRED, 400);
       }
 
       if (!req.file.mimetype.startsWith("image/")) {
-        throw new AppError("Only image files are allowed", 400);
+        throw new AppError(CHAT_MESSAGES.ONLY_IMAGES_ALLOWED, 400);
       }
 
       const result = await this.uploadChatImageUseCase.execute({
@@ -348,22 +403,15 @@ export class ChatController extends BaseController {
         chatId,
         file: {
           buffer: req.file.buffer,
-          mimetype: req.file.mimetype
-        }
+          mimetype: req.file.mimetype,
+        },
       });
 
-      this.sendSuccess(res, result, 201, "Image uploaded successfully");
+      this.sendSuccess(res, result, 201, CHAT_MESSAGES.IMAGE_UPLOADED);
     } catch (error) {
       this.sendError(res, error);
     }
   };
-
-
-
-
-
-
-
 
   public uploadChatPdf = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -418,7 +466,7 @@ export class ChatController extends BaseController {
               writeStream.on("error", (err) => {
                 console.error("Write stream error:", err);
                 if (!responseSent)
-                  sendJson(500, { message: "Failed to save uploaded file" });
+                  sendJson(500, { message: CHAT_MESSAGES.FAILED_TO_SAVE_FILE });
                 reject(err);
               });
 
@@ -474,7 +522,7 @@ export class ChatController extends BaseController {
           file.on("limit", () => {
             if (!responseSent)
               sendJson(413, {
-                message: "File too large. Max allowed is 100MB.",
+                message: CHAT_MESSAGES.FILE_TOO_LARGE,
               });
             file.resume();
             resolve();
@@ -491,7 +539,7 @@ export class ChatController extends BaseController {
           }
 
           if (!filePath) {
-            sendJson(400, { message: "No file uploaded" });
+            sendJson(400, { message: CHAT_MESSAGES.NO_FILE_UPLOADED });
             return;
           }
 
@@ -499,7 +547,7 @@ export class ChatController extends BaseController {
             userId,
             chatId,
             filePath,
-            fileName: fileName || "document"
+            fileName: fileName || "document",
           });
 
           sendJson(202, {
@@ -511,7 +559,7 @@ export class ChatController extends BaseController {
           if (!responseSent) {
             const message = error.statusCode
               ? error.message
-              : "Failed to queue document processing";
+              : CHAT_MESSAGES.FAILED_TO_QUEUE;
             sendJson(error.statusCode || 500, { message });
           }
           if (filePath && fs.existsSync(filePath)) {
@@ -522,7 +570,7 @@ export class ChatController extends BaseController {
 
       busboy.on("error", (error) => {
         console.error("Busboy error:", error);
-        sendJson(500, { message: "Failed to process upload" });
+        sendJson(500, { message: CHAT_MESSAGES.FAILED_TO_PROCESS });
       });
 
       req.pipe(busboy);
@@ -531,7 +579,10 @@ export class ChatController extends BaseController {
     }
   };
 
-  public streamDocumentProgress = async (req: Request, res: Response): Promise<void> => {
+  public streamDocumentProgress = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
     let unsubscribe: (() => Promise<void>) | null = null;
     let heartbeat: NodeJS.Timeout | null = null;
 
@@ -622,7 +673,7 @@ export class ChatController extends BaseController {
 
       if (res.headersSent) {
         res.write(
-          `event: error\ndata: ${JSON.stringify({ message: "Failed to stream document progress" })}\n\n`,
+          `event: error\ndata: ${JSON.stringify({ message: CHAT_MESSAGES.FAILED_TO_STREAM_PROGRESS })}\n\n`,
         );
         res.end();
         return;
@@ -632,7 +683,10 @@ export class ChatController extends BaseController {
     }
   };
 
-  public getChatDocuments = async (req: Request, res: Response): Promise<void> => {
+  public getChatDocuments = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
       const chatId = this.getRouteParam(req, "id");
@@ -644,17 +698,24 @@ export class ChatController extends BaseController {
     }
   };
 
-  public removeDocument = async (req: Request, res: Response): Promise<void> => {
+  public removeDocument = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
       const chatId = this.getRouteParam(req, "id");
       const { fileUrl } = req.body;
 
       if (!fileUrl || typeof fileUrl !== "string") {
-        throw new AppError("fileUrl is required and must be a string", 400);
+        throw new AppError(CHAT_MESSAGES.FILE_URL_REQUIRED, 400);
       }
-      
-      const data = await this.removeDocumentUseCase.execute({ userId, chatId, fileUrl });
+
+      const data = await this.removeDocumentUseCase.execute({
+        userId,
+        chatId,
+        fileUrl,
+      });
       this.sendSuccess(res, data);
     } catch (error) {
       this.sendError(res, error);
@@ -664,15 +725,21 @@ export class ChatController extends BaseController {
   private normalizeInput(body: any) {
     const { message, mode, imageUrl, fileUrl, fileName } = body;
     const normalizedMessage = typeof message === "string" ? message.trim() : "";
-    const normalizedImageUrl = typeof imageUrl === "string" ? imageUrl.trim() : "";
+    const normalizedImageUrl =
+      typeof imageUrl === "string" ? imageUrl.trim() : "";
     const normalizedFileUrl = typeof fileUrl === "string" ? fileUrl.trim() : "";
-    const normalizedFileName = typeof fileName === "string" ? fileName.trim() : "";
+    const normalizedFileName =
+      typeof fileName === "string" ? fileName.trim() : "";
 
     if (!normalizedMessage && !normalizedImageUrl && !normalizedFileUrl) {
-      throw new AppError("Message, image, or file is required", 400);
+      throw new AppError(CHAT_MESSAGES.INPUT_REQUIRED, 400);
     }
 
-    const queryText = normalizedMessage || (normalizedFileName ? `Analyze uploaded file: ${normalizedFileName}` : "Analyze the uploaded image");
+    const queryText =
+      normalizedMessage ||
+      (normalizedFileName
+        ? `Analyze uploaded file: ${normalizedFileName}`
+        : "Analyze the uploaded image");
     return {
       queryText,
       mode,
@@ -691,17 +758,40 @@ export class ChatController extends BaseController {
     userMessageId: string,
     parentContext: any,
     originalMessage: string,
-    parentSummary: string | null
+    parentSummary: string | null,
   ) {
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
 
-    let stream;
+    const abortController = new AbortController();
+    let clientDisconnected = false;
+
+    let stream: any = null;
+    req.on("close", () => {
+      clientDisconnected = true;
+      abortController.abort();
+
+      if (stream) {
+        if (typeof stream.return === "function") {
+          stream.return();
+        }
+        this.logger.info(
+          `AI streaming network stream violently terminated for chat ${chatId}`,
+        );
+      }
+    });
+
     try {
-      stream = await this.aiService.streamAIContent(contents);
+      stream = await this.aiService.streamAIContent(
+        contents,
+        "gemini-3-flash-preview",
+        abortController.signal,
+      );
     } catch (error: any) {
-      res.write(`data: ${JSON.stringify({ text: "\n\n**Quota Exhausted:** All your provided Gemini API keys have exceeded their free-tier limits. Please wait, or add a new key." })}\n\n`);
+      res.write(
+        `data: ${JSON.stringify({ text: "\n\n**Quota Exhausted:** " + CHAT_MESSAGES.QUOTA_EXHAUSTED })}\n\n`,
+      );
       res.write("data: [DONE]\n\n");
       res.end();
       return;
@@ -711,16 +801,12 @@ export class ChatController extends BaseController {
     let finalUsageMetadata: any = null;
     res.flushHeaders();
 
-    let clientDisconnected = false;
-    req.on("close", () => {
-      clientDisconnected = true;
-    });
-
     for await (const chunk of stream) {
-      if (clientDisconnected) {
+      if (clientDisconnected || abortController.signal.aborted) {
         this.logger.info(`AI streaming aborted by client for chat ${chatId}`);
         break;
       }
+
       const text = chunk.text || "";
       fullReply += text;
       if (chunk.usageMetadata) {
@@ -732,30 +818,33 @@ export class ChatController extends BaseController {
     if (!fullReply.trim()) {
       this.logger.error(`Empty AI response for chat ${chatId}`);
       if (!clientDisconnected) {
-        res.write(`data: ${JSON.stringify({ text: "\n\n**Error:** The AI returned an empty response. Please try again." })}\n\n`);
+        res.write(
+          `data: ${JSON.stringify({ text: "\n\n**Error:** " + CHAT_MESSAGES.EMPTY_AI_RESPONSE })}\n\n`,
+        );
         res.write("data: [DONE]\n\n");
         res.end();
       }
       return;
     }
+    if (!clientDisconnected && fullReply.trim()) {
+      try {
+        const { modelMessageId } = await this.saveModelReplyUseCase.execute({
+          chatId,
+          userId,
+          modelReply: fullReply,
+          parentContext,
+          parentSummary,
+        });
 
-    try {
-      const { modelMessageId } = await this.saveModelReplyUseCase.execute({
-        chatId,
-        userId,
-        modelReply: fullReply,
-        parentContext,
-        parentSummary
-      });
-
-      if (!clientDisconnected) {
-        res.write(`data: ${JSON.stringify({ type: "metadata", userMessageId, modelMessageId })}\n\n`);
+        res.write(
+          `data: ${JSON.stringify({ type: "metadata", userMessageId, modelMessageId })}\n\n`,
+        );
         if (finalUsageMetadata) {
           logAIQuery(originalMessage, finalUsageMetadata);
         }
+      } catch (err) {
+        this.logger.error("Failed to save model reply or log usage:", err);
       }
-    } catch (err) {
-      this.logger.error("Failed to save model reply or log usage:", err);
     }
 
     if (!clientDisconnected) {
@@ -763,7 +852,6 @@ export class ChatController extends BaseController {
       res.end();
     }
   }
-
 }
 
 export const chatController = container.resolve(ChatController);

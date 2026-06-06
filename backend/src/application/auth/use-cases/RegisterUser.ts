@@ -1,8 +1,7 @@
 import { IUserRepository } from "../../../domain/auth/repositories/IUserRepository";
 import { IFolderRepository } from "../../../domain/folder/repositories/IFolderRepository";
 import { AppError } from "../../../utils/AppError";
-import { RegisterInputDTO } from "../dtos/auth.dto";
-import { IUser } from "../../../domain/auth/entities/User";
+import { RegisterInputDTO, AuthMapper, UserOutputDTO } from "../dtos/auth.dto";
 
 import { injectable, inject } from "tsyringe";
 import { IUnitOfWorkRepository } from "../../common/ports/IUnitOfWorkRepository";
@@ -17,7 +16,7 @@ export class RegisterUser implements IRegisterUserUseCase {
     private unitOfWorkRepository: IUnitOfWorkRepository,
   ) {}
 
-  async execute(userData: RegisterInputDTO): Promise<{ user: IUser }> {
+  async execute(userData: RegisterInputDTO): Promise<UserOutputDTO> {
     const { name, email, password } = userData;
 
     const existingUser = await this.userRepository.findByEmail(email);
@@ -33,9 +32,9 @@ export class RegisterUser implements IRegisterUserUseCase {
         existingUser.name = name;
         existingUser.password = password; 
 
-       let user = await this.userRepository.save(existingUser);
+       const user = await this.userRepository.save(existingUser);
 
-        return {user}
+        return AuthMapper.toUserOutput(user);
       } else {
         const user = await this.userRepository.create({
           name,
@@ -75,8 +74,9 @@ export class RegisterUser implements IRegisterUserUseCase {
 
         await this.folderRepository.insertMany(systemFolders);
 
-        return { user };
+        return AuthMapper.toUserOutput(user);
       }
     });
   }
 }
+

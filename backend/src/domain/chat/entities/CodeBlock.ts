@@ -6,6 +6,7 @@ export interface ICodeBlock {
   language: string;
   description: string;
   hash: string;
+  needsDescription?: boolean;
   createdAt?: Date | string;
   updatedAt?: Date | string;
 }

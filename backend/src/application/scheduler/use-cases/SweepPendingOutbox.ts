@@ -1,12 +1,14 @@
+import { injectable, inject } from "tsyringe";
 import { IOutboxEventRepository } from '../../../domain/outbox/repositories/IOutboxEventRepository';
+import { IEmbeddingPublisher } from '../../common/ports/IEmbeddingPublisher';
+import { ISummaryPublisher } from '../../common/ports/ISummaryPublisher';
 
+@injectable()
 export class SweepPendingOutbox {
   constructor(
-    private outboxRepository: IOutboxEventRepository,
-    private queueFunctions: {
-      embeddingCodeDesc: (job: any, content: any) => Promise<void>;
-      addSummaryQueue: (id: string, messages: any, previousSummary: any) => Promise<void>;
-    }
+    @inject("IOutboxEventRepository") private outboxRepository: IOutboxEventRepository,
+    @inject("IEmbeddingPublisher") private embeddingPublisher: IEmbeddingPublisher,
+    @inject("ISummaryPublisher") private summaryPublisher: ISummaryPublisher
   ) {}
 
   async execute() {
@@ -26,9 +28,9 @@ export class SweepPendingOutbox {
         }
 
         if (job.eventType === "CODE_BLOCK_CREATED") {
-          await this.queueFunctions.embeddingCodeDesc(job, job.payload.content);
+          await this.embeddingPublisher.publish(job._id.toString(), job.payload.content);
         } else if (job.eventType === "CHAT_SUMMARY_CREATED") {
-          await this.queueFunctions.addSummaryQueue(
+          await this.summaryPublisher.publish(
             job._id.toString(),
             job.payload.content.messages,
             job.payload.metadata?.previousSummary,

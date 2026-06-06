@@ -3,7 +3,7 @@ import { X, GitBranch, Calendar, RotateCcw, AlertCircle, Save, Check } from "luc
 import type { FileNode } from "../types/types";
 import toast from "react-hot-toast";
 import { useFolderBehavior } from "../hooks/useFolderBehavior";
-
+import { createPortal } from 'react-dom';
 interface FolderBehaviorModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -60,7 +60,7 @@ export const FolderBehaviorModal: React.FC<FolderBehaviorModalProps> = ({
     });
   };
 
-  return (
+  return createPortal(
     
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm transition-opacity duration-300">
       <div className="w-full max-w-2xl bg-zinc-950 border border-zinc-800/80 rounded-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden transform scale-100 transition-all duration-300">
@@ -205,5 +205,5 @@ export const FolderBehaviorModal: React.FC<FolderBehaviorModalProps> = ({
 
       </div>
     </div>
-  );
+  ,document.body);
 };
