@@ -22,6 +22,7 @@ export const sendMessageStream = async (
   chatId: string,
   message: string,
   mode: "general" | "visual",
+  model: string,
   imageUrl: string | null,
   fileUrl: string | null,
   fileName: string | null,
@@ -31,7 +32,7 @@ export const sendMessageStream = async (
   const response = await streamingFetch(`${API_URL}/chats/${chatId}/message`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message, mode, imageUrl, fileUrl, fileName }),
+    body: JSON.stringify({ message, mode, model, imageUrl, fileUrl, fileName }),
   },controller);
 
   if (!response.ok || !response.body) {

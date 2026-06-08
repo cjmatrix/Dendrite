@@ -205,6 +205,11 @@ export class ChatController extends BaseController {
         chatId,
         userId,
         userMessage: input.queryText,
+        mode: input.mode,
+        model: input.model,
+        imageUrl: input.imageUrl,
+        fileUrl: input.fileUrl,
+        fileName: input.fileName,
       });
 
       const stream = this.streamAndSaveChatUseCase.execute(
@@ -723,7 +728,7 @@ export class ChatController extends BaseController {
   };
 
   private normalizeInput(body: any) {
-    const { message, mode, imageUrl, fileUrl, fileName } = body;
+    const { message, mode, model, imageUrl, fileUrl, fileName } = body;
     const normalizedMessage = typeof message === "string" ? message.trim() : "";
     const normalizedImageUrl =
       typeof imageUrl === "string" ? imageUrl.trim() : "";
@@ -743,6 +748,7 @@ export class ChatController extends BaseController {
     return {
       queryText,
       mode,
+      model: typeof model === "string" ? model.trim() : undefined,
       imageUrl: normalizedImageUrl || undefined,
       fileUrl: normalizedFileUrl || undefined,
       fileName: normalizedFileName || undefined,

@@ -41,6 +41,13 @@ export const GoogleLoginInputSchema = z.object({
 });
 export type GoogleLoginInputDTO = z.infer<typeof GoogleLoginInputSchema>;
 
+export const UpdateByokKeysInputSchema = z.object({
+  userId: z.string().trim().min(1, "User ID is required"),
+  provider: z.enum(["gemini"]),
+  keys: z.array(z.string().min(1, "API Key cannot be empty")).min(1, "At least 1 API key is required").max(6, "Maximum 6 API keys allowed"),
+});
+export type UpdateByokKeysInputDTO = z.infer<typeof UpdateByokKeysInputSchema>;
+
 
 
 export interface UserOutputDTO {
@@ -49,6 +56,8 @@ export interface UserOutputDTO {
   email: string;
   status:string;
   fcmToken: string[];
+  tier: string;
+  byokKeysCount?: number;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -67,6 +76,8 @@ export class AuthMapper {
       email: user.email,
       status:user.status,
       fcmToken: user.fcmToken || [],
+      tier: user.tier || "free",
+      byokKeysCount: user.byok_keys?.find((k) => k.provider === "gemini")?.encryptedKeys?.length || 0,
       createdAt: user.createdAt?.toString(),
       updatedAt: user.updatedAt?.toString(),
     };

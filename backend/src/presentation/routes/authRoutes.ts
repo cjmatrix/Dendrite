@@ -31,6 +31,7 @@ router.post("/refresh", (req, res, next) => authController.refresh(req, res).cat
 router.post("/logout", (req, res, next) => authController.logout(req, res).catch(next));
 
 router.get("/me", userProtect, (req, res, next) => authController.getMe(req, res).catch(next));
+router.post("/me/byok-keys", userProtect, (req, res, next) => authController.updateByokKeys(req, res).catch(next));
 router.post(
 	"/fcm-token",
 	userProtect,

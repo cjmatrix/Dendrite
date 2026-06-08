@@ -1,8 +1,12 @@
-import ai from "../config/AIConfig";
+import ai, { getRotatedAI, rotateAIKey, aiInstances } from "../config/AIConfig";
+import { GoogleGenAI } from "@google/genai";
 import { logAIQuery, logCodeBlockTokens } from "./logger";
+import { getActiveBYOKKeyIndex, rotateBYOKKeyIndex } from "./byokKeysHelper";
 
 export async function generateBatchCodeDescriptions(
-  blocks: { id: string; code: string; language: string }[]
+  blocks: { id: string; code: string; language: string }[],
+  keys?: string[],
+  userId?: string
 ): Promise<{ id: string; description: string }[]> {
   
 
@@ -38,25 +42,67 @@ CODE SNIPPETS:
 ${snippetsText}`;
 
 
-  const response = await ai.models.generateContent({
-  model: "gemma-4-31b-it",
-  contents: [
-    {
-      role: "user",
-      parts: [{ text: queryText }],
-    },
-  ],
-  config: {
-    responseMimeType: "application/json",
-    responseSchema: {
-      type: "object",
-      properties: {
-        result: { type: "string" }
-      },
-      required: ["result"]
+  let response;
+  let attempts = 0;
+  const isByok = keys && keys.length > 0;
+  const instances = isByok ? keys.map(k => new GoogleGenAI({ apiKey: k })) : [];
+  
+  let currentIdx = 0;
+  if (isByok && userId && instances.length > 0) {
+    currentIdx = await getActiveBYOKKeyIndex(userId, "gemini");
+    currentIdx = currentIdx % instances.length;
+  }
+  const totalAttempts = isByok ? instances.length : aiInstances.length;
+
+  while (attempts < totalAttempts) {
+    try {
+      const activeAi = isByok ? instances[currentIdx] : await getRotatedAI();
+      response = await activeAi.models.generateContent({
+        model: "gemma-4-31b-it",
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: queryText }],
+          },
+        ],
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: "object",
+            properties: {
+              result: { type: "string" }
+            },
+            required: ["result"]
+          }
+        }
+      });
+      break;
+    } catch (error: any) {
+      if (
+        error.status === 429 ||
+        error.message?.includes("quota") ||
+        error.message?.includes("RESOURCE_EXHAUSTED")
+      ) {
+        if (isByok) {
+          if (userId) {
+            currentIdx = await rotateBYOKKeyIndex(userId, instances.length, "gemini");
+          } else {
+            currentIdx = (currentIdx + 1) % instances.length;
+          }
+        } else {
+          await rotateAIKey();
+        }
+        attempts++;
+        continue;
+      }
+      throw error;
     }
   }
-});
+
+  if (!response) {
+    throw new Error("Failed to generate batch code descriptions: All instances exhausted");
+  }
+
   console.log(response.text)
   if (response.usageMetadata) {
     logAIQuery(`Batch Description (${blocks.length} blocks)`, response.usageMetadata);

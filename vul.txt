@@ -21,6 +21,13 @@ deleting folder or chat wont delete data from cloudinary
 
 
 
+
+
+
+
+
+
+
 Final system prompt sent to Gemini:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [PRODUCT CORE — never overrideable]

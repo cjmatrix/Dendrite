@@ -8,6 +8,7 @@ export interface User {
   avatarUrl?: string;
   tier: string;
   role?: string;
+  byokKeysCount?: number;
 }
 
 interface AuthState {
@@ -37,7 +38,7 @@ const initialState: AuthState = {
 export const checkAuth = createAsyncThunk('auth/checkAuth', async (_, { rejectWithValue }) => {
   try {
     const response = await api.get('/auth/me');
-    return response.data;
+    return response.data.data;
   } catch (error: any) {
     return rejectWithValue(error.response?.data?.message || 'Authentication failed');
   }
@@ -46,7 +47,7 @@ export const checkAuth = createAsyncThunk('auth/checkAuth', async (_, { rejectWi
 export const checkAdminAuth = createAsyncThunk('auth/checkAdminAuth', async (_, { rejectWithValue }) => {
   try {
     const response = await api.get('/admin/auth/me');
-    return response.data;
+    return response.data.data;
   } catch (error: any) {
     return rejectWithValue(error.response?.data?.message || 'Admin authentication failed');
   }
@@ -55,7 +56,7 @@ export const checkAdminAuth = createAsyncThunk('auth/checkAdminAuth', async (_, 
 export const login = createAsyncThunk('auth/login', async (credentials: any, { rejectWithValue }) => {
   try {
     const response = await api.post('/auth/login', credentials);
-    return response.data;
+    return response.data.data;
   } catch (error: any) {
    
     return rejectWithValue(error.response?.data?.message || 'Failed to login');
@@ -65,7 +66,7 @@ export const login = createAsyncThunk('auth/login', async (credentials: any, { r
 export const adminLogin = createAsyncThunk('auth/adminLogin', async (credentials: any, { rejectWithValue }) => {
   try {
     const response = await api.post('/admin/auth/login', credentials);
-    return response.data;
+    return response.data.data;
   } catch (error: any) {
     return rejectWithValue(error.response?.data?.message || 'Failed to login as admin');
   }
@@ -74,7 +75,7 @@ export const adminLogin = createAsyncThunk('auth/adminLogin', async (credentials
 export const registerUser = createAsyncThunk('auth/register', async (userData: any, { rejectWithValue }) => {
   try {
     const response = await api.post('/auth/register', userData);
-    return response.data;
+    return response.data.data;
   } catch (error: any) {
     return rejectWithValue(error.response?.data?.message || 'Failed to register');
   }
@@ -128,10 +129,10 @@ const authSlice = createSlice({
         state.isLoading = true;
         state.error = null;
       })
-      .addCase(checkAuth.fulfilled, (state, action: PayloadAction<{ user: User }>) => {
+      .addCase(checkAuth.fulfilled, (state, action: PayloadAction<User>) => {
         state.isLoading = false;
         state.isAuthenticated = true;
-        state.user = action.payload.user;
+        state.user = action.payload;
       })
       .addCase(checkAuth.rejected, (state) => {
         state.isLoading = false;
@@ -144,11 +145,10 @@ const authSlice = createSlice({
         state.isAdminLoading = true;
         state.isAdminError = null;
       })
-      .addCase(checkAdminAuth.fulfilled, (state, action: PayloadAction<{ data: User }>) => {
+      .addCase(checkAdminAuth.fulfilled, (state, action: PayloadAction<User>) => {
         state.isAdminLoading = false;
         state.isAdminAuthenticated = true;
-        console.log(action.payload)
-        state.admin = action.payload.data;
+        state.admin = action.payload;
       })
       .addCase(checkAdminAuth.rejected, (state) => {
         state.isAdminLoading = false;
@@ -164,7 +164,7 @@ const authSlice = createSlice({
       .addCase(login.fulfilled, (state, action: PayloadAction<{ user: User }>) => {
         state.isLoading = false;
         state.isAuthenticated = true;
-        state.user = action.payload.user;
+        state.user = action.payload ;
       })
       .addCase(login.rejected, (state, action) => {
         state.isLoading = false;

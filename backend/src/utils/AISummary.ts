@@ -1,6 +1,7 @@
-import ai from "../config/AIConfig";
+import ai, { getRotatedAI, rotateAIKey, aiInstances } from "../config/AIConfig";
 import { IGlobalProfile } from "../domain/auth/entities/User";
-import { Type } from "@google/genai";
+import { Type, GoogleGenAI } from "@google/genai";
+import { getActiveBYOKKeyIndex, rotateBYOKKeyIndex } from "./byokKeysHelper";
 
 
 
@@ -316,12 +317,12 @@ Allowed expertise values: beginner, intermediate, advanced, expert
 If no new profile information is discovered, return an empty profileDelta object.`;
 }
 
-
-
 export async function generateTripleMemoryOutput(
   messageToCompress: any[],
   previousSummary: string | null,
   existingProfile: IGlobalProfile | null,
+  keys?: string[],
+  userId?: string
 ): Promise<TripleMemoryOutput> {
   const fullConversation = messageToCompress
     .map((m) => `[${m.role.toUpperCase()}]: ${m.content}`)
@@ -330,21 +331,63 @@ export async function generateTripleMemoryOutput(
   const systemPrompt = buildSystemPrompt(existingProfile, previousSummary);
   const userContent = `CONVERSATION BATCH:\n${fullConversation}`;
 
-  const response = await ai.models.generateContent({
-    model: "gemma-4-31b-it",
-    contents: [
-      {
-        role: "user",
-        parts: [{ text: userContent }],
-      },
-    ],
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: MEMORY_SCHEMA,
-      systemInstruction: systemPrompt,
-      temperature: 0.2,
-    },
-  });
+  let response;
+  let attempts = 0;
+  
+  const isByok = keys && keys.length > 0;
+  const instances = isByok ? keys.map(k => new GoogleGenAI({ apiKey: k })) : [];
+  
+  let currentIdx = 0;
+  if (isByok && userId && instances.length > 0) {
+    currentIdx = await getActiveBYOKKeyIndex(userId, "gemini");
+    currentIdx = currentIdx % instances.length;
+  }
+  const totalAttempts = isByok ? instances.length : aiInstances.length;
+
+  while (attempts < totalAttempts) {
+    try {
+      const activeAi = isByok ? instances[currentIdx] : await getRotatedAI();
+      response = await activeAi.models.generateContent({
+        model: "gemma-4-31b-it",
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: userContent }],
+          },
+        ],
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: MEMORY_SCHEMA,
+          systemInstruction: systemPrompt,
+          temperature: 0.2,
+        },
+      });
+      break;
+    } catch (error: any) {
+      if (
+        error.status === 429 ||
+        error.message?.includes("quota") ||
+        error.message?.includes("RESOURCE_EXHAUSTED")
+      ) {
+        if (isByok) {
+          if (userId) {
+            currentIdx = await rotateBYOKKeyIndex(userId, instances.length, "gemini");
+          } else {
+            currentIdx = (currentIdx + 1) % instances.length;
+          }
+        } else {
+          await rotateAIKey();
+        }
+        attempts++;
+        continue;
+      }
+      throw error;
+    }
+  }
+
+  if (!response) {
+    throw new Error("Failed to generate memory summary: All instances exhausted");
+  }
 
   const rawText = response.text?.trim() || "{}";
   console.log(rawText)

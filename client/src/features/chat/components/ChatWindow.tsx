@@ -21,6 +21,8 @@ import {
   X,
   GitBranch,
   Square,
+  Cpu,
+  Key,
 } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
 import type { VirtuosoHandle } from "react-virtuoso";
@@ -31,6 +33,7 @@ import { setActiveSidebarRootId, toggleRecallOverlay } from "../../explorer/stor
 import DendritesLogo from "../../../components/DendritesLogo";
 import { QuickChatModal } from "./QuickChatModal.tsx";
 import { DocumentBrowser } from "./DocumentBrowser";
+import { SettingsModal } from "./SettingsModal";
 import FileDisplay from "../../explorer/components/FileDisplay";
 import RecallPage from "../../recall/components/RecallPage";
 
@@ -46,6 +49,7 @@ import { useInheritContext } from "../hooks/useInheritContext";
 import { useTextSelection } from "../hooks/useTextSelection";
 import { useDocumentHistory } from "../hooks/useDocumentHistory";
 import { useFlattenedMessages, useBreadcrumbs } from "../hooks/useChatHelpers";
+import { MODEL_OPTIONS, DEFAULT_MODEL } from "../constants/models";
 import { useQueryClient } from "@tanstack/react-query";
 
 
@@ -97,7 +101,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   }, [messages]);
 
   const [mode, setMode] = useState<"general" | "visual">("general");
+  const [model, setModel] = useState(DEFAULT_MODEL);
   const [isModeOpen, setIsModeOpen] = useState(false);
+  const [isModelOpen, setIsModelOpen] = useState(false);
+  const user = useAppSelector((state) => state.auth.user);
+  const [isByokModalOpen, setIsByokModalOpen] = useState(false);
   const [input, setInput] = useState("");
   const [isQuickChatOpen, setIsQuickChatOpen] = useState(false);
   const [externalSelectedFile, setExternalSelectedFile] = useState<{
@@ -118,6 +126,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
   const virtuosoRef = useRef<VirtuosoHandle>(null);
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
+  const lastQueryRef = useRef("");
   const lastHandledExternalActionRef = useRef<number | null>(null);
   const [atBottom, setAtBottom] = useState(true);
   const [isTracerActive, setIsTracerActive] = useState(false);
@@ -151,6 +160,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const { send, isStreaming, streamingText ,stopStreaming} = useSendMessage({
     chatId: id,
     mode,
+    model,
     onStreamStart: () => scrollToBottom("smooth"),
     onStreamEnd: () => scrollToBottom("auto"),
   });
@@ -239,6 +249,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     )
       return;
     const msg = input.trim();
+    lastQueryRef.current = msg;
     setInput("");
     send(msg, selectedImageUrl, effectiveSelectedFile);
     clearImage();
@@ -255,6 +266,13 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     clearImage,
     clearFile,
   ]);
+
+  const handleStop = useCallback(() => {
+    stopStreaming();
+    if (lastQueryRef.current) {
+      setInput(lastQueryRef.current);
+    }
+  }, [stopStreaming]);
 
   const handleOpenSubChat = useCallback(
     (messageId: string, subChatId: string) => {
@@ -774,6 +792,63 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               )}
             </div>
 
+            {/* Model Selector */}
+            <div className="relative z-50">
+              <button
+                onClick={() => setIsModelOpen(!isModelOpen)}
+                className="flex items-center gap-1.5 px-3 py-1.5 ml-1 rounded-lg text-xs font-semibold bg-white/5 hover:bg-white/10 text-gray-300 transition-colors border border-white/5 shadow-sm max-w-[160px] truncate"
+              >
+                <Cpu size={14} className="text-emerald-400 shrink-0" />
+                <span className="hidden sm:inline truncate">
+                  {MODEL_OPTIONS.find((m) => m.id === model)?.label || "Model"}
+                </span>
+                <ChevronDown
+                  size={14}
+                  className={`text-gray-500 transition-transform shrink-0 ${isModelOpen ? "rotate-180" : ""}`}
+                />
+              </button>
+
+              {isModelOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setIsModelOpen(false)}
+                  ></div>
+                  <div className="absolute bottom-full left-0 mb-3 w-48 bg-(--theme-bg-surface) border border-zinc-700 shadow-2xl rounded-xl overflow-hidden py-1.5 z-50 max-h-[300px] overflow-y-auto no-scrollbar">
+                    {MODEL_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.id}
+                        onClick={() => {
+                          setModel(opt.id);
+                          setIsModelOpen(false);
+                        }}
+                        className="w-full flex items-center justify-between px-3 py-2 text-sm text-gray-300 hover:bg-white/5 transition-colors"
+                      >
+                        <div className="flex flex-col items-start gap-0.5">
+                          <span className="font-medium text-left truncate max-w-[120px]">{opt.label}</span>
+                          <span className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">{opt.tier}</span>
+                        </div>
+                        {model === opt.id && (
+                          <Check size={16} className="text-emerald-400 shrink-0" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {user?.tier === "byok" && (
+              <button
+                onClick={() => setIsByokModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 ml-1 rounded-lg text-xs font-semibold bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 transition-colors border border-emerald-500/20 shadow-sm whitespace-nowrap"
+                title="Manage BYOK API Keys"
+              >
+                <Key size={14} className="shrink-0" />
+                <span className="hidden sm:inline">Keys</span>
+              </button>
+            )}
+
             <textarea
               placeholder="Ask follow-up or research next steps..."
               className="flex-1  bg-transparent border-none outline-none px-3 text-[16px] text-gray-200 placeholder:text-gray-500 resize-none max-h-48 py-1 overflow-y-auto no-scrollbar"
@@ -801,7 +876,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 Cmd + Enter
               </span>
               <button
-                onClick={isStreaming ? stopStreaming : handleSend}
+                onClick={isStreaming ? handleStop : handleSend}
                 disabled={
                   isUploading ||
                   (!isStreaming && !input.trim() && !selectedImageUrl && !activeSelectedFile)
@@ -945,6 +1020,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           <RecallPage onClose={() => dispatch(toggleRecallOverlay(false))} />
         </div>
       )}
+
+      <SettingsModal 
+        isOpen={isByokModalOpen} 
+        onClose={() => setIsByokModalOpen(false)} 
+      />
     </div>
   );
 };

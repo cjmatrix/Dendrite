@@ -50,7 +50,7 @@ export class ProcessDocumentChunking {
       const points = chunks.map(chunk => ({
         id: crypto.randomUUID(),
         vectors: {
-        "dense-vector": chunk.embedding || new Array(768).fill(0),
+        "dense-vector": chunk.embedding || new Array(1024).fill(0),
         "bm25-vector": textToSparseVector(chunk.content),
       },
         payload: {

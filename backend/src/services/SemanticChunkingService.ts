@@ -99,8 +99,12 @@ function buildSegments(markdown: string): Segment[] {
   const lines = markdown.split("\n");
   let currentHeading = "";
   let i = 0;
+  
+  const MAX_LINES_DEPTH = lines.length + 1000;
+  let mainLoopCount = 0;
 
-  while (i < lines.length) {
+  while (i < lines.length && mainLoopCount++ < MAX_LINES_DEPTH * 2) {
+    const startI = i; // Progress tracker
     const line = lines[i];
     const trimmed = line.trim();
 
@@ -114,7 +118,8 @@ function buildSegments(markdown: string): Segment[] {
       const fence = trimmed.slice(0, 3);
       const block: string[] = [line];
       i++;
-      while (i < lines.length) {
+      let innerCount = 0;
+      while (i < lines.length && innerCount++ < MAX_LINES_DEPTH) {
         block.push(lines[i]);
         if (lines[i].trim().startsWith(fence)) {
           i++;
@@ -128,29 +133,47 @@ function buildSegments(markdown: string): Segment[] {
         heading: currentHeading,
         atomic: true,
       });
+      if (i === startI) i++; // Fallback progress
       continue;
     }
 
     // Tables
     if (trimmed.startsWith("|") || trimmed.toLowerCase().startsWith("<table")) {
       const block: string[] = [];
-      while (i < lines.length && lines[i].trim().startsWith("|")) {
-        block.push(lines[i]);
-        i++;
+      const isHtmlTable = trimmed.toLowerCase().startsWith("<table");
+      
+      let innerCount = 0;
+      if (isHtmlTable) {
+        while (i < lines.length && innerCount++ < MAX_LINES_DEPTH) {
+          block.push(lines[i]);
+          if (lines[i].trim().toLowerCase().startsWith("</table")) {
+            i++;
+            break;
+          }
+          i++;
+        }
+      } else {
+        while (i < lines.length && lines[i].trim().startsWith("|") && innerCount++ < MAX_LINES_DEPTH) {
+          block.push(lines[i]);
+          i++;
+        }
       }
+      
       segments.push({
         text: block.join("\n"),
         kind: "table",
         heading: currentHeading,
         atomic: true,
       });
+      if (i === startI) i++; // Fallback progress
       continue;
     }
 
     // Blockquotes
     if (trimmed.startsWith(">")) {
       const block: string[] = [];
-      while (i < lines.length && lines[i].trim().startsWith(">")) {
+      let innerCount = 0;
+      while (i < lines.length && lines[i].trim().startsWith(">") && innerCount++ < MAX_LINES_DEPTH) {
         block.push(lines[i]);
         i++;
       }
@@ -160,17 +183,19 @@ function buildSegments(markdown: string): Segment[] {
         heading: currentHeading,
         atomic: true,
       });
+      if (i === startI) i++; // Fallback progress
       continue;
     }
 
     // Lists
     if (/^([-*+]|[\dA-Za-z]+[.):])\s/.test(trimmed)) {
       const block: string[] = [];
+      let innerCount = 0;
       while (
         i < lines.length &&
         lines[i].trim() !== "" &&
-        (/^([-*+]|[\dA-Za-z]+[.):])\s/.test(lines[i].trim()) ||
-          /^\s{2,}/.test(lines[i])) // indented continuation
+        (/^([-*+]|[\dA-Za-z]+[.):])\s/.test(lines[i].trim()) || /^\s{2,}/.test(lines[i])) &&
+        innerCount++ < MAX_LINES_DEPTH
       ) {
         block.push(lines[i]);
         i++;
@@ -181,6 +206,7 @@ function buildSegments(markdown: string): Segment[] {
         heading: currentHeading,
         atomic: true,
       });
+      if (i === startI) i++; // Fallback progress
       continue;
     }
 
@@ -200,22 +226,20 @@ function buildSegments(markdown: string): Segment[] {
 
     // Paragraphs -> Sentences
     const paraLines: string[] = [];
+    const exclusionRegex = /^(?:#{1,6}\s+|\||>|[-*+]\s|[\dA-Za-z]+[.):]\s|```|~~~)/;
 
-    // FIX 1: Aligned the regex to accurately represent block prefixes
-    const exclusionRegex =
-      /^(?:#{1,6}\s+|\||>|[-*+]\s|[\dA-Za-z]+[.):]\s|```|~~~)/;
-
+    let innerCount = 0;
     while (
       i < lines.length &&
       lines[i].trim() !== "" &&
-      !exclusionRegex.test(lines[i].trim())
+      !exclusionRegex.test(lines[i].trim()) &&
+      innerCount++ < MAX_LINES_DEPTH
     ) {
       paraLines.push(lines[i]);
       i++;
     }
 
-    // FIX 2: Ultimate fail-safe to prevent infinite loops
-    if (paraLines.length === 0) {
+    if (paraLines.length === 0 || i === startI) {
       i++;
       continue;
     }
@@ -223,9 +247,7 @@ function buildSegments(markdown: string): Segment[] {
     const paraText = paraLines.join(" ").trim();
     if (!paraText) continue;
 
-    const sentences = paraText
-      .split(/(?<=[.!?])\s+(?=[A-Z"'(])|(?<=[.!?])$/)
-      .filter(Boolean);
+    const sentences = paraText.split(/(?<=[.!?])\s+(?=[A-Z"'(])|(?<=[.!?])$/).filter(Boolean);
 
     if (sentences.length <= 2) {
       segments.push({

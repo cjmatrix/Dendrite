@@ -6,6 +6,7 @@ import type { StreamChunk, Message } from "../types/Message";
 interface UseSendMessageOptions {
   chatId: string | undefined;
   mode: "general" | "visual";
+  model: string;
   onStreamStart?: () => void;
   onStreamEnd?: () => void;
 }
@@ -13,6 +14,7 @@ interface UseSendMessageOptions {
 export function useSendMessage({
   chatId,
   mode,
+  model,
   onStreamStart,
   onStreamEnd,
 }: UseSendMessageOptions) {
@@ -86,6 +88,7 @@ export function useSendMessage({
           chatId,
           userMessage,
           mode,
+          model,
           imageUrl,
           selectedFile?.url || null,
           selectedFile?.name || null,
@@ -137,7 +140,7 @@ export function useSendMessage({
         onStreamEnd?.();
       }
     },
-    [chatId, mode, isStreaming, queryClient, onStreamStart, onStreamEnd],
+    [chatId, mode, model, isStreaming, queryClient, onStreamStart, onStreamEnd],
   );
 
   return { send, isStreaming, streamingText ,stopStreaming};

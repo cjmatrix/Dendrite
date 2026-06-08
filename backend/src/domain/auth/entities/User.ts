@@ -42,7 +42,7 @@ export interface IUser {
   email: string;
   password: string;
   avatarUrl?: string;
-  tier: "free" | "pro" | "enterprise";
+  tier: "free" | "pro" | "enterprise" | "byok";
   tokensUsed: number;
   settings: {
     global?: boolean;

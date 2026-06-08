@@ -56,6 +56,7 @@ export interface PrepareMessageInputDTO {
   userId: string;
   userMessage: string;
   mode?: string;
+  model?: string;
   codeQueryVector?: number[];
   descQueryVector?: number[];
   imageUrl?: string;
@@ -67,7 +68,8 @@ export interface PrepareMessageOutputDTO {
   contents: any[];
   userMessageId: string;
   parentContext: Map<any, any>;
-  parentSummary:string|null
+  parentSummary: string | null;
+  model?: string;
 }
 
 export interface SaveModelReplyInputDTO {

@@ -12,11 +12,12 @@ export class StreamAndSaveChatUseCase implements IStreamAndSaveChatUseCase {
   ) {}
 
   async *execute(params: any, signal: AbortSignal): AsyncGenerator<StreamResult> {
-    const { contents, chatId, userId, userMessageId, parentContext, parentSummary, originalMessage } = params;
+    const { contents, chatId, userId, userMessageId, parentContext, parentSummary, originalMessage, model } = params;
+    const activeModel = model || "gemini-3-flash-preview";
     
     let stream: any;
     try {
-      stream = await this.aiService.streamAIContent(contents, "gemini-3-flash-preview", signal);
+      stream = await this.aiService.streamAIContent(contents, activeModel, signal, userId);
     } catch (error: any) {
       yield { type: "error", value: "Quota Exhausted or AI Error" };
       return;

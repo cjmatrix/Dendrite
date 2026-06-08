@@ -1,23 +1,38 @@
 import { redisConnection } from "../config/redis";
+import { GoogleGenAI } from "@google/genai";
 import { getTavilySearchContext } from "./searchCacheService";
 import { getRotatedAI, rotateAIKey, aiInstances, systemInstruction } from "../config/AIConfig";
 import CONTEXT_WINDOW from "../constants/contextWindow";
 import { estimateTokenCount } from "../utils/tokenCounter";
+import { getCachedDecryptedKeys, getActiveBYOKKeyIndex, rotateBYOKKeyIndex } from "../utils/byokKeysHelper";
 
 export class AIService {
  
   
    
-  static async shouldUseInternetSearch(queryText: string): Promise<boolean> {
+  static async shouldUseInternetSearch(queryText: string, userId?: string): Promise<boolean> {
     const routingPrompt = `Determine if the following user query requires an internet search to be answered accurately. 
 Respond ONLY with "YES" if it requires knowledge of recent events, real-time facts, current weather, news, specific web sources, or things outside typical LLM pre-training data.
 Respond ONLY with "NO" if it is a general reasoning, coding, writing, or conceptual question that can be answered without internet access.
 User query: "${queryText}"`;
 
     let routerAttempts = 0;
-    while (routerAttempts < aiInstances.length) {
+    let keys: string[] = [];
+    let currentIdx = 0;
+    if (userId) {
+      keys = await getCachedDecryptedKeys(userId, "gemini");
+    }
+
+    const instances = keys.length > 0 ? keys.map((key) => new GoogleGenAI({ apiKey: key })) : [];
+    if (instances.length > 0 && userId) {
+      currentIdx = await getActiveBYOKKeyIndex(userId, "gemini");
+      currentIdx = currentIdx % instances.length;
+    }
+    const totalInstances = instances.length > 0 ? instances.length : aiInstances.length;
+
+    while (routerAttempts < totalInstances) {
       try {
-        const activeAi = getRotatedAI();
+        const activeAi = instances.length > 0 ? instances[currentIdx] : await getRotatedAI();
         const routerResponse = await activeAi.models.generateContent({
           model: "gemini-2.5-flash-lite",
           contents: [{ role: "user", parts: [{ text: routingPrompt }] }],
@@ -29,7 +44,11 @@ User query: "${queryText}"`;
           error.message?.includes("quota") ||
           error.message?.includes("RESOURCE_EXHAUSTED")
         ) {
-          rotateAIKey();
+          if (instances.length > 0 && userId) {
+            currentIdx = await rotateBYOKKeyIndex(userId, instances.length, "gemini");
+          } else {
+            await rotateAIKey();
+          }
           routerAttempts++;
           continue;
         }
@@ -39,14 +58,15 @@ User query: "${queryText}"`;
     return false;
   }
 
- 
   
+   
   static async getInternetContext(
     queryText: string,
     descQueryVector: any,
+    userId?: string
   ): Promise<string> {
     try {
-      const shouldSearch = await this.shouldUseInternetSearch(queryText);
+      const shouldSearch = await this.shouldUseInternetSearch(queryText, userId);
 
       if (shouldSearch) {
         console.log(
@@ -81,7 +101,7 @@ User query: "${queryText}"`;
 
     while (attempts < aiInstances.length) {
       try {
-        const activeAi = getRotatedAI();
+        const activeAi = await getRotatedAI();
         stream = await activeAi.models.generateContentStream({
           model,
           contents,
@@ -97,7 +117,7 @@ User query: "${queryText}"`;
           error.message?.includes("quota") ||
           error.message?.includes("RESOURCE_EXHAUSTED")
         ) {
-          rotateAIKey();
+          await rotateAIKey();
           attempts++;
           continue;
         }
@@ -106,6 +126,55 @@ User query: "${queryText}"`;
     }
 
     throw new Error("All AI instances exhausted quota");
+  }
+
+  static async streamAIContentWithKeys(
+    contents: any[],
+    model: string,
+    keys: string[],
+    signal?: AbortSignal,
+    userId?: string
+  ) {
+    let stream;
+    let attempts = 0;
+    
+    const instances = keys.map((key) => new GoogleGenAI({ apiKey: key }));
+    let currentIdx = 0;
+    if (userId && instances.length > 0) {
+      currentIdx = await getActiveBYOKKeyIndex(userId, "gemini");
+      currentIdx = currentIdx % instances.length;
+    }
+
+    while (attempts < instances.length) {
+      try {
+        const activeAi = instances[currentIdx];
+        stream = await activeAi.models.generateContentStream({
+          model,
+          contents,
+        });
+        return stream;
+      } catch (error: any) {
+        if (
+          error.status === 429 ||
+          error.status === 503 ||
+          error.status === 400 ||
+          error.message?.includes("high demand") ||
+          error.message?.includes("quota") ||
+          error.message?.includes("RESOURCE_EXHAUSTED")
+        ) {
+          if (userId) {
+            currentIdx = await rotateBYOKKeyIndex(userId, instances.length, "gemini");
+          } else {
+            currentIdx = (currentIdx + 1) % instances.length;
+          }
+          attempts++;
+          continue;
+        }
+        throw error;
+      }
+    }
+
+    throw new Error("All provided BYOK keys exhausted quota");
   }
 
   
@@ -166,7 +235,10 @@ User query: "${queryText}"`;
 [Rules for plantuml diagram below]
  - When the user asks for explanation or teaching,  and user query needs visual explanation then only generate a PlantUML diagram.
  Dont make complex UML diagrams if user not asked for explicitly create SIMPLE Diagrams if user query need complex or flexible to explain user query draw flexible diagrams.
- [sometimes i get synta x error like "assumed to be activity daigram" like that keep that in mind i dont syntax error ]
+ CRITICAL SYNTAX RULES TO AVOID "assumed to be activity diagram" ERRORS:
+   - For Activity Diagrams: ALWAYS use modern syntax ('start', 'stop', ':Activity Name;', 'if (cond) then (yes)'). NEVER use the legacy '(*)' syntax!
+   - For State/Flow Diagrams: Use '[*]' for start/end and '-->' for transitions (e.g., 'State1 --> State2'). NEVER use '(*)'.
+   - Never mix legacy activity syntax with standard sequence arrows.
  Never connect quoted labels directly.
  Never mix rectangle/node/component/participant.
  Use the code block: \\\`\\\`\\\`plantuml ... \\\`\\\`\\\`.

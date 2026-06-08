@@ -1,6 +1,4 @@
 
-//   A fast 32-bit hashing function (FNV-1a) to convert string tokens into unique uint32 IDs.
-
 
 
 

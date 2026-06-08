@@ -13,6 +13,7 @@ import {
   ISendOtpUseCase,
   IUpdateFcmTokenUseCase,
   IVerifyOtpUseCase,
+  IUpdateByokKeysUseCase,
 } from "../../application/auth/use-cases/interfaces";
 import { container } from "tsyringe";
 
@@ -38,6 +39,8 @@ export class AuthController extends BaseController {
     @inject("IVerifyOtpUseCase") private verifyOtpUseCase: IVerifyOtpUseCase,
     @inject("IGoogleLoginUseCase")
     private googleLoginUseCase: IGoogleLoginUseCase,
+    @inject("IUpdateByokKeysUseCase")
+    private updateByokKeysUseCase: IUpdateByokKeysUseCase,
   ) {
     super();
   }
@@ -166,6 +169,23 @@ export class AuthController extends BaseController {
       HTTP_STATUS.OK,
       AUTH_MESSAGES.GOOGLE_AUTH_SUCCESS,
     );
+  };
+
+  public updateByokKeys = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const userId = this.validateUserAuth(req);
+      const { provider, keys } = req.body;
+      
+      const result = await this.updateByokKeysUseCase.execute({
+        userId,
+        provider,
+        keys,
+      });
+      
+      this.sendSuccess(res, result, HTTP_STATUS.OK);
+    } catch (error) {
+      this.sendError(res, error);
+    }
   };
 }
 

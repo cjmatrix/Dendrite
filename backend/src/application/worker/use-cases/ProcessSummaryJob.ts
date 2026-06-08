@@ -87,7 +87,7 @@ function mergeProfileDelta(
 
   for (const field of scalarFields) {
     if (delta[field] && delta[field] !== (profile as any)[field]) {
-      updates[`globalProfile.${field}`] = delta[field];
+      updates[`globalProfile.${field}`] = String(delta[field]).slice(0, 100);
     }
   }
 
@@ -102,19 +102,29 @@ function mergeProfileDelta(
     "entities",
   ] as const;
 
+  const MAX_ARRAY_ITEMS = 15;
+  const MAX_ITEM_LENGTH = 300;
+
   for (const field of arrayFields) {
     const deltaItems = delta[field];
     if (deltaItems && deltaItems.length > 0) {
-      const existingItems = (profile as any)[field] || [];
+      
+      const existingItems: string[] = ((profile as any)[field] || [])
+        .map((item: any) => String(item).slice(0, MAX_ITEM_LENGTH));
+        
       const existingSet = new Set(
         existingItems.map((item: string) => item.toLowerCase()),
       );
-      const newItems = deltaItems.filter(
-        (item) => !existingSet.has(item.toLowerCase()),
-      );
+      
+      
+      const newItems = deltaItems
+        .map((item: any) => String(item).slice(0, MAX_ITEM_LENGTH))
+        .filter((item) => !existingSet.has(item.toLowerCase()));
 
       if (newItems.length > 0) {
-        updates[`globalProfile.${field}`] = [...existingItems, ...newItems];
+        const combined = [...existingItems, ...newItems];
+     
+        updates[`globalProfile.${field}`] = combined.slice(-MAX_ARRAY_ITEMS);
       }
     }
   }
@@ -171,10 +181,15 @@ export class ProcessSummaryJob {
         const user = await this.userRepository.findById(userId);
         const existingProfile = user?.globalProfile || null;
 
+        const { getCachedDecryptedKeys } = require("../../../utils/byokKeysHelper");
+        const byokKeys = await getCachedDecryptedKeys(userId, "gemini");
+
         tripleOutput = await generateTripleMemoryOutput(
           messageToCompress,
           previousSummary || null,
           existingProfile,
+          byokKeys,
+          userId
         );
 
         await this.redisConnection.setex(

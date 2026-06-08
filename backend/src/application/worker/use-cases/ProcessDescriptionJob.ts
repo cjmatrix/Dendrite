@@ -38,8 +38,17 @@ export class ProcessDescriptionJob {
     if (toProcessBlocks.length > 0) {
       this.logger.info(` Batching description generation for ${toProcessBlocks.length} blocks...`);
       
+      let byokKeys: string[] | undefined;
+      const firstBlock = toProcessBlocks[0] || blocks[0];
+      if (firstBlock && firstBlock.userId) {
+        const { getCachedDecryptedKeys } = require("../../../utils/byokKeysHelper");
+        byokKeys = await getCachedDecryptedKeys(firstBlock.userId.toString(), "gemini");
+      }
+
       const batchResults = await generateBatchCodeDescriptions(
-        toProcessBlocks.map(b => ({ id: b._id, code: b.code, language: b.language }))
+        toProcessBlocks.map(b => ({ id: b._id, code: b.code, language: b.language })),
+        byokKeys,
+        firstBlock && firstBlock.userId ? firstBlock.userId.toString() : undefined
       );
 
       for (const res of batchResults) {

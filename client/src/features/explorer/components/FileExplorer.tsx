@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from "react";
-import { Plus, FolderPlus, MessageSquare, Check, Folder, ChevronLeft, Sparkles, Brain, Menu, LogOut } from "lucide-react";
+import { Plus, FolderPlus, MessageSquare, Check, Folder, ChevronLeft, Brain, Menu, LogOut, Settings } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { SettingsModal } from "../../chat/components/SettingsModal";
 
 import type { FileType } from "../types/types";
 import { FileItem } from "./FileItem";
@@ -15,6 +16,7 @@ export default function FileExplorer() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { tree, activeSidebarRootId } = useAppSelector((state) => state.explorer);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
 
   const { recallCount } = useFileTree();
@@ -140,6 +142,14 @@ export default function FileExplorer() {
         </button>
 
         <button
+          onClick={() => setIsSettingsOpen(true)}
+          className="w-8 h-8 rounded-lg text-zinc-400 hover:text-zinc-200 flex items-center justify-center hover:bg-zinc-800/40 transition-colors"
+          title="Settings"
+        >
+          <Settings size={16} />
+        </button>
+
+        <button
           onClick={handleLogout}
           className="w-8 h-8 rounded-lg text-red-400/80 hover:text-red-400 flex items-center justify-center hover:bg-red-500/10 transition-colors"
           title="Sign Out"
@@ -147,6 +157,11 @@ export default function FileExplorer() {
           <LogOut size={16} />
         </button>
       </div>
+
+      <SettingsModal 
+        isOpen={isSettingsOpen} 
+        onClose={() => setIsSettingsOpen(false)} 
+      />
 
       <div
         ref={sidebarRef}
@@ -211,10 +226,8 @@ export default function FileExplorer() {
               {rootCreating && (
                 <div className="mx-3 mb-3 px-3 py-2 bg-zinc-900/50 border border-zinc-800/50 rounded-xl animate-in slide-in-from-top-4 duration-300">
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[9px] font-black text-cyan-500/80 uppercase tracking-widest px-1">
-                      Initialising {rootCreating}...
-                    </span>
-                    <Sparkles size={10} className="text-cyan-400 animate-pulse" />
+                    
+                   
                   </div>
                   <div className="flex items-center gap-2">
                     <input

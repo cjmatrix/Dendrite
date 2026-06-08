@@ -31,6 +31,7 @@ import { UpdateFcmToken } from "../application/auth/use-cases/UpdateFcmToken";
 import { SendOTP } from "../application/auth/use-cases/SendOTP";
 import { VerifyOTP } from "../application/auth/use-cases/VerifyOTP";
 import { GoogleLogin } from "../application/auth/use-cases/GoogleLogin";
+import { UpdateByokKeys } from "../application/auth/use-cases/UpdateByokKeys";
 import { AdminLoginUseCase } from "../application/admin/adminAuth/usecases/adminLoginUsecase";
 import { AdminLogoutUseCase } from "../application/admin/adminAuth/usecases/AdminLogout";
 import { AdminGetMeUseCase } from "../application/admin/adminAuth/usecases/AdminGetMe";
@@ -64,7 +65,11 @@ import { PrometheusMetricsService } from "../infrastructure/monitoring/Prometheu
 import { StreamAndSaveChatUseCase } from "../application/chat/use-cases/StreamAndSaveChatUseCase";
 
 
+import { VoyageEmbeddingService } from "../infrastructure/services/VoyageEmbeddingService";
+import { JinaEmbeddingService } from "../infrastructure/services/JinaEmbeddingService";
+
 container.registerInstance("RedisClient", redisConnection);
+container.registerSingleton("IEmbeddingService", VoyageEmbeddingService); // Easily switchable to JinaEmbeddingService!
 container.registerSingleton("ICacheService", RedisCacheService);
 container.registerSingleton<ILogger>("ILogger", WinstonLoggerAdapter);
 container.registerSingleton("IMetricsService", PrometheusMetricsService);
@@ -103,6 +108,7 @@ container.registerSingleton("IUpdateFcmTokenUseCase", UpdateFcmToken);
 container.registerSingleton("ISendOtpUseCase", SendOTP);
 container.registerSingleton("IVerifyOtpUseCase", VerifyOTP);
 container.registerSingleton("IGoogleLoginUseCase", GoogleLogin);
+container.registerSingleton("IUpdateByokKeysUseCase", UpdateByokKeys);
 
 container.registerSingleton("IAdminLoginUseCase", AdminLoginUseCase);
 container.registerSingleton("IAdminLogoutUseCase", AdminLogoutUseCase);

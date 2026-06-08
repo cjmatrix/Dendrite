@@ -13,15 +13,32 @@ const keys = [
 
 export const aiInstances = keys.map(key => new GoogleGenAI({ apiKey: key }));
 
-export let currentKeyIndex = 0;
+import { redisConnection } from "./redis";
 
-export function getRotatedAI() {
-  return aiInstances[currentKeyIndex];
+export async function getRotatedAI() {
+  try {
+    const redis = redisConnection;
+    const cachedIdx = await redis.get("system:gemini:active_index");
+    const currentKeyIndex = cachedIdx ? parseInt(cachedIdx, 10) % aiInstances.length : 0;
+    return aiInstances[currentKeyIndex];
+  } catch (err) {
+    return aiInstances[0] || new GoogleGenAI({ apiKey: "" });
+  }
 }
 
-export function rotateAIKey() {
-  currentKeyIndex = (currentKeyIndex + 1) % aiInstances.length;
-  console.log(`[API Key Rotation] Exceeded quota. Switching to key pool index: ${currentKeyIndex}`);
+export async function rotateAIKey() {
+  try {
+    const redis = redisConnection;
+    const cachedIdx = await redis.get("system:gemini:active_index");
+    let currentKeyIndex = cachedIdx ? parseInt(cachedIdx, 10) : 0;
+    currentKeyIndex = (currentKeyIndex + 1) % aiInstances.length;
+    await redis.set("system:gemini:active_index", currentKeyIndex.toString());
+    console.log(`[API Key Rotation] Exceeded quota. Switching to key pool index: ${currentKeyIndex}`);
+    return currentKeyIndex;
+  } catch (err) {
+    console.error("[API Key Rotation] Failed to rotate key in Redis:", err);
+    return 0;
+  }
 }
 
 
@@ -42,7 +59,10 @@ export const systemInstruction = `You are a helpful AI assistant.
 [Rules for plantuml diagram below]
  When the user asks for visual explanation in GENERAL MODE or teaching and user query needs visual explanation then only generate a PlantUML diagram.
  Dont make complex UML diagrams if user not asked for explicitly create SIMPLE Diagrams if user query need complex or flexible to explain user query draw flexible diagrams.
- [sometimes i get synta x error like "assumed to be activity daigram" like that keep that in mind i dont syntax error ]
+ CRITICAL SYNTAX RULES TO AVOID "assumed to be activity diagram" ERRORS:
+   - For Activity Diagrams: ALWAYS use modern syntax ('start', 'stop', ':Activity Name;', 'if (cond) then (yes)'). NEVER use the legacy '(*)' syntax!
+   - For State/Flow Diagrams: Use '[*]' for start/end and '-->' for transitions (e.g., 'State1 --> State2'). NEVER use '(*)'.
+   - Never mix legacy activity syntax with standard sequence arrows.
  Never connect quoted labels directly.
  Never mix rectangle/node/component/participant.
  Use the code block: \\\`\\\`\\\`plantuml ... \\\`\\\`\\\`.

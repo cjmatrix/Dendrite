@@ -69,7 +69,7 @@ const UserSchema = new Schema<IMongoUserDocument>(
     },
     tier: {
       type: String,
-      enum: ["free", "pro", "enterprise"],
+      enum: ["free", "pro", "enterprise","byok"],
       default: "free",
     },
     tokensUsed: { type: Number, default: 0 },

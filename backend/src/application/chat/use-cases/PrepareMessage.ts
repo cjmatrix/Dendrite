@@ -84,6 +84,7 @@ ${lines.join("\n")}`;
       userId,
       userMessage,
       mode,
+      model,
       imageUrl,
       fileUrl,
       fileName,
@@ -343,7 +344,7 @@ ${lines.join("\n")}`;
 
       dynamicSystemInstruction += `\n\n=== [PRIMARY SOURCE: UPLOADED DOCUMENTS] ===\nIMPORTANT: The user has uploaded specific documents. Your responses MUST be grounded exclusively in the following document excerpts. Do NOT rely on general knowledge or external sources unless the user explicitly asks. If the user's question cannot be answered using ONLY the provided documents, clearly state: "This information is not covered in the uploaded documents and then you may free to use general knowledge."\n\n${docText}\n\nSOURCE CONSTRAINT: Base your entire response on the above document content. Cite the document name and section when providing information.`;
     }
-//
+
     if (mode === "visual") {
       dynamicSystemInstruction += `VISUAL MODE ACTIVE
 
@@ -482,6 +483,7 @@ If any answer is NO, improve the visualization before returning it.`;
       dynamicSystemInstruction += `\n\nIMPORTANT: The user is currently in GENERAL mode. Do NOT produce any raw p5 code blocks or runnable visualization code. Under no circumstances output a fenced code block labeled \`p5\` or any JavaScript code intended to be executed as a visualization. If the user asks about a previous visualization, provide only a high-level textual description or pseudo-code, and NEVER include runnable p5 code unless the user explicitly switches to Visual Mode.`;
     }
 
+ 
   
     const urlToBase64 = async (
       url: string,
@@ -548,7 +550,7 @@ If any answer is NO, improve the visualization before returning it.`;
 
     let internetContext: string | undefined;
     if (finalDescQueryVector) {
-      internetContext = await AIService.getInternetContext(normalizedMessage, finalDescQueryVector);
+      internetContext = await AIService.getInternetContext(normalizedMessage, finalDescQueryVector, userId);
     }
 
     if (internetContext) {
@@ -560,6 +562,6 @@ If any answer is NO, improve the visualization before returning it.`;
       }
     }
 
-    return { chat, contents, userMessageId: userMsg._id.toString() ,parentContext:map,parentSummary: parentSummary ?? null};
+    return { chat, contents, userMessageId: userMsg._id.toString(), parentContext: map, parentSummary: parentSummary ?? null, model };
   }
 }

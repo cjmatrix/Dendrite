@@ -47,6 +47,12 @@ export interface IVerifyOtpUseCase {
 }
 
 export interface IGoogleLoginUseCase {
-  execute(idToken: string): Promise<AuthOutputDTO>;
+  execute(
+    idToken: string,
+  ): Promise<AuthOutputDTO>;
+}
+
+export interface IUpdateByokKeysUseCase {
+  execute(input: import("../dtos/auth.dto").UpdateByokKeysInputDTO): Promise<{ success: boolean; message: string }>;
 }
 
