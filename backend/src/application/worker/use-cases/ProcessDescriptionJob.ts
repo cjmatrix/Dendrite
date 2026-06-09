@@ -5,6 +5,7 @@ import { IEmbeddingPublisher } from '../../common/ports/IEmbeddingPublisher';
 import { generateBatchCodeDescriptions } from '../../../utils/AIDescription';
 import { ILogger } from '../../common/ports/ILogger';
 import { IUnitOfWorkRepository } from "../../common/ports/IUnitOfWorkRepository";
+import { IUserRepository } from "../../../domain/auth/repositories/IUserRepository";
 
 @injectable()
 export class ProcessDescriptionJob {
@@ -14,6 +15,7 @@ export class ProcessDescriptionJob {
     @inject("RedisClient") private redisConnection: any, 
     @inject("IEmbeddingPublisher") private embeddingPublisher: IEmbeddingPublisher,
     @inject("IUnitOfWorkRepository") private unitOfWork: IUnitOfWorkRepository,
+    @inject("IUserRepository") private userRepository: IUserRepository,
     @inject("ILogger") private logger: ILogger
   ) {}
 
@@ -45,11 +47,39 @@ export class ProcessDescriptionJob {
         byokKeys = await getCachedDecryptedKeys(firstBlock.userId.toString(), "gemini");
       }
 
-      const batchResults = await generateBatchCodeDescriptions(
+      const { results: batchResults, usageMetadata } = await generateBatchCodeDescriptions(
         toProcessBlocks.map(b => ({ id: b._id, code: b.code, language: b.language })),
         byokKeys,
         firstBlock && firstBlock.userId ? firstBlock.userId.toString() : undefined
       );
+
+      
+      if (firstBlock && firstBlock.userId) {
+        const userIdStr = firstBlock.userId.toString();
+        let inputTokens = 0;
+        let outputTokens = 0;
+        if (usageMetadata) {
+          inputTokens = usageMetadata.promptTokenCount || 0;
+          outputTokens = usageMetadata.candidatesTokenCount || 0;
+        } else {
+          const { estimateTokenCount } = require("../../../utils/tokenCounter");
+          const promptText = toProcessBlocks.map(b => b.code).join("\n");
+          inputTokens = estimateTokenCount(promptText);
+          outputTokens = estimateTokenCount(JSON.stringify(batchResults));
+        }
+        const totalTokens = inputTokens + outputTokens;
+
+        if (totalTokens > 0) {
+          await this.userRepository.findByIdAndUpdate(userIdStr, {
+            $inc: {
+              "token_usage.codeDescription.input": inputTokens,
+              "token_usage.codeDescription.output": outputTokens,
+              "token_usage.codeDescription.total": totalTokens,
+              "tokensUsed": totalTokens
+            }
+          });
+        }
+      }
 
       for (const res of batchResults) {
         finalResults[res.id] = res.description;

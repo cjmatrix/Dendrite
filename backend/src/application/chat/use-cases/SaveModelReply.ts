@@ -12,6 +12,7 @@ import { ISummaryPublisher } from "../../common/ports/ISummaryPublisher";
 import { estimateTokenCount } from "../../../utils/tokenCounter";
 import { ILogger } from "../../common/ports/ILogger";
 import { IUnitOfWorkRepository } from "../../common/ports/IUnitOfWorkRepository";
+import { IUserRepository } from "../../../domain/auth/repositories/IUserRepository";
 import { injectable, inject } from "tsyringe";
 import { ISaveModelReplyUseCase } from "./interfaces";
 
@@ -48,11 +49,12 @@ export class SaveModelReply implements ISaveModelReplyUseCase {
     private descriptionPublisher: IDescriptionPublisher,
     @inject("ISummaryPublisher") private summaryPublisher: ISummaryPublisher,
     @inject("IUnitOfWorkRepository") private unitOfWork: IUnitOfWorkRepository,
+    @inject("IUserRepository") private userRepository: IUserRepository,
     @inject("ILogger") private logger: ILogger,
   ) {}
 
   async execute(input: import("../dtos/chat.dto").SaveModelReplyInputDTO) {
-    const { chatId, userId, modelReply, parentContext ,parentSummary} = input;
+    const { chatId, userId, modelReply, parentContext, parentSummary, promptTokens, responseTokens, contents } = input;
 
     const chat = await this.chatRepository.findByIdAndUserId(chatId, userId);
 
@@ -68,6 +70,33 @@ export class SaveModelReply implements ISaveModelReplyUseCase {
         [{ chatId, userId, role: "model", content: modelReply }]
       );
       modelMessageId = modelMsg._id.toString();
+
+      // Accumulate token usage
+      let p5Tokens = 0;
+      const p5Regex = /```p5\n([\s\S]*?)```/g;
+      let p5Match;
+      while ((p5Match = p5Regex.exec(modelReply)) !== null) {
+        const p5Code = p5Match[1].trim();
+        p5Tokens += estimateTokenCount(p5Code);
+      }
+
+      const calculatedPromptTokens = promptTokens !== undefined ? promptTokens : estimateTokenCount(JSON.stringify(contents || ""));
+      const calculatedResponseTokens = responseTokens !== undefined ? responseTokens : estimateTokenCount(modelReply);
+
+      const p5VisualizationTokens = p5Tokens;
+      const mainChatOutputTokens = Math.max(0, calculatedResponseTokens - p5Tokens);
+
+      await this.userRepository.findByIdAndUpdate(userId, {
+        $inc: {
+          "token_usage.mainChat.input": calculatedPromptTokens,
+          "token_usage.mainChat.output": mainChatOutputTokens,
+          "token_usage.mainChat.total": calculatedPromptTokens + mainChatOutputTokens,
+          "token_usage.p5Visualization.input": 0,
+          "token_usage.p5Visualization.output": p5VisualizationTokens,
+          "token_usage.p5Visualization.total": p5VisualizationTokens,
+          "tokensUsed": calculatedPromptTokens + calculatedResponseTokens
+        }
+      });
 
       const updatedChat = await this.chatRepository.update(
         chatId,

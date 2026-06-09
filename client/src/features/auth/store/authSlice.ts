@@ -161,10 +161,10 @@ const authSlice = createSlice({
         state.isLoading = true;
         state.error = null;
       })
-      .addCase(login.fulfilled, (state, action: PayloadAction<{ user: User }>) => {
+      .addCase(login.fulfilled, (state, action: PayloadAction<User>) => {
         state.isLoading = false;
         state.isAuthenticated = true;
-        state.user = action.payload ;
+        state.user = action.payload;
       })
       .addCase(login.rejected, (state, action) => {
         state.isLoading = false;
@@ -176,10 +176,10 @@ const authSlice = createSlice({
         state.isAdminLoading = true;
         state.isAdminError = null;
       })
-      .addCase(adminLogin.fulfilled, (state, action: PayloadAction<{ user: User }>) => {
+      .addCase(adminLogin.fulfilled, (state, action: PayloadAction<User>) => {
         state.isAdminLoading = false;
         state.isAdminAuthenticated = true;
-        state.admin = action.payload.user;
+        state.admin = action.payload;
       })
       .addCase(adminLogin.rejected, (state, action) => {
         state.isAdminLoading = false;
@@ -191,10 +191,10 @@ const authSlice = createSlice({
         state.isLoading = true;
         state.error = null;
       })
-      .addCase(registerUser.fulfilled, (state, action: PayloadAction<{ user: User }>) => {
+      .addCase(registerUser.fulfilled, (state, action: PayloadAction<User>) => {
         state.isLoading = false;
         state.isAuthenticated = true;
-        state.user = action.payload.user;
+        state.user = action.payload;
       })
       .addCase(registerUser.rejected, (state, action) => {
         state.isLoading = false;

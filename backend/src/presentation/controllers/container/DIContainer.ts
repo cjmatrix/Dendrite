@@ -328,6 +328,7 @@ export class DIContainer {
         this.getDescriptionPublisher(),
         this.getSummaryPublisher(),
         this.getUnitOfWorkRepository(),
+        this.getUserRepository(),
         this.getLogger(),
       );
     }

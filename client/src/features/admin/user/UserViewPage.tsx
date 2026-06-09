@@ -156,7 +156,7 @@ function UserViewPage() {
               Total Cumulative Usage
             </p>
             <p className="text-3xl font-semibold mt-3">
-              {user.tokenUsage.total.toLocaleString()}
+              {(user.tokensUsed || 0).toLocaleString()}
             </p>
           </div>
           <div className="xl:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
@@ -170,12 +170,20 @@ function UserViewPage() {
             ].map((metric) => (
               <div
                 key={metric.label}
-                className="bg-zinc-900/60 border border-blue-500/10 rounded-xl p-4"
+                className="bg-zinc-900/60 border border-blue-500/10 rounded-xl p-4 flex flex-col justify-between"
               >
-                <p className="text-xs uppercase tracking-wider text-zinc-400">
-                  {metric.label}
-                </p>
-                <p className="text-lg mt-2">{metric.value.toLocaleString()}</p>
+                <div>
+                  <p className="text-xs uppercase tracking-wider text-zinc-400">
+                    {metric.label}
+                  </p>
+                  <p className="text-lg mt-2 font-semibold">
+                    {(metric.value?.total ?? 0).toLocaleString()}
+                  </p>
+                </div>
+                <div className="flex gap-4 text-xs text-zinc-500 mt-2 border-t border-zinc-800/50 pt-2">
+                  <span>In: {(metric.value?.input ?? 0).toLocaleString()}</span>
+                  <span>Out: {(metric.value?.output ?? 0).toLocaleString()}</span>
+                </div>
               </div>
             ))}
           </div>

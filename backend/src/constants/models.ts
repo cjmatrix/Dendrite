@@ -1,4 +1,11 @@
-export const DEFAULT_MODEL = "gemini-3-flash-preview";
+export const MAIN_CHAT_MODEL = "gemini-3-flash-preview";
+export const SUB_CHAT_MODEL = "gemini-3-flash-preview";
+export const QUICK_CHAT_MODEL = "gemini-2.5-flash";
+export const CHAT_SUMMARY_MODEL = "gemma-4-31b-it";
+export const CODE_DESCRIPTION_MODEL = "gemma-4-31b-it";
+export const INTERNET_SEARCH_ROUTER_MODEL = "gemini-2.5-flash-lite";
+
+export const DEFAULT_MODEL = MAIN_CHAT_MODEL;
 
 export interface ModelOption {
   id: string;
@@ -8,7 +15,7 @@ export interface ModelOption {
 }
 
 export const MODEL_OPTIONS: ModelOption[] = [
-  // Gemini (default, uses your own API keys)
+  
   {
     id: "gemini-3-flash-preview",
     label: "Gemini 3 Flash",
@@ -16,7 +23,7 @@ export const MODEL_OPTIONS: ModelOption[] = [
     tier: "free",
   },
 
-  // OpenRouter - Major Paid Models
+
   {
     id: "openai/gpt-5.5",
     label: "GPT-5.5",
@@ -42,7 +49,7 @@ export const MODEL_OPTIONS: ModelOption[] = [
     tier: "paid",
   },
 
-  // OpenRouter - Free Tier Models
+  
   {
     id: "moonshotai/kimi-k2.6:free",
     label: "Kimi K2.6",

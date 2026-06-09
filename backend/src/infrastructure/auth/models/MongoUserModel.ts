@@ -29,14 +29,19 @@ export interface IGlobalProfile {
   entities: string[];
 }
 
-export interface ITokenUsage {
+export interface ITokenCategory {
+  input: number;
+  output: number;
   total: number;
-  mainChat: number;
-  chatSummary: number;
-  compressedChat: number;
-  codeDescription: number;
-  p5Visualization: number;
-  quickChat: number;
+}
+
+export interface ITokenUsage {
+  mainChat: ITokenCategory;
+  chatSummary: ITokenCategory;
+  compressedChat: ITokenCategory;
+  codeDescription: ITokenCategory;
+  p5Visualization: ITokenCategory;
+  quickChat: ITokenCategory;
   lastResetDate: Date;
 }
 
@@ -115,13 +120,36 @@ const UserSchema = new Schema<IMongoUserDocument>(
     },
 
     token_usage: {
-      total: { type: Number, default: 0 },
-      mainChat: { type: Number, default: 0 },
-      chatSummary: { type: Number, default: 0 },
-      compressedChat: { type: Number, default: 0 },
-      codeDescription: { type: Number, default: 0 },
-      p5Visualization: { type: Number, default: 0 },
-      quickChat: { type: Number, default: 0 },
+      mainChat: {
+        input: { type: Number, default: 0 },
+        output: { type: Number, default: 0 },
+        total: { type: Number, default: 0 },
+      },
+      chatSummary: {
+        input: { type: Number, default: 0 },
+        output: { type: Number, default: 0 },
+        total: { type: Number, default: 0 },
+      },
+      compressedChat: {
+        input: { type: Number, default: 0 },
+        output: { type: Number, default: 0 },
+        total: { type: Number, default: 0 },
+      },
+      codeDescription: {
+        input: { type: Number, default: 0 },
+        output: { type: Number, default: 0 },
+        total: { type: Number, default: 0 },
+      },
+      p5Visualization: {
+        input: { type: Number, default: 0 },
+        output: { type: Number, default: 0 },
+        total: { type: Number, default: 0 },
+      },
+      quickChat: {
+        input: { type: Number, default: 0 },
+        output: { type: Number, default: 0 },
+        total: { type: Number, default: 0 },
+      },
       lastResetDate: { type: Date, default: Date.now },
     },
   },

@@ -23,7 +23,7 @@ export class FindAllUser implements IFindAllUserUseCase {
 
         const sort: any = {};
         if (sortBy === "totalTokens") {
-          sort["token_usage.total"] = sortOrder === "asc" ? 1 : -1;
+          sort["tokensUsed"] = sortOrder === "asc" ? 1 : -1;
         } else {
           sort[sortBy] = sortOrder === "asc" ? 1 : -1;
         }

@@ -2,12 +2,13 @@ import ai, { getRotatedAI, rotateAIKey, aiInstances } from "../config/AIConfig";
 import { GoogleGenAI } from "@google/genai";
 import { logAIQuery, logCodeBlockTokens } from "./logger";
 import { getActiveBYOKKeyIndex, rotateBYOKKeyIndex } from "./byokKeysHelper";
+import { CODE_DESCRIPTION_MODEL } from "../constants/models";
 
 export async function generateBatchCodeDescriptions(
   blocks: { id: string; code: string; language: string }[],
   keys?: string[],
   userId?: string
-): Promise<{ id: string; description: string }[]> {
+): Promise<{ results: { id: string; description: string }[]; usageMetadata?: any }> {
   
 
   blocks.forEach(b => logCodeBlockTokens(b.code, b.language));
@@ -58,7 +59,7 @@ ${snippetsText}`;
     try {
       const activeAi = isByok ? instances[currentIdx] : await getRotatedAI();
       response = await activeAi.models.generateContent({
-        model: "gemma-4-31b-it",
+        model: CODE_DESCRIPTION_MODEL,
         contents: [
           {
             role: "user",
@@ -136,13 +137,15 @@ ${snippetsText}`;
       }
     }
     
-    return blocks.map(b => ({
+    const results = blocks.map(b => ({
       id: b.id,
       description: rawJson[b.id] || "No description generated."
     }));
+    return { results, usageMetadata: response.usageMetadata };
   } catch (err) {
     console.error("Failed to parse batch AI response:", err);
-    return blocks.map(b => ({ id: b.id, description: "Error generating description." }));
+    const results = blocks.map(b => ({ id: b.id, description: "Error generating description." }));
+    return { results, usageMetadata: response?.usageMetadata };
   }
 }
 

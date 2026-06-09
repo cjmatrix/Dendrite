@@ -25,14 +25,19 @@ export interface IGlobalProfile {
   entities: string[];
 }
 
-export interface ITokenUsage {
+export interface ITokenCategory {
+  input: number;
+  output: number;
   total: number;
-  mainChat: number;
-  chatSummary: number;
-  compressedChat: number;
-  codeDescription: number;
-  p5Visualization: number;
-  quickChat: number;
+}
+
+export interface ITokenUsage {
+  mainChat: ITokenCategory;
+  chatSummary: ITokenCategory;
+  compressedChat: ITokenCategory;
+  codeDescription: ITokenCategory;
+  p5Visualization: ITokenCategory;
+  quickChat: ITokenCategory;
   lastResetDate: Date;
 }
 

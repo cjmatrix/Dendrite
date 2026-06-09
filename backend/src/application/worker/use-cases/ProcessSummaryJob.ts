@@ -192,6 +192,29 @@ export class ProcessSummaryJob {
           userId
         );
 
+        let inputTokens = 0;
+        let outputTokens = 0;
+        if (tripleOutput.usageMetadata) {
+          inputTokens = tripleOutput.usageMetadata.promptTokenCount || 0;
+          outputTokens = tripleOutput.usageMetadata.candidatesTokenCount || 0;
+        } else {
+          const promptText = `CONVERSATION BATCH:\n${messageToCompress.map(m => `[${m.role.toUpperCase()}]: ${m.content}`).join("\n\n")}`;
+          inputTokens = estimateTokenCount(promptText);
+          outputTokens = estimateTokenCount(JSON.stringify(tripleOutput));
+        }
+        const totalTokens = inputTokens + outputTokens;
+
+        if (totalTokens > 0) {
+          await this.userRepository.findByIdAndUpdate(userId, {
+            $inc: {
+              "token_usage.chatSummary.input": inputTokens,
+              "token_usage.chatSummary.output": outputTokens,
+              "token_usage.chatSummary.total": totalTokens,
+              "tokensUsed": totalTokens
+            }
+          });
+        }
+
         await this.redisConnection.setex(
           cacheKey,
           24 * 60 * 60,

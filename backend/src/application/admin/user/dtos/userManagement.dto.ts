@@ -49,14 +49,19 @@ export interface AdminUserSettingsOutputDTO {
   saveHistory: boolean;
 }
 
-export interface AdminUserTokenUsageOutputDTO {
+export interface AdminTokenCategoryDTO {
+  input: number;
+  output: number;
   total: number;
-  mainChat: number;
-  chatSummary: number;
-  compressedChat: number;
-  codeDescription: number;
-  p5Visualization: number;
-  quickChat: number;
+}
+
+export interface AdminUserTokenUsageOutputDTO {
+  mainChat: AdminTokenCategoryDTO;
+  chatSummary: AdminTokenCategoryDTO;
+  compressedChat: AdminTokenCategoryDTO;
+  codeDescription: AdminTokenCategoryDTO;
+  p5Visualization: AdminTokenCategoryDTO;
+  quickChat: AdminTokenCategoryDTO;
   lastResetDate: string;
 }
 
@@ -97,7 +102,7 @@ export class UserManagementMapper {
       email: user.email,
       role: user.role || "user",
       status: user.status || "active",
-      totalTokens: user.token_usage?.total || 0,
+      totalTokens: user.tokensUsed || 0,
       createdAt: user.createdAt?.toISOString() || new Date().toISOString(),
     };
   }
@@ -125,7 +130,7 @@ export class UserManagementMapper {
       role: user.role || "user",
       status: user.status || "active",
       tier: user.tier || "free",
-      tokensUsed: user.token_usage?.total || 0,
+      tokensUsed: user.tokensUsed || 0,
       avatarUrl: user.avatarUrl,
       settings: {
         global: !!user.settings?.global,
@@ -138,13 +143,12 @@ export class UserManagementMapper {
         quickChats: user.featureUsage?.quickChats || 0,
       },
       tokenUsage: {
-        total: user.token_usage?.total || 0,
-        mainChat: user.token_usage?.mainChat || 0,
-        chatSummary: user.token_usage?.chatSummary || 0,
-        compressedChat: user.token_usage?.compressedChat || 0,
-        codeDescription: user.token_usage?.codeDescription || 0,
-        p5Visualization: user.token_usage?.p5Visualization || 0,
-        quickChat: user.token_usage?.quickChat || 0,
+        mainChat: user.token_usage?.mainChat || { input: 0, output: 0, total: 0 },
+        chatSummary: user.token_usage?.chatSummary || { input: 0, output: 0, total: 0 },
+        compressedChat: user.token_usage?.compressedChat || { input: 0, output: 0, total: 0 },
+        codeDescription: user.token_usage?.codeDescription || { input: 0, output: 0, total: 0 },
+        p5Visualization: user.token_usage?.p5Visualization || { input: 0, output: 0, total: 0 },
+        quickChat: user.token_usage?.quickChat || { input: 0, output: 0, total: 0 },
         lastResetDate: user.token_usage?.lastResetDate?.toISOString() || new Date().toISOString(),
       },
       createdAt: user.createdAt?.toISOString() || new Date().toISOString(),

@@ -78,6 +78,9 @@ export interface SaveModelReplyInputDTO {
   modelReply: string;
   parentContext: Map<any, any>;
   parentSummary:string|null;
+  promptTokens?: number;
+  responseTokens?: number;
+  contents?: any[];
 }
 
 export interface SaveModelReplyOutputDTO {

@@ -1,16 +1,26 @@
 import { redisConnection } from "../config/redis";
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 import { getTavilySearchContext } from "./searchCacheService";
-import { getRotatedAI, rotateAIKey, aiInstances, systemInstruction } from "../config/AIConfig";
+import {
+  getRotatedAI,
+  rotateAIKey,
+  aiInstances,
+  systemInstruction,
+} from "../config/AIConfig";
 import CONTEXT_WINDOW from "../constants/contextWindow";
 import { estimateTokenCount } from "../utils/tokenCounter";
-import { getCachedDecryptedKeys, getActiveBYOKKeyIndex, rotateBYOKKeyIndex } from "../utils/byokKeysHelper";
+import {
+  getCachedDecryptedKeys,
+  getActiveBYOKKeyIndex,
+  rotateBYOKKeyIndex,
+} from "../utils/byokKeysHelper";
+import { INTERNET_SEARCH_ROUTER_MODEL } from "../constants/models";
 
 export class AIService {
- 
-  
-   
-  static async shouldUseInternetSearch(queryText: string, userId?: string): Promise<boolean> {
+  static async shouldUseInternetSearch(
+    queryText: string,
+    userId?: string,
+  ): Promise<boolean> {
     const routingPrompt = `Determine if the following user query requires an internet search to be answered accurately. 
 Respond ONLY with "YES" if it requires knowledge of recent events, real-time facts, current weather, news, specific web sources, or things outside typical LLM pre-training data.
 Respond ONLY with "NO" if it is a general reasoning, coding, writing, or conceptual question that can be answered without internet access.
@@ -23,18 +33,23 @@ User query: "${queryText}"`;
       keys = await getCachedDecryptedKeys(userId, "gemini");
     }
 
-    const instances = keys.length > 0 ? keys.map((key) => new GoogleGenAI({ apiKey: key })) : [];
+    const instances =
+      keys.length > 0
+        ? keys.map((key) => new GoogleGenAI({ apiKey: key }))
+        : [];
     if (instances.length > 0 && userId) {
       currentIdx = await getActiveBYOKKeyIndex(userId, "gemini");
       currentIdx = currentIdx % instances.length;
     }
-    const totalInstances = instances.length > 0 ? instances.length : aiInstances.length;
+    const totalInstances =
+      instances.length > 0 ? instances.length : aiInstances.length;
 
     while (routerAttempts < totalInstances) {
       try {
-        const activeAi = instances.length > 0 ? instances[currentIdx] : await getRotatedAI();
+        const activeAi =
+          instances.length > 0 ? instances[currentIdx] : await getRotatedAI();
         const routerResponse = await activeAi.models.generateContent({
-          model: "gemini-2.5-flash-lite",
+          model: INTERNET_SEARCH_ROUTER_MODEL,
           contents: [{ role: "user", parts: [{ text: routingPrompt }] }],
         });
         return routerResponse?.text?.trim().toUpperCase() === "YES";
@@ -45,7 +60,11 @@ User query: "${queryText}"`;
           error.message?.includes("RESOURCE_EXHAUSTED")
         ) {
           if (instances.length > 0 && userId) {
-            currentIdx = await rotateBYOKKeyIndex(userId, instances.length, "gemini");
+            currentIdx = await rotateBYOKKeyIndex(
+              userId,
+              instances.length,
+              "gemini",
+            );
           } else {
             await rotateAIKey();
           }
@@ -58,15 +77,16 @@ User query: "${queryText}"`;
     return false;
   }
 
-  
-   
   static async getInternetContext(
     queryText: string,
     descQueryVector: any,
-    userId?: string
+    userId?: string,
   ): Promise<string> {
     try {
-      const shouldSearch = await this.shouldUseInternetSearch(queryText, userId);
+      const shouldSearch = await this.shouldUseInternetSearch(
+        queryText,
+        userId,
+      );
 
       if (shouldSearch) {
         console.log(
@@ -89,12 +109,10 @@ User query: "${queryText}"`;
     }
   }
 
-  
-   
   static async streamAIContent(
     contents: any[],
     model: string = "gemini-3-flash-preview",
-    signal?:AbortSignal
+    signal?: AbortSignal,
   ) {
     let stream;
     let attempts = 0;
@@ -105,15 +123,20 @@ User query: "${queryText}"`;
         stream = await activeAi.models.generateContentStream({
           model,
           contents,
+          config: {
+            thinkingConfig: {
+              thinkingLevel: ThinkingLevel.MINIMAL, 
+            },
+          },
         });
         return stream;
       } catch (error: any) {
-        console.log(error.status,"hereeeeeeeeeeeeeeeeeeeeeee")
+        console.log(error.status, "hereeeeeeeeeeeeeeeeeeeeeee");
         if (
           error.status === 429 ||
-          error.status===503||
-          error.status===400||
-          error.message?.includes("high demand")||
+          error.status === 503 ||
+          error.status === 400 ||
+          error.message?.includes("high demand") ||
           error.message?.includes("quota") ||
           error.message?.includes("RESOURCE_EXHAUSTED")
         ) {
@@ -133,11 +156,11 @@ User query: "${queryText}"`;
     model: string,
     keys: string[],
     signal?: AbortSignal,
-    userId?: string
+    userId?: string,
   ) {
     let stream;
     let attempts = 0;
-    
+
     const instances = keys.map((key) => new GoogleGenAI({ apiKey: key }));
     let currentIdx = 0;
     if (userId && instances.length > 0) {
@@ -151,6 +174,11 @@ User query: "${queryText}"`;
         stream = await activeAi.models.generateContentStream({
           model,
           contents,
+          config: {
+            thinkingConfig: {
+              thinkingLevel: ThinkingLevel.MINIMAL, 
+            },
+          }
         });
         return stream;
       } catch (error: any) {
@@ -163,7 +191,11 @@ User query: "${queryText}"`;
           error.message?.includes("RESOURCE_EXHAUSTED")
         ) {
           if (userId) {
-            currentIdx = await rotateBYOKKeyIndex(userId, instances.length, "gemini");
+            currentIdx = await rotateBYOKKeyIndex(
+              userId,
+              instances.length,
+              "gemini",
+            );
           } else {
             currentIdx = (currentIdx + 1) % instances.length;
           }
@@ -177,9 +209,6 @@ User query: "${queryText}"`;
     throw new Error("All provided BYOK keys exhausted quota");
   }
 
-  
- 
-   
   static async getAnchorContext(
     chatId: string,
     anchorMessageId: string,
@@ -213,8 +242,6 @@ User query: "${queryText}"`;
     }
   }
 
-
-   
   static buildQuickChatSystemPrompt(
     historicalContext: string,
     highlightedText: string,
@@ -267,9 +294,6 @@ RESPONSE GUIDELINES:
 .`;
   }
 
-  
- 
-   
   static async urlToBase64(url: string): Promise<string> {
     try {
       const response = await fetch(url);

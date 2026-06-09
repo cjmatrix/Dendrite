@@ -2,6 +2,7 @@ import ai, { getRotatedAI, rotateAIKey, aiInstances } from "../config/AIConfig";
 import { IGlobalProfile } from "../domain/auth/entities/User";
 import { Type, GoogleGenAI } from "@google/genai";
 import { getActiveBYOKKeyIndex, rotateBYOKKeyIndex } from "./byokKeysHelper";
+import { CHAT_SUMMARY_MODEL } from "../constants/models";
 
 
 
@@ -29,6 +30,7 @@ export interface TripleMemoryOutput {
   compressedFacts: string[];
   recursiveSummary: SummaryItem[];
   profileDelta: ProfileDelta;
+  usageMetadata?: any;
 }
 
 
@@ -348,7 +350,7 @@ export async function generateTripleMemoryOutput(
     try {
       const activeAi = isByok ? instances[currentIdx] : await getRotatedAI();
       response = await activeAi.models.generateContent({
-        model: "gemma-4-31b-it",
+        model: CHAT_SUMMARY_MODEL,
         contents: [
           {
             role: "user",
@@ -399,6 +401,7 @@ export async function generateTripleMemoryOutput(
       compressedFacts: parsed.compressedFacts || [],
       recursiveSummary: parsed.recursiveSummary || [],
       profileDelta: parsed.profileDelta || {},
+      usageMetadata: response.usageMetadata,
     };
   } catch (err) {
     console.error("Failed to parse triple memory JSON output:", err);

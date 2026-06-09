@@ -2,6 +2,8 @@ import { inject, injectable } from "tsyringe";
 import { ISaveModelReplyUseCase, IStreamAndSaveChatUseCase, StreamResult } from "./interfaces";
 import { IAIService } from "../../common/ports/IAIService";
 import { ILogger } from "../../common/ports/ILogger";
+import { estimateTokenCount } from "../../../utils/tokenCounter";
+import { MAIN_CHAT_MODEL } from "../../../constants/models";
 
 @injectable()
 export class StreamAndSaveChatUseCase implements IStreamAndSaveChatUseCase {
@@ -13,7 +15,7 @@ export class StreamAndSaveChatUseCase implements IStreamAndSaveChatUseCase {
 
   async *execute(params: any, signal: AbortSignal): AsyncGenerator<StreamResult> {
     const { contents, chatId, userId, userMessageId, parentContext, parentSummary, originalMessage, model } = params;
-    const activeModel = model || "gemini-3-flash-preview";
+    const activeModel = model || MAIN_CHAT_MODEL;
     
     let stream: any;
     try {
@@ -59,8 +61,36 @@ export class StreamAndSaveChatUseCase implements IStreamAndSaveChatUseCase {
 
  
     if (!signal.aborted && fullReply.trim()) {
+      let promptTokens = 0;
+      let responseTokens = 0;
+
+      if (finalUsageMetadata) {
+        promptTokens = finalUsageMetadata.promptTokenCount || 0;
+        responseTokens = finalUsageMetadata.candidatesTokenCount || 0;
+      } else {
+        let promptText = "";
+        if (contents && Array.isArray(contents)) {
+          for (const content of contents) {
+            if (content.parts && Array.isArray(content.parts)) {
+              for (const part of content.parts) {
+                promptText += part.text || "";
+              }
+            }
+          }
+        }
+        promptTokens = estimateTokenCount(promptText);
+        responseTokens = estimateTokenCount(fullReply);
+      }
+
       const { modelMessageId } = await this.saveModelReplyUseCase.execute({
-        chatId, userId, modelReply: fullReply, parentContext, parentSummary
+        chatId,
+        userId,
+        modelReply: fullReply,
+        parentContext,
+        parentSummary,
+        promptTokens,
+        responseTokens,
+        contents,
       });
 
       yield { 

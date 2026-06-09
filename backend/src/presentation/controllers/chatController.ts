@@ -5,10 +5,11 @@ import fs from "fs";
 import crypto from "crypto";
 import { BaseController } from "./base/BaseController";
 import { AppError } from "../../utils/AppError";
+import { getModelOption } from "../../constants/models";
 import { FileUploadService } from "../../services/FileUploadService";
 import { CHAT_MESSAGES } from "../constants/chatMessages";
 import { logAIQuery } from "../../utils/logger";
-import { getTokenInfo } from "../../utils/tokenCounter";
+import { getTokenInfo, estimateTokenCount } from "../../utils/tokenCounter";
 import { documentProgressPubSub } from "../../services/documentProgressPubSub";
 import { ILogger } from "../../application/common/ports/ILogger";
 import { IAIService } from "../../application/common/ports/IAIService";
@@ -295,17 +296,53 @@ export class ChatController extends BaseController {
         clientDisconnected = true;
       });
 
+      let fullReply = "";
+      let finalUsageMetadata: any = null;
+
       for await (const chunk of stream) {
         if (clientDisconnected) {
           break;
         }
         const text = chunk.text || "";
+        fullReply += text;
+        if (chunk.usageMetadata) {
+          finalUsageMetadata = chunk.usageMetadata;
+        }
         if (text) {
           res.write(`data: ${JSON.stringify({ text })}\n\n`);
         }
       }
 
       if (!clientDisconnected) {
+        let promptTokens = 0;
+        let responseTokens = 0;
+        if (finalUsageMetadata) {
+          promptTokens = finalUsageMetadata.promptTokenCount || 0;
+          responseTokens = finalUsageMetadata.candidatesTokenCount || 0;
+        } else {
+          const promptText = highlightedText + JSON.stringify(quickChatHistory || []);
+          promptTokens = estimateTokenCount(promptText);
+          responseTokens = estimateTokenCount(fullReply);
+        }
+        const quickChatTokens = promptTokens + responseTokens;
+
+        if (quickChatTokens > 0) {
+          try {
+            const { container } = require("tsyringe");
+            const userRepo = container.resolve("IUserRepository") as any;
+            await userRepo.findByIdAndUpdate(userId, {
+              $inc: {
+                "token_usage.quickChat.input": promptTokens,
+                "token_usage.quickChat.output": responseTokens,
+                "token_usage.quickChat.total": quickChatTokens,
+                "tokensUsed": quickChatTokens
+              }
+            });
+          } catch (err) {
+            this.logger.error("Failed to update user token usage for quick chat:", err);
+          }
+        }
+
         res.write("data: [DONE]\n\n");
         res.end();
       }
@@ -745,119 +782,124 @@ export class ChatController extends BaseController {
       (normalizedFileName
         ? `Analyze uploaded file: ${normalizedFileName}`
         : "Analyze the uploaded image");
+    const modelStr = typeof model === "string" ? model.trim() : undefined;
+    if (modelStr && !getModelOption(modelStr)) {
+      throw new AppError("Invalid model selected. The requested model is not supported.", 400);
+    }
+
     return {
       queryText,
       mode,
-      model: typeof model === "string" ? model.trim() : undefined,
+      model: modelStr,
       imageUrl: normalizedImageUrl || undefined,
       fileUrl: normalizedFileUrl || undefined,
       fileName: normalizedFileName || undefined,
     };
   }
 
-  private async streamAndSave(
-    req: Request,
-    res: Response,
-    contents: any[],
-    chatId: string,
-    userId: string,
-    userMessageId: string,
-    parentContext: any,
-    originalMessage: string,
-    parentSummary: string | null,
-  ) {
-    res.setHeader("Content-Type", "text/event-stream");
-    res.setHeader("Cache-Control", "no-cache");
-    res.setHeader("Connection", "keep-alive");
+  // private async streamAndSave(
+  //   req: Request,
+  //   res: Response,
+  //   contents: any[],
+  //   chatId: string,
+  //   userId: string,
+  //   userMessageId: string,
+  //   parentContext: any,
+  //   originalMessage: string,
+  //   parentSummary: string | null,
+  // ) {
+  //   res.setHeader("Content-Type", "text/event-stream");
+  //   res.setHeader("Cache-Control", "no-cache");
+  //   res.setHeader("Connection", "keep-alive");
 
-    const abortController = new AbortController();
-    let clientDisconnected = false;
+  //   const abortController = new AbortController();
+  //   let clientDisconnected = false;
 
-    let stream: any = null;
-    req.on("close", () => {
-      clientDisconnected = true;
-      abortController.abort();
+  //   let stream: any = null;
+  //   req.on("close", () => {
+  //     clientDisconnected = true;
+  //     abortController.abort();
 
-      if (stream) {
-        if (typeof stream.return === "function") {
-          stream.return();
-        }
-        this.logger.info(
-          `AI streaming network stream violently terminated for chat ${chatId}`,
-        );
-      }
-    });
+  //     if (stream) {
+  //       if (typeof stream.return === "function") {
+  //         stream.return();
+  //       }
+  //       this.logger.info(
+  //         `AI streaming network stream violently terminated for chat ${chatId}`,
+  //       );
+  //     }
+  //   });
 
-    try {
-      stream = await this.aiService.streamAIContent(
-        contents,
-        "gemini-3-flash-preview",
-        abortController.signal,
-      );
-    } catch (error: any) {
-      res.write(
-        `data: ${JSON.stringify({ text: "\n\n**Quota Exhausted:** " + CHAT_MESSAGES.QUOTA_EXHAUSTED })}\n\n`,
-      );
-      res.write("data: [DONE]\n\n");
-      res.end();
-      return;
-    }
+  //   try {
+  //     stream = await this.aiService.streamAIContent(
+  //       contents,
+  //       "gemini-3-flash-preview",
+  //       abortController.signal,
+  //     );
+  //   } catch (error: any) {
+  //     res.write(
+  //       `data: ${JSON.stringify({ text: "\n\n**Quota Exhausted:** " + CHAT_MESSAGES.QUOTA_EXHAUSTED })}\n\n`,
+  //     );
+  //     res.write("data: [DONE]\n\n");
+  //     res.end();
+  //     return;
+  //   }
 
-    let fullReply = "";
-    let finalUsageMetadata: any = null;
-    res.flushHeaders();
+  //   let fullReply = "";
+  //   let finalUsageMetadata: any = null;
+  //   res.flushHeaders();
 
-    for await (const chunk of stream) {
-      if (clientDisconnected || abortController.signal.aborted) {
-        this.logger.info(`AI streaming aborted by client for chat ${chatId}`);
-        break;
-      }
+  //   for await (const chunk of stream) {
+  //     if (clientDisconnected || abortController.signal.aborted) {
+  //       this.logger.info(`AI streaming aborted by client for chat ${chatId}`);
+  //       break;
+  //     }
 
-      const text = chunk.text || "";
-      fullReply += text;
-      if (chunk.usageMetadata) {
-        finalUsageMetadata = chunk.usageMetadata;
-      }
-      res.write(`data: ${JSON.stringify({ text })}\n\n`);
-    }
+  //     const text = chunk.text || "";
+  //     fullReply += text;
+  //     if (chunk.usageMetadata) {
+  //       finalUsageMetadata = chunk.usageMetadata;
+  //     }
+  //     res.write(`data: ${JSON.stringify({ text })}\n\n`);
+  //   }
 
-    if (!fullReply.trim()) {
-      this.logger.error(`Empty AI response for chat ${chatId}`);
-      if (!clientDisconnected) {
-        res.write(
-          `data: ${JSON.stringify({ text: "\n\n**Error:** " + CHAT_MESSAGES.EMPTY_AI_RESPONSE })}\n\n`,
-        );
-        res.write("data: [DONE]\n\n");
-        res.end();
-      }
-      return;
-    }
-    if (!clientDisconnected && fullReply.trim()) {
-      try {
-        const { modelMessageId } = await this.saveModelReplyUseCase.execute({
-          chatId,
-          userId,
-          modelReply: fullReply,
-          parentContext,
-          parentSummary,
-        });
+  //   if (!fullReply.trim()) {
+  //     this.logger.error(`Empty AI response for chat ${chatId}`);
+  //     if (!clientDisconnected) {
+  //       res.write(
+  //         `data: ${JSON.stringify({ text: "\n\n**Error:** " + CHAT_MESSAGES.EMPTY_AI_RESPONSE })}\n\n`,
+  //       );
+  //       res.write("data: [DONE]\n\n");
+  //       res.end();
+  //     }
+  //     return;
+  //   }
+  //   if (!clientDisconnected && fullReply.trim()) {
+  //     try {
+  //       const { modelMessageId } = await this.saveModelReplyUseCase.execute({
+  //         chatId,
+  //         userId,
+  //         modelReply: fullReply,
+  //         parentContext,
+  //         parentSummary,
+  //       });
 
-        res.write(
-          `data: ${JSON.stringify({ type: "metadata", userMessageId, modelMessageId })}\n\n`,
-        );
-        if (finalUsageMetadata) {
-          logAIQuery(originalMessage, finalUsageMetadata);
-        }
-      } catch (err) {
-        this.logger.error("Failed to save model reply or log usage:", err);
-      }
-    }
+  //       res.write(
+  //         `data: ${JSON.stringify({ type: "metadata", userMessageId, modelMessageId })}\n\n`,
+  //       );
+  //       if (finalUsageMetadata) {
+  //         logAIQuery(originalMessage, finalUsageMetadata);
+  //       }
+  //     } catch (err) {
+  //       this.logger.error("Failed to save model reply or log usage:", err);
+  //     }
+  //   }
 
-    if (!clientDisconnected) {
-      res.write("data: [DONE]\n\n");
-      res.end();
-    }
-  }
+  //   if (!clientDisconnected) {
+  //     res.write("data: [DONE]\n\n");
+  //     res.end();
+  //   }
+  // }
 }
 
 export const chatController = container.resolve(ChatController);
