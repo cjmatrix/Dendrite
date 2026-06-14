@@ -16,4 +16,5 @@ export interface IChatRepository extends IBaseRepository<IChat> {
     extension: string;
     fileUrl: string;
   }): Promise<IChat | null>;
+  findByFolderIdsWithoutUserId(folderIds: string[]): Promise<IChat[]>;
 }

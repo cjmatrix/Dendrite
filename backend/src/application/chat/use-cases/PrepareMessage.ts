@@ -1,8 +1,9 @@
 import { AppError } from "../../../utils/AppError";
+import { cleanLLMResponse } from "../../../utils/cleanResponse";
 import { IVectorRepository } from "../../../domain/vector/repositories/IVectorRepository";
 import { IChatRepository } from "../../../domain/chat/repositories/IChatRepository";
 import { IMessageRepository } from "../../../domain/chat/repositories/IMessageRepository";
-import { embeddingService } from "../../../services/EmbeddingService";
+import { IEmbeddingService } from "../../common/ports/IEmbeddingService";
 import CONTEXT_WINDOW from "../../../constants/contextWindow";
 import { systemInstruction } from "../../../config/AIConfig";
 import { redisConfig, redisConnection } from "../../../config/redis";
@@ -23,6 +24,7 @@ export class PrepareMessage implements IPrepareMessageUseCase {
     @inject("IMessageRepository") private messageRepository: IMessageRepository,
     @inject("IUserRepository") private userRepository: IUserRepository,
     @inject("IFolderRepository") private folderRepository: IFolderRepository,
+    @inject("IEmbeddingService") private embeddingService: IEmbeddingService,
     @inject("ILogger") private logger: ILogger,
   ) {}
 
@@ -42,16 +44,25 @@ export class PrepareMessage implements IPrepareMessageUseCase {
 
     if (profile.user_name) lines.push(`- Name: ${profile.user_name}`);
     if (profile.role) lines.push(`- Role: ${profile.role}`);
-    if (profile.expertise_level) lines.push(`- Expertise Level: ${profile.expertise_level}`);
-    if (profile.response_style) lines.push(`- Preferred Response Style: ${profile.response_style}`);
+    if (profile.expertise_level)
+      lines.push(`- Expertise Level: ${profile.expertise_level}`);
+    if (profile.response_style)
+      lines.push(`- Preferred Response Style: ${profile.response_style}`);
     if (profile.location) lines.push(`- Location: ${profile.location}`);
-    if (profile.tech_stack?.length > 0) lines.push(`- Tech Stack: ${profile.tech_stack.join(", ")}`);
-    if (profile.environment?.length > 0) lines.push(`- Environment: ${profile.environment.join(", ")}`);
-    if (profile.current_projects?.length > 0) lines.push(`- Current Projects: ${profile.current_projects.join(", ")}`);
-    if (profile.long_term_goals?.length > 0) lines.push(`- Long-Term Goals: ${profile.long_term_goals.join(", ")}`);
-    if (profile.constraints?.length > 0) lines.push(`- Known Constraints: ${profile.constraints.join(", ")}`);
-    if (profile.user_preferences?.length > 0) lines.push(`- Preferences: ${profile.user_preferences.join(", ")}`);
-    if (profile.entities?.length > 0) lines.push(`- Key Entities: ${profile.entities.join(", ")}`);
+    if (profile.tech_stack?.length > 0)
+      lines.push(`- Tech Stack: ${profile.tech_stack.join(", ")}`);
+    if (profile.environment?.length > 0)
+      lines.push(`- Environment: ${profile.environment.join(", ")}`);
+    if (profile.current_projects?.length > 0)
+      lines.push(`- Current Projects: ${profile.current_projects.join(", ")}`);
+    if (profile.long_term_goals?.length > 0)
+      lines.push(`- Long-Term Goals: ${profile.long_term_goals.join(", ")}`);
+    if (profile.constraints?.length > 0)
+      lines.push(`- Known Constraints: ${profile.constraints.join(", ")}`);
+    if (profile.user_preferences?.length > 0)
+      lines.push(`- Preferences: ${profile.user_preferences.join(", ")}`);
+    if (profile.entities?.length > 0)
+      lines.push(`- Key Entities: ${profile.entities.join(", ")}`);
 
     if (lines.length === 0) return null;
 
@@ -60,14 +71,23 @@ The following is the user's persistent profile gathered across all conversations
 ${lines.join("\n")}`;
   }
 
-  private async getFolderBehaviorRecursively(folderId: string | null, userId: string): Promise<string | null> {
+  private async getFolderBehaviorRecursively(
+    folderId: string | null,
+    userId: string,
+  ): Promise<string | null> {
     if (!folderId) return null;
 
     try {
-      const folder = await this.folderRepository.findByIdAndUserId(folderId, userId);
+      const folder = await this.folderRepository.findByIdAndUserId(
+        folderId,
+        userId,
+      );
       if (!folder) return null;
 
-      if (folder.behavior?.current?.content && folder.behavior.current.content.trim() !== "") {
+      if (
+        folder.behavior?.current?.content &&
+        folder.behavior.current.content.trim() !== ""
+      ) {
         return folder.behavior.current.content;
       }
 
@@ -89,7 +109,7 @@ ${lines.join("\n")}`;
       fileUrl,
       fileName,
     } = input;
-    
+
     const chat = await this.chatRepository.findByIdAndUserId(chatId, userId);
 
     if (!chat) {
@@ -118,7 +138,8 @@ ${lines.join("\n")}`;
     let parentChatId: string | null = chat.contextParent?._id || null;
     let safetyDepth = 0;
     let map = new Map();
-    let parentSummary=null
+    let parentSummary = null;
+
     while (parentChatId && deficit > 0 && safetyDepth < 100) {
       const parentMessages = await this.messageRepository.findRecentByChatId(
         parentChatId,
@@ -133,12 +154,15 @@ ${lines.join("\n")}`;
         userId,
       );
 
-      if(!parentSummary){
-        parentSummary=parentChat?.summary
+      if (!parentSummary) {
+        parentSummary = parentChat?.summary;
       }
 
       if (parentChat) {
-        map.set(parentChat._id, {count:parentChat.unsummarizedCount,messages:[...parentMessages]});
+        map.set(parentChat._id, {
+          count: parentChat.unsummarizedCount,
+          messages: [...parentMessages],
+        });
         parentChatId = parentChat.contextParent?._id || null;
       } else {
         parentChatId = null;
@@ -159,23 +183,20 @@ ${lines.join("\n")}`;
       )
       .join("\n");
 
-    let finalCodeQueryVector ;
-    let finalDescQueryVector ;
-    if (!finalCodeQueryVector || !finalDescQueryVector) {
-      const MAX_EMBEDDING_TOKENS = 1024;
-      const tokenInfo = getTokenInfo(normalizedMessage, MAX_EMBEDDING_TOKENS);
+    const MAX_EMBEDDING_TOKENS = 1024;
+    const tokenInfo = getTokenInfo(normalizedMessage, MAX_EMBEDDING_TOKENS);
 
-      if (tokenInfo.isExceeded) {
-        this.logger.warn(`Query text exceeds token limit`, { maxTokens: MAX_EMBEDDING_TOKENS, estimatedTokens: tokenInfo.estimatedTokens, userId });
-      } else {
-        this.logger.debug(`Query token usage`, { estimatedTokens: tokenInfo.estimatedTokens, maxTokens: MAX_EMBEDDING_TOKENS });
-        const [codeVec, descVec] = await Promise.all([
-          embeddingService.embed(normalizedMessage, "CODE_RETRIEVAL_QUERY"),
-          embeddingService.embed(normalizedMessage, "RETRIEVAL_QUERY"),
-        ]);
-        finalCodeQueryVector = codeVec;
-        finalDescQueryVector = descVec;
-      }
+    if (tokenInfo.isExceeded) {
+      this.logger.warn(`Query text exceeds token limit`, {
+        maxTokens: MAX_EMBEDDING_TOKENS,
+        estimatedTokens: tokenInfo.estimatedTokens,
+        userId,
+      });
+    } else {
+      this.logger.debug(`Query token usage`, {
+        estimatedTokens: tokenInfo.estimatedTokens,
+        maxTokens: MAX_EMBEDDING_TOKENS,
+      });
     }
 
     const chatIdsToSearch: string[] = [chatId];
@@ -183,7 +204,8 @@ ${lines.join("\n")}`;
 
     let currentParentId: string | null = chat.contextParent?._id || null;
     let depth = 0;
-    let flag=true;
+    let flag = true;
+
     while (currentParentId && depth < 50) {
       const pChat = await this.chatRepository.findByIdAndUserId(
         currentParentId,
@@ -195,13 +217,12 @@ ${lines.join("\n")}`;
       if (!chatIdsToSearch.includes(parentIdStr)) {
         chatIdsToSearch.push(parentIdStr);
 
-        if (!chat.summary&&pChat.summary && flag) {
-          
+        if (!chat.summary && pChat.summary && flag) {
           inheritedSummaries.unshift({
             title: pChat.title || "Inherited Chat",
             summary: pChat.summary,
           });
-          flag=false;
+          flag = false;
         }
       }
 
@@ -213,6 +234,27 @@ ${lines.join("\n")}`;
       `\n [BRANCH ARCHITECTURE] Searching across ${chatIdsToSearch.length} chats in full lineage:`,
       chatIdsToSearch,
     );
+
+
+    const [queryVec, shouldSearch] = await Promise.all([
+      tokenInfo.isExceeded
+        ? Promise.resolve(null)
+        : this.embeddingService
+            .embed(normalizedMessage, "RETRIEVAL_QUERY")
+            .catch((err: any) => {
+              this.logger.warn("Embedding failed, skipping vector search", { error: err?.message });
+              return null;
+            }),
+      AIService.shouldUseInternetSearch(normalizedMessage, userId).catch(
+        (err: any) => {
+          console.warn("[PrepareMessage] Internet search router failed, skipping:", err?.message);
+          return false;
+        },
+      ),
+    ]);
+    
+    const finalCodeQueryVector = queryVec;
+    const finalDescQueryVector = queryVec;
 
     const canRunVectorSearch =
       Array.isArray(finalCodeQueryVector) &&
@@ -226,31 +268,66 @@ ${lines.join("\n")}`;
       );
     }
 
-    const [rawSimilarCode, chatContextStats, documentChunks] =
-      canRunVectorSearch
-        ? await Promise.all([
-            this.vectorRepository.searchSimilarCode(
-              finalCodeQueryVector!,
-              finalDescQueryVector!,
-              userId,
-              chatIdsToSearch,
-            ),
-            this.vectorRepository.searchSimilarChatChunk(
-              finalDescQueryVector!,
-              userId,
-              chatIdsToSearch,
-            ),
-            this.vectorRepository.searchDocuments(
-              normalizedMessage,
-              finalDescQueryVector!,
-              userId,
-              chatIdsToSearch,
-            ),
-          ])
-        : [[], [], []];
+    
+    const vectorSearchPromise = canRunVectorSearch
+      ? Promise.all([
+          this.vectorRepository.searchSimilarCode(
+            finalCodeQueryVector!,
+            finalDescQueryVector!,
+            userId,
+            chatIdsToSearch,
+          ),
+          this.vectorRepository.searchSimilarChatChunk(
+            finalDescQueryVector!,
+            userId,
+            chatIdsToSearch,
+          ),
+          this.vectorRepository.searchDocuments(
+            normalizedMessage,
+            finalDescQueryVector!,
+            userId,
+            chatIdsToSearch,
+          ),
+        ]).catch((err: any) => {
+          this.logger.warn("Vector search failed, skipping RAG context", { error: err?.message });
+          return [[], [], []] as [any[], any[], any[]];
+        })
+      : Promise.resolve([[], [], []] as [any[], any[], any[]]);
 
-    this.logger.debug(`Raw document chunks retrieved`, { chunkCount: documentChunks?.length || 0 });
- 
+    const internetContextPromise = queryVec
+      ? AIService.getInternetContextWithPrecomputedDecision(
+          normalizedMessage,
+          queryVec,
+          shouldSearch,
+        )
+      : Promise.resolve("");
+
+    const userPromise = this.userRepository.findById(userId).catch((err: any) => {
+      this.logger.warn("User profile fetch failed, skipping personalization", { error: err?.message });
+      return null;
+    });
+
+    const folderBehaviorPromise = this.getFolderBehaviorRecursively(
+      chat.folderId,
+      userId,
+    );
+
+    const [
+      [rawSimilarCode, chatContextStats, documentChunks],
+      internetContext,
+      user,
+      folderBehavior,
+    ] = await Promise.all([
+      vectorSearchPromise,
+      internetContextPromise,
+      userPromise,
+      folderBehaviorPromise,
+    ]);
+
+    this.logger.debug(`Raw document chunks retrieved`, {
+      chunkCount: documentChunks?.length || 0,
+    });
+
     console.log(`\n [RAG DIAGNOSTICS]`);
     console.log(` User Message: "${normalizedMessage}"`);
     console.log(` Long-Term Facts Found: ${chatContextStats.length}`);
@@ -283,8 +360,6 @@ ${lines.join("\n")}`;
 
     let dynamicSystemInstruction = systemInstruction;
 
-  
-    const user = await this.userRepository.findById(userId);
     const profile = user?.globalProfile;
     if (profile) {
       const profileSection = this.buildProfileSection(profile);
@@ -293,7 +368,6 @@ ${lines.join("\n")}`;
       }
     }
 
-    const folderBehavior = await this.getFolderBehaviorRecursively(chat.folderId, userId);
     if (folderBehavior) {
       dynamicSystemInstruction += `\n\n--- [FOLDER BEHAVIOR / SYSTEM DIRECTIVES] ---\nThis chat is organized inside a folder that has specific custom rules and custom behavior directives. You MUST follow these directives strictly:\n${folderBehavior}`;
     }
@@ -306,7 +380,10 @@ ${lines.join("\n")}`;
     }
 
     if (chat.summary) {
-      this.logger.debug(`Chat summary injected`, { summaryLength: chat.summary?.length || 0, chatId });
+      this.logger.debug(`Chat summary injected`, {
+        summaryLength: chat.summary?.length || 0,
+        chatId,
+      });
       dynamicSystemInstruction += `\n\n--- [ACTIVE CONVERSATION STATE / MIDDLE-LAYER MEMORY] ---\nThis is the active middle-layer summary for your currently ongoing conversation:\n${chat.summary}`;
     }
 
@@ -351,7 +428,6 @@ ${lines.join("\n")}`;
 PRIMARY GOAL:
 Teach the concept accurately. Visual beauty is secondary to correctness.
 Every animation, movement, color change, highlight, and interaction must represent actual logical state changes in the underlying concept.
-
 IMPORTANT:
 - Generate P5 visualizations ONLY when the user explicitly asks for a visualization.
 - Do NOT generate explanation and visualization together.
@@ -359,57 +435,7 @@ IMPORTANT:
   1. A visualization (single \`\`\`p5\`\`\` block only), OR
   2. A normal explanation.
 - Never return both unless the user explicitly asks for both.
-
-LOGIC-FIRST VISUALIZATION PRINCIPLE:
-- Prioritize conceptual accuracy over visual effects.
-- Every visual element must correspond to a real entity in the system being taught.
-- Avoid decorative animations that do not communicate information.
-- Focus on state transitions, data flow, execution flow, relationships, dependencies, and transformations.
-- The visualization should allow a learner to understand HOW the system works step-by-step.
-- If forced to choose between prettier visuals and clearer logic, choose clearer logic.
-
-CONSISTENT VISUAL LANGUAGE (USE FOR ALL TOPICS):
-- Maintain the same design language across all visualizations.
-- Nodes = entities/objects/data structures.
-- Arrows = communication, movement, references, or control flow.
-- Highlighted node = currently active element.
-- Dashed arrow = indirect relationship.
-- Glow/highlight = current execution focus.
-- Dimmed elements = inactive state.
-- Green = success/completed state.
-- Amber = waiting/intermediate state.
-- Red = error/conflict state.
-- Indigo (#5046E5) = primary active operation.
-- Use the same meanings consistently across all visualizations.
-
-EDUCATIONAL REQUIREMENTS:
-- Visualize processes step-by-step.
-- Show intermediate states whenever possible.
-- Never skip important transitions.
-- Include labels for every important component.
-- Include annotations when a state changes.
-- Show execution order clearly.
-- Prefer slower, understandable animations over flashy motion.
-
-SCOPE:
-Visualize ANY topic:
-- Physics
-- Chemistry
-- Biology
-- Mathematics
-- Data Structures
-- Algorithms
-- Operating Systems
-- Memory Management
-- CPU Scheduling
-- Networking
-- Databases
-- System Design
-- Architecture
-- Circuits
-- Astronomy
-- Statistics
-- Scientific Processes
+-each explanation of visualization should given with text size of 15px
 
 CANVAS & LAYOUT (CRITICAL):
 - Canvas: createCanvas(windowWidth, windowHeight);
@@ -417,20 +443,6 @@ CANVAS & LAYOUT (CRITICAL):
   function windowResized() {
     resizeCanvas(windowWidth, windowHeight);
   }
-
-DRAW REQUIREMENTS:
-- Always call:
-  background('#F8FAFC');
-  as the first line of draw().
-
-THEME (CONSTANT FOR ALL VISUALIZATIONS):
-- Background: #F8FAFC
-- Primary Text: #1E293B
-- Secondary Text: #475569
-- Cards/Containers: #FFFFFF
-- Borders: #E2E8F0
-- Primary Accent: #5046E5
-
 LAYOUT ZONES:
 HEADER:
 - y = 0 → 50
@@ -443,7 +455,7 @@ CONTROLS:
   Prev
   Next
   Reset
-
+  atleast these buttons should be provided and it should be clickable
 BODY:
 - y = 100 → height - 50
 - All educational content and animations
@@ -451,16 +463,11 @@ BODY:
 
 FOOTER:
 - y = height - 50 → height
-- Status text
+- Status text font size 20px
 - Step counter
 - Current state description
 
-INTERACTION:
-- Add clickable buttons using mousePressed().
-- Pause/Resume must stop logical progression.
-- Prev/Next must navigate through logical steps.
-- Reset must restore the initial state.
-- Active step should always be visually highlighted.
+
 
 OUTPUT RULES:
 - Global p5 mode only.
@@ -469,22 +476,13 @@ OUTPUT RULES:
 - No markdown explanation.
 - Output ONLY one \`\`\`p5\`\`\` block when visualization mode is triggered.
 
-QUALITY CHECK BEFORE OUTPUT:
-1. Is the logic accurate?
-2. Does every visual element represent a real concept?
-3. Can a student understand the process step-by-step?
-4. Are controls present?
-5. Is the layout respecting the defined zones?
-6. Is the visualization using the constant theme?
-7. Are state transitions clearly visible?
+
 
 If any answer is NO, improve the visualization before returning it.`;
     } else {
       dynamicSystemInstruction += `\n\nIMPORTANT: The user is currently in GENERAL mode. Do NOT produce any raw p5 code blocks or runnable visualization code. Under no circumstances output a fenced code block labeled \`p5\` or any JavaScript code intended to be executed as a visualization. If the user asks about a previous visualization, provide only a high-level textual description or pseudo-code, and NEVER include runnable p5 code unless the user explicitly switches to Visual Mode.`;
     }
 
- 
-  
     const urlToBase64 = async (
       url: string,
     ): Promise<{ base64: string; mimeType: string }> => {
@@ -512,29 +510,39 @@ If any answer is NO, improve the visualization before returning it.`;
 
         return { base64, mimeType };
       } catch (error) {
-        this.logger.error(`Failed to convert image URL to base64`, error, { imageUrl: url });
+        this.logger.error(`Failed to convert image URL to base64`, error, {
+          imageUrl: url,
+        });
         return { base64: "", mimeType: "image/jpeg" };
       }
     };
 
-    const contents: any[] = [{ text: dynamicSystemInstruction }];
+    const contents: any[] = [];
 
     for (const msg of recentMessages) {
-      const sanitizedContent = this.stripP5CodeBlocks(msg.content);
+      let sanitizedContent = this.stripP5CodeBlocks(msg.content);
 
       if (msg.role === "model") {
+        // Skip leading model turns — Gemini requires conversation to start with user
+        if (contents.length === 0) continue;
+        sanitizedContent = cleanLLMResponse(sanitizedContent);
         if (sanitizedContent) {
-          contents.push({ text: sanitizedContent });
+          contents.push({
+            role: "model",
+            parts: [{ text: sanitizedContent }],
+          });
         }
       } else {
+        const parts: any[] = [];
         if (sanitizedContent) {
-          contents.push({ text: sanitizedContent });
+          parts.push({ text: sanitizedContent });
         }
+
         if (msg.imageUrl) {
           try {
             const imageData = await urlToBase64(msg.imageUrl);
             if (imageData.base64) {
-              contents.push({
+              parts.push({
                 inlineData: {
                   mimeType: imageData.mimeType,
                   data: imageData.base64,
@@ -542,26 +550,44 @@ If any answer is NO, improve the visualization before returning it.`;
               });
             }
           } catch (error) {
-            this.logger.error(`Error processing image in message`, error, { imageUrl: msg.imageUrl });
+            this.logger.error(`Error processing image in message`, error, {
+              imageUrl: msg.imageUrl,
+            });
           }
         }
-      }
-    }
 
-    let internetContext: string | undefined;
-    if (finalDescQueryVector) {
-      internetContext = await AIService.getInternetContext(normalizedMessage, finalDescQueryVector, userId);
-    }
-
-    if (internetContext) {
-      for (let i = contents.length - 1; i >= 0; i--) {
-        if (contents[i].text && typeof contents[i].text === "string") {
-          contents[i].text += internetContext;
-          break;
+        if (parts.length > 0) {
+          contents.push({
+            role: "user",
+            parts,
+          });
         }
       }
     }
 
-    return { chat, contents, userMessageId: userMsg._id.toString(), parentContext: map, parentSummary: parentSummary ?? null, model };
+    // internetContext is pre-resolved in the parallel execution step
+    if (internetContext) {
+      const lastTurn = contents[contents.length - 1];
+      if (lastTurn && lastTurn.role === "user" && lastTurn.parts) {
+        const lastTextPart = lastTurn.parts.find(
+          (p: any) => p.text && typeof p.text === "string",
+        );
+        if (lastTextPart) {
+          lastTextPart.text += internetContext;
+        } else {
+          lastTurn.parts.push({ text: internetContext });
+        }
+      }
+    }
+
+    return {
+      chat,
+      contents,
+      systemInstruction: dynamicSystemInstruction,
+      userMessageId: userMsg._id.toString(),
+      parentContext: map,
+      parentSummary: parentSummary ?? null,
+      model,
+    };
   }
 }

@@ -7,7 +7,7 @@ import {
 } from '../../../config/qdrant';
 import { textToSparseVector } from '../../../utils/BM25Healper';
 
-const SIMILARITY_THRESHOLD = 0.62;
+const SIMILARITY_THRESHOLD = 0.60;
 
 export class QdrantVectorRepository implements IVectorRepository {
   async searchSimilarCode(
@@ -259,7 +259,7 @@ export class QdrantVectorRepository implements IVectorRepository {
    
     const sparseVector = textToSparseVector(queryText);
 
-    // 3. Use Qdrant's Universal Query API for Hybrid Search
+  
 
     const response = await qdrantClient.query(DOCUMENT_COLLECTION_NAME, {
       prefetch: [
@@ -268,7 +268,7 @@ export class QdrantVectorRepository implements IVectorRepository {
           query: queryVector,
           filter: filter,             
           limit: topK * 3,            
-          score_threshold: SIMILARITY_THRESHOLD, 
+          score_threshold: 0.40, 
         },
         {
           using: "bm25-vector",       
@@ -288,7 +288,7 @@ export class QdrantVectorRepository implements IVectorRepository {
 
     
     return response.points.map((result) => ({
-      score: result.score, // This is now an RRF score not a Cosine score
+      score: result.score,
       document: result.payload?.content as {
         text: string;
         chunkIndex: number;

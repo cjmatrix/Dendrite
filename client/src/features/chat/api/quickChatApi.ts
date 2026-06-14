@@ -24,6 +24,16 @@ export const stickToChat = async (params: {
   messages: any[];
   relativeY: number;
 }): Promise<void> => {
+  if (!params.anchorMessageId || !params.anchorMessageId.trim()) {
+    throw new Error("Anchor message ID is required");
+  }
+  if (!Array.isArray(params.messages)) {
+    throw new Error("Messages must be an array");
+  }
+  if (typeof params.relativeY !== "number") {
+    throw new Error("relativeY must be a number");
+  }
+
   await api.post(`/chats/${params.chatId}/subchat`, {
     subChatId: params.subChatId,
     anchorMessageId: params.anchorMessageId,
@@ -40,6 +50,10 @@ export const streamQuickChat = async (params: {
   quickChatHistory: any[];
   onChunk: (textSoFar: string) => void;
 }): Promise<string> => {
+  if (!params.anchorMessageId || !params.anchorMessageId.trim()) {
+    throw new Error("Anchor message ID is required");
+  }
+
   const response = await streamingFetch(`${API_URL}/chats/${params.chatId}/quick-chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

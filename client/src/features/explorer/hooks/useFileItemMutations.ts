@@ -8,6 +8,7 @@ export function useFileItemMutations() {
 
 
 
+
   const { mutate: createFolder } = useMutation({
     mutationFn: ({ name, parentId }: { name: string; parentId: string | null }) =>
       apiCreateFolder(name, parentId),
@@ -29,6 +30,7 @@ export function useFileItemMutations() {
     },
     onError: (_e, _v, ctx) => { if (ctx?.previous) queryClient.setQueryData(["folders"], ctx.previous); },
     onSettled: () => queryClient.invalidateQueries({ queryKey: ["folders"] }),
+    
   });
 
 

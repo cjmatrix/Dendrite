@@ -31,6 +31,10 @@ services:
     volumes:
       - qdrant-data:/qdrant/storage
 
+  redis:
+    image: redis:alpine
+    container_name: dentrites-redis
+
   backend:
     build:
       context: ./backend
@@ -40,13 +44,14 @@ services:
       - "5000:5000"
     environment:
       - QDRANT_URL=http://qdrant:6333
-      - REDIS_HOST=host.docker.internal
+      - REDIS_HOST=redis
     env_file:
       - ./backend/.env
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
       - qdrant
+      - redis
 
 volumes:
   prometheus-data:

@@ -1,38 +1,61 @@
 import React, { useEffect, useState } from "react";
 import type { FileNode, FileType } from "../types/types";
 import {
-  Folder, ChevronDown, MessageSquare, Plus, FolderPlus, Check,
-  Edit, Trash, FileText, Image as ImageIcon, BookOpen, MessageCircle, GitBranch, Move,
+  Folder,
+  ChevronDown,
+  MessageSquare,
+  Plus,
+  FolderPlus,
+  Check,
+  Edit,
+  Trash,
+  FileText,
+  Image as ImageIcon,
+  BookOpen,
+  MessageCircle,
+  GitBranch,
+  Move,
+  Share,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { setActiveSidebarRootId } from "../store/explorerSlice";
-import { useAppDispatch } from "../../../store/store";
-
+import { useAppDispatch, useAppSelector } from "../../../store/store";
+import { setIsExpandedTracker } from "../store/explorerSlice";
 
 import { useFileItemMutations } from "../hooks/useFileItemMutations";
 import { FolderBehaviorModal } from "./FolderBehaviorModal";
 import { MoveItemModal } from "./MoveItemModal";
+import { ShareLinkModal } from "./ShareLinkModal";
 
 interface FileItemProps {
   node: FileNode;
 }
 
 export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
-  const [isOpen, setIsOpen] = useState(node.isExpanded);
+  const dispatch = useAppDispatch();
+  const isOpen = useAppSelector((state) => {
+    const v = state.explorer.isExpandedTracker[node.id];
+    return v !== undefined ? v : !!node.isExpanded;
+  });
+  const isShareMode = useAppSelector((state) => state.explorer.isShareMode);
   const [isCreating, setIsCreating] = useState<FileType | null>(null);
   const [isRenaming, setIsRenaming] = useState<FileType | null>(null);
   const [isBehaviorOpen, setIsBehaviorOpen] = useState(false);
   const [isMoveOpen, setIsMoveOpen] = useState(false);
+  const [isShareOpen, setIsShareOpen] = useState(false);
   const [newItemName, setNewItemName] = useState("");
   const [renameItemName, setRenameItemName] = useState("");
   const navigate = useNavigate();
-  const dispatch = useAppDispatch();
   const isFolder = node.type === "folder";
 
-
-  const { createFolder, updateFolder, deleteFolder, createChat, updateChat, deleteChat } = useFileItemMutations();
-
-
+  const {
+    createFolder,
+    updateFolder,
+    deleteFolder,
+    createChat,
+    updateChat,
+    deleteChat,
+  } = useFileItemMutations();
 
   const handleCreate = () => {
     if (newItemName.trim()) {
@@ -43,15 +66,13 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
       }
       setNewItemName("");
       setIsCreating(null);
-      setIsOpen(true);
+      if (!isOpen) dispatch(setIsExpandedTracker(node.id));
     }
   };
 
   const handleToggle = () => {
-    const newState = !isOpen;
-    setIsOpen(newState);
     if (isFolder) {
-      updateFolder({ folderId: node.id, updates: { isExpanded: newState } });
+      dispatch(setIsExpandedTracker(node.id));
     }
   };
 
@@ -74,8 +95,15 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
     }
   };
 
+  const { token } = useParams<{ token?: string }>();
   const handleOpenWindow = (node: FileNode) => {
-    if (node.type === "chat") navigate(`/${node.id}`);
+    if (node.type === "chat") {
+      if (isShareMode && token) {
+        navigate(`/share/${token}/chat/${node.id}`);
+      } else {
+        navigate(`/${node.id}`);
+      }
+    }
   };
 
   const handleRootSetting = () => {
@@ -91,11 +119,13 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
     handleOpenWindow(node);
   };
 
-
-
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
 
   const handleContextMenu = (e: React.MouseEvent) => {
+    if (isShareMode) return;
     e.preventDefault();
     e.stopPropagation();
     setContextMenu({ x: e.clientX, y: e.clientY });
@@ -108,8 +138,6 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
     return () => window.removeEventListener("click", close);
   });
 
- 
-
   return (
     <div className="select-none relative" onContextMenu={handleContextMenu}>
       <div
@@ -120,7 +148,9 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
           className={`${!isFolder && " -ml-3"} flex items-center gap-2 flex-1 min-w-0`}
         >
           {isFolder ? (
-            <span className={`text-zinc-600 group-hover/item:text-zinc-400 transition-all duration-300 shrink-0 ${isOpen ? "rotate-0 text-cyan-500/80" : "-rotate-90"}`}>
+            <span
+              className={`text-zinc-600 group-hover/item:text-zinc-400 transition-all duration-300 shrink-0 ${isOpen ? "rotate-0 text-cyan-500/80" : "-rotate-90"}`}
+            >
               <ChevronDown size={13} strokeWidth={3} />
             </span>
           ) : (
@@ -128,40 +158,106 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
           )}
 
           {isFolder ? (
-            node.isSystemFolder ? (() => {
-              const getSystemStyle = () => {
-                switch (node.name) {
-                  case "Documents": return { color: "text-blue-400 text-opacity-90 fill-blue-500/10", suffix: <FileText size={7} className="text-blue-100" strokeWidth={3} />, suffixBg: "bg-blue-600" };
-                  case "Media": return { color: "text-rose-400 text-opacity-90 fill-rose-500/10", suffix: <ImageIcon size={7} className="text-rose-100" strokeWidth={3} />, suffixBg: "bg-rose-600" };
-                  case "Research": return { color: "text-amber-400 text-opacity-90 fill-amber-500/10", suffix: <BookOpen size={7} className="text-amber-100" strokeWidth={3} />, suffixBg: "bg-amber-600" };
-                  case "Chats": return { color: "text-emerald-400 text-opacity-90 fill-emerald-500/10", suffix: <MessageCircle size={7} className="text-emerald-100" strokeWidth={3} />, suffixBg: "bg-emerald-600" };
-                  default: return { color: "text-cyan-400", suffix: null, suffixBg: "" };
-                }
-              };
-              const { color, suffix, suffixBg } = getSystemStyle();
-              return (
-                <div className="relative flex items-center justify-center transition-transform group-hover/item:scale-110 duration-200">
-                  <Folder size={16} className={color} strokeWidth={2} />
-                  {suffix && (
-                    <div className={`absolute -bottom-[2px] -right-[2px] p-[2px] rounded-md shadow-[0_1px_2px_rgba(0,0,0,0.5)] border border-black/80 ${suffixBg} z-10 scale-[0.85]`}>
-                      {suffix}
-                    </div>
-                  )}
-                </div>
-              );
-            })() : (
+            node.isSystemFolder ? (
+              (() => {
+                const getSystemStyle = () => {
+                  switch (node.name) {
+                    case "Documents":
+                      return {
+                        color: "text-blue-400 text-opacity-90 fill-blue-500/10",
+                        suffix: (
+                          <FileText
+                            size={7}
+                            className="text-blue-100"
+                            strokeWidth={3}
+                          />
+                        ),
+                        suffixBg: "bg-blue-600",
+                      };
+                    case "Media":
+                      return {
+                        color: "text-rose-400 text-opacity-90 fill-rose-500/10",
+                        suffix: (
+                          <ImageIcon
+                            size={7}
+                            className="text-rose-100"
+                            strokeWidth={3}
+                          />
+                        ),
+                        suffixBg: "bg-rose-600",
+                      };
+                    case "Research":
+                      return {
+                        color:
+                          "text-amber-400 text-opacity-90 fill-amber-500/10",
+                        suffix: (
+                          <BookOpen
+                            size={7}
+                            className="text-amber-100"
+                            strokeWidth={3}
+                          />
+                        ),
+                        suffixBg: "bg-amber-600",
+                      };
+                    case "Chats":
+                      return {
+                        color:
+                          "text-emerald-400 text-opacity-90 fill-emerald-500/10",
+                        suffix: (
+                          <MessageCircle
+                            size={7}
+                            className="text-emerald-100"
+                            strokeWidth={3}
+                          />
+                        ),
+                        suffixBg: "bg-emerald-600",
+                      };
+                    default:
+                      return {
+                        color: "text-cyan-400",
+                        suffix: null,
+                        suffixBg: "",
+                      };
+                  }
+                };
+                const { color, suffix, suffixBg } = getSystemStyle();
+                return (
+                  <div className="relative flex items-center justify-center transition-transform group-hover/item:scale-110 duration-200">
+                    <Folder size={16} className={color} strokeWidth={2} />
+                    {suffix && (
+                      <div
+                        className={`absolute -bottom-[2px] -right-[2px] p-[2px] rounded-md shadow-[0_1px_2px_rgba(0,0,0,0.5)] border border-black/80 ${suffixBg} z-10 scale-[0.85]`}
+                      >
+                        {suffix}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()
+            ) : (
               <div className="relative flex items-center justify-center transition-transform group-hover/item:scale-110 duration-200">
-                <Folder size={16} className="text-cyan-500 fill-cyan-500/10 text-opacity-90" strokeWidth={2} />
+                <Folder
+                  size={16}
+                  className="text-cyan-500 fill-cyan-500/10 text-opacity-90"
+                  strokeWidth={2}
+                />
               </div>
             )
           ) : (
             <div className="relative flex items-center justify-center px-0.5 transition-transform group-hover/item:scale-110 duration-200">
-              <MessageSquare size={15} className="text-emerald-400/90 fill-emerald-500/10" strokeWidth={2} />
+              <MessageSquare
+                size={15}
+                className="text-emerald-400/90 fill-emerald-500/10"
+                strokeWidth={2}
+              />
             </div>
           )}
 
           {isRenaming ? (
-            <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+            <div
+              className="flex items-center gap-1.5"
+              onClick={(e) => e.stopPropagation()}
+            >
               <input
                 autoFocus
                 className="bg-black/40 border border-cyan-500/50 focus:border-cyan-400 rounded-md text-[13px] font-medium text-gray-200 outline-none px-2 py-0.5 w-[130px] transition-all shadow-inner focus:shadow-[0_0_10px_-2px_rgba(6,182,212,0.3)] placeholder:text-zinc-600"
@@ -171,7 +267,10 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
                 onKeyDown={(e) => e.key === "Enter" && handleRename()}
               />
               <button
-                onMouseDown={(e) => { e.preventDefault(); handleRename(); }}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  handleRename();
+                }}
                 className="p-1 text-zinc-500 hover:text-emerald-400 hover:bg-zinc-800 rounded-md transition-all active:scale-95"
               >
                 <Check size={14} strokeWidth={2.5} />
@@ -188,7 +287,9 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
                   title={`${node.contextParents?.length} Inherited Contexts`}
                 >
                   <GitBranch size={10} className="mr-1" />
-                  <span className="text-[9px] font-bold uppercase tracking-wider">{node.contextParents?.length}</span>
+                  <span className="text-[9px] font-bold uppercase tracking-wider">
+                    {node.contextParents?.length}
+                  </span>
                 </div>
               )}
             </div>
@@ -198,13 +299,19 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
         {isFolder && (
           <div className="flex opacity-0 pointer-events-none group-hover/item:pointer-events-auto group-hover/item:opacity-100 items-center gap-0.5 transition-opacity duration-200">
             <button
-              onClick={(e) => { e.stopPropagation(); setIsCreating("chat"); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsCreating("chat");
+              }}
               className="p-1 hover:bg-zinc-700/60 rounded-md text-zinc-500 hover:text-emerald-400 transition-colors active:scale-95"
             >
               <Plus size={14} strokeWidth={2.5} />
             </button>
             <button
-              onClick={(e) => { e.stopPropagation(); setIsCreating("folder"); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsCreating("folder");
+              }}
               className="p-1 hover:bg-zinc-700/60 rounded-md text-zinc-500 hover:text-cyan-400 transition-colors active:scale-95"
             >
               <FolderPlus size={14} strokeWidth={2.5} />
@@ -225,7 +332,10 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
             placeholder="Name..."
           />
           <button
-            onMouseDown={(e) => { e.preventDefault(); handleCreate(); }}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              handleCreate();
+            }}
             className="p-1 shrink-0 text-zinc-500 hover:text-emerald-400 hover:bg-zinc-800 rounded-md transition-all active:scale-95"
           >
             <Check size={14} strokeWidth={2.5} />
@@ -233,67 +343,110 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
         </div>
       )}
 
-      {isFolder && (
-        <div className={`grid transition-all duration-300 ease-in-out ${isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}>
-          <div className="overflow-hidden">
-            <div className="ml-[18px] pl-1.5 border-l border-zinc-800/80 hover:border-zinc-700/80 transition-colors mt-0.5 mb-1.5 space-y-[2px]">
-              {node.children?.map((child) => (
-                <FileItem key={child.id} node={child} />
-              ))}
-            </div>
-          </div>
+      {isFolder && isOpen && (
+        <div className="ml-[18px] pl-1.5 border-l border-zinc-800/80 hover:border-zinc-700/80 transition-colors mt-0.5 mb-1.5 space-y-[2px]">
+          {node.children?.map((child) => (
+            <FileItem key={child.id} node={child} />
+          ))}
         </div>
       )}
 
       {contextMenu && (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setContextMenu(null)}></div>
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => setContextMenu(null)}
+          ></div>
           <div
             style={{ top: contextMenu.y, left: contextMenu.x }}
             className="fixed z-50 bg-[var(--theme-bg-surface)] border border-zinc-800 shadow-2xl rounded-xl py-1.5 w-48 text-sm text-gray-200 overflow-hidden"
           >
             <button
               className="w-full text-left px-3 py-1.5 hover:bg-cyan-600 hover:text-white flex items-center gap-2 transition-colors"
-              onClick={(e) => { e.stopPropagation(); setIsCreating("chat"); setContextMenu(null); setIsOpen(true); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsCreating("chat");
+                setContextMenu(null);
+                if (!isOpen) dispatch(setIsExpandedTracker(node.id));
+              }}
             >
               <MessageSquare size={14} /> New Chat
             </button>
             <button
               className="w-full text-left px-3 py-1.5 hover:bg-cyan-600 hover:text-white flex items-center gap-2 transition-colors"
-              onClick={(e) => { e.stopPropagation(); setIsCreating("folder"); setContextMenu(null); setIsOpen(true); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsCreating("folder");
+                setContextMenu(null);
+                if (!isOpen) dispatch(setIsExpandedTracker(node.id));
+              }}
             >
               <FolderPlus size={14} /> New Folder
             </button>
             <button
               className="w-full text-left px-3 py-1.5 hover:bg-cyan-600 hover:text-white flex items-center gap-2 transition-colors"
-              onClick={(e) => { e.stopPropagation(); handleRootSetting(); setContextMenu(null); setIsOpen(true); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleRootSetting();
+                setContextMenu(null);
+                if (!isOpen) dispatch(setIsExpandedTracker(node.id));
+              }}
             >
               <FolderPlus size={14} /> Open With Folder
             </button>
             <button
               className="w-full text-left px-3 py-1.5 hover:bg-amber-600 hover:text-white flex items-center gap-2 transition-colors"
-              onClick={(e) => { e.stopPropagation(); navigate(`/graph/${node.id}`); setContextMenu(null); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/graph/${node.id}`);
+                setContextMenu(null);
+              }}
             >
               <GitBranch size={14} /> Knowledge Graph
             </button>
             {!node.isSystemFolder && (
               <button
                 className="w-full text-left px-3 py-1.5 hover:bg-cyan-600 hover:text-white flex items-center gap-2 transition-colors"
-                onClick={(e) => { e.stopPropagation(); setIsRenaming("folder"); setContextMenu(null); setRenameItemName(node.name); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsRenaming("folder");
+                  setContextMenu(null);
+                  setRenameItemName(node.name);
+                }}
               >
                 <Edit size={14} /> Rename
               </button>
             )}
-             <button
+            <button
               className="w-full text-left px-3 py-1.5 hover:bg-amber-600 hover:text-white flex items-center gap-2 transition-colors"
-              onClick={(e) => { e.stopPropagation(); setIsBehaviorOpen(true); setContextMenu(null); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsBehaviorOpen(true);
+                setContextMenu(null);
+              }}
             >
               <GitBranch size={14} /> Behaviour
             </button>
             {node.id !== "root" && !node.isSystemFolder && (
               <button
                 className="w-full text-left px-3 py-1.5 hover:bg-cyan-600 hover:text-white flex items-center gap-2 transition-colors"
-                onClick={(e) => { e.stopPropagation(); setIsMoveOpen(true); setContextMenu(null); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsShareOpen(true);
+                  setContextMenu(null);
+                }}
+              >
+                <Share size={14} /> Share
+              </button>
+            )}
+            {node.id !== "root" && !node.isSystemFolder && (
+              <button
+                className="w-full text-left px-3 py-1.5 hover:bg-cyan-600 hover:text-white flex items-center gap-2 transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsMoveOpen(true);
+                  setContextMenu(null);
+                }}
               >
                 <Move size={14} /> Move
               </button>
@@ -301,7 +454,11 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
             {node.id !== "root" && !node.isSystemFolder && (
               <button
                 className="w-full text-left px-3 py-2 hover:bg-red-500/20 hover:text-red-300 flex items-center gap-2 text-red-400 transition-colors"
-                onClick={(e) => { e.stopPropagation(); setContextMenu(null); handleDelete(); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setContextMenu(null);
+                  handleDelete();
+                }}
               >
                 <Trash size={14} /> Delete
               </button>
@@ -327,11 +484,26 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
           }}
           onMove={(destFolderId) => {
             if (isFolder) {
-              updateFolder({ folderId: node.id, updates: { parentId: destFolderId } });
+              updateFolder({
+                folderId: node.id,
+                updates: { parentId: destFolderId },
+              });
             } else {
-              updateChat({ chatId: node.id, updates: { folderId: destFolderId } });
+              updateChat({
+                chatId: node.id,
+                updates: { folderId: destFolderId },
+              });
             }
           }}
+        />
+      )}
+      {isShareOpen && (
+        <ShareLinkModal
+          isOpen={isShareOpen}
+          onClose={() => setIsShareOpen(false)}
+          targetId={node.id}
+          targetType={isFolder ? "folder" : "chat"}
+          targetName={node.name}
         />
       )}
     </div>

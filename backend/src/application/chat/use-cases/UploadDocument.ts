@@ -4,16 +4,18 @@ import { IUploadDocumentUseCase } from "./interfaces";
 import { UploadDocumentInputDTO, UploadDocumentOutputDTO } from "../dtos/chat.dto";
 import { IChatRepository } from "../../../domain/chat/repositories/IChatRepository";
 import { IDocumentQueue } from "../../common/ports/IDocumentQueue";
+import { IDocumentProgressPublisher } from "../../common/ports/IDocumentProgressPublisher";
 import { AppError } from "../../../utils/AppError";
 import { ILogger } from "../../common/ports/ILogger";
-import { documentProgressPubSub } from "../../../services/documentProgressPubSub";
 
 @injectable()
 export class UploadDocument implements IUploadDocumentUseCase {
   constructor(
     @inject("IChatRepository") private chatRepository: IChatRepository,
     @inject("IDocumentQueue") private documentQueue: IDocumentQueue,
-    @inject("ILogger") private logger: ILogger
+    @inject("IDocumentProgressPublisher")
+    private progressPublisher: IDocumentProgressPublisher,
+    @inject("ILogger") private logger: ILogger,
   ) {}
 
   async execute(input: UploadDocumentInputDTO): Promise<UploadDocumentOutputDTO> {
@@ -40,7 +42,7 @@ export class UploadDocument implements IUploadDocumentUseCase {
       createdAt: new Date().toISOString(),
     });
 
-    await documentProgressPubSub.publish({
+    await this.progressPublisher.publish({
       documentId,
       chatId,
       userId,
@@ -51,7 +53,11 @@ export class UploadDocument implements IUploadDocumentUseCase {
       message: "Document queued for processing",
     });
 
-    this.logger.info(`Document upload queued`, { documentId, fileName: documentFileName, chatId });
+    this.logger.info(`Document upload queued`, {
+      documentId,
+      fileName: documentFileName,
+      chatId,
+    });
 
     return {
       documentId,

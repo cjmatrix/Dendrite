@@ -15,15 +15,14 @@ import { useFileTree, useExplorerMutations } from "../hooks/useFileExplorer";
 export default function FileExplorer() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const { tree, activeSidebarRootId } = useAppSelector((state) => state.explorer);
+  const { tree, activeSidebarRootId, isShareMode } = useAppSelector((state) => state.explorer);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
 
   const { recallCount } = useFileTree();
-  console.log(recallCount)
   const { createFolder, createChat } = useExplorerMutations();
 
-  // Recall badge animation 
+ 
   const [shouldAnimate, setShouldAnimate] = useState(false);
   useEffect(() => {
     const triggerAnimation = () => {
@@ -141,21 +140,25 @@ export default function FileExplorer() {
           {isCollapsed ? <Menu size={16} /> : <ChevronLeft size={16} />}
         </button>
 
-        <button
-          onClick={() => setIsSettingsOpen(true)}
-          className="w-8 h-8 rounded-lg text-zinc-400 hover:text-zinc-200 flex items-center justify-center hover:bg-zinc-800/40 transition-colors"
-          title="Settings"
-        >
-          <Settings size={16} />
-        </button>
+        {!isShareMode && (
+          <button
+            onClick={() => setIsSettingsOpen(true)}
+            className="w-8 h-8 rounded-lg text-zinc-400 hover:text-zinc-200 flex items-center justify-center hover:bg-zinc-800/40 transition-colors"
+            title="Settings"
+          >
+            <Settings size={16} />
+          </button>
+        )}
 
-        <button
-          onClick={handleLogout}
-          className="w-8 h-8 rounded-lg text-red-400/80 hover:text-red-400 flex items-center justify-center hover:bg-red-500/10 transition-colors"
-          title="Sign Out"
-        >
-          <LogOut size={16} />
-        </button>
+        {!isShareMode && (
+          <button
+            onClick={handleLogout}
+            className="w-8 h-8 rounded-lg text-red-400/80 hover:text-red-400 flex items-center justify-center hover:bg-red-500/10 transition-colors"
+            title="Sign Out"
+          >
+            <LogOut size={16} />
+          </button>
+        )}
       </div>
 
       <SettingsModal 
@@ -191,26 +194,28 @@ export default function FileExplorer() {
                   </button>
                 )}
                 <span className="truncate max-w-[160px] text-[10px] font-extrabold uppercase tracking-[0.15em] text-zinc-400/80">
-                  {activeSidebarRootId ? displayTree.name : "WORKSPACE"}
+                  {activeSidebarRootId ? displayTree.name : (isShareMode ? "SHARED PREVIEW" : "WORKSPACE")}
                 </span>
               </h2>
-              <div className="flex items-center gap-1 bg-zinc-900/60 p-1 rounded-lg border border-zinc-800/50 shadow-inner">
-                <button
-                  onClick={() => startRootCreate("chat")}
-                  className="p-1.5 text-zinc-400 hover:text-cyan-400 hover:bg-zinc-800 rounded-md transition-all active:scale-95"
-                  title="New Chat"
-                >
-                  <Plus size={14} strokeWidth={2.5} />
-                </button>
-                <div className="w-px h-3.5 bg-zinc-700/50 mx-0.5"></div>
-                <button
-                  onClick={() => startRootCreate("folder")}
-                  className="p-1.5 text-zinc-400 hover:text-cyan-400 hover:bg-zinc-800 rounded-md transition-all active:scale-95"
-                  title="New Folder"
-                >
-                  <FolderPlus size={14} strokeWidth={2.5} />
-                </button>
-              </div>
+              {!isShareMode && (
+                <div className="flex items-center gap-1 bg-zinc-900/60 p-1 rounded-lg border border-zinc-800/50 shadow-inner">
+                  <button
+                    onClick={() => startRootCreate("chat")}
+                    className="p-1.5 text-zinc-400 hover:text-cyan-400 hover:bg-zinc-800 rounded-md transition-all active:scale-95"
+                    title="New Chat"
+                  >
+                    <Plus size={14} strokeWidth={2.5} />
+                  </button>
+                  <div className="w-px h-3.5 bg-zinc-700/50 mx-0.5"></div>
+                  <button
+                    onClick={() => startRootCreate("folder")}
+                    className="p-1.5 text-zinc-400 hover:text-cyan-400 hover:bg-zinc-800 rounded-md transition-all active:scale-95"
+                    title="New Folder"
+                  >
+                    <FolderPlus size={14} strokeWidth={2.5} />
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* File Tree */}

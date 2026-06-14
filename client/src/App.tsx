@@ -2,7 +2,8 @@ import { RouterProvider } from "react-router-dom";
 import { useEffect } from "react";
 import { useAppDispatch } from "./store/store";
 import { checkAuth, checkAdminAuth, forceLogout } from "./features/auth/store/authSlice";
-import { onMessageListener } from "./lib/firebase";
+import { messaging } from "./lib/firebase";
+import { onMessage } from "firebase/messaging";
 import toast, { Toaster } from "react-hot-toast";
 import "./App.css";
 import { useQueryClient } from "@tanstack/react-query";
@@ -27,41 +28,42 @@ function App() {
       window.removeEventListener("auth:session-expired", handleSessionExpired);
   }, [dispatch]);
 
-   const queryClient = useQueryClient();
+  const queryClient = useQueryClient();
   useEffect(() => {
-    const listenForMessages = async () => {
-      try {
-        const payload: any = await onMessageListener();
-        if (payload?.notification) {
-          queryClient.invalidateQueries({queryKey:["dueCards"]});
-
-          toast.success(`${payload.notification.body}`, {
-            duration: 6000,
-            position: "bottom-right",
-            icon: "🧠",
-            style: {
-              background: "#18181b",
-              color: "#e4e4e7",
-              border: "1px solid #3f3f46",
-              borderRadius: "16px",
-              fontSize: "14px",
-              fontWeight: "500",
-              boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.4)",
-            },
-          });
-          
-          queryClient.invalidateQueries({ queryKey: ["recallCount"] });
-          window.dispatchEvent(new CustomEvent('recall:notification-pushed'));
-        }
+    console.log("Setting up Firebase message listener");
+    
+    const unsubscribe = onMessage(messaging, (payload) => {
+      console.log("Foreground message received:", payload);
       
-        listenForMessages();
-      } catch (err) {
-        console.error("Error in foreground message listener:", err);
-      }
-    };
+      if (payload?.notification) {
+        console.log("received");
+        queryClient.invalidateQueries({queryKey:["dueCards"]});
 
-    listenForMessages();
-  }, []);
+        toast.success(`${payload.notification.body}`, {
+          duration: 6000,
+          position: "bottom-right",
+          icon: "🧠",
+          style: {
+            background: "#18181b",
+            color: "#e4e4e7",
+            border: "1px solid #3f3f46",
+            borderRadius: "16px",
+            fontSize: "14px",
+            fontWeight: "500",
+            boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.4)",
+          },
+        });
+        
+        queryClient.invalidateQueries({ queryKey: ["recallCount"] });
+        window.dispatchEvent(new CustomEvent('recall:notification-pushed'));
+      }
+    });
+
+    return () => {
+      console.log("Cleaning up Firebase message listener");
+      if (unsubscribe) unsubscribe();
+    };
+  }, [queryClient]);
 
   return (
     <>

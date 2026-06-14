@@ -26,10 +26,19 @@ export const getChats = async (): Promise<any[]> => {
 };
 
 export const createChat = async (title: string, folderId: string | null): Promise<void> => {
+  if (!title || !title.trim()) {
+    throw new Error("Title is required");
+  }
   await api.post("/chats/create", { title, folderId });
 };
 
 export const updateChat = async (chatId: string, updates: { title?: string; folderId?: string | null }): Promise<void> => {
+  if (updates.title !== undefined && !updates.title.trim()) {
+    throw new Error("Title cannot be empty");
+  }
+  if (updates.title === undefined && updates.folderId === undefined) {
+    throw new Error("At least one update field (title or folderId) must be provided");
+  }
   await api.patch(`/chats/${chatId}`, updates);
 };
 

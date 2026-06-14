@@ -6,7 +6,7 @@ import { generateBatchCodeDescriptions } from '../../../utils/AIDescription';
 import { ILogger } from '../../common/ports/ILogger';
 import { IUnitOfWorkRepository } from "../../common/ports/IUnitOfWorkRepository";
 import { IUserRepository } from "../../../domain/auth/repositories/IUserRepository";
-
+import {getCachedDecryptedKeys} from "../../../utils/byokKeysHelper"
 @injectable()
 export class ProcessDescriptionJob {
   constructor(
@@ -43,7 +43,7 @@ export class ProcessDescriptionJob {
       let byokKeys: string[] | undefined;
       const firstBlock = toProcessBlocks[0] || blocks[0];
       if (firstBlock && firstBlock.userId) {
-        const { getCachedDecryptedKeys } = require("../../../utils/byokKeysHelper");
+        
         byokKeys = await getCachedDecryptedKeys(firstBlock.userId.toString(), "gemini");
       }
 
@@ -64,6 +64,7 @@ export class ProcessDescriptionJob {
         } else {
           const { estimateTokenCount } = require("../../../utils/tokenCounter");
           const promptText = toProcessBlocks.map(b => b.code).join("\n");
+          console.log(promptText)
           inputTokens = estimateTokenCount(promptText);
           outputTokens = estimateTokenCount(JSON.stringify(batchResults));
         }
@@ -79,6 +80,8 @@ export class ProcessDescriptionJob {
             }
           });
         }
+
+        console.log(inputTokens,outputTokens)
       }
 
       for (const res of batchResults) {

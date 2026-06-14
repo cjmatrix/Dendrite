@@ -66,6 +66,20 @@ export const router = createBrowserRouter([
     element: <OtpPage />,
   },
   {
+    path: "/share/:token",
+    element: <ChatPage />,
+    children: [
+      {
+        index: true,
+        element: <EmptyChatState />,
+      },
+      {
+        path: "chat/:id",
+        element: <SplitFileViewerWrapper />,
+      },
+    ]
+  },
+  {
     path: "/",
     element: <ProtectedRoute />,
     children: [

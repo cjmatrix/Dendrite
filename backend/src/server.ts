@@ -9,11 +9,12 @@ import folderRoutes from "./presentation/routes/folderRoutes";
 import chatRoutes from "./presentation/routes/chatRoutes";
 import recallRoutes from "./presentation/routes/recallRoutes";
 import branchRoutes from "./presentation/routes/branchRoutes";
+import shareLinkRoutes from "./presentation/routes/shareLinkRoutes";
 import "./worker/embeddingWorker";
 import "./worker/descriptionWorker";
 import "./worker/summaryWorker";
 import "./worker/recallWorker";
-import "./queue/documentChunkingQueue";
+import "./worker/documentChunkingWorker";
 import "./cron/outboxSweeper";
 import "./cron/descriptionSweeper";
 import "./cron/searchCacheSweeper";
@@ -65,6 +66,7 @@ app.use("/api/v1/folders", folderRoutes);
 app.use("/api/v1/chats", chatRoutes);
 app.use("/api/v1/recall", recallRoutes);
 app.use("/api/v1/branch", branchRoutes);
+app.use("/api/v1/share", shareLinkRoutes);
 
 app.use("/api/v1/admin/user", userRouter);
 

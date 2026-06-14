@@ -1,6 +1,10 @@
 import { injectable } from "tsyringe";
-import { IDocumentQueue, QueueDocumentInput } from "../../application/common/ports/IDocumentQueue";
-import { documentChunkingQueue } from "../../queue/documentChunkingQueue";
+import {
+  IDocumentQueue,
+  QueueDocumentInput,
+  QueueChunkingInput,
+} from "../../application/common/ports/IDocumentQueue";
+import { documentChunkingQueue } from "../../worker/documentChunkingWorker";
 
 @injectable()
 export class BullMQDocumentQueue implements IDocumentQueue {
@@ -9,7 +13,7 @@ export class BullMQDocumentQueue implements IDocumentQueue {
       "chunk-document",
       {
         stage: "upload",
-        ...input
+        ...input,
       },
       {
         jobId: input.documentId,
@@ -22,7 +26,22 @@ export class BullMQDocumentQueue implements IDocumentQueue {
         removeOnComplete: {
           age: 3600,
         },
-      }
+      },
+    );
+  }
+
+  async enqueueChunkStage(input: QueueChunkingInput): Promise<void> {
+    await documentChunkingQueue.add(
+      "chunk-document",
+      {
+        stage: "chunk",
+        ...input,
+      },
+      {
+        jobId: `${input.documentId}-chunk`,
+        priority: 10,
+        attempts: 1,
+      },
     );
   }
 }

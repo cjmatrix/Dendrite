@@ -134,4 +134,11 @@ export class MongoChatRepository
       .lean();
     return doc ? this.mapToDomain(doc) : null;
   }
+
+  async findByFolderIdsWithoutUserId(folderIds: string[]): Promise<IChat[]> {
+    const docs = await this.model
+      .find({ folderId: { $in: folderIds } })
+      .lean();
+    return docs.map((doc: any) => this.mapToDomain(doc));
+  }
 }

@@ -52,22 +52,6 @@ function convertContentsToMessages(contents: any[]): OpenRouterMessage[] {
     }
   }
 
-  flushMessage();
-
-  // If the last message is from user, merge any trailing system-like content
-  // The first text block in contents is typically the system instruction
-  if (messages.length > 0 && messages[0].role === "user") {
-    // Extract system instruction from the first user message
-    const firstMsg = messages[0];
-    if (typeof firstMsg.content === "string" && firstMsg.content.length > 500) {
-      messages.unshift({
-        role: "system",
-        content: firstMsg.content,
-      });
-      messages.splice(1, 1);
-    }
-  }
-
   return messages;
 }
 
@@ -78,13 +62,18 @@ export async function streamOpenRouterContent(
   contents: any[],
   model: string,
   signal?: AbortSignal,
+  systemInstruction?: string,
 ): Promise<AsyncIterable<{ text: string; usageMetadata?: any }>> {
   if (!OPENROUTER_API_KEY) {
     throw new Error("OPENROUTER_API_KEY is not configured");
   }
-
   const messages = convertContentsToMessages(contents);
-
+  if (systemInstruction) {
+    messages.unshift({
+      role: "system",
+      content: systemInstruction,
+    });
+  }
   const response = await fetch(OPENROUTER_BASE_URL, {
     method: "POST",
     headers: {

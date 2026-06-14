@@ -7,25 +7,31 @@ import { setTree } from "../store/explorerSlice";
 import type { FileNode } from "../types/types";
 
 
+import { useParams } from "react-router-dom";
+
 export function useFileTree() {
   const dispatch = useAppDispatch();
-  console.log("rerending usecases")
+  const { token } = useParams<{ token?: string }>();
+
   const { data: folders } = useQuery({
     queryKey: ["folders"],
     queryFn: () => getFolders(),
+    enabled: !token,
   });
 
   const { data: chats } = useQuery({
     queryKey: ["chats"],
     queryFn: () => getChats(),
+    enabled: !token,
   });
 
   const { data: recallCount, refetch: refetchRecallCount } = useQuery({
     queryKey: ["recallCount"],
     queryFn: () => getDueCount(),
+    enabled: !token,
   });
 
-  console.log(recallCount,"in usecase")
+
 
   useEffect(() => {
     const handleRecallNotification = () => {

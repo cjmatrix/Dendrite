@@ -1,13 +1,16 @@
 import { IChatRepository } from '../../../domain/chat/repositories/IChatRepository';
 import { IUploadChatImageUseCase } from './interfaces';
 import { UploadChatImageInputDTO, UploadChatImageOutputDTO } from '../dtos/chat.dto';
-import { FileUploadService } from '../../../services/FileUploadService';
+import { IFileStorageService } from '../../common/ports/IFileStorageService';
 import { AppError } from '../../../utils/AppError';
 import { injectable, inject } from 'tsyringe';
 
 @injectable()
 export class UploadChatImage implements IUploadChatImageUseCase {
-  constructor(@inject("IChatRepository") private chatRepository: IChatRepository) {}
+  constructor(
+    @inject("IChatRepository") private chatRepository: IChatRepository,
+    @inject("IFileStorageService") private fileStorageService: IFileStorageService,
+  ) {}
 
   async execute(input: UploadChatImageInputDTO): Promise<UploadChatImageOutputDTO> {
     const { userId, chatId, file } = input;
@@ -17,14 +20,11 @@ export class UploadChatImage implements IUploadChatImageUseCase {
       throw new AppError("Chat not found or access denied", 404);
     }
 
-    FileUploadService.validateCloudinaryConfig();
-    await FileUploadService.validateImageFile(file.buffer);
-
-    const result = await FileUploadService.uploadImageToCloudinary(
+    const result = await this.fileStorageService.uploadImage(
       file.buffer,
       file.mimetype,
     );
 
-    return { url: result.secure_url };
+    return { url: result.url };
   }
 }

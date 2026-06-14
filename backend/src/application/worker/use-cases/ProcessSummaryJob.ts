@@ -14,7 +14,7 @@ import { IGlobalProfile } from "../../../domain/auth/entities/User";
 import { estimateTokenCount } from "../../../utils/tokenCounter";
 import crypto from "crypto";
 import { ILogger } from "../../common/ports/ILogger";
-
+import { getCachedDecryptedKeys } from "../../../utils/byokKeysHelper";
 const MAX_SUMMARY_TOKENS = 900;
 
 function renderSummaryItems(items: SummaryItem[]): string {
@@ -181,7 +181,7 @@ export class ProcessSummaryJob {
         const user = await this.userRepository.findById(userId);
         const existingProfile = user?.globalProfile || null;
 
-        const { getCachedDecryptedKeys } = require("../../../utils/byokKeysHelper");
+        
         const byokKeys = await getCachedDecryptedKeys(userId, "gemini");
 
         tripleOutput = await generateTripleMemoryOutput(

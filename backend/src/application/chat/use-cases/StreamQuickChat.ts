@@ -1,4 +1,5 @@
 import { injectable, inject } from "tsyringe";
+import { cleanLLMResponse } from "../../../utils/cleanResponse";
 import { IStreamQuickChatUseCase } from "./interfaces";
 import { StreamQuickChatInputDTO } from "../dtos/chat.dto";
 import { IMessageRepository } from "../../../domain/chat/repositories/IMessageRepository";
@@ -17,9 +18,9 @@ export class StreamQuickChat implements IStreamQuickChatUseCase {
   ) {}
 
   async execute(input: StreamQuickChatInputDTO): Promise<AsyncIterable<any>> {
-    const { userId, chatId, anchorMessageId, highlightedText, quickChatHistory } = input;
-
-    const recentHistory = (quickChatHistory || []).slice(-2);
+    const { userId, chatId, anchorMessageId, highlightedText, quickChatHistory, userTier } = input;
+  
+    const recentHistory = (quickChatHistory || []).slice(-8);
 
     const backgroundContext = await this.aiService.getAnchorContext(
       chatId,
@@ -27,6 +28,8 @@ export class StreamQuickChat implements IStreamQuickChatUseCase {
       this.messageRepository
     );
 
+   
+    
     const historicalString = backgroundContext
       .map((msg: any) => `[${msg.role}]: ${msg.content}`)
       .join("\n\n");
@@ -40,12 +43,12 @@ export class StreamQuickChat implements IStreamQuickChatUseCase {
       { role: "user", parts: [{ text: systemPrompt }] },
       ...recentHistory.map((msg: any) => ({
         role: msg.role === "model" ? "model" : "user",
-        parts: [{ text: msg.content }],
+        parts: [{ text: msg.role === "model" ? cleanLLMResponse(msg.content) : msg.content }],
       })),
     ];
 
     try {
-      return await this.aiService.streamAIContent(contents, QUICK_CHAT_MODEL, undefined, userId);
+      return await this.aiService.streamAIContent(contents, QUICK_CHAT_MODEL, undefined, userId, userTier);
     } catch (error: any) {
       this.logger.error("AI streaming failed", error, { contents });
       throw new AppError("All your provided Gemini API keys have exceeded their free-tier limits. Please wait, or add a new key.", 429);

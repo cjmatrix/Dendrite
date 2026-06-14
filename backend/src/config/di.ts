@@ -1,6 +1,9 @@
 import "reflect-metadata";
 import { container } from "tsyringe";
 import { MongoUserRepository } from "../infrastructure/auth/repositories/MongoUserRepository";
+import { RedisShareLinkRepository } from "../infrastructure/shareLink/repositories/RedisShareLinkRepository";
+import { CreateLink } from "../application/shareLink/use-cases/createLink";
+import { ResolveLink } from "../application/shareLink/use-cases/resolveLink";
 import { MongooseUnitOfWork } from "../infrastructure/shared/MongooseUnitOfWork";
 import { WinstonLoggerAdapter } from "../infrastructure/logger/WinstonLoggerAdapter";
 import { ILogger } from "../application/common/ports/ILogger";
@@ -67,6 +70,9 @@ import { StreamAndSaveChatUseCase } from "../application/chat/use-cases/StreamAn
 
 import { VoyageEmbeddingService } from "../infrastructure/services/VoyageEmbeddingService";
 import { JinaEmbeddingService } from "../infrastructure/services/JinaEmbeddingService";
+import { CloudinaryStorageAdapter } from "../infrastructure/services/CloudinaryStorageAdapter";
+import { RedisDocumentProgressPublisher } from "../infrastructure/services/RedisDocumentProgressPublisher";
+import { SemanticChunkingAdapter } from "../infrastructure/services/SemanticChunkingAdapter";
 
 container.registerInstance("RedisClient", redisConnection);
 container.registerSingleton("IEmbeddingService", VoyageEmbeddingService); // Easily switchable to JinaEmbeddingService!
@@ -90,6 +96,7 @@ container.registerSingleton("ISubChatRepository", MongoSubChatRepository);
 container.registerSingleton("ICodeBlockRepository", MongoCodeBlockRepository);
 container.registerSingleton("IOutboxEventRepository", MongoOutboxEventRepository);
 container.registerSingleton("IRecallRepository", MongoRecallRepository);
+container.registerSingleton("ISharedLinkRepository", RedisShareLinkRepository);
 
 // Publishers
 container.registerSingleton("IEmbeddingPublisher", BullMQEmbeddingPublisher);
@@ -98,6 +105,9 @@ container.registerSingleton("IDescriptionPublisher", BullMQDescriptionPublisher)
 container.registerSingleton("ISummaryPublisher", BullMQSummaryPublisher);
 container.registerSingleton("IAIService", AIServiceAdapter);
 container.registerSingleton("IDocumentQueue", BullMQDocumentQueue);
+container.registerSingleton("IFileStorageService", CloudinaryStorageAdapter);
+container.registerSingleton("IDocumentProgressPublisher", RedisDocumentProgressPublisher);
+container.registerSingleton("IDocumentChunkingService", SemanticChunkingAdapter);
 
 container.registerSingleton("IRegisterUserUseCase", RegisterUser);
 container.registerSingleton("ILoginUserUseCase", LoginUser);
@@ -109,6 +119,8 @@ container.registerSingleton("ISendOtpUseCase", SendOTP);
 container.registerSingleton("IVerifyOtpUseCase", VerifyOTP);
 container.registerSingleton("IGoogleLoginUseCase", GoogleLogin);
 container.registerSingleton("IUpdateByokKeysUseCase", UpdateByokKeys);
+container.registerSingleton("ICreateLinkUseCase", CreateLink);
+container.registerSingleton("IResolveLinkUseCase", ResolveLink);
 
 container.registerSingleton("IAdminLoginUseCase", AdminLoginUseCase);
 container.registerSingleton("IAdminLogoutUseCase", AdminLogoutUseCase);

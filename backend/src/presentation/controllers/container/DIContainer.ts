@@ -60,7 +60,9 @@ import { CountDueCards } from '../../../application/recall/use-cases/CountDueCar
 
 import { InheritContext } from '../../../application/branch/use-cases/InheritContext';
 import { UnlinkInheritance } from '../../../application/branch/use-cases/UnlinkInheritance';
-import { ProcessDocumentChunking } from '../../../application/worker/use-cases/ProcessDocumentChunking';
+
+import { container } from "tsyringe";
+import { IEmbeddingService } from "../../../application/common/ports/IEmbeddingService";
 
 
 export class DIContainer {
@@ -127,8 +129,7 @@ export class DIContainer {
   private static inheritContextUseCase: InheritContext;
   private static unlinkInheritanceUseCase: UnlinkInheritance;
 
-  // Worker Use Cases
-  private static processDocumentChunkingUseCase: ProcessDocumentChunking;
+
 
  
   static getFolderRepository(): MongoFolderRepository {
@@ -312,6 +313,7 @@ export class DIContainer {
         this.getMessageRepository(),
         this.getUserRepository(),
         this.getFolderRepository(),
+        container.resolve<IEmbeddingService>("IEmbeddingService"),
         this.getLogger(),
       );
     }
@@ -545,16 +547,5 @@ export class DIContainer {
       this.unlinkInheritanceUseCase = new UnlinkInheritance(this.getChatRepository());
     }
     return this.unlinkInheritanceUseCase;
-  }
-
-  static getProcessDocumentChunkingUseCase(): ProcessDocumentChunking {
-    if (!this.processDocumentChunkingUseCase) {
-      this.processDocumentChunkingUseCase = new ProcessDocumentChunking(
-        this.getOutboxEventRepository(),
-        this.getVectorRepository(),
-        this.getLogger()
-      );
-    }
-    return this.processDocumentChunkingUseCase;
   }
 }

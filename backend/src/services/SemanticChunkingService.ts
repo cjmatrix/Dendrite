@@ -1,3 +1,4 @@
+import { injectable } from "tsyringe";
 import { embeddingService } from "./EmbeddingService";
 import fs from "fs";
 import crypto from "crypto";
@@ -5,7 +6,7 @@ import LlamaCloud from "@llamaindex/llama-cloud";
 import { redisConnection } from "../config/redis";
 
 const LLAMA_CACHE_PREFIX = "llamaparse:";
-const LLAMA_CACHE_TTL = 60 * 60 * 24; // 24 hours
+const LLAMA_CACHE_TTL = 60 * 60 * 24; 
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -444,6 +445,7 @@ function enforceTokenLimits(
 
 
 
+@injectable()
 export class SemanticChunkingService {
   private client;
 
@@ -471,7 +473,7 @@ export class SemanticChunkingService {
       throw new Error(`File not found: ${pdfPath}`);
     }
 
-    // Check Redis cache first
+
     const fileHash = this.hashFile(pdfPath);
     const cacheKey = `${LLAMA_CACHE_PREFIX}${fileHash}`;
 
@@ -482,10 +484,10 @@ export class SemanticChunkingService {
         return cached;
       }
     } catch (err) {
-      console.warn("⚠️ Redis cache read failed, proceeding with LlamaParse:", err);
+      console.warn(" Redis cache read failed, proceeding with LlamaParse:", err);
     }
 
-    // Cache MISS 
+ 
     try {
       console.log(` Parsing PDF with LlamaParse (cache MISS): ${pdfPath}`);
 
@@ -520,12 +522,12 @@ export class SemanticChunkingService {
         ` LlamaParse extraction complete (${result.markdown.pages.length} pages, ${(markdown.length / 1024).toFixed(1)} KB)`,
       );
 
-      // Cache in Redis with TTL
+      
       try {
         await redisConnection.set(cacheKey, markdown, "EX", LLAMA_CACHE_TTL);
         console.log(`Cached LlamaParse result (key: ${fileHash.slice(0, 12)}..., TTL: 24h)`);
       } catch (err) {
-        console.warn("⚠️ Redis cache write failed:", err);
+        console.warn(" Redis cache write failed:", err);
       }
 
       return markdown;

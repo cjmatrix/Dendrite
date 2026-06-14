@@ -16,6 +16,7 @@
   "dependencies": {
     "@google/genai": "^1.43.0",
     "@google/generative-ai": "^0.24.1",
+    "@langchain/textsplitters": "^1.0.1",
     "@llamaindex/llama-cloud": "^2.3.0",
     "@qdrant/js-client-rest": "^1.17.0",
     "@tavily/core": "^0.7.2",

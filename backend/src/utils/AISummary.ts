@@ -1,4 +1,5 @@
 import ai, { getRotatedAI, rotateAIKey, aiInstances } from "../config/AIConfig";
+import { cleanLLMResponse } from "./cleanResponse";
 import { IGlobalProfile } from "../domain/auth/entities/User";
 import { Type, GoogleGenAI } from "@google/genai";
 import { getActiveBYOKKeyIndex, rotateBYOKKeyIndex } from "./byokKeysHelper";
@@ -327,7 +328,7 @@ export async function generateTripleMemoryOutput(
   userId?: string
 ): Promise<TripleMemoryOutput> {
   const fullConversation = messageToCompress
-    .map((m) => `[${m.role.toUpperCase()}]: ${m.content}`)
+    .map((m) => `[${m.role.toUpperCase()}]: ${m.role === "model" || m.role?.toLowerCase() === "model" ? cleanLLMResponse(m.content) : m.content}`)
     .join("\n\n");
 
   const systemPrompt = buildSystemPrompt(existingProfile, previousSummary);

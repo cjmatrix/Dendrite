@@ -23,6 +23,7 @@ import {
   Square,
   Cpu,
   Key,
+  Shield,
 } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
 import type { VirtuosoHandle } from "react-virtuoso";
@@ -36,6 +37,7 @@ import { DocumentBrowser } from "./DocumentBrowser";
 import { SettingsModal } from "./SettingsModal";
 import FileDisplay from "../../explorer/components/FileDisplay";
 import RecallPage from "../../recall/components/RecallPage";
+import { ShareLinkModal } from "../../explorer/components/ShareLinkModal";
 
 import { MessageBubble } from "./MessageBubble";
 import { VirtuosoHeader } from "./VirtuosoHeader";
@@ -78,7 +80,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const { id } = useParams();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const { tree, isRecallOverlayOpen } = useAppSelector((state) => state.explorer);
+  const { tree, isRecallOverlayOpen, isShareMode } = useAppSelector((state) => state.explorer);
   const queryClient = useQueryClient();
 
   const { data: chat, isLoading: isChatLoading } = useChatDetails(id);
@@ -106,6 +108,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const [isModelOpen, setIsModelOpen] = useState(false);
   const user = useAppSelector((state) => state.auth.user);
   const [isByokModalOpen, setIsByokModalOpen] = useState(false);
+  const [isShareOpen, setIsShareOpen] = useState(false);
   const [input, setInput] = useState("");
   const [isQuickChatOpen, setIsQuickChatOpen] = useState(false);
   const [externalSelectedFile, setExternalSelectedFile] = useState<{
@@ -439,12 +442,20 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           </div>
         </div>
         <div className="flex items-center gap-2 text-zinc-400 shrink-0 ml-4">
-          <button className="p-2 hover:bg-zinc-800/80 hover:text-amber-200/90 rounded-lg transition-all cursor-pointer hover:scale-105 active:scale-95">
-            <Share size={18} />
-          </button>
-          <button className="p-2 hover:bg-zinc-800/80 hover:text-amber-200/90 rounded-lg transition-all cursor-pointer hover:scale-105 active:scale-95">
-            <MoreVertical size={18} />
-          </button>
+          {!isShareMode && (
+            <>
+              <button 
+                onClick={() => setIsShareOpen(true)}
+                className="p-2 hover:bg-zinc-800/80 hover:text-amber-200/90 rounded-lg transition-all cursor-pointer hover:scale-105 active:scale-95"
+                title="Share Chat"
+              >
+                <Share size={18} />
+              </button>
+              <button className="p-2 hover:bg-zinc-800/80 hover:text-amber-200/90 rounded-lg transition-all cursor-pointer hover:scale-105 active:scale-95">
+                <MoreVertical size={18} />
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -635,7 +646,16 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       {/* Input Container */}
       <div className="absolute bottom-0 left-0 right-0 pt-20 pb-6 px-4 md:px-8 border-none pointer-events-none bg-linear-to-t from-(--theme-bg-base) via-(--theme-bg-base)/95 to-transparent">
         <div className="max-w-4xl mx-auto relative pointer-events-auto ">
-          <input
+          {isShareMode ? (
+            <div className="flex items-center justify-center gap-2 p-4 bg-zinc-900/40 border border-zinc-800/85 rounded-2xl text-zinc-500 select-none shadow-2xl">
+              <Shield size={16} className="text-zinc-600 animate-pulse" />
+              <span className="text-xs font-bold tracking-wide uppercase">
+                This is a Read-Only Preview. Message input is disabled.
+              </span>
+            </div>
+          ) : (
+            <>
+              <input
             ref={fileInputRef}
             type="file"
             accept="image/*,.pdf,.txt,.md,.csv,.json,.xml,.yaml,.yml,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.rtf,.py,.js,.ts,.tsx,.jsx,.java,.c,.cpp,.h,.hpp,.go,.rs,.php,.rb,.sh,.sql,.html,.css"
@@ -897,6 +917,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               </button>
             </div>
           </div>
+          </>
+          )}
         </div>
       </div>
 
@@ -1025,6 +1047,16 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         isOpen={isByokModalOpen} 
         onClose={() => setIsByokModalOpen(false)} 
       />
+
+      {isShareOpen && id && (
+        <ShareLinkModal
+          isOpen={isShareOpen}
+          onClose={() => setIsShareOpen(false)}
+          targetId={id}
+          targetType="chat"
+          targetName={chat?.title || "New Chat"}
+        />
+      )}
     </div>
   );
 };

@@ -3,6 +3,7 @@ import { streamingFetch } from "../../../lib/streamingFetch";
 import type { Chat } from "../types/Chat";
 import type { MessagePage, StreamChunk } from "../types/Message";
 import type { DocumentProgressEvent, DocumentUploadResult, ImageUploadResult } from "../types/FileUpload";
+import { MODEL_OPTIONS } from "../constants/models";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -29,6 +30,16 @@ export const sendMessageStream = async (
   controller:AbortController,
   onChunk: (chunk: StreamChunk) => void,
 ): Promise<void> => {
+  if (!message?.trim() && !imageUrl?.trim() && !fileUrl?.trim()) {
+    throw new Error("At least one of message, imageUrl, or fileUrl must be provided");
+  }
+  if (model) {
+    const isValidModel = MODEL_OPTIONS.some((m) => m.id === model);
+    if (!isValidModel) {
+      throw new Error("Invalid model selected");
+    }
+  }
+
   const response = await streamingFetch(`${API_URL}/chats/${chatId}/message`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

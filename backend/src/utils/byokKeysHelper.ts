@@ -25,12 +25,12 @@ export async function getCachedDecryptedKeys(userId: string, provider: string = 
 
   const byokEntry = user.byok_keys?.find((k) => k.provider === provider);
   if (!byokEntry || !byokEntry.encryptedKeys || byokEntry.encryptedKeys.length === 0) {
-    // Cache the "__NO_KEYS__" state for 5 minutes to prevent DB spamming on invalid BYOK requests
+  
     await redis.setex(cacheKey, 300, "__NO_KEYS__");
     throw new Error(`BYOK tier users must provide their own ${provider} API keys. Please upload your keys from the chat window.`);
   }
 
-  // Cache the encrypted keys in Redis with a 30-minute TTL (1800 seconds)
+
   await redis.setex(cacheKey, 1800, JSON.stringify(byokEntry.encryptedKeys));
 
   return byokEntry.encryptedKeys.map((k) => decryptKey(k)).filter(Boolean);

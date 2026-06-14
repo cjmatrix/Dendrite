@@ -84,4 +84,12 @@ export class MongoMessageRepository
   async findByIdsAndDelete(chatId: string, userId: string): Promise<void> {
     await this.model.deleteMany({ chatId, userId }).session(this.getSession());
   }
+
+  async findAllByChatId(chatId: string): Promise<IMessage[]> {
+    const docs = await this.model
+      .find({ chatId })
+      .sort({ createdAt: 1 })
+      .lean();
+    return docs.map((doc: any) => this.mapToDomain(doc));
+  }
 }

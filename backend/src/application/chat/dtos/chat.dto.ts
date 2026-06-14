@@ -1,4 +1,45 @@
+import { z } from "zod";
 import { ChatDocument, IChat } from "../../../domain/chat/entities/Chat";
+
+// ─── Input Schemas for Request Body Validation ───────────────────
+
+export const CreateChatBodySchema = z.object({
+  title: z.string().trim().min(1, "Title is required"),
+  folderId: z.string().trim().nullable().optional(),
+});
+
+export const UpdateChatBodySchema = z.object({
+  title: z.string().trim().min(1, "Title cannot be empty").optional(),
+  folderId: z.string().trim().nullable().optional(),
+}).refine(data => data.title !== undefined || data.folderId !== undefined, {
+  message: "At least one of title or folderId must be provided",
+});
+
+export const SendMessageBodySchema = z.object({
+  message: z.string().trim().nullable().optional(),
+  mode: z.string().trim().nullable().optional(),
+  model: z.string().trim().nullable().optional(),
+  imageUrl: z.string().trim().nullable().optional(),
+  fileUrl: z.string().trim().nullable().optional(),
+  fileName: z.string().trim().nullable().optional(),
+}).refine(data => data.message || data.imageUrl || data.fileUrl, {
+  message: "At least one of message, imageUrl, or fileUrl must be provided",
+});
+
+export const StreamQuickChatBodySchema = z.object({
+  anchorMessageId: z.string().trim().min(1, "Anchor message ID is required"),
+  highlightedText: z.string().trim().nullable().optional(),
+  quickChatHistory: z.array(z.any()).optional(),
+});
+
+export const SaveSubChatBodySchema = z.object({
+  subChatId: z.string().trim().nullable().optional(),
+  anchorMessageId: z.string().trim().min(1, "Anchor message ID is required"),
+  highlightedText: z.string().trim().nullable().optional(),
+  messages: z.array(z.any()),
+  relativeY: z.number(),
+});
+
 
 // ─── Output DTOs ────────────────────────────────────────────────
 
@@ -128,6 +169,7 @@ export interface StreamQuickChatInputDTO {
   anchorMessageId: string;
   highlightedText: string;
   quickChatHistory: any[];
+  userTier?: string;
 }
 
 export interface UploadDocumentInputDTO {

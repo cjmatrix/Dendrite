@@ -1,12 +1,10 @@
 import { Request, Response } from "express";
 import multer from "multer";
-import Busboy from "busboy";
 import fs from "fs";
 import crypto from "crypto";
 import { BaseController } from "./base/BaseController";
 import { AppError } from "../../utils/AppError";
-import { getModelOption } from "../../constants/models";
-import { FileUploadService } from "../../services/FileUploadService";
+import { getModelOption, DEFAULT_MODEL } from "../../constants/models";
 import { CHAT_MESSAGES } from "../constants/chatMessages";
 import { logAIQuery } from "../../utils/logger";
 import { getTokenInfo, estimateTokenCount } from "../../utils/tokenCounter";
@@ -218,6 +216,7 @@ export class ChatController extends BaseController {
           ...messageContext,
           chatId,
           userId,
+          userTier: req.user?.tier,
           originalMessage: req.body.message,
         },
         abortController.signal,
@@ -259,8 +258,9 @@ export class ChatController extends BaseController {
   ): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
-      const { chatId, anchorMessageId, highlightedText, quickChatHistory } =
-        req.body;
+      const userTier = req.user?.tier;
+      const chatId = req.params.id as string;
+      const { anchorMessageId, highlightedText, quickChatHistory } = req.body;
 
       res.setHeader("Content-Type", "text/event-stream");
       res.setHeader("Cache-Control", "no-cache");
@@ -275,6 +275,7 @@ export class ChatController extends BaseController {
           anchorMessageId,
           highlightedText,
           quickChatHistory,
+          userTier,
         });
       } catch (error: any) {
         if (error.statusCode === 429) {
@@ -455,168 +456,30 @@ export class ChatController extends BaseController {
     }
   };
 
-  public uploadChatPdf = async (req: Request, res: Response): Promise<void> => {
+  public uploadChatPdf = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
       const chatId = this.getRouteParam(req, "id");
 
-      const busboy = Busboy({
-        headers: req.headers,
-        limits: { fileSize: 100 * 1024 * 1024 },
+      if (!req.file) {
+        throw new AppError(CHAT_MESSAGES.NO_FILE_UPLOADED, 400);
+      }
+
+      const result = await this.uploadDocumentUseCase.execute({
+        userId,
+        chatId,
+        filePath: req.file.path,
+        fileName: req.file.originalname,
       });
 
-      let filePath = "";
-      let responseSent = false;
-      let fileName = "";
-
-      const sendJson = (status: number, payload: any) => {
-        if (responseSent) return;
-        responseSent = true;
-        res.status(status).json(payload);
-      };
-
-      let fileProcessPromise: Promise<void> | null = null;
-
-      busboy.on("field", (fieldname, val) => {
-        if (fieldname === "fileName") {
-          fileName = val;
-        }
-      });
-
-      busboy.on("file", (fieldname, file, info) => {
-        const { filename } = info;
-        filePath = FileUploadService.generateTempFilePath(filename);
-
-        fileProcessPromise = new Promise(async (resolve, reject) => {
-          const chunks: Buffer[] = [];
-          let headerLength = 0;
-          const HEADER_BYTES = 4200;
-          let isValidated = false;
-          let writeStream: fs.WriteStream | null = null;
-          let isProcessing = false;
-
-          const validateAndStartWriting = async (finalChunks: Buffer[]) => {
-            if (isProcessing || responseSent) return;
-            isProcessing = true;
-
-            try {
-              const total = Buffer.concat(finalChunks);
-              await FileUploadService.validateDocumentFile(total, filename);
-              isValidated = true;
-
-              writeStream = fs.createWriteStream(filePath);
-              writeStream.on("error", (err) => {
-                console.error("Write stream error:", err);
-                if (!responseSent)
-                  sendJson(500, { message: CHAT_MESSAGES.FAILED_TO_SAVE_FILE });
-                reject(err);
-              });
-
-              writeStream.write(total);
-              isProcessing = false;
-              file.resume();
-            } catch (error: any) {
-              if (!responseSent)
-                sendJson(error.statusCode || 415, { message: error.message });
-              isProcessing = false;
-              file.resume();
-              reject(error);
-            }
-          };
-
-          file.on("data", (chunk: Buffer) => {
-            if (responseSent) return;
-
-            if (!isValidated) {
-              chunks.push(chunk);
-              headerLength += chunk.length;
-
-              if (headerLength >= HEADER_BYTES && !isProcessing) {
-                file.pause();
-                validateAndStartWriting(chunks).catch(reject);
-              }
-            } else if (writeStream) {
-              writeStream.write(chunk);
-            }
-          });
-
-          file.on("end", async () => {
-            if (responseSent) {
-              resolve();
-              return;
-            }
-
-            try {
-              if (!isValidated) {
-                await validateAndStartWriting(chunks);
-              }
-
-              if (writeStream) {
-                writeStream.end(() => resolve());
-              } else {
-                resolve();
-              }
-            } catch (err) {
-              reject(err);
-            }
-          });
-
-          file.on("limit", () => {
-            if (!responseSent)
-              sendJson(413, {
-                message: CHAT_MESSAGES.FILE_TOO_LARGE,
-              });
-            file.resume();
-            resolve();
-          });
-        });
-      });
-
-      busboy.on("finish", async () => {
-        if (responseSent) return;
-
-        try {
-          if (fileProcessPromise) {
-            await fileProcessPromise;
-          }
-
-          if (!filePath) {
-            sendJson(400, { message: CHAT_MESSAGES.NO_FILE_UPLOADED });
-            return;
-          }
-
-          const result = await this.uploadDocumentUseCase.execute({
-            userId,
-            chatId,
-            filePath,
-            fileName: fileName || "document",
-          });
-
-          sendJson(202, {
-            success: true,
-            data: result,
-          });
-        } catch (error: any) {
-          this.logger.error("Document queue failed:", error);
-          if (!responseSent) {
-            const message = error.statusCode
-              ? error.message
-              : CHAT_MESSAGES.FAILED_TO_QUEUE;
-            sendJson(error.statusCode || 500, { message });
-          }
-          if (filePath && fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
-          }
-        }
-      });
-
-      busboy.on("error", (error) => {
-        console.error("Busboy error:", error);
-        sendJson(500, { message: CHAT_MESSAGES.FAILED_TO_PROCESS });
-      });
-
-      req.pipe(busboy);
+      this.sendSuccess(res, result, 202);
     } catch (error) {
+      if (req.file?.path && fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
       this.sendError(res, error);
     }
   };
@@ -782,7 +645,10 @@ export class ChatController extends BaseController {
       (normalizedFileName
         ? `Analyze uploaded file: ${normalizedFileName}`
         : "Analyze the uploaded image");
-    const modelStr = typeof model === "string" ? model.trim() : undefined;
+    let modelStr = typeof model === "string" ? model.trim() : undefined;
+    if (modelStr && modelStr.toUpperCase() === "DEFAULT") {
+      modelStr = DEFAULT_MODEL;
+    }
     if (modelStr && !getModelOption(modelStr)) {
       throw new AppError("Invalid model selected. The requested model is not supported.", 400);
     }

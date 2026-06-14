@@ -70,8 +70,6 @@ export class FileUploadService {
     '.go',
     '.rs',
     '.php',
-    '.rb',
-    '.sh',
     '.sql',
     '.html',
     '.css',
@@ -83,8 +81,6 @@ export class FileUploadService {
     }
   }
 
-  
-   //Validate Cloudinary configuration
   
 
   static validateCloudinaryConfig(): void {
@@ -126,7 +122,7 @@ export class FileUploadService {
   }
 
   
-   // Upload PDF/document file to Cloudinary
+   
    
   static async uploadDocumentToCloudinary(
     filePath: string,
@@ -151,7 +147,7 @@ export class FileUploadService {
   }
 
   
-   // Validate image file type
+   
    
   static async validateImageFile(buffer: Buffer): Promise<void> {
     const detected = await FileType.fromBuffer(buffer);
@@ -165,7 +161,7 @@ export class FileUploadService {
   }
 
   
-   // Validate document file type by MIME and extension
+   
    
   static async validateDocumentFile(buffer: Buffer, filename?: string): Promise<void> {
     const detected = await FileType.fromBuffer(buffer);
@@ -176,16 +172,9 @@ export class FileUploadService {
       this.ALLOWED_DOCUMENT_MIMES.has(detectedMime) ||
       detectedMime.startsWith('text/');
 
-    // If file-type failed or returned octet-stream, check filename extension
+
     let isAllowedByExt = false;
-    // if (detectedMime === 'application/octet-stream' || !detected) {
-    //   if (filename) {
-    //     const ext = path.extname(filename).toLowerCase();
-    //     isAllowedByExt = this.ALLOWED_DOCUMENT_EXTENSIONS.has(ext);
-    //   } else {
-    //     isAllowedByExt = this.ALLOWED_DOCUMENT_EXTENSIONS.has(detectedExt);
-    //   }
-    // }
+    
      isAllowedByExt = this.ALLOWED_DOCUMENT_EXTENSIONS.has(detectedExt);
 
     if (!isAllowedMime && !isAllowedByExt) {
@@ -197,15 +186,14 @@ export class FileUploadService {
   }
 
   
-   // Generate temporary file path
-   
+ 
   static generateTempFilePath(originalFilename: string): string {
     const safeName = path.basename(originalFilename || 'document');
     return path.join(this.PDF_TEMP_DIR, `${Date.now()}-${safeName}`);
   }
 
   
-   // Detect MIME type from file path
+
    
   static async getMimeType(filePath: string): Promise<string> {
     try {

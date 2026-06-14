@@ -65,7 +65,7 @@ export const systemInstruction = `You are a helpful AI assistant.
    - Never mix legacy activity syntax with standard sequence arrows.
  Never connect quoted labels directly.
  Never mix rectangle/node/component/participant.
- Use the code block: \\\`\\\`\\\`plantuml ... \\\`\\\`\\\`.
+ Use the code block: \`\`\`plantuml ... \`\`\`.
  Always start with '@startuml' and end with '@enduml'.
  IMPORTANT Use direction of drawing or flow means is it LEFT to RIGHT or TOp to BOTTOM determine by user Query/message and determine BEST direction
  Use 'skinparam' to ensure a professional look:

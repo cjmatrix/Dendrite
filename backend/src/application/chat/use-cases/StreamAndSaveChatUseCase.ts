@@ -1,25 +1,52 @@
 import { inject, injectable } from "tsyringe";
-import { ISaveModelReplyUseCase, IStreamAndSaveChatUseCase, StreamResult } from "./interfaces";
+import {
+  ISaveModelReplyUseCase,
+  IStreamAndSaveChatUseCase,
+  StreamResult,
+} from "./interfaces";
 import { IAIService } from "../../common/ports/IAIService";
 import { ILogger } from "../../common/ports/ILogger";
 import { estimateTokenCount } from "../../../utils/tokenCounter";
-import { MAIN_CHAT_MODEL } from "../../../constants/models";
+import { DEFAULT_MODEL } from "../../../constants/models";
 
 @injectable()
 export class StreamAndSaveChatUseCase implements IStreamAndSaveChatUseCase {
   constructor(
     @inject("IAIService") private aiService: IAIService,
-    @inject("ISaveModelReplyUseCase") private saveModelReplyUseCase: ISaveModelReplyUseCase,
-    @inject("ILogger") private logger: ILogger
+    @inject("ISaveModelReplyUseCase")
+    private saveModelReplyUseCase: ISaveModelReplyUseCase,
+    @inject("ILogger") private logger: ILogger,
   ) {}
 
-  async *execute(params: any, signal: AbortSignal): AsyncGenerator<StreamResult> {
-    const { contents, chatId, userId, userMessageId, parentContext, parentSummary, originalMessage, model } = params;
-    const activeModel = model || MAIN_CHAT_MODEL;
-    
+  async *execute(
+    params: any,
+    signal: AbortSignal,
+  ): AsyncGenerator<StreamResult> {
+    const {
+      contents,
+      chatId,
+      userId,
+      userTier,
+      userMessageId,
+      parentContext,
+      parentSummary,
+      originalMessage,
+      model,
+      systemInstruction,
+    } = params;
+    const activeModel = model || DEFAULT_MODEL;
+
     let stream: any;
+    
     try {
-      stream = await this.aiService.streamAIContent(contents, activeModel, signal, userId);
+      stream = await this.aiService.streamAIContent(
+        contents,
+        activeModel,
+        signal,
+        userId,
+        userTier,
+        systemInstruction,
+      );
     } catch (error: any) {
       yield { type: "error", value: "Quota Exhausted or AI Error" };
       return;
@@ -42,7 +69,7 @@ export class StreamAndSaveChatUseCase implements IStreamAndSaveChatUseCase {
 
     let fullReply = "";
     let finalUsageMetadata: any = null;
-
+    console.log("STarting MY ASYC GENERATOR")
     try {
       for await (const chunk of stream) {
         if (signal.aborted) break;
@@ -59,7 +86,6 @@ export class StreamAndSaveChatUseCase implements IStreamAndSaveChatUseCase {
       signal.removeEventListener("abort", onAbort);
     }
 
- 
     if (!signal.aborted && fullReply.trim()) {
       let promptTokens = 0;
       let responseTokens = 0;
@@ -93,9 +119,14 @@ export class StreamAndSaveChatUseCase implements IStreamAndSaveChatUseCase {
         contents,
       });
 
-      yield { 
-        type: "metadata", 
-        value: { userMessageId, modelMessageId, usage: finalUsageMetadata, originalMessage } 
+      yield {
+        type: "metadata",
+        value: {
+          userMessageId,
+          modelMessageId,
+          usage: finalUsageMetadata,
+          originalMessage,
+        },
       };
     }
   }

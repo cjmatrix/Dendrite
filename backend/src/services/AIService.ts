@@ -88,6 +88,23 @@ User query: "${queryText}"`;
         userId,
       );
 
+      return this.getInternetContextWithPrecomputedDecision(
+        queryText,
+        descQueryVector,
+        shouldSearch,
+      );
+    } catch (error) {
+      console.error("Routing/Search error:", error);
+      return "";
+    }
+  }
+
+  static async getInternetContextWithPrecomputedDecision(
+    queryText: string,
+    descQueryVector: any,
+    shouldSearch: boolean,
+  ): Promise<string> {
+    try {
       if (shouldSearch) {
         console.log(
           `[Router] internet search needed for query: "${queryText}"`,
@@ -104,7 +121,7 @@ User query: "${queryText}"`;
       );
       return "";
     } catch (error) {
-      console.error("Routing/Search error:", error);
+      console.error("Routing/Search error in precomputed flow:", error);
       return "";
     }
   }
@@ -113,29 +130,37 @@ User query: "${queryText}"`;
     contents: any[],
     model: string = "gemini-3-flash-preview",
     signal?: AbortSignal,
+    systemInstruction?: string,
   ) {
+    // console.log(JSON.stringify(contents,null,2));
+
+
+    console.log(systemInstruction)
+    console.log("Strem STARTED ")
     let stream;
     let attempts = 0;
-
     while (attempts < aiInstances.length) {
+
+      console.log("inside while loop")
       try {
         const activeAi = await getRotatedAI();
         stream = await activeAi.models.generateContentStream({
           model,
           contents,
           config: {
-            thinkingConfig: {
-              thinkingLevel: ThinkingLevel.MINIMAL, 
-            },
+            ...(systemInstruction ? { systemInstruction } : {}),
           },
         });
+         console.log("Strem Returning ")
         return stream;
       } catch (error: any) {
-        console.log(error.status, "hereeeeeeeeeeeeeeeeeeeeeee");
+        console.log(error.status, error.message);
         if (
           error.status === 429 ||
           error.status === 503 ||
           error.status === 400 ||
+          error.message?.includes("API key not valid") ||
+          error.message?.includes("API_KEY_INVALID") ||
           error.message?.includes("high demand") ||
           error.message?.includes("quota") ||
           error.message?.includes("RESOURCE_EXHAUSTED")
@@ -157,6 +182,7 @@ User query: "${queryText}"`;
     keys: string[],
     signal?: AbortSignal,
     userId?: string,
+    systemInstruction?: string,
   ) {
     let stream;
     let attempts = 0;
@@ -175,10 +201,8 @@ User query: "${queryText}"`;
           model,
           contents,
           config: {
-            thinkingConfig: {
-              thinkingLevel: ThinkingLevel.MINIMAL, 
-            },
-          }
+            ...(systemInstruction ? { systemInstruction } : {}),
+          },
         });
         return stream;
       } catch (error: any) {
@@ -186,6 +210,8 @@ User query: "${queryText}"`;
           error.status === 429 ||
           error.status === 503 ||
           error.status === 400 ||
+          error.message?.includes("API key not valid") ||
+          error.message?.includes("API_KEY_INVALID") ||
           error.message?.includes("high demand") ||
           error.message?.includes("quota") ||
           error.message?.includes("RESOURCE_EXHAUSTED")
@@ -228,7 +254,7 @@ User query: "${queryText}"`;
       const contextMessages = await messageRepo.findAnchorContext(
         chatId,
         anchorMsg.createdAt,
-        4,
+        2,
       );
 
       const result = contextMessages.reverse();
@@ -249,9 +275,10 @@ User query: "${queryText}"`;
     console.log(estimateTokenCount(historicalContext));
 
     return `You are a surgical AI Assistant specialized in analyzing highlights within a side-modal.
-    IMPORTANT- Use this format by default First breifly answer what user asked in one sentence and then format for all answers: [Concept] - [1-sentence definition]. Key points: [bullet points].YTou can check USER'S Query to see if user explitly asked in detail explanation you could provide detail explanation
+    IMPORTANT- Use this format by default First breifly answer what user asked in one sentence means you should answer user query in one sentence first  it is IMPORTANT, and then format for all answers: [Concept] - [1-sentence definition]. Key points: [bullet points].YTou can check USER'S Query to see if user explitly asked in detail explanation you could provide detail explanation
      When providing code, always use fenced code blocks with the language specified
      IF User asked detailed explanation or user says user doesnt understand the concept Use below Rules that i given
+
 - Use only short, minimal inline comments in code. Do NOT use JSDoc, @param, @returns, or block comment annotations
 - For inline code references, use single backticks
 - When emphasizing important information, warnings, or tips, use GitHub-style Markdown callouts (e.g., \`> [!NOTE]\`, \`> [!TIP]\`, \`> [!IMPORTANT]\`, \`> [!WARNING]\`, \`> [!CAUTION]\`)
@@ -268,7 +295,7 @@ User query: "${queryText}"`;
    - Never mix legacy activity syntax with standard sequence arrows.
  Never connect quoted labels directly.
  Never mix rectangle/node/component/participant.
- Use the code block: \\\`\\\`\\\`plantuml ... \\\`\\\`\\\`.
+ Use the code block: \`\`\`plantuml ... \`\`\`.
  Always start with '@startuml' and end with '@enduml'.
  IMPORTANT Use direction of drawing or flow means is it LEFT to RIGHT or TOp to BOTTOM determine by user Query/message and determine BEST direction
  Use 'skinparam' to ensure a professional look:
