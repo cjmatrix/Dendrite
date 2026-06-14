@@ -4,11 +4,12 @@ import fs from "fs";
 import crypto from "crypto";
 import LlamaCloud from "@llamaindex/llama-cloud";
 import { redisConnection } from "../config/redis";
+import { computeFileHash } from "../utils/fileHasher";
 
 const LLAMA_CACHE_PREFIX = "llamaparse:";
 const LLAMA_CACHE_TTL = 60 * 60 * 24; 
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+
 
 export type SegmentKind =
   | "heading"
@@ -45,11 +46,11 @@ export interface ChunkingOptions {
   similarityThreshold?: number;
   windowSize?: number;
   minChunkTokens?: number;
-  maxChunkTokens?: number; // Should be <= 8192 for Jina
+  maxChunkTokens?: number;
   embedChunks?: boolean;
 }
 
-// ─── Math & Token Utils ──────────────────────────────────────────────────────
+
 
 function cosineSimilarity(a: number[], b: number[]): number {
   let dot = 0,
@@ -74,13 +75,10 @@ function averageVectors(vecs: number[][]): number[] {
 }
 
 function estimateTokens(text: string): number {
-  // Conservative estimate: 1 token ≈ 3.5 chars to avoid overflow
+
   return Math.ceil(text.length / 3.5);
 }
 
-/**
- * Hard-splits a string if it's physically too large for the model's context.
- */
 
 function splitByTokenLimit(text: string, limit: number): string[] {
   const chunks: string[] = [];
@@ -93,7 +91,7 @@ function splitByTokenLimit(text: string, limit: number): string[] {
   return chunks;
 }
 
-// ─── Core Logic ──────────────────────────────────────────────────────────────
+
 
 function buildSegments(markdown: string): Segment[] {
   const segments: Segment[] = [];
@@ -105,7 +103,7 @@ function buildSegments(markdown: string): Segment[] {
   let mainLoopCount = 0;
 
   while (i < lines.length && mainLoopCount++ < MAX_LINES_DEPTH * 2) {
-    const startI = i; // Progress tracker
+    const startI = i; 
     const line = lines[i];
     const trimmed = line.trim();
 
@@ -114,7 +112,7 @@ function buildSegments(markdown: string): Segment[] {
       continue;
     }
 
-    // Fenced Code
+   
     if (trimmed.startsWith("```") || trimmed.startsWith("~~~")) {
       const fence = trimmed.slice(0, 3);
       const block: string[] = [line];
@@ -134,11 +132,11 @@ function buildSegments(markdown: string): Segment[] {
         heading: currentHeading,
         atomic: true,
       });
-      if (i === startI) i++; // Fallback progress
+      if (i === startI) i++; 
       continue;
     }
 
-    // Tables
+   
     if (trimmed.startsWith("|") || trimmed.toLowerCase().startsWith("<table")) {
       const block: string[] = [];
       const isHtmlTable = trimmed.toLowerCase().startsWith("<table");
@@ -166,11 +164,11 @@ function buildSegments(markdown: string): Segment[] {
         heading: currentHeading,
         atomic: true,
       });
-      if (i === startI) i++; // Fallback progress
+      if (i === startI) i++; 
       continue;
     }
 
-    // Blockquotes
+    
     if (trimmed.startsWith(">")) {
       const block: string[] = [];
       let innerCount = 0;
@@ -184,12 +182,12 @@ function buildSegments(markdown: string): Segment[] {
         heading: currentHeading,
         atomic: true,
       });
-      if (i === startI) i++; // Fallback progress
+      if (i === startI) i++; 
       continue;
     }
 
-    // Lists
-    if (/^([-*+]|[\dA-Za-z]+[.):])\s/.test(trimmed)) {
+ 
+    if (/^([-*+]|[\dA-Za-z]+[.):])\s/.test(trimmed)) {  //list
       const block: string[] = [];
       let innerCount = 0;
       while (
@@ -207,11 +205,11 @@ function buildSegments(markdown: string): Segment[] {
         heading: currentHeading,
         atomic: true,
       });
-      if (i === startI) i++; // Fallback progress
+      if (i === startI) i++; 
       continue;
     }
 
-    // Headings
+   
     const headingMatch = trimmed.match(/^(#{1,6})\s+(.+)/);
     if (headingMatch) {
       currentHeading = headingMatch[2].trim();
@@ -225,9 +223,9 @@ function buildSegments(markdown: string): Segment[] {
       continue;
     }
 
-    // Paragraphs -> Sentences
+
     const paraLines: string[] = [];
-    const exclusionRegex = /^(?:#{1,6}\s+|\||>|[-*+]\s|[\dA-Za-z]+[.):]\s|```|~~~)/;
+    const exclusionRegex = /^(?:#{1,6}\s+|\||>|[-*+]\s|[\dA-Za-z]+[.):]\s|```|~~~)/; //paragraphs
 
     let innerCount = 0;
     while (
@@ -303,14 +301,14 @@ async function semanticChunk(
 
   if (segments.length === 0) return [];
 
-  // 2. Batch Embedding
+
   const texts = segments.map((s) => s.text);
   const embeddings = await embeddingService.embedBatch(
     texts,
     "RETRIEVAL_DOCUMENT",
   );
 
-  // 3. Boundary Detection
+
   const boundaries = new Set<number>();
   for (let i = 0; i < segments.length - 1; i++) {
     const curr = segments[i];
@@ -340,7 +338,7 @@ async function semanticChunk(
     if (sim < similarityThreshold) boundaries.add(i + 1);
   }
 
-  // 4. Slice Chunks
+ 
   const rawChunks: RawChunk[] = [];
   let start = 0;
   for (const splitAt of [...boundaries].sort((a, b) => a - b)) {
@@ -355,14 +353,14 @@ async function semanticChunk(
     embeddings: embeddings.slice(start),
   });
 
-  // 5. Enforce Limits (Merge/Split)
+  
   const adjusted = enforceTokenLimits(
     rawChunks,
     minChunkTokens,
     maxChunkTokens,
   );
 
-  // 6. Final Construction
+
   let charOffset = 0;
   const finalChunks = adjusted.map((raw, i) => {
     const content = raw.segments
@@ -458,24 +456,20 @@ export class SemanticChunkingService {
   async processDocument(
     pdfPath: string,
     options: ChunkingOptions = {},
-  ): Promise<SemanticChunk[]> {
-    const markdown = await this.extractMarkdown(pdfPath);
-    return await semanticChunk(markdown, options);
+  ): Promise<{ chunks: SemanticChunk[]; contentHash: string }> {
+    const contentHash = computeFileHash(pdfPath);
+    const markdown = await this.extractMarkdown(pdfPath, contentHash);
+    const chunks = await semanticChunk(markdown, options);
+    return { chunks, contentHash };
   }
 
-  private hashFile(filePath: string): string {
-    const fileBuffer = fs.readFileSync(filePath);
-    return crypto.createHash("sha256").update(fileBuffer).digest("hex");
-  }
-
-  private async extractMarkdown(pdfPath: string): Promise<string> {
+  private async extractMarkdown(pdfPath: string, contentHash: string): Promise<string> {
     if (!fs.existsSync(pdfPath)) {
       throw new Error(`File not found: ${pdfPath}`);
     }
 
 
-    const fileHash = this.hashFile(pdfPath);
-    const cacheKey = `${LLAMA_CACHE_PREFIX}${fileHash}`;
+    const cacheKey = `${LLAMA_CACHE_PREFIX}${contentHash}`;
 
     try {
       const cached = await redisConnection.get(cacheKey);
@@ -525,7 +519,7 @@ export class SemanticChunkingService {
       
       try {
         await redisConnection.set(cacheKey, markdown, "EX", LLAMA_CACHE_TTL);
-        console.log(`Cached LlamaParse result (key: ${fileHash.slice(0, 12)}..., TTL: 24h)`);
+        console.log(`Cached LlamaParse result (key: ${contentHash.slice(0, 12)}..., TTL: 24h)`);
       } catch (err) {
         console.warn(" Redis cache write failed:", err);
       }

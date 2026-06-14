@@ -3,6 +3,7 @@ import {
   IDocumentChunkingService,
   DocumentChunk,
   DocumentChunkingOptions,
+  ChunkingResult,
 } from "../../application/common/ports/IDocumentChunkingService";
 import { SemanticChunkingService } from "../../services/SemanticChunkingService";
 
@@ -15,7 +16,7 @@ export class SemanticChunkingAdapter implements IDocumentChunkingService {
   async processDocument(
     filePath: string,
     options?: DocumentChunkingOptions,
-  ): Promise<DocumentChunk[]> {
+  ): Promise<ChunkingResult> {
     return this.chunkingService.processDocument(filePath, options);
   }
 }

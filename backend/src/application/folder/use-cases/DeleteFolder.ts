@@ -3,13 +3,19 @@ import { IVectorRepository } from '../../../domain/vector/repositories/IVectorRe
 import { IChatRepository } from '../../../domain/chat/repositories/IChatRepository';
 import { AppError } from '../../../utils/AppError';
 import { injectable, inject } from 'tsyringe';
+import { IUploadedDocumentRepository } from '../../../domain/chat/repositories/IUploadedDocumentRepository';
+import { IContentHashRepository } from '../../../domain/chat/repositories/IContentHashRepository';
 
 @injectable()
 export class DeleteFolder {
   constructor(
     @inject("IFolderRepository") private folderRepository: IFolderRepository,
     @inject("IVectorRepository") private vectorRepository: IVectorRepository,
-    @inject("IChatRepository") private chatRepository: IChatRepository
+    @inject("IChatRepository") private chatRepository: IChatRepository,
+    @inject("IUploadedDocumentRepository")
+    private uploadedDocumentRepository: IUploadedDocumentRepository,
+    @inject("IContentHashRepository")
+    private contentHashRepository: IContentHashRepository,
   ) {}
 
   async execute(folderId: string, userId: string) {
@@ -43,13 +49,23 @@ export class DeleteFolder {
     const chatIds = chats.map((c) => c._id.toString());
 
     if (chatIds.length > 0) {
-      try {
-        await this.vectorRepository.deleteVectorsByChatIds(userId, chatIds);
-      } catch (err: any) {
-        throw err;
+     
+      const uploadedDocs = await this.uploadedDocumentRepository.findByChatIds(chatIds);
+      await this.uploadedDocumentRepository.deleteManyByChatIds(chatIds);
+
+   
+      const uniqueHashes = Array.from(new Set(uploadedDocs.map((d) => d.contentHash)));
+      for (const hash of uniqueHashes) {
+        const count = await this.uploadedDocumentRepository.countByContentHash(hash);
+        if (count === 0) {
+          const hashRecord = await this.contentHashRepository.findByHash(hash);
+          if (hashRecord) {
+            hashRecord.status = "expired";
+            hashRecord.expireAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+            await this.contentHashRepository.save(hashRecord);
+          }
+        }
       }
-    } else {
-      console.log("No chats found for those folders — skipping Qdrant delete.");
     }
 
     await this.chatRepository.deleteManyByFolderIds(userId, idsToDelete);

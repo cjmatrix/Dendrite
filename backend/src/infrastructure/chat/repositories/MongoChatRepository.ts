@@ -111,22 +111,14 @@ export class MongoChatRepository
 
   async addDocumentToChat(
     { chatId, userId }: { chatId: string; userId: string },
-    documentData: {
-      fileType: "image" | "document";
-      filename: string;
-      extension: string;
-      fileUrl: string;
-    },
+    documentId: string,
   ): Promise<IChat | null> {
     const doc = await this.model
       .findOneAndUpdate(
         { _id: chatId, userId },
         {
           $push: {
-            documents: {
-              ...documentData,
-              uploadedAt: new Date(),
-            },
+            documents: documentId,
           },
         },
         { new: true },

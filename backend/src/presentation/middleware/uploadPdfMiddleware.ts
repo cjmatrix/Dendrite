@@ -11,7 +11,7 @@ export const uploadPdfMiddleware = (req: Request, res: Response, next: NextFunct
 
   const busboy = Busboy({
     headers: req.headers,
-    limits: { fileSize: 100 * 1024 * 1024 },
+    limits: { fileSize: 50 * 1024 * 1024 },
   });
 
   let filePath = "";
@@ -100,7 +100,7 @@ export const uploadPdfMiddleware = (req: Request, res: Response, next: NextFunct
       if (fileProcessPromise) await fileProcessPromise;
       if (!filePath) return sendError(400, CHAT_MESSAGES.NO_FILE_UPLOADED);
 
-      // Attach file details to request object for controller
+   
       req.file = {
         path: filePath,
         originalname: fileName || "document",

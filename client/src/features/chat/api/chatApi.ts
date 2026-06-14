@@ -131,13 +131,25 @@ export const streamDocumentProgress = (
     }
   };
 
+  const onDone = (messageEvent: MessageEvent) => {
+    try {
+      const parsed = JSON.parse(messageEvent.data) as DocumentProgressEvent;
+      onEvent(parsed);
+    } catch (error) {
+      console.error("[DocumentProgress] Failed to parse done payload", error);
+    }
+    source.close();
+  };
+
   source.addEventListener("progress", onProgress);
+  source.addEventListener("done", onDone);
   source.addEventListener("error", () => {
     onError?.();
   });
 
   return () => {
     source.removeEventListener("progress", onProgress);
+    source.removeEventListener("done", onDone);
     source.close();
   };
 };

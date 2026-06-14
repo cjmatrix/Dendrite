@@ -1,4 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 import {
   classifyFile,
   type DocumentProgressEvent,
@@ -18,6 +20,7 @@ type DocumentUploadState = {
 };
 
 export function useFileUpload(chatId?: string) {
+  const queryClient = useQueryClient();
   const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<AttachedFile | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -57,6 +60,21 @@ export function useFileUpload(chatId?: string) {
           streamCleanupRef.current();
           streamCleanupRef.current = null;
         }
+        queryClient.invalidateQueries({ queryKey: ["documents", chatId] });
+        toast.success(`Document "${event.fileName}" processed successfully!`, {
+          duration: 6000,
+          position: "bottom-right",
+          icon: "📄",
+          style: {
+            background: "#18181b",
+            color: "#e4e4e7",
+            border: "1px solid #3f3f46",
+            borderRadius: "16px",
+            fontSize: "14px",
+            fontWeight: "500",
+            boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.4)",
+          },
+        });
       } else if (event.status === "failed") {
         setIsUploading(false);
         if (streamCleanupRef.current) {
@@ -75,7 +93,7 @@ export function useFileUpload(chatId?: string) {
         });
       }
     },
-    [chatId],
+    [chatId, queryClient],
   );
 
   useEffect(() => {

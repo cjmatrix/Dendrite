@@ -13,6 +13,8 @@ import { MongoChatRepository } from "../infrastructure/chat/repositories/MongoCh
 import { MongoMessageRepository } from "../infrastructure/chat/repositories/MongoMessageRepository";
 import { MongoSubChatRepository } from "../infrastructure/chat/repositories/MongoSubChatRepository";
 import { MongoCodeBlockRepository } from "../infrastructure/chat/repositories/MongoCodeBlockRepository";
+import { MongoUploadedDocumentRepository } from "../infrastructure/chat/repositories/MongoUploadedDocumentRepository";
+import { MongoContentHashRepository } from "../infrastructure/chat/repositories/MongoContentHashRepository";
 import { MongoOutboxEventRepository } from "../infrastructure/outbox/repositories/MongoOutboxEventRepository";
 import { AuthService } from "../infrastructure/auth/services/AuthService";
 import { QdrantVectorRepository } from "../infrastructure/vector/repositories/QdrantVectorRepository";
@@ -94,6 +96,8 @@ container.registerSingleton("IEmailService", NodemailerEmailService);
 container.registerSingleton("IMessageRepository", MongoMessageRepository);
 container.registerSingleton("ISubChatRepository", MongoSubChatRepository);
 container.registerSingleton("ICodeBlockRepository", MongoCodeBlockRepository);
+container.registerSingleton("IUploadedDocumentRepository", MongoUploadedDocumentRepository);
+container.registerSingleton("IContentHashRepository", MongoContentHashRepository);
 container.registerSingleton("IOutboxEventRepository", MongoOutboxEventRepository);
 container.registerSingleton("IRecallRepository", MongoRecallRepository);
 container.registerSingleton("ISharedLinkRepository", RedisShareLinkRepository);

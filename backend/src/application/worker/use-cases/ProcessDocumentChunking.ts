@@ -1,9 +1,12 @@
 import { injectable, inject } from "tsyringe";
 import crypto from "crypto";
+import fs from "fs";
 import { IDocumentChunkingService } from "../../common/ports/IDocumentChunkingService";
 import { IDocumentProgressPublisher } from "../../common/ports/IDocumentProgressPublisher";
 import { IVectorRepository } from "../../../domain/vector/repositories/IVectorRepository";
 import { IChatRepository } from "../../../domain/chat/repositories/IChatRepository";
+import { IUploadedDocumentRepository } from "../../../domain/chat/repositories/IUploadedDocumentRepository";
+import { IContentHashRepository } from "../../../domain/chat/repositories/IContentHashRepository";
 import { ILogger } from "../../common/ports/ILogger";
 import { textToSparseVector } from "../../../utils/BM25Healper";
 
@@ -25,6 +28,10 @@ export class ProcessDocumentChunking {
     private progressPublisher: IDocumentProgressPublisher,
     @inject("IVectorRepository") private vectorRepository: IVectorRepository,
     @inject("IChatRepository") private chatRepository: IChatRepository,
+    @inject("IUploadedDocumentRepository")
+    private uploadedDocumentRepository: IUploadedDocumentRepository,
+    @inject("IContentHashRepository")
+    private contentHashRepository: IContentHashRepository,
     @inject("ILogger") private logger: ILogger,
   ) {}
 
@@ -44,7 +51,7 @@ export class ProcessDocumentChunking {
       message: "Extracting and chunking document",
     });
 
-    const chunks = await this.chunkingService.processDocument(filePath, {
+    const { chunks, contentHash } = await this.chunkingService.processDocument(filePath, {
       minChunkTokens: 80,
       maxChunkTokens: 8000,
       embedChunks: true,
@@ -66,6 +73,7 @@ export class ProcessDocumentChunking {
         chatId,
         fileName,
         fileUrl: cloudinaryUrl,
+        contentHash,
         content: {
           text: chunk.content,
           chunkIndex: chunk.metadata.chunkIndex,
@@ -81,17 +89,38 @@ export class ProcessDocumentChunking {
 
     await this.vectorRepository.upsertDocumentVectors(points);
 
-    // Update Chat model with document info
+   
     try {
+     
+      const existingHash = await this.contentHashRepository.findByHash(contentHash);
+      if (!existingHash) {
+        await this.contentHashRepository.create({
+          contentHash,
+          fileUrl: cloudinaryUrl,
+          status: "active",
+          expireAt: null,
+        });
+      } else if (existingHash.status === "expired") {
+        existingHash.status = "active";
+        existingHash.expireAt = null;
+        await this.contentHashRepository.save(existingHash);
+      }
+
       const extension = fileName.split(".").pop() || "pdf";
+
+      const uploadedDoc = await this.uploadedDocumentRepository.create({
+        chatId,
+        userId,
+        fileType: "document",
+        filename: fileName,
+        extension,
+        fileUrl: cloudinaryUrl,
+        contentHash,
+      });
+
       await this.chatRepository.addDocumentToChat(
         { chatId, userId },
-        {
-          fileType: "document",
-          filename: fileName,
-          extension,
-          fileUrl: cloudinaryUrl,
-        },
+        uploadedDoc._id,
       );
     } catch (err) {
       this.logger.error("Failed to update Chat with document after chunking", err);

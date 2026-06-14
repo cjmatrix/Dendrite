@@ -136,19 +136,38 @@ export class QdrantVectorRepository implements IVectorRepository {
     }
   }
 
-  async deleteDocumentVectorsByFileUrl(userId: string, fileUrl: string): Promise<void> {
-    const filter = {
+  async deleteDocumentVectorsByFileUrl(userId: string| null, fileUrl: string): Promise<void> {
+    const filter: any = {
       must: [
-        { key: "userId", match: { value: String(userId) } },
         { key: "fileUrl", match: { value: fileUrl } },
       ],
     };
+
+    if (userId) {
+      filter.must.push({ key: "userId", match: { value: String(userId) } });
+    }
 
     try {
       await qdrantClient.delete(DOCUMENT_COLLECTION_NAME, { filter });
       console.log(`✅ Deleted Qdrant document vectors for fileUrl: ${fileUrl}`);
     } catch (err: any) {
       console.error(" Qdrant document delete failed:", err?.message ?? err);
+      throw err;
+    }
+  }
+
+  async deleteDocumentVectorsByContentHash(contentHash: string): Promise<void> {
+    const filter = {
+      must: [
+        { key: "contentHash", match: { value: contentHash } },
+      ],
+    };
+
+    try {
+      await qdrantClient.delete(DOCUMENT_COLLECTION_NAME, { filter });
+      console.log(`✅ Deleted Qdrant document vectors for contentHash: ${contentHash}`);
+    } catch (err: any) {
+      console.error(" Qdrant document delete by contentHash failed:", err?.message ?? err);
       throw err;
     }
   }
@@ -231,30 +250,28 @@ export class QdrantVectorRepository implements IVectorRepository {
   }
 
   async searchDocuments(
-  queryText: string,     
-  queryVector: number[],
-  userId: string,
-  chatIds: string[],
-  topK: number = 5
-): Promise<any[]> {
-  try {
- 
-    const filter = {
-      must: [
-        {
-          key: "userId",
-          match: { value: String(userId) },
-        },
-        {
-          key: "sourceType",
-          match: { value: "document" },
-        },
-        {
-          key: "chatId",
-          match: { any: chatIds.map(String) },
-        },
-      ],
-    };
+    queryText: string,
+    queryVector: number[],
+    contentHashes: string[],
+    topK: number = 5
+  ): Promise<any[]> {
+    try {
+      if (contentHashes.length === 0) {
+        return [];
+      }
+
+      const filter = {
+        must: [
+          {
+            key: "sourceType",
+            match: { value: "document" },
+          },
+          {
+            key: "contentHash",
+            match: { any: contentHashes.map(String) },
+          },
+        ],
+      };
 
    
     const sparseVector = textToSparseVector(queryText);
@@ -267,7 +284,7 @@ export class QdrantVectorRepository implements IVectorRepository {
           using: "dense-vector",     
           query: queryVector,
           filter: filter,             
-          limit: topK * 3,            
+          limit: topK * 3, 
           score_threshold: 0.40, 
         },
         {

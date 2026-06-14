@@ -15,6 +15,7 @@ import { AIService } from "../../../services/AIService";
 import { IUserRepository } from "../../../domain/auth/repositories/IUserRepository";
 import { IGlobalProfile } from "../../../domain/auth/entities/User";
 import { IFolderRepository } from "../../../domain/folder/repositories/IFolderRepository";
+import { IUploadedDocumentRepository } from "../../../domain/chat/repositories/IUploadedDocumentRepository";
 
 @injectable()
 export class PrepareMessage implements IPrepareMessageUseCase {
@@ -24,6 +25,8 @@ export class PrepareMessage implements IPrepareMessageUseCase {
     @inject("IMessageRepository") private messageRepository: IMessageRepository,
     @inject("IUserRepository") private userRepository: IUserRepository,
     @inject("IFolderRepository") private folderRepository: IFolderRepository,
+    @inject("IUploadedDocumentRepository")
+    private uploadedDocumentRepository: IUploadedDocumentRepository,
     @inject("IEmbeddingService") private embeddingService: IEmbeddingService,
     @inject("ILogger") private logger: ILogger,
   ) {}
@@ -269,6 +272,9 @@ ${lines.join("\n")}`;
     }
 
     
+    const activeDocuments = await this.uploadedDocumentRepository.findByChatIds(chatIdsToSearch);
+    const activeContentHashes = activeDocuments.map((doc) => doc.contentHash);
+
     const vectorSearchPromise = canRunVectorSearch
       ? Promise.all([
           this.vectorRepository.searchSimilarCode(
@@ -285,8 +291,7 @@ ${lines.join("\n")}`;
           this.vectorRepository.searchDocuments(
             normalizedMessage,
             finalDescQueryVector!,
-            userId,
-            chatIdsToSearch,
+            activeContentHashes,
           ),
         ]).catch((err: any) => {
           this.logger.warn("Vector search failed, skipping RAG context", { error: err?.message });

@@ -86,7 +86,7 @@ new Worker(
 
         await job.updateProgress(100);
 
-        // Cleanup temp file after successful chunking
+        
         if (data.filePath && fs.existsSync(data.filePath)) {
           fs.unlinkSync(data.filePath);
           logger.info(`Cleaned up temp file after chunking: ${data.filePath}`);

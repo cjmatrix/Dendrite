@@ -10,11 +10,9 @@ export interface IChatRepository extends IBaseRepository<IChat> {
   delete(chatId: string, userId: string): Promise<IChat | null>;
   findByFolderIds(userId: string, folderIds: string[]): Promise<IChat[]>;
   deleteManyByFolderIds(userId: string, folderIds: string[]): Promise<any>;
-  addDocumentToChat({chatId, userId}: {chatId: string, userId: string}, documentData: {
-    fileType: 'image' | 'document';
-    filename: string;
-    extension: string;
-    fileUrl: string;
-  }): Promise<IChat | null>;
+  addDocumentToChat(
+    { chatId, userId }: { chatId: string; userId: string },
+    documentId: string,
+  ): Promise<IChat | null>;
   findByFolderIdsWithoutUserId(folderIds: string[]): Promise<IChat[]>;
 }

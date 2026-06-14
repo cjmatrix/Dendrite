@@ -3,6 +3,8 @@ import { MongoChatRepository } from '../../../infrastructure/chat/repositories/M
 import { MongoMessageRepository } from '../../../infrastructure/chat/repositories/MongoMessageRepository';
 import { MongoSubChatRepository } from '../../../infrastructure/chat/repositories/MongoSubChatRepository';
 import { MongoCodeBlockRepository } from '../../../infrastructure/chat/repositories/MongoCodeBlockRepository';
+import { MongoUploadedDocumentRepository } from '../../../infrastructure/chat/repositories/MongoUploadedDocumentRepository';
+import { MongoContentHashRepository } from '../../../infrastructure/chat/repositories/MongoContentHashRepository';
 import { MongoOutboxEventRepository } from '../../../infrastructure/outbox/repositories/MongoOutboxEventRepository';
 import { MongoUserRepository } from '../../../infrastructure/auth/repositories/MongoUserRepository';
 import { MongoRecallRepository } from '../../../infrastructure/recall/repositories/MongoRecallRepository';
@@ -72,6 +74,8 @@ export class DIContainer {
   private static messageRepository: MongoMessageRepository;
   private static subChatRepository: MongoSubChatRepository;
   private static codeBlockRepository: MongoCodeBlockRepository;
+  private static uploadedDocumentRepository: MongoUploadedDocumentRepository;
+  private static contentHashRepository: MongoContentHashRepository;
   private static outboxEventRepository: MongoOutboxEventRepository;
   private static userRepository: MongoUserRepository;
   private static recallRepository: MongoRecallRepository;
@@ -168,6 +172,20 @@ export class DIContainer {
     return this.codeBlockRepository;
   }
 
+  static getUploadedDocumentRepository(): MongoUploadedDocumentRepository {
+    if (!this.uploadedDocumentRepository) {
+      this.uploadedDocumentRepository = new MongoUploadedDocumentRepository();
+    }
+    return this.uploadedDocumentRepository;
+  }
+
+  static getContentHashRepository(): MongoContentHashRepository {
+    if (!this.contentHashRepository) {
+      this.contentHashRepository = new MongoContentHashRepository();
+    }
+    return this.contentHashRepository;
+  }
+
   static getOutboxEventRepository(): MongoOutboxEventRepository {
     if (!this.outboxEventRepository) {
       this.outboxEventRepository = new MongoOutboxEventRepository();
@@ -245,6 +263,8 @@ export class DIContainer {
         this.getFolderRepository(),
         this.getVectorRepository(),
         this.getChatRepository(),
+        this.getUploadedDocumentRepository(),
+        this.getContentHashRepository(),
       );
     }
     return this.deleteFolderUseCase;
@@ -298,6 +318,8 @@ export class DIContainer {
         this.getSubChatRepository(),
         this.getMessageRepository(),
         this.getCodeBlockRepository(),
+        this.getUploadedDocumentRepository(),
+        this.getContentHashRepository(),
         this.getUnitOfWorkRepository(),
         this.getLogger(),
       );
@@ -313,6 +335,7 @@ export class DIContainer {
         this.getMessageRepository(),
         this.getUserRepository(),
         this.getFolderRepository(),
+        this.getUploadedDocumentRepository(),
         container.resolve<IEmbeddingService>("IEmbeddingService"),
         this.getLogger(),
       );

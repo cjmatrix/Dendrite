@@ -1,6 +1,7 @@
 export type ChatDocumentType = "image" | "document";
 
 export interface ChatDocument {
+  _id:string;
   fileType: ChatDocumentType;
   filename: string;
   extension: string;
@@ -17,7 +18,7 @@ export interface IChat {
   summary: string | null;
   tokenCount: number;
   unsummarizedCount: number;
-  documents: ChatDocument[];
+  documents: string[];
   createdAt?: Date | string;
   updatedAt?: Date | string;
 }

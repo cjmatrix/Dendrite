@@ -18,9 +18,14 @@ export interface DocumentChunkingOptions {
   embedChunks?: boolean;
 }
 
+export interface ChunkingResult {
+  chunks: DocumentChunk[];
+  contentHash: string;
+}
+
 export interface IDocumentChunkingService {
   processDocument(
     filePath: string,
     options?: DocumentChunkingOptions,
-  ): Promise<DocumentChunk[]>;
+  ): Promise<ChunkingResult>;
 }

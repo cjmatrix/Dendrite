@@ -16,7 +16,9 @@ export interface IVectorRepository {
 
   deleteVectorsByChatIds(userId: string, chatIds: string[]): Promise<void>;
 
-  deleteDocumentVectorsByFileUrl(userId: string, fileUrl: string): Promise<void>;
+  deleteDocumentVectorsByFileUrl(userId: string | null, fileUrl: string): Promise<void>;
+
+  deleteDocumentVectorsByContentHash(contentHash: string): Promise<void>;
 
   upsertCodeVector(
     id: string,
@@ -36,10 +38,9 @@ export interface IVectorRepository {
   deleteOldSearchCache(minTimestamp: number): Promise<void>;
 
   searchDocuments(
-    queryText:string,
+    queryText: string,
     queryVector: number[],
-    userId: string,
-    chatIds: string[],
+    contentHashes: string[],
     topK?: number
   ): Promise<any[]>;
 }

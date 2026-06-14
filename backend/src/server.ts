@@ -18,6 +18,7 @@ import "./worker/documentChunkingWorker";
 import "./cron/outboxSweeper";
 import "./cron/descriptionSweeper";
 import "./cron/searchCacheSweeper";
+import "./cron/documentCacheSweeper";
 import userRouter from "./presentation/routes/admin/userRoutes";
 import { initQdrant } from "./config/qdrant";
 import { embeddingService } from "./services/EmbeddingService";

@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import api from "../../../lib/axios";
 
 export interface UploadedDocument {
+  _id:string
   fileType: "image" | "document";
   filename: string;
   extension: string;
@@ -38,9 +39,8 @@ export function useDocumentHistory(chatId?: string) {
 
   const removeDocument = useCallback(async (fileUrl: string) => {
     try {
-      // Call the delete API
+     
       await api.delete(`/chats/${chatId}/documents`, { data: { fileUrl } });
-      // Refetch to update the list
       refetch();
     } catch (error) {
       console.error('Failed to remove document:', error);
