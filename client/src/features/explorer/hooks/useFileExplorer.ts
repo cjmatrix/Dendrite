@@ -122,8 +122,9 @@ export function useExplorerMutations() {
   });
 
   const { mutate: createChat } = useMutation({
-    mutationFn: ({ title, folderId }: { title: string; folderId: string | null }) =>
-      apiCreateChat(title, folderId),
+    mutationFn: ({ title, folderId ,type}: { title: string; folderId: string | null,type?:string }) =>
+      type&&type==="agent"?apiCreateChat(title, folderId,type):apiCreateChat(title, folderId),
+    
     onMutate: async ({ title, folderId }) => {
       await queryClient.cancelQueries({ queryKey: ["chats"] });
       const previous = queryClient.getQueryData(["chats"]);

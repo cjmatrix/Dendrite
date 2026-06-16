@@ -53,4 +53,8 @@ export class MongoUserRepository
 
     return docs.map((doc) => this.mapToDomain(doc));
   }
+
+  async aggregate(pipeline: any[]): Promise<any[]> {
+    return await this.model.aggregate(pipeline).session(this.getSession());
+  }
 }

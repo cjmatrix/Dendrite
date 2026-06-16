@@ -44,6 +44,11 @@ const ChatSchema = new Schema(
       type: Number,
       default: 0,
     },
+    type:{
+      type:String,
+      enum:["normal","agent"],
+      default:"normal"
+    },
 
     documents: [
       {

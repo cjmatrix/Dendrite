@@ -9,9 +9,32 @@ export function useUnsuspendUser() {
             const response = await api.post(`/admin/user/${userId}/unsuspend`);
             return { userId, data: response.data };
         },
-        onSuccess: (data) => {
-            queryClient.invalidateQueries({ queryKey: ["users"] });
-            queryClient.invalidateQueries({ queryKey: ["user", data.userId] });
-        }
+        onMutate: async (userId: string) => {
+         
+            await queryClient.cancelQueries({ queryKey: ["user", userId] });
+
+            const previousUser = queryClient.getQueryData(["user", userId]);
+           
+
+            queryClient.setQueryData(["user", userId], (old: any) => {
+                if (!old) return old;
+                return {
+                    ...old,
+                    status: "active",
+                };
+            });
+
+            return { previousUser };
+        },
+        onError: (_, userId, context: any) => {
+            if (context?.previousUser) {
+                queryClient.setQueryData(["user", userId], context.previousUser);
+            }
+           
+        },
+        onSettled: (_,__, userId) => {
+            // queryClient.invalidateQueries({ queryKey: ["users"] });
+            // queryClient.invalidateQueries({ queryKey: ["user", userId] });
+        },
     });
 }

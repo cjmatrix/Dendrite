@@ -9,7 +9,7 @@ export const transactionStorage = new AsyncLocalStorage<ClientSession>();
 @injectable()
 export class MongooseUnitOfWork implements IUnitOfWorkRepository {
   async runInTransaction<T>(work: () => Promise<T>): Promise<T> {
-    let session = await mongoose.startSession();
+    const session = await mongoose.startSession();
     let result: T;
 
     try {

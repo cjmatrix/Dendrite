@@ -9,12 +9,10 @@ if (!fs.existsSync(logDir)) {
   fs.mkdirSync(logDir, { recursive: true });
 }
 
-/**
- * Logs the user query and the token usage returned by the AI.
- */
+
 export function logAIQuery(query: string, usageMetadata: any) {
   const timestamp = new Date().toISOString();
-  // Safe extraction of tokens (works with @google/genai response structures)
+
   const promptTokens = usageMetadata?.promptTokenCount || 0;
   const candidatesTokens = usageMetadata?.candidatesTokenCount || 0;
   const totalTokens = usageMetadata?.totalTokenCount || 0;
@@ -29,19 +27,12 @@ export function logAIQuery(query: string, usageMetadata: any) {
   });
 }
 
-/**
- * Estimates the token count locally without making API calls.
- * A standard industry estimation is roughly 4 characters per token.
- */
+
 export function estimateTokenCount(text: string): number {
   if (!text) return 0;
   return Math.ceil(text.length / 4);
 }
 
-/**
- * Counts the tokens for a given text snippet (e.g., code blocks) locally.
- * It also logs the count to the file.
- */
 export function logCodeBlockTokens(code: string, language: string): number {
   try {
     const tokenCount = estimateTokenCount(code);

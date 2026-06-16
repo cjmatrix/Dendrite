@@ -56,3 +56,7 @@ export interface IUpdateByokKeysUseCase {
   execute(input: import("../dtos/auth.dto").UpdateByokKeysInputDTO): Promise<{ success: boolean; message: string }>;
 }
 
+export interface IGetByokKeysUseCase {
+  execute(userId: string, provider: string): Promise<{ success: boolean; keys: string[] }>;
+}
+

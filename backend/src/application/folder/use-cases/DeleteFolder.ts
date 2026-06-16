@@ -5,9 +5,10 @@ import { AppError } from '../../../utils/AppError';
 import { injectable, inject } from 'tsyringe';
 import { IUploadedDocumentRepository } from '../../../domain/chat/repositories/IUploadedDocumentRepository';
 import { IContentHashRepository } from '../../../domain/chat/repositories/IContentHashRepository';
+import { IDeleteFolderUseCase } from './interfaces';
 
 @injectable()
-export class DeleteFolder {
+export class DeleteFolder implements IDeleteFolderUseCase {
   constructor(
     @inject("IFolderRepository") private folderRepository: IFolderRepository,
     @inject("IVectorRepository") private vectorRepository: IVectorRepository,

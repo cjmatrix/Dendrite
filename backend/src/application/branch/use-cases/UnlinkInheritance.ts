@@ -1,8 +1,13 @@
+import { injectable, inject } from "tsyringe";
 import { IChatRepository } from '../../../domain/chat/repositories/IChatRepository';
 import { AppError } from '../../../utils/AppError';
+import { IUnlinkInheritanceUseCase } from './interfaces';
 
-export class UnlinkInheritance {
-  constructor(private chatRepository: IChatRepository) {}
+@injectable()
+export class UnlinkInheritance implements IUnlinkInheritanceUseCase {
+  constructor(
+    @inject("IChatRepository") private chatRepository: IChatRepository
+  ) {}
 
   async execute(chatId: string, userId: string) {
     if (!chatId) {

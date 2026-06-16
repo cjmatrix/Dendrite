@@ -14,6 +14,7 @@ import {
   IUpdateFcmTokenUseCase,
   IVerifyOtpUseCase,
   IUpdateByokKeysUseCase,
+  IGetByokKeysUseCase,
 } from "../../application/auth/use-cases/interfaces";
 import { container } from "tsyringe";
 
@@ -41,6 +42,8 @@ export class AuthController extends BaseController {
     private googleLoginUseCase: IGoogleLoginUseCase,
     @inject("IUpdateByokKeysUseCase")
     private updateByokKeysUseCase: IUpdateByokKeysUseCase,
+    @inject("IGetByokKeysUseCase")
+    private getByokKeysUseCase: IGetByokKeysUseCase,
   ) {
     super();
   }
@@ -181,6 +184,19 @@ export class AuthController extends BaseController {
         provider,
         keys,
       });
+      
+      this.sendSuccess(res, result, HTTP_STATUS.OK);
+    } catch (error) {
+      this.sendError(res, error);
+    }
+  };
+
+  public getByokKeys = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const userId = this.validateUserAuth(req);
+      const provider = req.query.provider as string || "gemini";
+      
+      const result = await this.getByokKeysUseCase.execute(userId, provider);
       
       this.sendSuccess(res, result, HTTP_STATUS.OK);
     } catch (error) {

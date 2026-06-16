@@ -19,11 +19,29 @@ export class UpdateByokKeys implements IUpdateByokKeysUseCase {
       throw new AppError("Only gemini provider is currently supported for BYOK", 400);
     }
 
-    const encryptedKeys = keys.map((key) => encryptKey(key));
-
     const user = await this.userRepository.findById(userId);
     if (!user) {
       throw new AppError("User not found", 404);
+    }
+
+    const existingConfig = user.byok_keys?.find((k: any) => k.provider === provider);
+    const existingEncryptedKeys = existingConfig?.encryptedKeys || [];
+
+    const finalEncryptedKeys: string[] = [];
+
+    for (let i = 0; i < keys.length; i++) {
+      const key = keys[i].trim();
+      if (!key) continue;
+
+      if (key.includes("•") || key.includes("●") || key.includes("*")) {
+        // Masked key, preserve the existing encrypted key at this index
+        if (existingEncryptedKeys[i]) {
+          finalEncryptedKeys.push(existingEncryptedKeys[i]);
+        }
+      } else {
+        // Raw key, encrypt and add
+        finalEncryptedKeys.push(encryptKey(key));
+      }
     }
 
     const existingKeyIndex = user.byok_keys?.findIndex((k: any) => k.provider === provider);
@@ -32,7 +50,7 @@ export class UpdateByokKeys implements IUpdateByokKeysUseCase {
     if (existingKeyIndex !== undefined && existingKeyIndex >= 0) {
       updateQuery = {
         $set: {
-          [`byok_keys.${existingKeyIndex}.encryptedKeys`]: encryptedKeys,
+          [`byok_keys.${existingKeyIndex}.encryptedKeys`]: finalEncryptedKeys,
           [`byok_keys.${existingKeyIndex}.updatedAt`]: new Date(),
         },
       };
@@ -41,7 +59,7 @@ export class UpdateByokKeys implements IUpdateByokKeysUseCase {
         $push: {
           byok_keys: {
             provider,
-            encryptedKeys,
+            encryptedKeys: finalEncryptedKeys,
             createdAt: new Date(),
             updatedAt: new Date(),
           },

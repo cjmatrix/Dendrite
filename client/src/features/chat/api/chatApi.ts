@@ -19,6 +19,19 @@ export const getMessages = async (chatId: string, cursor: string | null, limit: 
   return res.data.data;
 };
 
+export const sendAgentMessage=async( 
+  chatId: string,
+  message: string,
+)=>{
+  const res=await api.post(`/agents/workspace/${chatId}`,{
+    message
+  })
+
+  return res.data.data
+}
+  
+
+
 export const sendMessageStream = async (
   chatId: string,
   message: string,
@@ -39,6 +52,8 @@ export const sendMessageStream = async (
       throw new Error("Invalid model selected");
     }
   }
+
+
 
   const response = await streamingFetch(`${API_URL}/chats/${chatId}/message`, {
     method: "POST",
@@ -69,7 +84,7 @@ export const sendMessageStream = async (
           const parsed = JSON.parse(data);
           onChunk(parsed);
         } catch {
-          // ignore parse errors for incomplete chunks
+          
         }
       }
     }

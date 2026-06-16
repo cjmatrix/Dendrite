@@ -1,16 +1,6 @@
 import crypto from "crypto";
 
-/**
- * Strips comments from code regardless of programming language.
- * Handles:
- *  - Single-line comments: // ... , # ... , -- ...
- *  - Multi-line comments:  /* ... * /, <!-- ... -->, (* ... *)
- *  - Docstrings / triple-quoted strings: """ ... """ , ''' ... '''
- *  - Hash-style shebang lines: #!/usr/bin/env ...
- * 
- * The result is also whitespace-normalized so that cosmetic
- * re-formatting doesn't produce a different hash.
- */
+
 export function stripComments(code: string): string {
   let result = code;
 
@@ -41,7 +31,6 @@ export function stripComments(code: string): string {
   return result;
 }
 
-/** Removes C/Java/JS/CSS-style block comments while preserving string contents. */
 function removeCStyleBlockComments(code: string): string {
   let out = "";
   let i = 0;
@@ -80,7 +69,7 @@ function removeCStyleBlockComments(code: string): string {
   return out;
 }
 
-/** Removes single-line comments (//, #, --, %) while preserving string contents. */
+
 function removeSingleLineComments(code: string): string {
   const lines = code.split("\n");
   return lines
@@ -135,10 +124,6 @@ function removeSingleLineComments(code: string): string {
     .join("\n");
 }
 
-/**
- * Generates a stable SHA-256 hash from the normalized (comment-free)
- * version of a code snippet. This is the key used for deduplication.
- */
 export function hashCode(code: string): string {
   const normalized = stripComments(code);
   return crypto.createHash("sha256").update(normalized).digest("hex");

@@ -40,7 +40,7 @@ function enforceSummaryBudget(items: SummaryItem[], logger: ILogger): SummaryIte
     "PROGRESS",
   ];
 
-  let trimmed = [...items];
+  const trimmed = [...items];
 
   for (const tag of dropOrder) {
     if (estimatedTokens <= MAX_SUMMARY_TOKENS) break;
@@ -164,7 +164,7 @@ export class ProcessSummaryJob {
       const userId = outboxEvent.payload.userId.toString();
 
       const cacheKey = `triple_memory:${summaryOutboxEventId}`;
-      let cachedResult = await this.redisConnection.get(cacheKey);
+      const cachedResult = await this.redisConnection.get(cacheKey);
 
       let tripleOutput: TripleMemoryOutput;
 

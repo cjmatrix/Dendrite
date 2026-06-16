@@ -9,14 +9,22 @@ export class CreateChat implements ICreateChatUseCase {
   constructor(@inject("IChatRepository") private chatRepository: IChatRepository) {}
 
   async execute(input: CreateChatInputDTO): Promise<ChatOutputDTO> {
-    const { userId, title, folderId } = input;
+    const { userId, title, folderId ,type} = input;
 
     const existing = await this.chatRepository.findByUserIdAndTitleAndFolderId(userId, title, folderId || null);
     if (existing) {
       throw new AppError("Chat with this title already exists in this folder", 400);
     }
 
-    const chat = await this.chatRepository.create({ userId, title, folderId });
-    return ChatMapper.toChatOutput(chat);
+    if(type&&type==="agent"){
+       const chat = await this.chatRepository.create({ userId, title, folderId,type });
+      return ChatMapper.toChatOutput(chat)
+    }
+    else
+    {
+      const chat = await this.chatRepository.create({ userId, title, folderId });
+      return ChatMapper.toChatOutput(chat)
+    }
+ ;
   }
 }

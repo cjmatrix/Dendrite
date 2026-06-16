@@ -15,7 +15,7 @@ const navItems = [
   },
 ];
 
-function AdminSidebar() {
+function AdminSidebar({ onClose }: { onClose?: () => void }) {
   const adminLogoutMutation = useAdminLogout();
 
   return (
@@ -35,6 +35,7 @@ function AdminSidebar() {
               key={item.to}
               to={item.to}
               end={item.to === "/admin"}
+              onClick={onClose}
               className={({ isActive }) =>
                 `flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all border ${
                   isActive

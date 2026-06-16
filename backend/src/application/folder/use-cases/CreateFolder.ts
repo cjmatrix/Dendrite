@@ -1,9 +1,10 @@
 import { IFolderRepository } from '../../../domain/folder/repositories/IFolderRepository';
 import { AppError } from '../../../utils/AppError';
 import { injectable, inject } from 'tsyringe';
+import { ICreateFolderUseCase } from './interfaces';
 
 @injectable()
-export class CreateFolder {
+export class CreateFolder implements ICreateFolderUseCase {
   constructor(
     @inject("IFolderRepository") private folderRepository: IFolderRepository
   ) {}

@@ -22,38 +22,38 @@ services:
     depends_on:
       - prometheus
 
-  qdrant:
-    image: qdrant/qdrant:latest
-    container_name: dentrites-qdrant
-    ports:
-      - "6333:6333"
-      - "6334:6334"
-    volumes:
-      - qdrant-data:/qdrant/storage
+  # qdrant:
+  #   image: qdrant/qdrant:latest
+  #   container_name: dentrites-qdrant
+  #   ports:
+  #     - "6333:6333"
+  #     - "6334:6334"
+  #   volumes:
+  #     - qdrant-data:/qdrant/storage
 
-  redis:
-    image: redis:alpine
-    container_name: dentrites-redis
+  # redis:
+  #   image: redis:alpine
+  #   container_name: dentrites-redis
 
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: dentrites-backend
-    ports:
-      - "5000:5000"
-    environment:
-      - QDRANT_URL=http://qdrant:6333
-      - REDIS_HOST=redis
-    env_file:
-      - ./backend/.env
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    depends_on:
-      - qdrant
-      - redis
+  # backend:
+  #   build:
+  #     context: ./backend
+  #     dockerfile: Dockerfile
+  #   container_name: dentrites-backend
+  #   ports:
+  #     - "5000:5000"
+  #   environment:
+  #     - QDRANT_URL=http://qdrant:6333
+  #     - REDIS_HOST=redis
+  #   env_file:
+  #     - ./backend/.env
+  #   extra_hosts:
+  #     - "host.docker.internal:host-gateway"
+  #   depends_on:
+  #     - qdrant
+  #     - redis
 
 volumes:
   prometheus-data:
   grafana-data:
-  qdrant-data:
+  # qdrant-data:

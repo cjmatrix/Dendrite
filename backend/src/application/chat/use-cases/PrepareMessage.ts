@@ -140,7 +140,7 @@ ${lines.join("\n")}`;
     let deficit = CONTEXT_WINDOW - recentMessages.length;
     let parentChatId: string | null = chat.contextParent?._id || null;
     let safetyDepth = 0;
-    let map = new Map();
+    const map = new Map();
     let parentSummary = null;
 
     while (parentChatId && deficit > 0 && safetyDepth < 100) {

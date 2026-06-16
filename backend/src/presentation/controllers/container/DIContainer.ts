@@ -65,6 +65,7 @@ import { UnlinkInheritance } from '../../../application/branch/use-cases/UnlinkI
 
 import { container } from "tsyringe";
 import { IEmbeddingService } from "../../../application/common/ports/IEmbeddingService";
+import { IRerankerService } from "../../../application/common/ports/IRerankerService";
 
 
 export class DIContainer {
@@ -209,7 +210,9 @@ export class DIContainer {
 
   static getVectorRepository(): QdrantVectorRepository {
     if (!this.vectorRepository) {
-      this.vectorRepository = new QdrantVectorRepository();
+      this.vectorRepository = new QdrantVectorRepository(
+        container.resolve<IRerankerService>("IRerankerService")
+      );
     }
     return this.vectorRepository;
   }

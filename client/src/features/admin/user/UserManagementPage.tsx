@@ -106,7 +106,7 @@ function UserManagementPage() {
   }
 
   return (
-    <div className="p-8 text-white">
+    <div className="p-4 md:p-8 text-white">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
         <div>
           <h2 className="text-2xl font-semibold">User Management</h2>

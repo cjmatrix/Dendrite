@@ -1,3 +1,5 @@
+import { injectable, inject } from 'tsyringe';
+import { IRerankerService } from '../../../application/common/ports/IRerankerService';
 import { IVectorRepository } from '../../../domain/vector/repositories/IVectorRepository';
 import {
   qdrantClient,
@@ -9,7 +11,12 @@ import { textToSparseVector } from '../../../utils/BM25Healper';
 
 const SIMILARITY_THRESHOLD = 0.60;
 
+@injectable()
 export class QdrantVectorRepository implements IVectorRepository {
+  constructor(
+    @inject("IRerankerService") private rerankerService: IRerankerService
+  ) {}
+
   async searchSimilarCode(
     codeQueryVector: number[],
     descQueryVector: number[],
@@ -48,7 +55,7 @@ export class QdrantVectorRepository implements IVectorRepository {
 
       const scoreMap = new Map();
 
-      for (let result of [...codeResults, ...descriptionResults]) {
+      for (const result of [...codeResults, ...descriptionResults]) {
         const id = String(result.id);
         const existing = scoreMap.get(id);
         if (!existing || result.score > existing.score) {
@@ -273,54 +280,82 @@ export class QdrantVectorRepository implements IVectorRepository {
         ],
       };
 
-   
-    const sparseVector = textToSparseVector(queryText);
+      const sparseVector = textToSparseVector(queryText);
+      const limitCandidates = Math.max(topK * 4, 20);
 
-  
+      const response = await qdrantClient.query(DOCUMENT_COLLECTION_NAME, {
+        prefetch: [
+          {
+            using: "dense-vector",
+            query: queryVector,
+            filter: filter,
+            limit: limitCandidates,
+            score_threshold: 0.40,
+          },
+          {
+            using: "bm25-vector",
+            query: sparseVector,
+            filter: filter,
+            limit: limitCandidates,
+          },
+        ],
+        query: {
+          rrf: {
+            fusion: "rrf",
+          },
+        },
+        limit: limitCandidates,
+        with_payload: true,
+      });
 
-    const response = await qdrantClient.query(DOCUMENT_COLLECTION_NAME, {
-      prefetch: [
-        {
-          using: "dense-vector",     
-          query: queryVector,
-          filter: filter,             
-          limit: topK * 3, 
-          score_threshold: 0.40, 
+      const candidates = response.points.map((result) => ({
+        score: result.score,
+        document: result.payload?.content as {
+          text: string;
+          chunkIndex: number;
+          totalChunks: number;
+          headings: string[];
+          kinds: string[];
         },
-        {
-          using: "bm25-vector",       
-          query: sparseVector,
-          filter: filter,            
-          limit: topK * 3,           
-        },
-      ],
-      query: {
-        rrf: {
-          fusion: "rrf",              
-        },
-      },
-      limit: topK,                    
-      with_payload: true,
-    });
+        metadata: result.payload,
+      }));
 
-    
-    return response.points.map((result) => ({
-      score: result.score,
-      document: result.payload?.content as {
-        text: string;
-        chunkIndex: number;
-        totalChunks: number;
-        headings: string[];
-        kinds: string[];
-      },
-      metadata: result.payload,
-    }));
-    
-  
-  } catch (error: any) {
-    console.error(" Document hybrid search failed:", error?.message ?? error);
-    return [];
+      if (candidates.length > 0) {
+        try {
+          const documentsToRerank = candidates.map((c) => ({
+            text: c.document?.text || "",
+            item: c,
+          }));
+
+          console.log(`[Reranker] Reranking ${documentsToRerank.length} document candidates using Voyage rerank-2.5-lite`);
+          const reranked = await this.rerankerService.rerank(
+            queryText,
+            documentsToRerank,
+            "rerank-2.5-lite"
+          );
+
+          if (reranked.length > 0) {
+            reranked.sort((a, b) => b.score - a.score);
+            const sliced = reranked
+              .map((r) => ({
+                ...r.document,
+                score: r.score,
+              }))
+              .slice(0, topK);
+            
+            console.log(`[Reranker] Reranking complete. Top score: ${sliced[0]?.score?.toFixed(4) ?? 0}`);
+            return sliced;
+          }
+        } catch (rerankError: any) {
+          console.error("[QdrantVectorRepository] Voyage Rerank failed, falling back to Qdrant RRF ranking:", rerankError.message);
+        }
+      }
+
+      return candidates.slice(0, topK);
+    } catch (error: any) {
+      console.error(" Document hybrid search failed:", error?.message ?? error);
+      return [];
+    }
   }
-}
 }
 

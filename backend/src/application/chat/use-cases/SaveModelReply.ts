@@ -21,7 +21,7 @@ export function extractCodeBlocks(text: string) {
   const blocks: { language: string; code: string; hash: string }[] = [];
 
   let match;
-  let filterLang = ["plantuml", "p5"];
+  const filterLang = ["plantuml", "p5"];
   while ((match = regex.exec(text)) !== null) {
     const lang = (match[1] || "text").toLowerCase();
     const code = match[2].trim();

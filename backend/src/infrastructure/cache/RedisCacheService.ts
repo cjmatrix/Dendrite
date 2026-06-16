@@ -32,4 +32,16 @@ export class RedisCacheService implements ICacheService {
     const count = await this.redis.exists(key);
     return count > 0;
   }
+
+  async scanKeys(pattern: string): Promise<string[]> {
+    let cursor = "0";
+    const allKeys: string[] = [];
+    do {
+      const result = await this.redis.scan(cursor, "MATCH", pattern, "COUNT", 100);
+      cursor = result[0];
+      const keys = result[1];
+      allKeys.push(...keys);
+    } while (cursor !== "0");
+    return allKeys;
+  }
 }

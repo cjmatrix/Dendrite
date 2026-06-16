@@ -1,20 +1,30 @@
 can create subchats for chats.
-losing context of chat summury while inheriting branch 
+
 what if two sticky chat at with same y
 
-if input prompt too big dont embded or tak last one or two line then embed.
 
-skip plantuml and p5 during code generation
 
-filter out p5 code blocks during content message prep
 
-fix every 7 minute code block sweper for geneating decription
+
+
+
 
 create breathing room for summurizing
 
 recall should have outbox pettern becuase im only depend on redis which may crash and lost the jobs
 
 deleting folder or chat wont delete data from cloudinary
+
+
+quich chat doesnt get user profile
+
+
+
+
+
+
+//next week
+
 
 
 

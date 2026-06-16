@@ -1,9 +1,10 @@
 import { IFolderRepository } from '../../../domain/folder/repositories/IFolderRepository';
 import { AppError } from '../../../utils/AppError';
 import { injectable, inject } from 'tsyringe';
+import { IUpdateFolderUseCase } from './interfaces';
 
 @injectable()
-export class UpdateFolder {
+export class UpdateFolder implements IUpdateFolderUseCase {
   constructor(
     @inject("IFolderRepository") private folderRepository: IFolderRepository
   ) {}

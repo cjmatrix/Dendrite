@@ -5,6 +5,7 @@ import { tavily } from "@tavily/core";
 import { v4 as uuid } from "uuid";
 
 
+import { container } from "tsyringe";
 import { QdrantVectorRepository } from '../infrastructure/vector/repositories/QdrantVectorRepository';
 
 const CACHE_TTL_SECONDS = 12 * 60 * 60;
@@ -30,7 +31,7 @@ export async function getTavilySearchContext(query: string, precomputedVector?: 
 
     const twelveHoursAgo = Date.now() - (12 * 60 * 60 * 1000);
 
-    const vectorRepo = new QdrantVectorRepository();
+    const vectorRepo = container.resolve<QdrantVectorRepository>("IVectorRepository");
     const semanticResults = await vectorRepo.searchSemanticCache(queryVector, twelveHoursAgo);
     
     if (semanticResults.length > 0 && semanticResults[0].score >= SEMANTIC_THRESHOLD) {

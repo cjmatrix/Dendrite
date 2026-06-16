@@ -79,7 +79,7 @@ export class ChatController extends BaseController {
   public createChat = async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
-      const { title, folderId } = req.body;
+      const { title, folderId ,type} = req.body;
 
       if (!title || typeof title !== "string") {
         throw new AppError(CHAT_MESSAGES.TITLE_REQUIRED, 400);
@@ -89,6 +89,7 @@ export class ChatController extends BaseController {
         userId,
         title,
         folderId,
+        type
       });
 
       this.sendSuccess(res, data, 201, CHAT_MESSAGES.CHAT_CREATED);

@@ -6,6 +6,7 @@ import { ChatDocument, IChat } from "../../../domain/chat/entities/Chat";
 export const CreateChatBodySchema = z.object({
   title: z.string().trim().min(1, "Title is required"),
   folderId: z.string().trim().nullable().optional(),
+  type:z.string().optional()
 });
 
 export const UpdateChatBodySchema = z.object({
@@ -62,6 +63,7 @@ export interface CreateChatInputDTO {
   userId: string;
   title: string;
   folderId?: string | null;
+  type?:string
 }
 
 export interface GetChatsInputDTO {
@@ -200,6 +202,7 @@ export class ChatMapper {
       userId: raw.userId?.toString(),
       folderId: raw.folderId?.toString() || null,
       title: raw.title,
+      type:raw.type,
       contextParent: raw.contextParent
         ? (typeof raw.contextParent === 'object' && raw.contextParent._id
           ? { _id: raw.contextParent._id.toString(), title: raw.contextParent.title || null }

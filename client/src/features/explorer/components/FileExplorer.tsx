@@ -83,21 +83,24 @@ export default function FileExplorer() {
   const displayTree = activeSidebarRootId ? findNode(tree, activeSidebarRootId) || tree : tree;
 
   // Root creation 
-  const [rootCreating, setRootCreating] = useState<FileType | null>(null);
+  const [rootCreating, setRootCreating] = useState<"chat"|"folder" |"agent"| null>(null);
   const [rootNewName, setRootNewName] = useState("");
 
-  const startRootCreate = (type: FileType) => {
+  const startRootCreate = (type: "chat"|"folder" |"agent") => {
     setRootCreating(type);
     setRootNewName("");
   };
 
-  const handleRootCreate = () => {
+  const handleRootCreate = (type?:string) => {
     const targetParentId = activeSidebarRootId ?? null;
     if (rootNewName.trim()) {
       if (rootCreating === "folder") {
         createFolder({ name: rootNewName, parentId: targetParentId });
-      } else {
-        createChat({ title: rootNewName, folderId: targetParentId });
+      } else if(rootCreating==="chat"){
+        createChat({ title: rootNewName, folderId: targetParentId});
+      }
+      else if(rootCreating==="agent"){
+         createChat({ title: rootNewName, folderId: targetParentId ,type});
       }
     }
     setRootCreating(null);
@@ -242,12 +245,12 @@ export default function FileExplorer() {
                       onChange={(e) => setRootNewName(e.target.value)}
                       onBlur={() => { setRootCreating(null); setRootNewName(""); }}
                       onKeyDown={(e) => {
-                        if (e.key === "Enter") handleRootCreate();
+                        if (e.key === "Enter") handleRootCreate("agent");
                         if (e.key === "Escape") { setRootCreating(null); setRootNewName(""); }
                       }}
                     />
                     <button
-                      onMouseDown={(e) => { e.preventDefault(); handleRootCreate(); }}
+                      onMouseDown={(e) => { e.preventDefault(); handleRootCreate("agent"); }}
                       className="p-1 text-emerald-400 hover:text-white hover:bg-emerald-600/80 rounded transition-colors"
                     >
                       <Check size={16} />
@@ -276,6 +279,12 @@ export default function FileExplorer() {
                     onClick={(e) => { e.stopPropagation(); startRootCreate("folder"); setBlankContextMenu(null); }}
                   >
                     <FolderPlus size={14} /> New Folder
+                  </button>
+                  <button
+                    className="w-full text-left px-3 py-1.5 hover:bg-cyan-600 hover:text-white flex items-center gap-2 transition-colors"
+                    onClick={(e) => { e.stopPropagation(); startRootCreate("agent"); setBlankContextMenu(null); }}
+                  >
+                    <FolderPlus size={14} /> New Agent
                   </button>
                 </div>
               </>

@@ -1,24 +1,38 @@
 import { Request, Response } from 'express';
 import { BaseController } from './base/BaseController';
-import { DIContainer } from './container/DIContainer';
 import { AppError } from '../../utils/AppError';
+import { injectable, inject, container } from "tsyringe";
+import { IMessageRepository } from '../../domain/chat/repositories/IMessageRepository';
+import {
+  ICreateCardUseCase,
+  IUpdateCardUseCase,
+  IGetDueCardsUseCase,
+  IDeleteCardUseCase,
+  IClearAllCardsUseCase,
+  ICountDueCardsUseCase,
+} from '../../application/recall/use-cases/interfaces';
 
-
+@injectable()
 export class RecallController extends BaseController {
-  constructor() {
+  constructor(
+    @inject("ICreateCardUseCase") private createCardUseCase: ICreateCardUseCase,
+    @inject("IUpdateCardUseCase") private updateCardUseCase: IUpdateCardUseCase,
+    @inject("IGetDueCardsUseCase") private getDueCardsUseCase: IGetDueCardsUseCase,
+    @inject("IDeleteCardUseCase") private deleteCardUseCase: IDeleteCardUseCase,
+    @inject("IClearAllCardsUseCase") private clearAllCardsUseCase: IClearAllCardsUseCase,
+    @inject("ICountDueCardsUseCase") private countDueCardsUseCase: ICountDueCardsUseCase,
+    @inject("IMessageRepository") private messageRepository: IMessageRepository,
+  ) {
     super();
   }
-
 
   public createCard = async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
       let { content, chatId, msgId } = req.body;
 
-     
       if (!content && msgId) {
-        const messageRepository = DIContainer.getMessageRepository();
-        const message = await messageRepository.findById(msgId);
+        const message = await this.messageRepository.findById(msgId);
         if (message) {
           content = message.content;
         }
@@ -28,8 +42,7 @@ export class RecallController extends BaseController {
         throw new AppError('Card content is required', 400);
       }
 
-      const createCardUseCase = DIContainer.getCreateCardUseCase();
-      const result = await createCardUseCase.execute(userId, content, chatId);
+      const result = await this.createCardUseCase.execute(userId, content, chatId);
 
       this.sendSuccess(res, result, 201, 'Card created successfully');
     } catch (error) {
@@ -37,7 +50,6 @@ export class RecallController extends BaseController {
     }
   };
 
-  
   public updateCard = async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
@@ -53,8 +65,7 @@ export class RecallController extends BaseController {
         throw new AppError('Rating must be a number between 0 and 5', 400);
       }
 
-      const updateCardUseCase = DIContainer.getUpdateCardUseCase();
-      const result = await updateCardUseCase.execute(userId, cardId, parsedRating);
+      const result = await this.updateCardUseCase.execute(userId, cardId, parsedRating);
 
       this.sendSuccess(res, result, 200, 'Card updated successfully');
     } catch (error) {
@@ -62,13 +73,11 @@ export class RecallController extends BaseController {
     }
   };
 
- 
   public getDueCards = async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
 
-      const getDueCardsUseCase = DIContainer.getGetDueCardsUseCase();
-      const dueCards = await getDueCardsUseCase.execute(userId);
+      const dueCards = await this.getDueCardsUseCase.execute(userId);
 
       this.sendSuccess(res, dueCards);
     } catch (error) {
@@ -76,14 +85,12 @@ export class RecallController extends BaseController {
     }
   };
 
-
   public deleteCard = async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
       const cardId = this.getRouteParam(req, 'id');
 
-      const deleteCardUseCase = DIContainer.getDeleteCardUseCase();
-      await deleteCardUseCase.execute(userId, cardId);
+      await this.deleteCardUseCase.execute(userId, cardId);
 
       this.sendSuccess(res, null, 200, 'Card deleted successfully');
     } catch (error) {
@@ -91,14 +98,11 @@ export class RecallController extends BaseController {
     }
   };
 
- 
-
   public clearAllCards = async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
 
-      const clearAllCardsUseCase = DIContainer.getClearAllCardsUseCase();
-      await clearAllCardsUseCase.execute(userId);
+      await this.clearAllCardsUseCase.execute(userId);
 
       this.sendSuccess(res, null, 200, 'All cards cleared successfully');
     } catch (error) {
@@ -106,14 +110,11 @@ export class RecallController extends BaseController {
     }
   };
 
-
-
   public countDueCards = async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
 
-      const countDueCardsUseCase = DIContainer.getCountDueCardsUseCase();
-      const count = await countDueCardsUseCase.execute(userId);
+      const count = await this.countDueCardsUseCase.execute(userId);
 
       this.sendSuccess(res, { count });
     } catch (error) {
@@ -122,5 +123,4 @@ export class RecallController extends BaseController {
   };
 }
 
-
-export const recallController = new RecallController();
+export const recallController = container.resolve(RecallController);

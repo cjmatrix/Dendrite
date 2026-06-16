@@ -15,6 +15,7 @@ export interface IChat {
   folderId: string | null;
   title: string;
   contextParent: { _id: string; title: string | null } | null;
+  type:"normal"|"agent"
   summary: string | null;
   tokenCount: number;
   unsummarizedCount: number;

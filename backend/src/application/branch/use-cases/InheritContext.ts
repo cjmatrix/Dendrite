@@ -1,8 +1,13 @@
+import { injectable, inject } from "tsyringe";
 import { IChatRepository } from '../../../domain/chat/repositories/IChatRepository';
 import { AppError } from '../../../utils/AppError';
+import { IInheritContextUseCase } from './interfaces';
 
-export class InheritContext {
-  constructor(private chatRepository: IChatRepository) {}
+@injectable()
+export class InheritContext implements IInheritContextUseCase {
+  constructor(
+    @inject("IChatRepository") private chatRepository: IChatRepository
+  ) {}
 
   async execute(chatId: string, userId: string, contextParentId: string) {
    

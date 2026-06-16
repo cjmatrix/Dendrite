@@ -43,7 +43,13 @@ export class AuthMiddleware {
         return res.status(403).json({ message: "Forbidden: Account is inactive or pending verification" });
       }
 
+
       req.user = user;
+
+
+      
+
+
       next();
     } catch (error) {
       return res.status(401).json({ message: "Unauthorized: Invalid Token" });

@@ -3,7 +3,7 @@ import { X, Key, User, Info, Loader2, ShieldCheck, Mail, AlertTriangle, Eye, Eye
 import { useAppSelector, useAppDispatch } from "../../../store/store";
 import { checkAuth } from "../../auth/store/authSlice";
 import { createPortal } from "react-dom";
-import { useUpdateByokKeys } from "../hooks/useByokMutation";
+import { useUpdateByokKeys, useGetByokKeys } from "../hooks/useByokMutation";
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -25,15 +25,23 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
   const [success, setSuccess] = useState<string | null>(null);
 
   const updateByokMutation = useUpdateByokKeys();
+  const { data: byokKeysData, isLoading: isLoadingKeys } = useGetByokKeys(
+    "gemini",
+    isOpen && activeTab === "byok" && user?.tier === "byok"
+  );
 
   useEffect(() => {
     if (isOpen) {
       setError(null);
       setSuccess(null);
-      // Reset inputs when opened
-      setKeys(["", "", "", "", "", ""]);
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (isOpen && byokKeysData?.keys) {
+      setKeys(byokKeysData.keys);
+    }
+  }, [isOpen, byokKeysData]);
 
   if (!isOpen) return null;
 
@@ -52,8 +60,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
   const handleSave = async () => {
     setError(null);
     setSuccess(null);
-    
-    // Filter out empty spaces and only get filled keys
+   
     const validKeys = keys.map(k => k.trim()).filter(k => k !== "");
     
     if (validKeys.length === 0) {
@@ -68,7 +75,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
       });
       setSuccess("API keys successfully uploaded and securely stored!");
       
-      // Refresh auth state to get updated key count
+
       await dispatch(checkAuth());
       
       setTimeout(() => {
@@ -210,27 +217,34 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[260px] overflow-y-auto pr-2 custom-scrollbar">
-                      {keys.map((key, index) => (
-                        <div key={index} className="flex flex-col gap-1">
-                          <label className="text-[10px] font-bold text-zinc-500 uppercase">Key Slot {index + 1}</label>
-                          <div className="relative flex items-center">
-                            <input
-                              type={showKeys[index] ? "text" : "password"}
-                              value={key}
-                              onChange={(e) => handleKeyChange(index, e.target.value)}
-                              placeholder={`Gemini API Key ${index + 1}`}
-                              className="w-full bg-zinc-900/60 border border-zinc-800 rounded-xl pl-3 pr-10 py-2 text-xs text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-emerald-500/50 transition-colors"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => toggleShowKey(index)}
-                              className="absolute right-3 text-zinc-500 hover:text-zinc-300 transition-colors"
-                            >
-                              {showKeys[index] ? <EyeOff size={14} /> : <Eye size={14} />}
-                            </button>
-                          </div>
+                      {isLoadingKeys ? (
+                        <div className="col-span-full flex flex-col items-center justify-center py-10 gap-2 text-zinc-500">
+                          <Loader2 className="animate-spin text-emerald-400" size={24} />
+                          <span className="text-xs">Fetching secure API keys...</span>
                         </div>
-                      ))}
+                      ) : (
+                        keys.map((key, index) => (
+                          <div key={index} className="flex flex-col gap-1">
+                            <label className="text-[10px] font-bold text-zinc-500 uppercase">Key Slot {index + 1}</label>
+                            <div className="relative flex items-center">
+                              <input
+                                type={showKeys[index] ? "text" : "password"}
+                                value={key}
+                                onChange={(e) => handleKeyChange(index, e.target.value)}
+                                placeholder={`Gemini API Key ${index + 1}`}
+                                className="w-full bg-zinc-900/60 border border-zinc-800 rounded-xl pl-3 pr-10 py-2 text-xs text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-emerald-500/50 transition-colors"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => toggleShowKey(index)}
+                                className="absolute right-3 text-zinc-500 hover:text-zinc-300 transition-colors"
+                              >
+                                {showKeys[index] ? <EyeOff size={14} /> : <Eye size={14} />}
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                      )}
                     </div>
 
                     {error && <p className="text-xs text-red-400 font-medium mt-2">{error}</p>}

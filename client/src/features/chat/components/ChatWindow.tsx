@@ -24,6 +24,7 @@ import {
   Cpu,
   Key,
   Shield,
+  Files,
 } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
 import type { VirtuosoHandle } from "react-virtuoso";
@@ -53,7 +54,7 @@ import { useDocumentHistory } from "../hooks/useDocumentHistory";
 import { useFlattenedMessages, useBreadcrumbs } from "../hooks/useChatHelpers";
 import { MODEL_OPTIONS, DEFAULT_MODEL } from "../constants/models";
 import { useQueryClient } from "@tanstack/react-query";
-
+import { useSendAgentMessageMutation } from "../hooks/useAgentMutation.ts";
 
 import type { Message } from "../types/Message";
 
@@ -167,6 +168,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     onStreamStart: () => scrollToBottom("smooth"),
     onStreamEnd: () => scrollToBottom("auto"),
   });
+  const sendAgentMessage=useSendAgentMessageMutation();
 
   const {
     selectedImageUrl,
@@ -735,13 +737,13 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
             <button
               onClick={() => setIsShowingBrowser(true)}
-              className="p-2 hover:bg-white/5 rounded-xl text-gray-400 hover:text-gray-200 transition-colors hidden md:block group"
+              className="p-2 hover:bg-white/5 rounded-xl text-gray-400 hover:text-gray-200 transition-colors hidden md:block group relative"
               disabled={isStreaming}
               title={`View uploaded files (${documents.length})`}
             >
-              <Paperclip
+              <Files
                 size={20}
-                className="group-hover:rotate-12 transition-transform"
+                className="group-hover:scale-110 transition-transform"
               />
               {documents.length > 0 && (
                 <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
@@ -895,7 +897,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               <span className="text-[10px] font-medium text-gray-500 hidden md:block uppercase tracking-wider">
                 Cmd + Enter
               </span>
-              <button
+              {chat?.type==="normal"?<button
                 onClick={isStreaming ? handleStop : handleSend}
                 disabled={
                   isUploading ||
@@ -915,6 +917,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                   <ArrowUp size={18} strokeWidth={2.5} />
                 )}
               </button>
+              : <button onClick={()=>sendAgentMessage.mutate({chatId:id,message:input.trim()})}>
+                SEND
+              </button>
+            }
             </div>
           </div>
           </>

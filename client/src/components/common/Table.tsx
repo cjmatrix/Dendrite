@@ -34,76 +34,78 @@ export function Table<T>({
 }: TableProps<T>) {
   return (
     <div className="bg-zinc-950/70 border border-blue-500/10 rounded-2xl overflow-hidden shadow-lg shadow-blue-500/5">
-      <table className="w-full text-sm">
-        <thead className="bg-zinc-900/40 text-zinc-300">
-          <tr>
-            {columns.map((column) => {
-              const isSortable = column.sortable && onSort;
-              const displaySortKey = column.sortKey || column.key;
-              const isSortedActive = sortBy === displaySortKey;
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm min-w-[600px] lg:min-w-full">
+          <thead className="bg-zinc-900/40 text-zinc-300">
+            <tr>
+              {columns.map((column) => {
+                const isSortable = column.sortable && onSort;
+                const displaySortKey = column.sortKey || column.key;
+                const isSortedActive = sortBy === displaySortKey;
 
-              return (
-                <th
-                  key={column.key}
-                  className={`text-left px-6 py-4 font-medium ${
-                    isSortable ? "cursor-pointer hover:text-white transition-colors" : ""
-                  }`}
-                  onClick={() => isSortable && onSort(displaySortKey)}
-                >
-                  <div className="flex items-center gap-2">
-                    {column.header}
-                    {isSortable && (
-                      isSortedActive ? (
-                        sortOrder === "asc" ? (
-                          <ArrowUp className="w-3 h-3 text-blue-400" />
+                return (
+                  <th
+                    key={column.key}
+                    className={`text-left px-6 py-4 font-medium ${
+                      isSortable ? "cursor-pointer hover:text-white transition-colors" : ""
+                    }`}
+                    onClick={() => isSortable && onSort(displaySortKey)}
+                  >
+                    <div className="flex items-center gap-2">
+                      {column.header}
+                      {isSortable && (
+                        isSortedActive ? (
+                          sortOrder === "asc" ? (
+                            <ArrowUp className="w-3 h-3 text-blue-400" />
+                          ) : (
+                            <ArrowDown className="w-3 h-3 text-blue-400" />
+                          )
                         ) : (
-                          <ArrowDown className="w-3 h-3 text-blue-400" />
+                          <ArrowUpDown className="w-3 h-3 opacity-40 hover:opacity-100" />
                         )
-                      ) : (
-                        <ArrowUpDown className="w-3 h-3 opacity-40 hover:opacity-100" />
-                      )
-                    )}
-                  </div>
-                </th>
-              );
-            })}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-blue-500/10">
-          {isLoading ? (
-            <tr>
-              <td
-                colSpan={columns.length}
-                className="px-6 py-12 text-center text-zinc-500 animate-pulse uppercase tracking-widest text-xs"
-              >
-                {loadingMessage}
-              </td>
+                      )}
+                    </div>
+                  </th>
+                );
+              })}
             </tr>
-          ) : data && data.length > 0 ? (
-            data.map((item) => (
-              <tr
-                key={keyExtractor(item)}
-                className="bg-zinc-900/60 hover:bg-blue-500/5 transition-colors"
-              >
-                {columns.map((column) => (
-                  <td key={column.key} className="px-6 py-4">
-                    {column.render ? column.render(item) : (item as any)[column.key]}
-                  </td>
-                ))}
+          </thead>
+          <tbody className="divide-y divide-blue-500/10">
+            {isLoading ? (
+              <tr>
+                <td
+                  colSpan={columns.length}
+                  className="px-6 py-12 text-center text-zinc-500 animate-pulse uppercase tracking-widest text-xs"
+                >
+                  {loadingMessage}
+                </td>
               </tr>
-            ))
-          ) : (
-            <tr>
-              <td
-                colSpan={columns.length}
-                className="px-6 py-12 text-center text-zinc-500"
-              >
-                {emptyMessage}
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+            ) : data && data.length > 0 ? (
+              data.map((item) => (
+                <tr
+                  key={keyExtractor(item)}
+                  className="bg-zinc-900/60 hover:bg-blue-500/5 transition-colors"
+                >
+                  {columns.map((column) => (
+                    <td key={column.key} className="px-6 py-4">
+                      {column.render ? column.render(item) : (item as any)[column.key]}
+                    </td>
+                  ))}
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td
+                  colSpan={columns.length}
+                  className="px-6 py-12 text-center text-zinc-500"
+                >
+                  {emptyMessage}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

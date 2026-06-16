@@ -2,11 +2,12 @@ import { injectable, inject } from "tsyringe";
 import { IRecallRepository } from '../../../domain/recall/repositories/IRecallRepository';
 import { AppError } from '../../../utils/AppError';
 import { IRecallPublisher } from '../../common/ports/IRecallPublisher';
+import { IUpdateCardUseCase } from "./interfaces";
 
 const steps = [1, 10, 30]; 
 
 @injectable()
-export class UpdateCard {
+export class UpdateCard implements IUpdateCardUseCase {
   constructor(
     @inject("IRecallRepository") private recallRepository: IRecallRepository,
     @inject("IRecallPublisher") private recallPublisher: IRecallPublisher

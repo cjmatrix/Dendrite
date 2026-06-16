@@ -37,6 +37,7 @@ import { SendOTP } from "../application/auth/use-cases/SendOTP";
 import { VerifyOTP } from "../application/auth/use-cases/VerifyOTP";
 import { GoogleLogin } from "../application/auth/use-cases/GoogleLogin";
 import { UpdateByokKeys } from "../application/auth/use-cases/UpdateByokKeys";
+import { GetByokKeys } from "../application/auth/use-cases/GetByokKeys";
 import { AdminLoginUseCase } from "../application/admin/adminAuth/usecases/adminLoginUsecase";
 import { AdminLogoutUseCase } from "../application/admin/adminAuth/usecases/AdminLogout";
 import { AdminGetMeUseCase } from "../application/admin/adminAuth/usecases/AdminGetMe";
@@ -68,6 +69,20 @@ import { AIServiceAdapter } from "../infrastructure/services/AIServiceAdapter";
 import { BullMQDocumentQueue } from "../infrastructure/queue/BullMQDocumentQueue";
 import { PrometheusMetricsService } from "../infrastructure/monitoring/PrometheusMetricsService";
 import { StreamAndSaveChatUseCase } from "../application/chat/use-cases/StreamAndSaveChatUseCase";
+import { CreateCard } from "../application/recall/use-cases/CreateCard";
+import { UpdateCard } from "../application/recall/use-cases/UpdateCard";
+import { GetDueCards } from "../application/recall/use-cases/GetDueCards";
+import { DeleteCard } from "../application/recall/use-cases/DeleteCard";
+import { ClearAllCards } from "../application/recall/use-cases/ClearAllCards";
+import { CountDueCards } from "../application/recall/use-cases/CountDueCards";
+import { CreateFolder } from "../application/folder/use-cases/CreateFolder";
+import { GetFolders } from "../application/folder/use-cases/GetFolders";
+import { UpdateFolder } from "../application/folder/use-cases/UpdateFolder";
+import { DeleteFolder } from "../application/folder/use-cases/DeleteFolder";
+import { UpdateFolderBehavior } from "../application/folder/use-cases/UpdateFolderBehavior";
+import { Getbehavior } from "../application/folder/use-cases/getBehaviour";
+import { InheritContext } from "../application/branch/use-cases/InheritContext";
+import { UnlinkInheritance } from "../application/branch/use-cases/UnlinkInheritance";
 
 
 import { VoyageEmbeddingService } from "../infrastructure/services/VoyageEmbeddingService";
@@ -75,9 +90,15 @@ import { JinaEmbeddingService } from "../infrastructure/services/JinaEmbeddingSe
 import { CloudinaryStorageAdapter } from "../infrastructure/services/CloudinaryStorageAdapter";
 import { RedisDocumentProgressPublisher } from "../infrastructure/services/RedisDocumentProgressPublisher";
 import { SemanticChunkingAdapter } from "../infrastructure/services/SemanticChunkingAdapter";
+import { VoyageRerankerService } from "../infrastructure/services/VoyageRerankerService";
+import { RedisActiveUserTracker } from "../infrastructure/services/RedisActiveUserTracker";
+import { GetAdminDashboardStats } from "../application/admin/dashboard/usecases/GetAdminDashboardStats";
 
 container.registerInstance("RedisClient", redisConnection);
 container.registerSingleton("IEmbeddingService", VoyageEmbeddingService); // Easily switchable to JinaEmbeddingService!
+container.registerSingleton("IRerankerService", VoyageRerankerService);
+container.registerSingleton("IActiveUserTracker", RedisActiveUserTracker);
+container.registerSingleton("GetAdminDashboardStats", GetAdminDashboardStats);
 container.registerSingleton("ICacheService", RedisCacheService);
 container.registerSingleton<ILogger>("ILogger", WinstonLoggerAdapter);
 container.registerSingleton("IMetricsService", PrometheusMetricsService);
@@ -123,6 +144,7 @@ container.registerSingleton("ISendOtpUseCase", SendOTP);
 container.registerSingleton("IVerifyOtpUseCase", VerifyOTP);
 container.registerSingleton("IGoogleLoginUseCase", GoogleLogin);
 container.registerSingleton("IUpdateByokKeysUseCase", UpdateByokKeys);
+container.registerSingleton("IGetByokKeysUseCase", GetByokKeys);
 container.registerSingleton("ICreateLinkUseCase", CreateLink);
 container.registerSingleton("IResolveLinkUseCase", ResolveLink);
 
@@ -154,5 +176,22 @@ container.registerSingleton("IStreamQuickChatUseCase", StreamQuickChat);
 container.registerSingleton("IUploadDocumentUseCase", UploadDocument);
 container.registerSingleton("IValidateChatAccessUseCase", ValidateChatAccess);
 container.registerSingleton("IStreamAndSaveChatUseCase",StreamAndSaveChatUseCase)
+
+container.registerSingleton("ICreateCardUseCase", CreateCard);
+container.registerSingleton("IUpdateCardUseCase", UpdateCard);
+container.registerSingleton("IGetDueCardsUseCase", GetDueCards);
+container.registerSingleton("IDeleteCardUseCase", DeleteCard);
+container.registerSingleton("IClearAllCardsUseCase", ClearAllCards);
+container.registerSingleton("ICountDueCardsUseCase", CountDueCards);
+
+container.registerSingleton("ICreateFolderUseCase", CreateFolder);
+container.registerSingleton("IGetFoldersUseCase", GetFolders);
+container.registerSingleton("IUpdateFolderUseCase", UpdateFolder);
+container.registerSingleton("IDeleteFolderUseCase", DeleteFolder);
+container.registerSingleton("IUpdateFolderBehaviorUseCase", UpdateFolderBehavior);
+container.registerSingleton("IGetbehaviorUseCase", Getbehavior);
+
+container.registerSingleton("IInheritContextUseCase", InheritContext);
+container.registerSingleton("IUnlinkInheritanceUseCase", UnlinkInheritance);
 
 export { container };

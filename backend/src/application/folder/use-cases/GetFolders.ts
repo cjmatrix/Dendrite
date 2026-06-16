@@ -1,8 +1,9 @@
 import { IFolderRepository } from '../../../domain/folder/repositories/IFolderRepository';
 import { injectable, inject } from 'tsyringe';
+import { IGetFoldersUseCase } from './interfaces';
 
 @injectable()
-export class GetFolders {
+export class GetFolders implements IGetFoldersUseCase {
   constructor(
     @inject("IFolderRepository") private folderRepository: IFolderRepository
   ) {}

@@ -1,9 +1,10 @@
 import { injectable, inject } from "tsyringe";
 import { IRecallRepository } from '../../../domain/recall/repositories/IRecallRepository';
 import { IRecallPublisher } from '../../common/ports/IRecallPublisher';
+import { ICreateCardUseCase } from "./interfaces";
 
 @injectable()
-export class CreateCard {
+export class CreateCard implements ICreateCardUseCase {
   constructor(
     @inject("IRecallRepository") private recallRepository: IRecallRepository,
     @inject("IRecallPublisher") private recallPublisher: IRecallPublisher

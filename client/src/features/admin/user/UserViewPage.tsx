@@ -97,7 +97,7 @@ function UserViewPage() {
   }
 
   return (
-    <div className="p-8 text-white">
+    <div className="p-4 md:p-8 text-white">
       <div className="flex items-center justify-between mb-6">
         <Link
           to="/admin/users"
@@ -239,7 +239,7 @@ function UserViewPage() {
       </section>
 
       <div className="mt-10 border-t border-blue-500/10 pt-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           {user.status === "suspended" ? (
             <button
               onClick={handleUnsuspend}

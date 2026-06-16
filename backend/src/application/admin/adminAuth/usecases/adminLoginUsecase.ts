@@ -36,7 +36,7 @@ export class AdminLoginUseCase implements IAdminLoginUseCase {
     
     const isMatch = await this.authService.comparePassword(password, user.password);
     if (!isMatch) {
-      throw new AppError("Invalid credentials", 401);
+      throw new AppError("Invalid credentials inco", 401);
     }
 
    

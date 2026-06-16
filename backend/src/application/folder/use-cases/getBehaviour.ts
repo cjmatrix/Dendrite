@@ -2,9 +2,10 @@ import { inject, injectable } from "tsyringe";
 import { IFolderRepository } from "../../../domain/folder/repositories/IFolderRepository";
 import { AppError } from "../../../utils/AppError";
 import { IFolder } from "../../../domain/folder/entities/Folder";
+import { IGetbehaviorUseCase } from "./interfaces";
 
 @injectable()
-export class Getbehavior {
+export class Getbehavior implements IGetbehaviorUseCase {
   constructor(
     @inject("IFolderRepository") private folderRepo: IFolderRepository,
   ) {}

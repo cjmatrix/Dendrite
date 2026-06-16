@@ -2,22 +2,24 @@ import { Request, Response } from 'express';
 import { BaseController } from './base/BaseController';
 import { AppError } from '../../utils/AppError';
 import { injectable, inject, container } from 'tsyringe';
-import { CreateFolder } from '../../application/folder/use-cases/CreateFolder';
-import { GetFolders } from '../../application/folder/use-cases/GetFolders';
-import { UpdateFolder } from '../../application/folder/use-cases/UpdateFolder';
-import { DeleteFolder } from '../../application/folder/use-cases/DeleteFolder';
-import { UpdateFolderBehavior } from '../../application/folder/use-cases/UpdateFolderBehavior';
-import { Getbehavior } from '../../application/folder/use-cases/getBehaviour';
+import {
+  ICreateFolderUseCase,
+  IGetFoldersUseCase,
+  IUpdateFolderUseCase,
+  IDeleteFolderUseCase,
+  IUpdateFolderBehaviorUseCase,
+  IGetbehaviorUseCase
+} from '../../application/folder/use-cases/interfaces';
 
 @injectable()
 export class FolderController extends BaseController {
   constructor(
-    @inject(CreateFolder) private createFolderUseCase: CreateFolder,
-    @inject(GetFolders) private getFoldersUseCase: GetFolders,
-    @inject(UpdateFolder) private updateFolderUseCase: UpdateFolder,
-    @inject(DeleteFolder) private deleteFolderUseCase: DeleteFolder,
-    @inject(UpdateFolderBehavior) private updateFolderBehaviorUseCase: UpdateFolderBehavior,
-    @inject(Getbehavior) private getBehavior:Getbehavior
+    @inject("ICreateFolderUseCase") private createFolderUseCase: ICreateFolderUseCase,
+    @inject("IGetFoldersUseCase") private getFoldersUseCase: IGetFoldersUseCase,
+    @inject("IUpdateFolderUseCase") private updateFolderUseCase: IUpdateFolderUseCase,
+    @inject("IDeleteFolderUseCase") private deleteFolderUseCase: IDeleteFolderUseCase,
+    @inject("IUpdateFolderBehaviorUseCase") private updateFolderBehaviorUseCase: IUpdateFolderBehaviorUseCase,
+    @inject("IGetbehaviorUseCase") private getBehavior: IGetbehaviorUseCase
   ) {
     super();
   }

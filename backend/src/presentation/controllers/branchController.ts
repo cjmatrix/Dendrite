@@ -1,29 +1,24 @@
 import { Request, Response } from 'express';
 import { BaseController } from './base/BaseController';
-import { DIContainer } from './container/DIContainer';
-import { AppError } from '../../utils/AppError';
+import { injectable, inject, container } from 'tsyringe';
+import { IInheritContextUseCase, IUnlinkInheritanceUseCase } from '../../application/branch/use-cases/interfaces';
 
-
-
-
+@injectable()
 export class BranchController extends BaseController {
-  constructor() {
+  constructor(
+    @inject("IInheritContextUseCase") private inheritContextUseCase: IInheritContextUseCase,
+    @inject("IUnlinkInheritanceUseCase") private unlinkInheritanceUseCase: IUnlinkInheritanceUseCase
+  ) {
     super();
   }
 
-  
   public inheritContext = async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
       const id = this.getRouteParam(req, 'id');
       const { contextParentId } = req.body;
 
-      if (!contextParentId) {
-        throw new AppError('Context parent ID is required', 400);
-      }
-
-      const inheritContextUseCase = DIContainer.getInheritContextUseCase();
-      const updatedChat = await inheritContextUseCase.execute(id, userId, contextParentId);
+      const updatedChat = await this.inheritContextUseCase.execute(id, userId, contextParentId);
 
       this.sendSuccess(res, updatedChat, 200, 'Context inherited successfully');
     } catch (error) {
@@ -31,14 +26,12 @@ export class BranchController extends BaseController {
     }
   };
 
-
   public unlinkInheritance = async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
       const id = this.getRouteParam(req, 'id');
 
-      const unlinkInheritanceUseCase = DIContainer.getUnlinkInheritanceUseCase();
-      const updatedChat = await unlinkInheritanceUseCase.execute(id, userId);
+      const updatedChat = await this.unlinkInheritanceUseCase.execute(id, userId);
 
       this.sendSuccess(res, updatedChat, 200, 'Inheritance unlinked successfully');
     } catch (error) {
@@ -47,10 +40,4 @@ export class BranchController extends BaseController {
   };
 }
 
-
-
-
-
-export const branchController = new BranchController();
-
-
+export const branchController = container.resolve(BranchController);

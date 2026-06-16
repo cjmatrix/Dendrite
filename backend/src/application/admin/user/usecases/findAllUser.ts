@@ -10,7 +10,7 @@ export class FindAllUser implements IFindAllUserUseCase {
 
     async execute(query: any): Promise<UserPaginationOutputDTO> {
         const { page, limit, search, status, sortBy, sortOrder } = query;
-        let skip = (page - 1) * limit;
+        const skip = (page - 1) * limit;
 
         const filter: any = {};
         if (search) {

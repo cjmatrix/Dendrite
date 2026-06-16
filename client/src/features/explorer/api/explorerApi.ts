@@ -25,11 +25,11 @@ export const getChats = async (): Promise<any[]> => {
   return res.data.data;
 };
 
-export const createChat = async (title: string, folderId: string | null): Promise<void> => {
+export const createChat = async (title: string, folderId: string | null,type?:string): Promise<void> => {
   if (!title || !title.trim()) {
     throw new Error("Title is required");
   }
-  await api.post("/chats/create", { title, folderId });
+  await api.post("/chats/create", { title, folderId ,type});
 };
 
 export const updateChat = async (chatId: string, updates: { title?: string; folderId?: string | null }): Promise<void> => {

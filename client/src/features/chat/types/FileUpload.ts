@@ -56,9 +56,7 @@ export const ALLOWED_DOCUMENT_EXTENSIONS = new Set([
   ".html", ".css",
 ]);
 
-/**
- * Pure domain logic: determine if a file is an image, a document, or unsupported.
- */
+
 export function classifyFile(file: File): "image" | "document" | "unsupported" {
   if (file.type.startsWith("image/")) return "image";
 

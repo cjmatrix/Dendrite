@@ -135,7 +135,7 @@ User query: "${queryText}"`;
     // console.log(JSON.stringify(contents,null,2));
 
 
-    console.log(systemInstruction)
+  
     console.log("Strem STARTED ")
     let stream;
     let attempts = 0;
@@ -272,7 +272,7 @@ User query: "${queryText}"`;
     historicalContext: string,
     highlightedText: string,
   ): string {
-    console.log(estimateTokenCount(historicalContext));
+ 
 
     return `You are a surgical AI Assistant specialized in analyzing highlights within a side-modal.
     IMPORTANT- Use this format by default First breifly answer what user asked in one sentence means you should answer user query in one sentence first  it is IMPORTANT, and then format for all answers: [Concept] - [1-sentence definition]. Key points: [bullet points].YTou can check USER'S Query to see if user explitly asked in detail explanation you could provide detail explanation

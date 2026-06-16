@@ -1,7 +1,12 @@
+import { injectable, inject } from "tsyringe";
 import { IRecallRepository } from '../../../domain/recall/repositories/IRecallRepository';
+import { ICountDueCardsUseCase } from "./interfaces";
 
-export class CountDueCards {
-  constructor(private recallRepository: IRecallRepository) {}
+@injectable()
+export class CountDueCards implements ICountDueCardsUseCase {
+  constructor(
+    @inject("IRecallRepository") private recallRepository: IRecallRepository
+  ) {}
 
   async execute(userId: string) {
     const now = new Date();
