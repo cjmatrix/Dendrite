@@ -16,14 +16,16 @@ export default function FileDisplay({
   currentFolderId,
   onFolderChange,
   showFoldersOnly = false,
-  excludeFolderId
+  excludeFolderId,
+  customTree
 }: {
   isModal?: boolean,
   onSelect?: (node: FileNode) => void,
   currentFolderId?: string | null,
   onFolderChange?: (folderId: string) => void,
   showFoldersOnly?: boolean,
-  excludeFolderId?: string
+  excludeFolderId?: string,
+  customTree?: FileNode
 }) {
   const { folderId: routeFolderId } = useParams();
   const [localFolderId, setLocalFolderId] = useState<string | null>(currentFolderId || 'root');
@@ -38,14 +40,15 @@ export default function FileDisplay({
 
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const tree = useAppSelector(state => state.explorer.tree);
+  const reduxTree = useAppSelector(state => state.explorer.tree);
+  const tree = customTree || reduxTree;
 
   const { currentFolder, path } = useFileDisplayTree(tree, activeFolderId);
   const { createFolder, updateFolder, deleteFolder, createChat, updateChat, deleteChat } = useFileItemMutations();
 
 
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; node: FileNode | null } | null>(null);
-  const [isCreating, setIsCreating] = useState<FileType | null>(null);
+  const [isCreating, setIsCreating] = useState<"chat" | "folder" | "agent" | null>(null);
   const [isRenaming, setIsRenaming] = useState<string | null>(null);
   const [newItemName, setNewItemName] = useState("");
   const [renameItemName, setRenameItemName] = useState("");
@@ -58,6 +61,8 @@ export default function FileDisplay({
       const activeId = currentFolder.id === 'root' ? null : currentFolder.id;
       if (isCreating === "folder") {
         createFolder({ name: newItemName, parentId: activeId });
+      } else if (isCreating === "agent") {
+        createChat({ title: newItemName, folderId: activeId, type: "agent" });
       } else {
         createChat({ title: newItemName, folderId: activeId });
       }
@@ -248,10 +253,17 @@ export default function FileDisplay({
                       )}
                     </>
                   ) : (
-                    <div className={`relative flex items-center justify-center ${isModal ? "p-2.5" : "p-3.5"} rounded-[1.25rem] bg-linear-to-br from-emerald-500/10 to-teal-600/10 border border-emerald-500/20`}>
-                      <Sparkles size={16} className={`absolute -top-1.5 -right-1.5 text-emerald-400 opacity-80 ${isModal ? "hidden" : ""}`} />
-                      <MessageSquare size={isModal ? 32 : 44} className="text-emerald-400" strokeWidth={1.5} />
-                    </div>
+                    child.chatType === "agent" ? (
+                      <div className={`relative flex items-center justify-center ${isModal ? "p-2.5" : "p-3.5"} rounded-[1.25rem] bg-linear-to-br from-amber-500/10 to-orange-600/10 border border-amber-500/25`}>
+                        <Brain size={16} className={`absolute -top-1.5 -right-1.5 text-amber-400 opacity-80 ${isModal ? "hidden" : ""}`} />
+                        <Brain size={isModal ? 32 : 44} className="text-amber-400" strokeWidth={1.5} />
+                      </div>
+                    ) : (
+                      <div className={`relative flex items-center justify-center ${isModal ? "p-2.5" : "p-3.5"} rounded-[1.25rem] bg-linear-to-br from-emerald-500/10 to-teal-600/10 border border-emerald-500/20`}>
+                        <Sparkles size={16} className={`absolute -top-1.5 -right-1.5 text-emerald-400 opacity-80 ${isModal ? "hidden" : ""}`} />
+                        <MessageSquare size={isModal ? 32 : 44} className="text-emerald-400" strokeWidth={1.5} />
+                      </div>
+                    )
                   )}
                 </div>
 
@@ -328,6 +340,9 @@ export default function FileDisplay({
               <>
                 <button className="w-full text-left px-3 py-2 hover:bg-indigo-600 hover:text-white flex items-center gap-2 transition-colors" onClick={(e) => { e.stopPropagation(); setIsCreating("chat"); setContextMenu(null); }}>
                   <MessageSquare size={15} /> New Chat
+                </button>
+                <button className="w-full text-left px-3 py-2 hover:bg-indigo-600 hover:text-white flex items-center gap-2 transition-colors" onClick={(e) => { e.stopPropagation(); setIsCreating("agent"); setContextMenu(null); }}>
+                  <MessageSquare size={15} /> New Agent Chat
                 </button>
                 <button className="w-full text-left px-3 py-2 hover:bg-indigo-600 hover:text-white flex items-center gap-2 transition-colors" onClick={(e) => { e.stopPropagation(); setIsCreating("folder"); setContextMenu(null); }}>
                   <FolderPlus size={15} /> New Folder

@@ -92,14 +92,14 @@ export function useFileItemMutations() {
   
 
   const { mutate: createChat } = useMutation({
-    mutationFn: ({ title, folderId }: { title: string; folderId: string | null }) =>
-      apiCreateChat(title, folderId),
-    onMutate: async ({ title, folderId }) => {
+    mutationFn: ({ title, folderId, type }: { title: string; folderId: string | null; type?: string }) =>
+      apiCreateChat(title, folderId, type),
+    onMutate: async ({ title, folderId, type }) => {
       await queryClient.cancelQueries({ queryKey: ["chats"] });
       const previous = queryClient.getQueryData(["chats"]);
       queryClient.setQueryData(["chats"], (old: any[]) => {
         if (!old) return old;
-        const temp = { _id: `temp-${Date.now()}`, title, folderId, type: "chat" };
+        const temp = { _id: `temp-${Date.now()}`, title, folderId, type: type || "chat" };
         return [...old, temp];
       });
       return { previous };

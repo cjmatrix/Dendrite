@@ -16,6 +16,9 @@ export class CreateLink {
     behaviorSharingPolicy?: "READ_ONLY" | "READ_WRITE" | "INVISIBLE";
   }): Promise<ISharedLink> {
     const token = crypto.randomBytes(32).toString("hex");
+
+    
+
     const link: ISharedLink = {
       creatorId: input.creatorId,
       targetId: input.targetId,

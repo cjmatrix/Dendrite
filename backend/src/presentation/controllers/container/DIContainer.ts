@@ -62,6 +62,7 @@ import { CountDueCards } from '../../../application/recall/use-cases/CountDueCar
 
 import { InheritContext } from '../../../application/branch/use-cases/InheritContext';
 import { UnlinkInheritance } from '../../../application/branch/use-cases/UnlinkInheritance';
+import { DownloadSharedLink } from '../../../application/shareLink/use-cases/downloadSharedLink';
 
 import { container } from "tsyringe";
 import { IEmbeddingService } from "../../../application/common/ports/IEmbeddingService";
@@ -133,6 +134,7 @@ export class DIContainer {
   // Branch Use Cases
   private static inheritContextUseCase: InheritContext;
   private static unlinkInheritanceUseCase: UnlinkInheritance;
+  private static downloadSharedLinkUseCase: DownloadSharedLink;
 
 
 
@@ -573,5 +575,17 @@ export class DIContainer {
       this.unlinkInheritanceUseCase = new UnlinkInheritance(this.getChatRepository());
     }
     return this.unlinkInheritanceUseCase;
+  }
+
+  static getDownloadSharedLinkUseCase(): DownloadSharedLink {
+    if (!this.downloadSharedLinkUseCase) {
+      this.downloadSharedLinkUseCase = new DownloadSharedLink(
+        container.resolve("ISharedLinkRepository"),
+        this.getChatRepository(),
+        this.getMessageRepository(),
+        this.getFolderRepository()
+      );
+    }
+    return this.downloadSharedLinkUseCase;
   }
 }

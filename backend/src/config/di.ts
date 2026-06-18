@@ -4,6 +4,7 @@ import { MongoUserRepository } from "../infrastructure/auth/repositories/MongoUs
 import { RedisShareLinkRepository } from "../infrastructure/shareLink/repositories/RedisShareLinkRepository";
 import { CreateLink } from "../application/shareLink/use-cases/createLink";
 import { ResolveLink } from "../application/shareLink/use-cases/resolveLink";
+import { DownloadSharedLink } from "../application/shareLink/use-cases/downloadSharedLink";
 import { MongooseUnitOfWork } from "../infrastructure/shared/MongooseUnitOfWork";
 import { WinstonLoggerAdapter } from "../infrastructure/logger/WinstonLoggerAdapter";
 import { ILogger } from "../application/common/ports/ILogger";
@@ -83,6 +84,7 @@ import { UpdateFolderBehavior } from "../application/folder/use-cases/UpdateFold
 import { Getbehavior } from "../application/folder/use-cases/getBehaviour";
 import { InheritContext } from "../application/branch/use-cases/InheritContext";
 import { UnlinkInheritance } from "../application/branch/use-cases/UnlinkInheritance";
+import { GenerateWorkspaceUseCase } from "../application/agent/use-cases/GenerateWorkspaceUseCase";
 
 
 import { VoyageEmbeddingService } from "../infrastructure/services/VoyageEmbeddingService";
@@ -147,6 +149,7 @@ container.registerSingleton("IUpdateByokKeysUseCase", UpdateByokKeys);
 container.registerSingleton("IGetByokKeysUseCase", GetByokKeys);
 container.registerSingleton("ICreateLinkUseCase", CreateLink);
 container.registerSingleton("IResolveLinkUseCase", ResolveLink);
+container.registerSingleton("IDownloadSharedLinkUseCase", DownloadSharedLink);
 
 container.registerSingleton("IAdminLoginUseCase", AdminLoginUseCase);
 container.registerSingleton("IAdminLogoutUseCase", AdminLogoutUseCase);
@@ -193,5 +196,7 @@ container.registerSingleton("IGetbehaviorUseCase", Getbehavior);
 
 container.registerSingleton("IInheritContextUseCase", InheritContext);
 container.registerSingleton("IUnlinkInheritanceUseCase", UnlinkInheritance);
+
+container.registerSingleton("GenerateWorkspaceUseCase", GenerateWorkspaceUseCase);
 
 export { container };

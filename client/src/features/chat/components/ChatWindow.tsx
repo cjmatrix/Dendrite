@@ -25,6 +25,9 @@ import {
   Key,
   Shield,
   Files,
+  AlertCircle,
+  CheckCircle,
+  Download,
 } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
 import type { VirtuosoHandle } from "react-virtuoso";
@@ -39,6 +42,8 @@ import { SettingsModal } from "./SettingsModal";
 import FileDisplay from "../../explorer/components/FileDisplay";
 import RecallPage from "../../recall/components/RecallPage";
 import { ShareLinkModal } from "../../explorer/components/ShareLinkModal";
+import { ImportSharedModal } from "../../explorer/components/ImportSharedModal";
+import toast from "react-hot-toast";
 
 import { MessageBubble } from "./MessageBubble";
 import { VirtuosoHeader } from "./VirtuosoHeader";
@@ -78,7 +83,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   externalSelectionAction,
   onExternalSelectionHandled,
 }) => {
-  const { id } = useParams();
+  const { id, token } = useParams<{ id?: string, token?: string }>();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { tree, isRecallOverlayOpen, isShareMode } = useAppSelector((state) => state.explorer);
@@ -110,6 +115,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const user = useAppSelector((state) => state.auth.user);
   const [isByokModalOpen, setIsByokModalOpen] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
+  const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
   const [input, setInput] = useState("");
   const [isQuickChatOpen, setIsQuickChatOpen] = useState(false);
   const [externalSelectedFile, setExternalSelectedFile] = useState<{
@@ -256,7 +262,13 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     const msg = input.trim();
     lastQueryRef.current = msg;
     setInput("");
-    send(msg, selectedImageUrl, effectiveSelectedFile);
+
+    if (chat?.type === "agent") {
+      sendAgentMessage.mutate({ chatId: id || "", message: msg });
+    } else {
+      send(msg, selectedImageUrl, effectiveSelectedFile);
+    }
+
     clearImage();
     clearFile();
     setExternalSelectedFile(null);
@@ -270,6 +282,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     send,
     clearImage,
     clearFile,
+    chat?.type,
+    id,
+    sendAgentMessage,
   ]);
 
   const handleStop = useCallback(() => {
@@ -391,7 +406,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
   return (
     <div
-      className="flex flex-col h-screen  bg-white/1 text-gray-200 font-sans w-full relative overflow-hidden"
+      className={`flex flex-col h-screen bg-white/1 text-gray-200 font-sans w-full relative overflow-hidden transition-all duration-300 ${
+        chat?.type === "agent" ? "border border-amber-500/20" : ""
+      }`}
       onMouseUp={handleTextSelection}
     >
       {/* Animated Edge Tracer */}
@@ -444,7 +461,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           </div>
         </div>
         <div className="flex items-center gap-2 text-zinc-400 shrink-0 ml-4">
-          {!isShareMode && (
+          {!isShareMode ? (
             <>
               <button 
                 onClick={() => setIsShareOpen(true)}
@@ -457,6 +474,21 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 <MoreVertical size={18} />
               </button>
             </>
+          ) : (
+            <button
+              onClick={() => {
+                if (!user) {
+                  toast.error("Please sign in to import this shared content.");
+                  return;
+                }
+                setIsDownloadModalOpen(true);
+              }}
+              className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer"
+              title="Import shared content to workspace"
+            >
+              <Download size={15} />
+              <span>Import Workspace</span>
+            </button>
           )}
         </div>
       </div>
@@ -504,84 +536,96 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           </div>
         ) : messages.length === 0 && !isStreaming ? (
           <div className="flex flex-col items-center mt-20 px-8 max-w-4xl mx-auto w-full text-center">
-            <DendritesLogo size={80} className="mb-6 opacity-80" />
+            <DendritesLogo size={80} className="mb-6 opacity-80 animate-pulse text-amber-400" />
 
             <h1 className="text-3xl font-bold text-white mb-3 tracking-tight">
-              Welcome to Dendrites
+              {chat?.type === "agent" ? "Agent Workspace Architect" : "Welcome to Dendrites"}
             </h1>
-            <p className="text-zinc-500 text-lg mb-10 max-w-md mx-auto">
-              How can I help with your research or development today?
-            </p>
+            {chat?.type !== "agent" ? (
+              <p className="text-zinc-500 text-lg mb-10 max-w-md mx-auto">
+                How can I help with your research or development today?
+              </p>
+            ) : (
+              <p className="text-zinc-400 text-sm mb-10 max-w-lg mx-auto leading-relaxed">
+                The Agent Workspace Architect dynamically designs and builds structured learning roadmaps directly inside your workspace directory tree. Tell the agent what you want to study, and it will analyze folder paths, resolve any structure duplicates, and automatically construct customized milestone folders and sub-chats.
+              </p>
+            )}
 
             <div className="flex flex-col items-center gap-8 w-full max-w-sm mx-auto">
               <div className="flex flex-col items-center gap-2">
-                <span className="text-[11px] text-zinc-600 font-bold uppercase tracking-[0.2em] px-1">
-                  Neural Flow
+                <span className="text-[11px] text-amber-500/80 font-bold uppercase tracking-[0.2em] px-1">
+                  {chat?.type === "agent" ? "Agent Workspace Generation" : "Neural Flow"}
                 </span>
                 <p className="text-[15px] text-zinc-300 font-medium">
-                  Type below to begin a fresh mapping
+                  {chat?.type === "agent"
+                    ? "Enter your learning goal below to programmatically design and build your milestones."
+                    : "Type below to begin a fresh mapping"}
                 </p>
               </div>
 
-              {/* Sophisticated OR separator */}
-              <div className="flex items-center gap-4 w-full">
-                <div className="h-px flex-1 bg-linear-to-r from-transparent via-zinc-800 to-transparent"></div>
-                <span className="text-[10px] text-zinc-600 font-black tracking-widest uppercase">OR</span>
-                <div className="h-px flex-1 bg-linear-to-r from-transparent via-zinc-800 to-transparent"></div>
-              </div>
+              {chat?.type !== "agent" && (
+                <>
+                  {/* Sophisticated OR separator */}
+                  <div className="flex items-center gap-4 w-full">
+                    <div className="h-px flex-1 bg-linear-to-r from-transparent via-zinc-800 to-transparent"></div>
+                    <span className="text-[10px] text-zinc-600 font-black tracking-widest uppercase">OR</span>
+                    <div className="h-px flex-1 bg-linear-to-r from-transparent via-zinc-800 to-transparent"></div>
+                  </div>
 
-              <div className="flex flex-col items-center gap-4">
-                <span className="text-[11px] text-zinc-600 font-bold uppercase tracking-[0.2em] px-1">
-                  Inherit Experience
-                </span>
-                
-                {/* Premium Branch Indicator */}
-                <div className="relative group/inherit">
-                  <button
-                    onClick={openInheritModal}
-                    className={`flex items-center gap-3 px-6 py-3 rounded-2xl transition-all duration-500 border backdrop-blur-xl hover:scale-105 active:scale-95 ${
-                      chat?.contextParent
-                        ? "bg-blue-500/10 border-blue-500/30 text-blue-400 shadow-[0_0_30px_-10px_rgba(59,130,246,0.5)]"
-                        : "bg-white/5 border-white/10 text-zinc-400 hover:text-amber-200/90 hover:border-amber-500/40 hover:bg-amber-500/10 hover:shadow-[0_0_30px_-10px_rgba(245,158,11,0.3)]"
-                    }`}
-                  >
-                    <div className={`p-2 rounded-xl transition-colors ${
-                       chat?.contextParent ? "bg-blue-500/20" : "bg-white/5"
-                    }`}>
-                      <GitBranch
-                        size={18}
-                        className={`${chat?.contextParent ? "animate-pulse" : ""}`}
-                      />
-                    </div>
-                    <div className="flex flex-col items-start min-w-[120px]">
-                       <span className="text-[10px] font-black uppercase tracking-widest opacity-50 mb-0.5">
-                         {chat?.contextParent ? "Active Link" : "Context"}
-                       </span>
-                       <span className="text-[13px] font-bold truncate max-w-[160px]">
-                        {chat?.contextParent
-                          ? (chat.contextParent.title || "Linked Chat")
-                          : "Inherit Branch"}
-                      </span>
-                    </div>
-                  </button>
+                  <div className="flex flex-col items-center gap-4">
+                    <span className="text-[11px] text-zinc-600 font-bold uppercase tracking-[0.2em] px-1">
+                      Inherit Experience
+                    </span>
+                    
+                    {/* Premium Branch Indicator */}
+                    <div className="relative group/inherit">
+                      <button
+                        onClick={openInheritModal}
+                        className={`flex items-center gap-3 px-6 py-3 rounded-2xl transition-all duration-500 border backdrop-blur-xl hover:scale-105 active:scale-95 ${
+                          chat?.contextParent
+                            ? "bg-blue-500/10 border-blue-500/30 text-blue-400 shadow-[0_0_30px_-10px_rgba(59,130,246,0.5)]"
+                            : "bg-white/5 border-white/10 text-zinc-400 hover:text-amber-200/90 hover:border-amber-500/40 hover:bg-amber-500/10 hover:shadow-[0_0_30px_-10px_rgba(245,158,11,0.3)]"
+                        }`}
+                      >
+                        <div className={`p-2 rounded-xl transition-colors ${
+                           chat?.contextParent ? "bg-blue-500/20" : "bg-white/5"
+                        }`}>
+                          <GitBranch
+                            size={18}
+                            className={`${chat?.contextParent ? "animate-pulse" : ""}`}
+                          />
+                        </div>
+                        <div className="flex flex-col items-start min-w-[120px]">
+                           <span className="text-[10px] font-black uppercase tracking-widest opacity-50 mb-0.5">
+                             {chat?.contextParent ? "Active Link" : "Context"}
+                           </span>
+                           <span className="text-[13px] font-bold truncate max-w-[160px]">
+                            {chat?.contextParent
+                              ? (chat.contextParent.title || "Linked Chat")
+                              : "Inherit Branch"}
+                          </span>
+                        </div>
+                      </button>
 
-                  {/* Unlink Button */}
-                  {chat?.contextParent && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (window.confirm("Disconnect this chat from its parent?")) {
-                          unlinkInheritance();
-                        }
-                      }}
-                      className="absolute -top-2 -right-2 p-2 rounded-full bg-zinc-900 border border-white/10 text-zinc-500 hover:text-red-400 hover:border-red-400/50 transition-all opacity-0 group-hover/inherit:opacity-100 shadow-2xl scale-75 group-hover/inherit:scale-100"
-                      title="Unlink inheritance"
-                    >
-                      <X size={14} />
-                    </button>
-                  )}
-                </div>
-              </div>
+                      {/* Unlink Button */}
+                      {chat?.contextParent && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (window.confirm("Disconnect this chat from its parent?")) {
+                              unlinkInheritance();
+                            }
+                          }}
+                          className="absolute -top-2 -right-2 p-2 rounded-full bg-zinc-900 border border-white/10 text-zinc-500 hover:text-red-400 hover:border-red-400/50 transition-all opacity-0 group-hover/inherit:opacity-100 shadow-2xl scale-75 group-hover/inherit:scale-100"
+                          title="Unlink inheritance"
+                        >
+                          <X size={14} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         ) : (
@@ -649,11 +693,26 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       <div className="absolute bottom-0 left-0 right-0 pt-20 pb-6 px-4 md:px-8 border-none pointer-events-none bg-linear-to-t from-(--theme-bg-base) via-(--theme-bg-base)/95 to-transparent">
         <div className="max-w-4xl mx-auto relative pointer-events-auto ">
           {isShareMode ? (
-            <div className="flex items-center justify-center gap-2 p-4 bg-zinc-900/40 border border-zinc-800/85 rounded-2xl text-zinc-500 select-none shadow-2xl">
-              <Shield size={16} className="text-zinc-600 animate-pulse" />
-              <span className="text-xs font-bold tracking-wide uppercase">
-                This is a Read-Only Preview. Message input is disabled.
-              </span>
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-zinc-900/40 border border-zinc-800/85 rounded-2xl shadow-2xl">
+              <div className="flex items-center gap-2 text-zinc-500 select-none">
+                <Shield size={16} className="text-zinc-600 animate-pulse" />
+                <span className="text-xs font-bold tracking-wide uppercase">
+                  This is a Read-Only Preview. Message input is disabled.
+                </span>
+              </div>
+              <button
+                onClick={() => {
+                  if (!user) {
+                    toast.error("Please sign in to import this shared content.");
+                    return;
+                  }
+                  setIsDownloadModalOpen(true);
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer whitespace-nowrap"
+              >
+                <Download size={15} />
+                <span>Import Workspace</span>
+              </button>
             </div>
           ) : (
             <>
@@ -722,153 +781,210 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             </div>
           )}
 
-          <div className="flex items-center bg-(--theme-bg-elevated)/90 backdrop-blur-xl border border-white/10 rounded-2xl px-3 md:px-4 py-3 md:py-3.5 focus-within:border-blue-500/50 focus-within:bg-(--theme-bg-elevated) transition-all shadow-2xl">
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="p-2 hover:bg-white/5 rounded-xl text-gray-400 hover:text-gray-200 transition-colors hidden md:block group"
-              disabled={isUploading || isStreaming}
-              title="Upload image or file"
-            >
-              <Paperclip
-                size={20}
-                className="group-hover:rotate-12 transition-transform"
-              />
-            </button>
-
-            <button
-              onClick={() => setIsShowingBrowser(true)}
-              className="p-2 hover:bg-white/5 rounded-xl text-gray-400 hover:text-gray-200 transition-colors hidden md:block group relative"
-              disabled={isStreaming}
-              title={`View uploaded files (${documents.length})`}
-            >
-              <Files
-                size={20}
-                className="group-hover:scale-110 transition-transform"
-              />
-              {documents.length > 0 && (
-                <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                  {documents.length}
-                </span>
+          {/* Agent Response Card */}
+          {chat?.type === "agent" && (
+            <>
+              {sendAgentMessage.isPending && (
+                <div className="mb-4 bg-zinc-800/80 backdrop-blur-md border border-zinc-700/50 rounded-xl p-6 shadow-lg animate-in fade-in slide-in-from-bottom-2">
+                  <div className="flex flex-col items-center justify-center py-4 text-center">
+                    <div className="relative mb-4">
+                      {/* Premium pulsing circle and orbit spinner */}
+                      <div className="w-10 h-10 rounded-full border-2 border-amber-500/20 border-t-amber-500 animate-spin"></div>
+                      <div className="absolute inset-0 w-10 h-10 rounded-full border border-amber-500/10 animate-ping"></div>
+                    </div>
+                    
+                    <h4 className="text-amber-400 font-bold text-xs mb-1 tracking-wider uppercase">
+                      Agent is generating workspace
+                    </h4>
+                    <p className="text-zinc-400 text-xs max-w-xs animate-pulse">
+                      Analyzing existing folder layout, resolving conflicts, and building learning roadmap milestones...
+                    </p>
+                  </div>
+                </div>
               )}
-            </button>
 
-            {/* Mode Selector */}
-            <div className="relative z-50 ">
-              <button
-                onClick={() => setIsModeOpen(!isModeOpen)}
-                className="flex items-center gap-1.5 px-3 py-1.5 ml-1 rounded-lg text-xs font-semibold bg-white/5 hover:bg-white/10 text-gray-300 transition-colors border border-white/5 shadow-sm"
-              >
-                {mode === "general" ? (
-                  <Sparkles size={14} className="text-blue-400" />
-                ) : (
-                  <Image size={14} className="text-purple-400" />
+              {sendAgentMessage.data && !sendAgentMessage.isPending && sendAgentMessage.data.type === "clarification_needed" && (
+                <div className="mb-4 bg-zinc-800/80 backdrop-blur-md border border-zinc-700/50 rounded-xl p-4 shadow-lg animate-in fade-in slide-in-from-bottom-2">
+                  <div>
+                    <h4 className="text-amber-400 font-medium text-sm mb-2 flex items-center gap-2">
+                      <AlertCircle size={16} /> Action Required
+                    </h4>
+                    <p className="text-gray-300 text-sm mb-3">{sendAgentMessage.data.message}</p>
+                    <div className="flex flex-col gap-2">
+                      {sendAgentMessage.data.options?.map((opt: any) => (
+                        <button
+                          key={opt.id}
+                          onClick={() => {
+                             sendAgentMessage.mutate({ chatId: id, message: opt.id });
+                          }}
+                          className="text-left px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-700 hover:border-amber-500/50 hover:bg-zinc-800 transition-colors"
+                        >
+                          <span className="block text-sm font-medium text-gray-200">{opt.path}</span>
+                          <span className="block text-xs text-gray-500 font-mono mt-0.5">ID: {opt.id}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          <div className={`flex items-center bg-(--theme-bg-elevated)/90 backdrop-blur-xl border rounded-2xl px-3 md:px-4 py-3 md:py-3.5 transition-all shadow-2xl ${
+            chat?.type === "agent"
+              ? "border-amber-500/40 focus-within:border-amber-500 focus-within:shadow-[0_0_15px_rgba(245,158,11,0.15)]"
+              : "border-white/10 focus-within:border-blue-500/50 focus-within:bg-(--theme-bg-elevated)"
+          }`}>
+            {chat?.type !== "agent" && (
+              <>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="p-2 hover:bg-white/5 rounded-xl text-gray-400 hover:text-gray-200 transition-colors hidden md:block group"
+                  disabled={isUploading || isStreaming}
+                  title="Upload image or file"
+                >
+                  <Paperclip
+                    size={20}
+                    className="group-hover:rotate-12 transition-transform"
+                  />
+                </button>
+
+                <button
+                  onClick={() => setIsShowingBrowser(true)}
+                  className="p-2 hover:bg-white/5 rounded-xl text-gray-400 hover:text-gray-200 transition-colors hidden md:block group relative"
+                  disabled={isStreaming}
+                  title={`View uploaded files (${documents.length})`}
+                >
+                  <Files
+                    size={20}
+                    className="group-hover:scale-110 transition-transform"
+                  />
+                  {documents.length > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                      {documents.length}
+                    </span>
+                  )}
+                </button>
+
+                {/* Mode Selector */}
+                <div className="relative z-50 ">
+                  <button
+                    onClick={() => setIsModeOpen(!isModeOpen)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 ml-1 rounded-lg text-xs font-semibold bg-white/5 hover:bg-white/10 text-gray-300 transition-colors border border-white/5 shadow-sm"
+                  >
+                    {mode === "general" ? (
+                      <Sparkles size={14} className="text-blue-400" />
+                    ) : (
+                      <Image size={14} className="text-purple-400" />
+                    )}
+                    <span className="hidden sm:inline">
+                      {mode === "general" ? "General" : "Visual"}
+                    </span>
+                    <ChevronDown
+                      size={14}
+                      className={`text-gray-500 transition-transform ${isModeOpen ? "rotate-180" : ""}`}
+                    />
+                  </button>
+
+                  {isModeOpen && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-40"
+                        onClick={() => setIsModeOpen(false)}
+                      ></div>
+                      <div className="absolute bottom-full left-0 mb-3 w-48 bg-(--theme-bg-surface) border border-zinc-700 shadow-2xl rounded-xl overflow-hidden py-1.5 z-50">
+                        <button
+                          onClick={() => {
+                            setMode("general");
+                            setIsModeOpen(false);
+                          }}
+                          className="w-full flex items-center justify-between px-3 py-2.5 text-sm text-gray-300 hover:bg-white/5 transition-colors"
+                        >
+                          <div className="flex items-center gap-3 font-medium">
+                            <Sparkles size={16} className="text-blue-400" />
+                            <span>General Mode</span>
+                          </div>
+                          {mode === "general" && (
+                            <Check size={16} className="text-blue-400" />
+                          )}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setMode("visual");
+                            setIsModeOpen(false);
+                          }}
+                          className="w-full flex items-center justify-between px-3 py-2.5 text-sm text-gray-300 hover:bg-white/5 transition-colors"
+                        >
+                          <div className="flex items-center gap-3 font-medium">
+                            <Image size={16} className="text-purple-400" />
+                            <span>Visual Mode</span>
+                          </div>
+                          {mode === "visual" && (
+                            <Check size={16} className="text-purple-400" />
+                          )}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* Model Selector */}
+                <div className="relative z-50">
+                  <button
+                    onClick={() => setIsModelOpen(!isModelOpen)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 ml-1 rounded-lg text-xs font-semibold bg-white/5 hover:bg-white/10 text-gray-300 transition-colors border border-white/5 shadow-sm max-w-[160px] truncate"
+                  >
+                    <Cpu size={14} className="text-emerald-400 shrink-0" />
+                    <span className="hidden sm:inline truncate">
+                      {MODEL_OPTIONS.find((m) => m.id === model)?.label || "Model"}
+                    </span>
+                    <ChevronDown
+                      size={14}
+                      className={`text-gray-500 transition-transform shrink-0 ${isModelOpen ? "rotate-180" : ""}`}
+                    />
+                  </button>
+
+                  {isModelOpen && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-40"
+                        onClick={() => setIsModelOpen(false)}
+                      ></div>
+                      <div className="absolute bottom-full left-0 mb-3 w-48 bg-(--theme-bg-surface) border border-zinc-700 shadow-2xl rounded-xl overflow-hidden py-1.5 z-50 max-h-[300px] overflow-y-auto no-scrollbar">
+                        {MODEL_OPTIONS.map((opt) => (
+                          <button
+                            key={opt.id}
+                            onClick={() => {
+                              setModel(opt.id);
+                              setIsModelOpen(false);
+                            }}
+                            className="w-full flex items-center justify-between px-3 py-2 text-sm text-gray-300 hover:bg-white/5 transition-colors"
+                          >
+                            <div className="flex flex-col items-start gap-0.5">
+                              <span className="font-medium text-left truncate max-w-[120px]">{opt.label}</span>
+                              <span className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">{opt.tier}</span>
+                            </div>
+                            {model === opt.id && (
+                              <Check size={16} className="text-emerald-400 shrink-0" />
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {user?.tier === "byok" && (
+                  <button
+                    onClick={() => setIsByokModalOpen(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 ml-1 rounded-lg text-xs font-semibold bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 transition-colors border border-emerald-500/20 shadow-sm whitespace-nowrap"
+                    title="Manage BYOK API Keys"
+                  >
+                    <Key size={14} className="shrink-0" />
+                    <span className="hidden sm:inline">Keys</span>
+                  </button>
                 )}
-                <span className="hidden sm:inline">
-                  {mode === "general" ? "General" : "Visual"}
-                </span>
-                <ChevronDown
-                  size={14}
-                  className={`text-gray-500 transition-transform ${isModeOpen ? "rotate-180" : ""}`}
-                />
-              </button>
-
-              {isModeOpen && (
-                <>
-                  <div
-                    className="fixed inset-0 z-40"
-                    onClick={() => setIsModeOpen(false)}
-                  ></div>
-                  <div className="absolute bottom-full left-0 mb-3 w-48 bg-(--theme-bg-surface) border border-zinc-700 shadow-2xl rounded-xl overflow-hidden py-1.5 z-50">
-                    <button
-                      onClick={() => {
-                        setMode("general");
-                        setIsModeOpen(false);
-                      }}
-                      className="w-full flex items-center justify-between px-3 py-2.5 text-sm text-gray-300 hover:bg-white/5 transition-colors"
-                    >
-                      <div className="flex items-center gap-3 font-medium">
-                        <Sparkles size={16} className="text-blue-400" />
-                        <span>General Mode</span>
-                      </div>
-                      {mode === "general" && (
-                        <Check size={16} className="text-blue-400" />
-                      )}
-                    </button>
-                    <button
-                      onClick={() => {
-                        setMode("visual");
-                        setIsModeOpen(false);
-                      }}
-                      className="w-full flex items-center justify-between px-3 py-2.5 text-sm text-gray-300 hover:bg-white/5 transition-colors"
-                    >
-                      <div className="flex items-center gap-3 font-medium">
-                        <Image size={16} className="text-purple-400" />
-                        <span>Visual Mode</span>
-                      </div>
-                      {mode === "visual" && (
-                        <Check size={16} className="text-purple-400" />
-                      )}
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-
-            {/* Model Selector */}
-            <div className="relative z-50">
-              <button
-                onClick={() => setIsModelOpen(!isModelOpen)}
-                className="flex items-center gap-1.5 px-3 py-1.5 ml-1 rounded-lg text-xs font-semibold bg-white/5 hover:bg-white/10 text-gray-300 transition-colors border border-white/5 shadow-sm max-w-[160px] truncate"
-              >
-                <Cpu size={14} className="text-emerald-400 shrink-0" />
-                <span className="hidden sm:inline truncate">
-                  {MODEL_OPTIONS.find((m) => m.id === model)?.label || "Model"}
-                </span>
-                <ChevronDown
-                  size={14}
-                  className={`text-gray-500 transition-transform shrink-0 ${isModelOpen ? "rotate-180" : ""}`}
-                />
-              </button>
-
-              {isModelOpen && (
-                <>
-                  <div
-                    className="fixed inset-0 z-40"
-                    onClick={() => setIsModelOpen(false)}
-                  ></div>
-                  <div className="absolute bottom-full left-0 mb-3 w-48 bg-(--theme-bg-surface) border border-zinc-700 shadow-2xl rounded-xl overflow-hidden py-1.5 z-50 max-h-[300px] overflow-y-auto no-scrollbar">
-                    {MODEL_OPTIONS.map((opt) => (
-                      <button
-                        key={opt.id}
-                        onClick={() => {
-                          setModel(opt.id);
-                          setIsModelOpen(false);
-                        }}
-                        className="w-full flex items-center justify-between px-3 py-2 text-sm text-gray-300 hover:bg-white/5 transition-colors"
-                      >
-                        <div className="flex flex-col items-start gap-0.5">
-                          <span className="font-medium text-left truncate max-w-[120px]">{opt.label}</span>
-                          <span className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">{opt.tier}</span>
-                        </div>
-                        {model === opt.id && (
-                          <Check size={16} className="text-emerald-400 shrink-0" />
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-
-            {user?.tier === "byok" && (
-              <button
-                onClick={() => setIsByokModalOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 ml-1 rounded-lg text-xs font-semibold bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 transition-colors border border-emerald-500/20 shadow-sm whitespace-nowrap"
-                title="Manage BYOK API Keys"
-              >
-                <Key size={14} className="shrink-0" />
-                <span className="hidden sm:inline">Keys</span>
-              </button>
+              </>
             )}
 
             <textarea
@@ -897,30 +1013,44 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               <span className="text-[10px] font-medium text-gray-500 hidden md:block uppercase tracking-wider">
                 Cmd + Enter
               </span>
-              {chat?.type==="normal"?<button
-                onClick={isStreaming ? handleStop : handleSend}
-                disabled={
-                  isUploading ||
-                  (!isStreaming && !input.trim() && !selectedImageUrl && !activeSelectedFile)
-                }
-                className={`p-2 rounded-xl transition-all flex items-center justify-center ${
-                  isStreaming
-                    ? "bg-red-600 text-white hover:bg-red-500 shadow-md shadow-red-500/20"
-                    : (input.trim() || selectedImageUrl || activeSelectedFile) && !isUploading
-                      ? "bg-blue-600 text-white hover:bg-blue-500 shadow-md shadow-blue-500/20"
+              {chat?.type !== "agent" ? (
+                <button
+                  onClick={isStreaming ? handleStop : handleSend}
+                  disabled={
+                    isUploading ||
+                    (!isStreaming && !input.trim() && !selectedImageUrl && !activeSelectedFile)
+                  }
+                  className={`p-2 rounded-xl transition-all flex items-center justify-center ${
+                    isStreaming
+                      ? "bg-red-600 text-white hover:bg-red-500 shadow-md shadow-red-500/20"
+                      : (input.trim() || selectedImageUrl || activeSelectedFile) && !isUploading
+                        ? "bg-blue-600 text-white hover:bg-blue-500 shadow-md shadow-blue-500/20"
+                        : "bg-white/5 text-gray-500 cursor-not-allowed"
+                  }`}
+                >
+                  {isStreaming ? (
+                    <Square size={16} fill="currentColor" strokeWidth={0} />
+                  ) : (
+                    <ArrowUp size={18} strokeWidth={2.5} />
+                  )}
+                </button>
+              ) : (
+                <button
+                  onClick={handleSend}
+                  disabled={!input.trim() || sendAgentMessage.isPending}
+                  className={`p-2 rounded-xl transition-all flex items-center justify-center ${
+                    input.trim() && !sendAgentMessage.isPending
+                      ? "bg-amber-600 text-white hover:bg-amber-500 shadow-md shadow-amber-500/20"
                       : "bg-white/5 text-gray-500 cursor-not-allowed"
-                }`}
-              >
-                {isStreaming ? (
-                  <Square size={16} fill="currentColor" strokeWidth={0} />
-                ) : (
-                  <ArrowUp size={18} strokeWidth={2.5} />
-                )}
-              </button>
-              : <button onClick={()=>sendAgentMessage.mutate({chatId:id,message:input.trim()})}>
-                SEND
-              </button>
-            }
+                  }`}
+                >
+                  {sendAgentMessage.isPending ? (
+                    <Square size={16} fill="currentColor" strokeWidth={0} className="animate-pulse" />
+                  ) : (
+                    <ArrowUp size={18} strokeWidth={2.5} />
+                  )}
+                </button>
+              )}
             </div>
           </div>
           </>
@@ -1061,6 +1191,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           targetId={id}
           targetType="chat"
           targetName={chat?.title || "New Chat"}
+        />
+      )}
+
+      {isShareMode && token && (
+        <ImportSharedModal
+          isOpen={isDownloadModalOpen}
+          onClose={() => setIsDownloadModalOpen(false)}
+          token={token}
         />
       )}
     </div>

@@ -4,6 +4,7 @@ export interface FileNode {
   id: string;
   name: string;
   type: FileType;
+  chatType?: 'normal' | 'agent';
   children?: FileNode[];
   isExpanded: boolean;
   isSystemFolder?: boolean;

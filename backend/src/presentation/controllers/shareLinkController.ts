@@ -4,12 +4,14 @@ import { AppError } from "../../utils/AppError";
 import { injectable, inject, container } from "tsyringe";
 import { CreateLink } from "../../application/shareLink/use-cases/createLink";
 import { ResolveLink } from "../../application/shareLink/use-cases/resolveLink";
+import { DownloadSharedLink } from "../../application/shareLink/use-cases/downloadSharedLink";
 
 @injectable()
 export class ShareLinkController extends BaseController {
   constructor(
     @inject("ICreateLinkUseCase") private createLinkUseCase: CreateLink,
-    @inject("IResolveLinkUseCase") private resolveLinkUseCase: ResolveLink
+    @inject("IResolveLinkUseCase") private resolveLinkUseCase: ResolveLink,
+    @inject("IDownloadSharedLinkUseCase") private downloadSharedLinkUseCase: DownloadSharedLink
   ) {
     super();
   }
@@ -52,6 +54,28 @@ export class ShareLinkController extends BaseController {
       const data = await this.resolveLinkUseCase.execute(token, chatId as string);
 
       this.sendSuccess(res, data, 200, "Shared link resolved successfully");
+    } catch (error) {
+      this.sendError(res, error);
+    }
+  };
+
+  public downloadLink = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const userId = this.validateUserAuth(req);
+      const { token } = req.params;
+      const { destinationFolderId } = req.body;
+
+      if (!token || typeof token !== "string") {
+        throw new AppError("token is required", 400);
+      }
+
+      const result = await this.downloadSharedLinkUseCase.execute({
+        token,
+        userId,
+        destinationFolderId: destinationFolderId || null
+      });
+
+      this.sendSuccess(res, result, 200, "Shared contents imported successfully");
     } catch (error) {
       this.sendError(res, error);
     }

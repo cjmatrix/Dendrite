@@ -24,3 +24,8 @@ export const resolveSharedLink = async (token: string, chatId?: string): Promise
   const res = await api.get(url);
   return res.data.data;
 };
+
+export const downloadSharedLink = async (token: string, destinationFolderId: string | null): Promise<any> => {
+  const res = await api.post(`/share/download/${token}`, { destinationFolderId });
+  return res.data.data;
+};

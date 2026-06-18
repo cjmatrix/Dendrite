@@ -16,6 +16,7 @@ import {
   GitBranch,
   Move,
   Share,
+  Brain,
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { setActiveSidebarRootId } from "../store/explorerSlice";
@@ -38,7 +39,7 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
     return v !== undefined ? v : !!node.isExpanded;
   });
   const isShareMode = useAppSelector((state) => state.explorer.isShareMode);
-  const [isCreating, setIsCreating] = useState<FileType | null>(null);
+  const [isCreating, setIsCreating] = useState<"chat" | "folder" | "agent" | null>(null);
   const [isRenaming, setIsRenaming] = useState<FileType | null>(null);
   const [isBehaviorOpen, setIsBehaviorOpen] = useState(false);
   const [isMoveOpen, setIsMoveOpen] = useState(false);
@@ -61,6 +62,8 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
     if (newItemName.trim()) {
       if (isCreating === "folder") {
         createFolder({ name: newItemName, parentId: node.id });
+      } else if (isCreating === "agent") {
+        createChat({ title: newItemName, folderId: node.id, type: "agent" });
       } else {
         createChat({ title: newItemName, folderId: node.id });
       }
@@ -245,11 +248,19 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
             )
           ) : (
             <div className="relative flex items-center justify-center px-0.5 transition-transform group-hover/item:scale-110 duration-200">
-              <MessageSquare
-                size={15}
-                className="text-emerald-400/90 fill-emerald-500/10"
-                strokeWidth={2}
-              />
+              {node.chatType === "agent" ? (
+                <Brain
+                  size={15}
+                  className="text-amber-400 fill-amber-500/10"
+                  strokeWidth={2}
+                />
+              ) : (
+                <MessageSquare
+                  size={15}
+                  className="text-emerald-400/90 fill-emerald-500/10"
+                  strokeWidth={2}
+                />
+              )}
             </div>
           )}
 
@@ -372,6 +383,7 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
             >
               <MessageSquare size={14} /> New Chat
             </button>
+           
             <button
               className="w-full text-left px-3 py-1.5 hover:bg-cyan-600 hover:text-white flex items-center gap-2 transition-colors"
               onClick={(e) => {
@@ -382,6 +394,17 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
               }}
             >
               <FolderPlus size={14} /> New Folder
+            </button>
+             <button
+              className="w-full text-left px-3 py-1.5 hover:bg-cyan-600 hover:text-white flex items-center gap-2 transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsCreating("agent");
+                setContextMenu(null);
+                if (!isOpen) dispatch(setIsExpandedTracker(node.id));
+              }}
+            >
+              <Brain size={14} /> New Agent
             </button>
             <button
               className="w-full text-left px-3 py-1.5 hover:bg-cyan-600 hover:text-white flex items-center gap-2 transition-colors"

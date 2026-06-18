@@ -55,6 +55,7 @@ export function useFileTree() {
           id: chat._id,
           name: chat.title,
           type: "chat",
+          chatType: chat.type,
           isExpanded: false,
           children: [],
           contextParents: chat.contextParents || [],
@@ -125,12 +126,12 @@ export function useExplorerMutations() {
     mutationFn: ({ title, folderId ,type}: { title: string; folderId: string | null,type?:string }) =>
       type&&type==="agent"?apiCreateChat(title, folderId,type):apiCreateChat(title, folderId),
     
-    onMutate: async ({ title, folderId }) => {
+    onMutate: async ({ title, folderId, type }) => {
       await queryClient.cancelQueries({ queryKey: ["chats"] });
       const previous = queryClient.getQueryData(["chats"]);
       queryClient.setQueryData(["chats"], (old: any[]) => {
         if (!old) return old;
-        const temp = { _id: `temp-${Date.now()}`, title, folderId, type: "chat" };
+        const temp = { _id: `temp-${Date.now()}`, title, folderId, type: type || "normal" };
         const addChild = (nodes: any[]): any[] =>
           nodes.map((n: any) =>
             n.id === folderId

@@ -26,8 +26,8 @@ export const sendAgentMessage=async(
   const res=await api.post(`/agents/workspace/${chatId}`,{
     message
   })
-
-  return res.data.data
+  // console.log(res.data)
+  return res.data
 }
   
 

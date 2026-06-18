@@ -1,7 +1,9 @@
 import { useRef, useState, useEffect } from "react";
-import { Plus, FolderPlus, MessageSquare, Check, Folder, ChevronLeft, Brain, Menu, LogOut, Settings } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Plus, FolderPlus, MessageSquare, Check, Folder, ChevronLeft, Brain, Menu, LogOut, Settings, Download } from "lucide-react";
+import { useNavigate, useParams } from "react-router-dom";
 import { SettingsModal } from "../../chat/components/SettingsModal";
+import toast from "react-hot-toast";
+import { ImportSharedModal } from "./ImportSharedModal";
 
 import type { FileType } from "../types/types";
 import { FileItem } from "./FileItem";
@@ -11,12 +13,17 @@ import DendritesLogo from "../../../components/DendritesLogo";
 import { logout } from "../../auth/store/authSlice";
 
 import { useFileTree, useExplorerMutations } from "../hooks/useFileExplorer";
+import { useIsMutating } from "@tanstack/react-query";
 
 export default function FileExplorer() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { tree, activeSidebarRootId, isShareMode } = useAppSelector((state) => state.explorer);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const { token } = useParams<{ token?: string }>();
+  const user = useAppSelector((state) => state.auth.user);
+  const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
+  const isAgentPending = useIsMutating({ mutationKey: ["sendAgentMessage"] }) > 0;
 
 
   const { recallCount } = useFileTree();
@@ -172,7 +179,13 @@ export default function FileExplorer() {
       <div
         ref={sidebarRef}
         style={{ width: `${isCollapsed ? 0 : width}px` }}
-        className="relative h-screen  bg-neutral-950/40 border-r border-zinc-800/90 shrink-0 flex flex-col pt-0 z-20  backdrop-blur-3xl"
+        className={`relative h-screen bg-neutral-950/40 shrink-0 flex flex-col pt-0 z-20 backdrop-blur-3xl ${
+          isResizing ? "" : "transition-all duration-500"
+        } ${
+          isAgentPending 
+            ? "border border-amber-500 shadow-[0_0_20px_rgba(245,158,11,0.25)] animate-pulse" 
+            : "border-r border-zinc-800/90"
+        }`}
       >
         {!isCollapsed && (
           <>
@@ -284,7 +297,7 @@ export default function FileExplorer() {
                     className="w-full text-left px-3 py-1.5 hover:bg-cyan-600 hover:text-white flex items-center gap-2 transition-colors"
                     onClick={(e) => { e.stopPropagation(); startRootCreate("agent"); setBlankContextMenu(null); }}
                   >
-                    <FolderPlus size={14} /> New Agent
+                    <Brain size={14} /> New Agent
                   </button>
                 </div>
               </>
@@ -292,27 +305,45 @@ export default function FileExplorer() {
 
             {/* Bottom Action Bar */}
             <div className="px-4 py-4 bg-zinc-900/40 border-t border-zinc-800/50 backdrop-blur-md relative z-10 before:absolute before:inset-0 before:bg-linear-to-t before:from-[#09090b] before:to-transparent before:-z-10">
-              <button
-                onClick={() => dispatch(toggleRecallOverlay(true))}
-                className="relative group w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-linear-to-r from-purple-600/10 to-indigo-600/10 hover:from-purple-500/20 hover:to-indigo-500/20 text-purple-400 hover:text-purple-300 transition-all border border-purple-500/20 hover:border-purple-400/50 text-[12px] font-bold shadow-[0_4px_20px_-10px_rgba(168,85,247,0.3)] hover:shadow-[0_4px_20px_-8px_rgba(168,85,247,0.5)] active:scale-[0.98] mb-2"
-              >
-                <Brain size={14} strokeWidth={2.5} className="text-purple-500 group-hover:drop-shadow-[0_0_8px_rgba(168,85,247,0.8)] transition-all" />
-                <p>Active Recall</p>
-                <div className="absolute right-4 top-2 flex items-center justify-between px-1 mb-2">
-                  <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/20 ${shouldAnimate ? "animate-bounce-pop border-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.4)]" : ""}`}>
-                    <span className="text-[11px] font-black text-purple-300 tabular-nums">{recallCount}</span>
-                    <div className={`w-1 h-1 rounded-full bg-purple-500 ${shouldAnimate ? "animate-pulse scale-150" : ""}`} />
-                  </div>
-                </div>
-              </button>
+              {isShareMode ? (
+                <button
+                  onClick={() => {
+                    if (!user) {
+                      toast.error("Please sign in to import this shared content.");
+                      return;
+                    }
+                    setIsDownloadModalOpen(true);
+                  }}
+                  className="group w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-linear-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white transition-all border border-indigo-500/20 hover:border-indigo-400/50 text-[12px] font-bold shadow-[0_4px_20px_-10px_rgba(99,102,241,0.5)] active:scale-[0.98]"
+                >
+                  <Download size={14} strokeWidth={2.5} className="text-white group-hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.8)] transition-all" />
+                  Import Workspace
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={() => dispatch(toggleRecallOverlay(true))}
+                    className="relative group w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-linear-to-r from-purple-600/10 to-indigo-600/10 hover:from-purple-500/20 hover:to-indigo-500/20 text-purple-400 hover:text-purple-300 transition-all border border-purple-500/20 hover:border-purple-400/50 text-[12px] font-bold shadow-[0_4px_20px_-10px_rgba(168,85,247,0.3)] hover:shadow-[0_4px_20px_-8px_rgba(168,85,247,0.5)] active:scale-[0.98] mb-2"
+                  >
+                    <Brain size={14} strokeWidth={2.5} className="text-purple-500 group-hover:drop-shadow-[0_0_8px_rgba(168,85,247,0.8)] transition-all" />
+                    <p>Active Recall</p>
+                    <div className="absolute right-4 top-2 flex items-center justify-between px-1 mb-2">
+                      <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/20 ${shouldAnimate ? "animate-bounce-pop border-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.4)]" : ""}`}>
+                        <span className="text-[11px] font-black text-purple-300 tabular-nums">{recallCount}</span>
+                        <div className={`w-1 h-1 rounded-full bg-purple-500 ${shouldAnimate ? "animate-pulse scale-150" : ""}`} />
+                      </div>
+                    </div>
+                  </button>
 
-              <button
-                onClick={() => dispatch(toggleExplorerModal())}
-                className="group w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-linear-to-r from-cyan-600/10 to-sky-600/10 hover:from-cyan-500/20 hover:to-sky-500/20 text-cyan-400 hover:text-cyan-300 transition-all border border-cyan-500/20 hover:border-cyan-400/50 text-[12px] font-bold shadow-[0_4px_20px_-10px_rgba(6,182,212,0.3)] hover:shadow-[0_4px_20px_-8px_rgba(6,182,212,0.5)] active:scale-[0.98]"
-              >
-                <Folder size={14} strokeWidth={2.5} className="text-cyan-500 group-hover:drop-shadow-[0_0_8px_rgba(6,182,212,0.8)] transition-all" />
-                Full Explorer Center
-              </button>
+                  <button
+                    onClick={() => dispatch(toggleExplorerModal())}
+                    className="group w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-linear-to-r from-cyan-600/10 to-sky-600/10 hover:from-cyan-500/20 hover:to-sky-500/20 text-cyan-400 hover:text-cyan-300 transition-all border border-cyan-500/20 hover:border-cyan-400/50 text-[12px] font-bold shadow-[0_4px_20px_-10px_rgba(6,182,212,0.3)] hover:shadow-[0_4px_20px_-8px_rgba(6,182,212,0.5)] active:scale-[0.98]"
+                  >
+                    <Folder size={14} strokeWidth={2.5} className="text-cyan-500 group-hover:drop-shadow-[0_0_8px_rgba(6,182,212,0.8)] transition-all" />
+                    Full Explorer Center
+                  </button>
+                </>
+              )}
             </div>
           </>
         )}
@@ -322,6 +353,14 @@ export default function FileExplorer() {
           onMouseDown={startResizing}
         />
       </div>
+
+      {isShareMode && token && (
+        <ImportSharedModal
+          isOpen={isDownloadModalOpen}
+          onClose={() => setIsDownloadModalOpen(false)}
+          token={token}
+        />
+      )}
     </div>
   );
 }

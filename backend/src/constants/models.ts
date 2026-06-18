@@ -1,4 +1,4 @@
-export const MAIN_CHAT_MODEL = "gemini-3.5-flash";
+export const MAIN_CHAT_MODEL = "gemini-3-flash-preview";
 
 export const QUICK_CHAT_MODEL = "gemini-2.5-flash";
 // export const CHAT_SUMMARY_MODEL = "gemma-4-31b-it";
@@ -18,7 +18,7 @@ export interface ModelOption {
 export const MODEL_OPTIONS: ModelOption[] = [
   
   {
-    id: "gemini-3.5-flash",
+    id: "gemini-3-flash-preview",
     label: "Gemini 3.5 Flash",
     provider: "gemini",
     tier: "free",
