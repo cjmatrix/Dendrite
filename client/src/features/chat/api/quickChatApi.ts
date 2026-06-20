@@ -48,6 +48,7 @@ export const streamQuickChat = async (params: {
   anchorMessageId: string;
   highlightedText: string;
   quickChatHistory: any[];
+  model?: string;
   onChunk: (textSoFar: string) => void;
 }): Promise<string> => {
   if (!params.anchorMessageId || !params.anchorMessageId.trim()) {
@@ -62,6 +63,7 @@ export const streamQuickChat = async (params: {
       anchorMessageId: params.anchorMessageId,
       highlightedText: params.highlightedText,
       quickChatHistory: params.quickChatHistory,
+      model: params.model,
     }),
   });
 

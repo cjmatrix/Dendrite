@@ -1108,6 +1108,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           chatId={id}
           relativeY={quickChatSelection.relativeY}
           subChatId={quickChatSelection?.subChatId ?? undefined}
+          initialModel={model}
         />
       )}
 

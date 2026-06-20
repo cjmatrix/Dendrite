@@ -31,6 +31,7 @@ export const StreamQuickChatBodySchema = z.object({
   anchorMessageId: z.string().trim().min(1, "Anchor message ID is required"),
   highlightedText: z.string().trim().nullable().optional(),
   quickChatHistory: z.array(z.any()).optional(),
+  model: z.string().trim().nullable().optional(),
 });
 
 export const SaveSubChatBodySchema = z.object({
@@ -124,6 +125,7 @@ export interface SaveModelReplyInputDTO {
   promptTokens?: number;
   responseTokens?: number;
   contents?: any[];
+  model?: string;
 }
 
 export interface SaveModelReplyOutputDTO {
@@ -172,6 +174,7 @@ export interface StreamQuickChatInputDTO {
   highlightedText: string;
   quickChatHistory: any[];
   userTier?: string;
+  model?: string;
 }
 
 export interface UploadDocumentInputDTO {

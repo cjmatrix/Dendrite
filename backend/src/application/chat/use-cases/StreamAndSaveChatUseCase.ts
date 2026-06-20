@@ -117,6 +117,7 @@ export class StreamAndSaveChatUseCase implements IStreamAndSaveChatUseCase {
         promptTokens,
         responseTokens,
         contents,
+        model: activeModel,
       });
 
       yield {

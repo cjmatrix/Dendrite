@@ -9,11 +9,13 @@ import {
   Brain,
   Eye,
   EyeOff,
+  ChevronDown,
 } from "lucide-react";
 
 import Draggable from "react-draggable";
 import { useQuickChat } from "../hooks/useQuickChat";
 import { MessageContent } from "./MessageContent";
+import { MODEL_OPTIONS } from "../constants/models";
 
 interface QuickChatModalProps {
   isOpen: boolean;
@@ -23,6 +25,7 @@ interface QuickChatModalProps {
   chatId: string | undefined;
   relativeY?: number;
   subChatId?: string;
+  initialModel?: string;
 }
 
 export const QuickChatModal: React.FC<QuickChatModalProps> = ({
@@ -33,6 +36,7 @@ export const QuickChatModal: React.FC<QuickChatModalProps> = ({
   chatId,
   relativeY,
   subChatId,
+  initialModel,
 }) => {
   const draggableNodeRef = useRef<HTMLDivElement | null>(null);
 
@@ -55,6 +59,8 @@ export const QuickChatModal: React.FC<QuickChatModalProps> = ({
     );
   }, [showBackgroundContent]);
 
+  const [isModelOpen, setIsModelOpen] = useState(false);
+
   const {
     input,
     setInput,
@@ -66,6 +72,8 @@ export const QuickChatModal: React.FC<QuickChatModalProps> = ({
     recallSelection,
     scrollRef,
     existingSubChat,
+    model,
+    setModel,
     stickToChatMutation,
     streamChatMutation,
     handleSend,
@@ -78,6 +86,7 @@ export const QuickChatModal: React.FC<QuickChatModalProps> = ({
     subChatId,
     relativeY,
     isOpen,
+    initialModel,
   });
 
   if (!isOpen) return null;
@@ -277,7 +286,56 @@ export const QuickChatModal: React.FC<QuickChatModalProps> = ({
 
           {/* Input Area */}
           <div className="p-4 border-t border-white/10 bg-(--theme-bg-base)">
-            <div className="flex items-center bg-(--theme-bg-elevated) border border-white/10 rounded-2xl px-4 py-3 shadow-inner focus-within:border-blue-500/30 transition-all">
+            <div className="flex items-center bg-(--theme-bg-elevated) border border-white/10 rounded-2xl px-4 py-3 shadow-inner focus-within:border-blue-500/30 transition-all gap-2 relative">
+              {/* Dropup Model Selector */}
+              <div className="relative shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setIsModelOpen(!isModelOpen)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 text-xs text-gray-300 font-medium transition-all shadow-sm"
+                >
+                  <Sparkles size={13} className="text-blue-400" />
+                  <span>
+                    {MODEL_OPTIONS.find((m) => m.id === model)?.label || "Model"}
+                  </span>
+                  <ChevronDown
+                    size={13}
+                    className={`text-gray-500 transition-transform shrink-0 ${isModelOpen ? "rotate-180" : ""}`}
+                  />
+                </button>
+
+                {isModelOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-40 pointer-events-auto"
+                      onClick={() => setIsModelOpen(false)}
+                    />
+                    <div className="absolute bottom-full left-0 mb-2 w-48 bg-zinc-900/95 backdrop-blur-md border border-white/10 rounded-2xl p-1.5 shadow-2xl flex flex-col gap-0.5 z-50 pointer-events-auto">
+                      {MODEL_OPTIONS.map((opt) => (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => {
+                            setModel(opt.id);
+                            setIsModelOpen(false);
+                          }}
+                          className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs transition-all ${
+                            model === opt.id
+                              ? "bg-blue-600 text-white font-semibold"
+                              : "text-gray-400 hover:bg-white/5 hover:text-white"
+                          }`}
+                        >
+                          <span>{opt.label}</span>
+                          {model === opt.id && (
+                            <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+
               <input
                 type="text"
                 placeholder="Ask a clarifying question..."

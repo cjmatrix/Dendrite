@@ -1,3 +1,4 @@
+import { getProviderKey } from "../../../constants/models";
 import { AppError } from "../../../utils/AppError";
 import { hashCode } from "../../../utils/stripComments";
 import { redisConnection } from "../../../config/redis";
@@ -54,7 +55,7 @@ export class SaveModelReply implements ISaveModelReplyUseCase {
   ) {}
 
   async execute(input: import("../dtos/chat.dto").SaveModelReplyInputDTO) {
-    const { chatId, userId, modelReply, parentContext, parentSummary, promptTokens, responseTokens, contents } = input;
+    const { chatId, userId, modelReply, parentContext, parentSummary, promptTokens, responseTokens, contents, model } = input;
 
     const chat = await this.chatRepository.findByIdAndUserId(chatId, userId);
 
@@ -86,14 +87,16 @@ export class SaveModelReply implements ISaveModelReplyUseCase {
       const p5VisualizationTokens = p5Tokens;
       const mainChatOutputTokens = Math.max(0, calculatedResponseTokens - p5Tokens);
 
+      const provider = getProviderKey(model);
+
       await this.userRepository.findByIdAndUpdate(userId, {
         $inc: {
-          "token_usage.mainChat.input": calculatedPromptTokens,
-          "token_usage.mainChat.output": mainChatOutputTokens,
-          "token_usage.mainChat.total": calculatedPromptTokens + mainChatOutputTokens,
-          "token_usage.p5Visualization.input": 0,
-          "token_usage.p5Visualization.output": p5VisualizationTokens,
-          "token_usage.p5Visualization.total": p5VisualizationTokens,
+          [`token_usage.${provider}.mainChat.input`]: calculatedPromptTokens,
+          [`token_usage.${provider}.mainChat.output`]: mainChatOutputTokens,
+          [`token_usage.${provider}.mainChat.total`]: calculatedPromptTokens + mainChatOutputTokens,
+          [`token_usage.${provider}.p5Visualization.input`]: 0,
+          [`token_usage.${provider}.p5Visualization.output`]: p5VisualizationTokens,
+          [`token_usage.${provider}.p5Visualization.total`]: p5VisualizationTokens,
           "tokensUsed": calculatedPromptTokens + calculatedResponseTokens
         }
       });

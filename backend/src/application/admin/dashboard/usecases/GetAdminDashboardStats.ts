@@ -28,25 +28,190 @@ export class GetAdminDashboardStats {
         {
           $group: {
             _id: null,
-            mainChatInput: { $sum: "$token_usage.mainChat.input" },
-            mainChatOutput: { $sum: "$token_usage.mainChat.output" },
-            mainChatTotal: { $sum: "$token_usage.mainChat.total" },
+            mainChatInput: {
+              $sum: {
+                $add: [
+                  { $ifNull: ["$token_usage.google.mainChat.input", 0] },
+                  { $ifNull: ["$token_usage.anthropic.mainChat.input", 0] },
+                  { $ifNull: ["$token_usage.openai.mainChat.input", 0] },
+                  { $ifNull: ["$token_usage.openrouter.mainChat.input", 0] },
+                  { $ifNull: ["$token_usage.groq.mainChat.input", 0] },
+                  { $ifNull: ["$token_usage.mistral.mainChat.input", 0] }
+                ]
+              }
+            },
+            mainChatOutput: {
+              $sum: {
+                $add: [
+                  { $ifNull: ["$token_usage.google.mainChat.output", 0] },
+                  { $ifNull: ["$token_usage.anthropic.mainChat.output", 0] },
+                  { $ifNull: ["$token_usage.openai.mainChat.output", 0] },
+                  { $ifNull: ["$token_usage.openrouter.mainChat.output", 0] },
+                  { $ifNull: ["$token_usage.groq.mainChat.output", 0] },
+                  { $ifNull: ["$token_usage.mistral.mainChat.output", 0] }
+                ]
+              }
+            },
+            mainChatTotal: {
+              $sum: {
+                $add: [
+                  { $ifNull: ["$token_usage.google.mainChat.total", 0] },
+                  { $ifNull: ["$token_usage.anthropic.mainChat.total", 0] },
+                  { $ifNull: ["$token_usage.openai.mainChat.total", 0] },
+                  { $ifNull: ["$token_usage.openrouter.mainChat.total", 0] },
+                  { $ifNull: ["$token_usage.groq.mainChat.total", 0] },
+                  { $ifNull: ["$token_usage.mistral.mainChat.total", 0] }
+                ]
+              }
+            },
 
-            chatSummaryInput: { $sum: "$token_usage.chatSummary.input" },
-            chatSummaryOutput: { $sum: "$token_usage.chatSummary.output" },
-            chatSummaryTotal: { $sum: "$token_usage.chatSummary.total" },
+            chatSummaryInput: {
+              $sum: {
+                $add: [
+                  { $ifNull: ["$token_usage.google.chatSummary.input", 0] },
+                  { $ifNull: ["$token_usage.anthropic.chatSummary.input", 0] },
+                  { $ifNull: ["$token_usage.openai.chatSummary.input", 0] },
+                  { $ifNull: ["$token_usage.openrouter.chatSummary.input", 0] },
+                  { $ifNull: ["$token_usage.groq.chatSummary.input", 0] },
+                  { $ifNull: ["$token_usage.mistral.chatSummary.input", 0] }
+                ]
+              }
+            },
+            chatSummaryOutput: {
+              $sum: {
+                $add: [
+                  { $ifNull: ["$token_usage.google.chatSummary.output", 0] },
+                  { $ifNull: ["$token_usage.anthropic.chatSummary.output", 0] },
+                  { $ifNull: ["$token_usage.openai.chatSummary.output", 0] },
+                  { $ifNull: ["$token_usage.openrouter.chatSummary.output", 0] },
+                  { $ifNull: ["$token_usage.groq.chatSummary.output", 0] },
+                  { $ifNull: ["$token_usage.mistral.chatSummary.output", 0] }
+                ]
+              }
+            },
+            chatSummaryTotal: {
+              $sum: {
+                $add: [
+                  { $ifNull: ["$token_usage.google.chatSummary.total", 0] },
+                  { $ifNull: ["$token_usage.anthropic.chatSummary.total", 0] },
+                  { $ifNull: ["$token_usage.openai.chatSummary.total", 0] },
+                  { $ifNull: ["$token_usage.openrouter.chatSummary.total", 0] },
+                  { $ifNull: ["$token_usage.groq.chatSummary.total", 0] },
+                  { $ifNull: ["$token_usage.mistral.chatSummary.total", 0] }
+                ]
+              }
+            },
 
-            codeDescriptionInput: { $sum: "$token_usage.codeDescription.input" },
-            codeDescriptionOutput: { $sum: "$token_usage.codeDescription.output" },
-            codeDescriptionTotal: { $sum: "$token_usage.codeDescription.total" },
+            codeDescriptionInput: {
+              $sum: {
+                $add: [
+                  { $ifNull: ["$token_usage.google.codeDescription.input", 0] },
+                  { $ifNull: ["$token_usage.anthropic.codeDescription.input", 0] },
+                  { $ifNull: ["$token_usage.openai.codeDescription.input", 0] },
+                  { $ifNull: ["$token_usage.openrouter.codeDescription.input", 0] },
+                  { $ifNull: ["$token_usage.groq.codeDescription.input", 0] },
+                  { $ifNull: ["$token_usage.mistral.codeDescription.input", 0] }
+                ]
+              }
+            },
+            codeDescriptionOutput: {
+              $sum: {
+                $add: [
+                  { $ifNull: ["$token_usage.google.codeDescription.output", 0] },
+                  { $ifNull: ["$token_usage.anthropic.codeDescription.output", 0] },
+                  { $ifNull: ["$token_usage.openai.codeDescription.output", 0] },
+                  { $ifNull: ["$token_usage.openrouter.codeDescription.output", 0] },
+                  { $ifNull: ["$token_usage.groq.codeDescription.output", 0] },
+                  { $ifNull: ["$token_usage.mistral.codeDescription.output", 0] }
+                ]
+              }
+            },
+            codeDescriptionTotal: {
+              $sum: {
+                $add: [
+                  { $ifNull: ["$token_usage.google.codeDescription.total", 0] },
+                  { $ifNull: ["$token_usage.anthropic.codeDescription.total", 0] },
+                  { $ifNull: ["$token_usage.openai.codeDescription.total", 0] },
+                  { $ifNull: ["$token_usage.openrouter.codeDescription.total", 0] },
+                  { $ifNull: ["$token_usage.groq.codeDescription.total", 0] },
+                  { $ifNull: ["$token_usage.mistral.codeDescription.total", 0] }
+                ]
+              }
+            },
 
-            p5VisualizationInput: { $sum: "$token_usage.p5Visualization.input" },
-            p5VisualizationOutput: { $sum: "$token_usage.p5Visualization.output" },
-            p5VisualizationTotal: { $sum: "$token_usage.p5Visualization.total" },
+            p5VisualizationInput: {
+              $sum: {
+                $add: [
+                  { $ifNull: ["$token_usage.google.p5Visualization.input", 0] },
+                  { $ifNull: ["$token_usage.anthropic.p5Visualization.input", 0] },
+                  { $ifNull: ["$token_usage.openai.p5Visualization.input", 0] },
+                  { $ifNull: ["$token_usage.openrouter.p5Visualization.input", 0] },
+                  { $ifNull: ["$token_usage.groq.p5Visualization.input", 0] },
+                  { $ifNull: ["$token_usage.mistral.p5Visualization.input", 0] }
+                ]
+              }
+            },
+            p5VisualizationOutput: {
+              $sum: {
+                $add: [
+                  { $ifNull: ["$token_usage.google.p5Visualization.output", 0] },
+                  { $ifNull: ["$token_usage.anthropic.p5Visualization.output", 0] },
+                  { $ifNull: ["$token_usage.openai.p5Visualization.output", 0] },
+                  { $ifNull: ["$token_usage.openrouter.p5Visualization.output", 0] },
+                  { $ifNull: ["$token_usage.groq.p5Visualization.output", 0] },
+                  { $ifNull: ["$token_usage.mistral.p5Visualization.output", 0] }
+                ]
+              }
+            },
+            p5VisualizationTotal: {
+              $sum: {
+                $add: [
+                  { $ifNull: ["$token_usage.google.p5Visualization.total", 0] },
+                  { $ifNull: ["$token_usage.anthropic.p5Visualization.total", 0] },
+                  { $ifNull: ["$token_usage.openai.p5Visualization.total", 0] },
+                  { $ifNull: ["$token_usage.openrouter.p5Visualization.total", 0] },
+                  { $ifNull: ["$token_usage.groq.p5Visualization.total", 0] },
+                  { $ifNull: ["$token_usage.mistral.p5Visualization.total", 0] }
+                ]
+              }
+            },
 
-            quickChatInput: { $sum: "$token_usage.quickChat.input" },
-            quickChatOutput: { $sum: "$token_usage.quickChat.output" },
-            quickChatTotal: { $sum: "$token_usage.quickChat.total" }
+            quickChatInput: {
+              $sum: {
+                $add: [
+                  { $ifNull: ["$token_usage.google.quickChat.input", 0] },
+                  { $ifNull: ["$token_usage.anthropic.quickChat.input", 0] },
+                  { $ifNull: ["$token_usage.openai.quickChat.input", 0] },
+                  { $ifNull: ["$token_usage.openrouter.quickChat.input", 0] },
+                  { $ifNull: ["$token_usage.groq.quickChat.input", 0] },
+                  { $ifNull: ["$token_usage.mistral.quickChat.input", 0] }
+                ]
+              }
+            },
+            quickChatOutput: {
+              $sum: {
+                $add: [
+                  { $ifNull: ["$token_usage.google.quickChat.output", 0] },
+                  { $ifNull: ["$token_usage.anthropic.quickChat.output", 0] },
+                  { $ifNull: ["$token_usage.openai.quickChat.output", 0] },
+                  { $ifNull: ["$token_usage.openrouter.quickChat.output", 0] },
+                  { $ifNull: ["$token_usage.groq.quickChat.output", 0] },
+                  { $ifNull: ["$token_usage.mistral.quickChat.output", 0] }
+                ]
+              }
+            },
+            quickChatTotal: {
+              $sum: {
+                $add: [
+                  { $ifNull: ["$token_usage.google.quickChat.total", 0] },
+                  { $ifNull: ["$token_usage.anthropic.quickChat.total", 0] },
+                  { $ifNull: ["$token_usage.openai.quickChat.total", 0] },
+                  { $ifNull: ["$token_usage.openrouter.quickChat.total", 0] },
+                  { $ifNull: ["$token_usage.groq.quickChat.total", 0] },
+                  { $ifNull: ["$token_usage.mistral.quickChat.total", 0] }
+                ]
+              }
+            }
           }
         }
       ])

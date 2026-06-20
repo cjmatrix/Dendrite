@@ -58,7 +58,6 @@ export interface AdminTokenCategoryDTO {
 export interface AdminUserTokenUsageOutputDTO {
   mainChat: AdminTokenCategoryDTO;
   chatSummary: AdminTokenCategoryDTO;
-  compressedChat: AdminTokenCategoryDTO;
   codeDescription: AdminTokenCategoryDTO;
   p5Visualization: AdminTokenCategoryDTO;
   quickChat: AdminTokenCategoryDTO;
@@ -143,16 +142,42 @@ export class UserManagementMapper {
         quickChats: user.featureUsage?.quickChats || 0,
       },
       tokenUsage: {
-        mainChat: user.token_usage?.mainChat || { input: 0, output: 0, total: 0 },
-        chatSummary: user.token_usage?.chatSummary || { input: 0, output: 0, total: 0 },
-        compressedChat: user.token_usage?.compressedChat || { input: 0, output: 0, total: 0 },
-        codeDescription: user.token_usage?.codeDescription || { input: 0, output: 0, total: 0 },
-        p5Visualization: user.token_usage?.p5Visualization || { input: 0, output: 0, total: 0 },
-        quickChat: user.token_usage?.quickChat || { input: 0, output: 0, total: 0 },
-        lastResetDate: user.token_usage?.lastResetDate?.toISOString() || new Date().toISOString(),
+        mainChat: sumFeatureTokens(user.token_usage, "mainChat"),
+        chatSummary: sumFeatureTokens(user.token_usage, "chatSummary"),
+        codeDescription: sumFeatureTokens(user.token_usage, "codeDescription"),
+        p5Visualization: sumFeatureTokens(user.token_usage, "p5Visualization"),
+        quickChat: sumFeatureTokens(user.token_usage, "quickChat"),
+        lastResetDate: user.token_usage?.lastResetDate instanceof Date 
+          ? user.token_usage.lastResetDate.toISOString() 
+          : new Date().toISOString(),
       },
       createdAt: user.createdAt?.toISOString() || new Date().toISOString(),
       updatedAt: user.updatedAt?.toISOString() || new Date().toISOString(),
     };
   }
+}
+
+function sumFeatureTokens(tokenUsage: any, feature: string) {
+  const result = { input: 0, output: 0, total: 0 };
+  if (!tokenUsage) return result;
+
+  const providers = ["google", "anthropic", "openai", "openrouter", "groq", "mistral"];
+  for (const provider of providers) {
+    const fUsage = tokenUsage[provider]?.[feature];
+    if (fUsage) {
+      result.input += fUsage.input || 0;
+      result.output += fUsage.output || 0;
+      result.total += fUsage.total || 0;
+    }
+  }
+
+  // fallback to legacy flat format if provider fields are all zero
+  if (result.total === 0 && tokenUsage[feature]) {
+    const legacy = tokenUsage[feature];
+    result.input = legacy.input || 0;
+    result.output = legacy.output || 0;
+    result.total = legacy.total || 0;
+  }
+
+  return result;
 }

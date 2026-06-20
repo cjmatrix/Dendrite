@@ -1,49 +1,6 @@
 import mongoose, { Document, Model, Schema } from "mongoose";
 import bcrypt from "bcryptjs";
-import { IUser } from "../../../domain/auth/entities/User";
-
-export interface IByokKey {
-  provider: "gemini" | "groq" | string;
-  encryptedKeys: string[];
-  createdAt?: Date;
-  updatedAt?: Date;
-}
-
-export interface IFeatureUsage {
-  visuals: number;
-  quickChats: number;
-}
-
-export interface IGlobalProfile {
-  user_name?: string;
-  location?: string;
-  role?: string;
-  tech_stack: string[];
-  expertise_level?: string;
-  environment: string[];
-  user_preferences: string[];
-  response_style?: string;
-  current_projects: string[];
-  long_term_goals: string[];
-  constraints: string[];
-  entities: string[];
-}
-
-export interface ITokenCategory {
-  input: number;
-  output: number;
-  total: number;
-}
-
-export interface ITokenUsage {
-  mainChat: ITokenCategory;
-  chatSummary: ITokenCategory;
-  compressedChat: ITokenCategory;
-  codeDescription: ITokenCategory;
-  p5Visualization: ITokenCategory;
-  quickChat: ITokenCategory;
-  lastResetDate: Date;
-}
+import { IUser, IByokKey, IFeatureUsage, IGlobalProfile, ITokenCategory, ITokenUsage } from "../../../domain/auth/entities/User";
 
 export interface IMongoUserDocument extends Omit<IUser, "_id">, Document {
   comparePassword(candidatePassword: string): Promise<boolean>;
@@ -120,35 +77,47 @@ const UserSchema = new Schema<IMongoUserDocument>(
     },
 
     token_usage: {
-      mainChat: {
-        input: { type: Number, default: 0 },
-        output: { type: Number, default: 0 },
-        total: { type: Number, default: 0 },
+      google: {
+        mainChat: { input: { type: Number, default: 0 }, output: { type: Number, default: 0 }, total: { type: Number, default: 0 } },
+        chatSummary: { input: { type: Number, default: 0 }, output: { type: Number, default: 0 }, total: { type: Number, default: 0 } },
+        codeDescription: { input: { type: Number, default: 0 }, output: { type: Number, default: 0 }, total: { type: Number, default: 0 } },
+        p5Visualization: { input: { type: Number, default: 0 }, output: { type: Number, default: 0 }, total: { type: Number, default: 0 } },
+        quickChat: { input: { type: Number, default: 0 }, output: { type: Number, default: 0 }, total: { type: Number, default: 0 } },
       },
-      chatSummary: {
-        input: { type: Number, default: 0 },
-        output: { type: Number, default: 0 },
-        total: { type: Number, default: 0 },
+      anthropic: {
+        mainChat: { input: { type: Number, default: 0 }, output: { type: Number, default: 0 }, total: { type: Number, default: 0 } },
+        chatSummary: { input: { type: Number, default: 0 }, output: { type: Number, default: 0 }, total: { type: Number, default: 0 } },
+        codeDescription: { input: { type: Number, default: 0 }, output: { type: Number, default: 0 }, total: { type: Number, default: 0 } },
+        p5Visualization: { input: { type: Number, default: 0 }, output: { type: Number, default: 0 }, total: { type: Number, default: 0 } },
+        quickChat: { input: { type: Number, default: 0 }, output: { type: Number, default: 0 }, total: { type: Number, default: 0 } },
       },
-      compressedChat: {
-        input: { type: Number, default: 0 },
-        output: { type: Number, default: 0 },
-        total: { type: Number, default: 0 },
+      openai: {
+        mainChat: { input: { type: Number, default: 0 }, output: { type: Number, default: 0 }, total: { type: Number, default: 0 } },
+        chatSummary: { input: { type: Number, default: 0 }, output: { type: Number, default: 0 }, total: { type: Number, default: 0 } },
+        codeDescription: { input: { type: Number, default: 0 }, output: { type: Number, default: 0 }, total: { type: Number, default: 0 } },
+        p5Visualization: { input: { type: Number, default: 0 }, output: { type: Number, default: 0 }, total: { type: Number, default: 0 } },
+        quickChat: { input: { type: Number, default: 0 }, output: { type: Number, default: 0 }, total: { type: Number, default: 0 } },
       },
-      codeDescription: {
-        input: { type: Number, default: 0 },
-        output: { type: Number, default: 0 },
-        total: { type: Number, default: 0 },
+      openrouter: {
+        mainChat: { input: { type: Number, default: 0 }, output: { type: Number, default: 0 }, total: { type: Number, default: 0 } },
+        chatSummary: { input: { type: Number, default: 0 }, output: { type: Number, default: 0 }, total: { type: Number, default: 0 } },
+        codeDescription: { input: { type: Number, default: 0 }, output: { type: Number, default: 0 }, total: { type: Number, default: 0 } },
+        p5Visualization: { input: { type: Number, default: 0 }, output: { type: Number, default: 0 }, total: { type: Number, default: 0 } },
+        quickChat: { input: { type: Number, default: 0 }, output: { type: Number, default: 0 }, total: { type: Number, default: 0 } },
       },
-      p5Visualization: {
-        input: { type: Number, default: 0 },
-        output: { type: Number, default: 0 },
-        total: { type: Number, default: 0 },
+      groq: {
+        mainChat: { input: { type: Number, default: 0 }, output: { type: Number, default: 0 }, total: { type: Number, default: 0 } },
+        chatSummary: { input: { type: Number, default: 0 }, output: { type: Number, default: 0 }, total: { type: Number, default: 0 } },
+        codeDescription: { input: { type: Number, default: 0 }, output: { type: Number, default: 0 }, total: { type: Number, default: 0 } },
+        p5Visualization: { input: { type: Number, default: 0 }, output: { type: Number, default: 0 }, total: { type: Number, default: 0 } },
+        quickChat: { input: { type: Number, default: 0 }, output: { type: Number, default: 0 }, total: { type: Number, default: 0 } },
       },
-      quickChat: {
-        input: { type: Number, default: 0 },
-        output: { type: Number, default: 0 },
-        total: { type: Number, default: 0 },
+      mistral: {
+        mainChat: { input: { type: Number, default: 0 }, output: { type: Number, default: 0 }, total: { type: Number, default: 0 } },
+        chatSummary: { input: { type: Number, default: 0 }, output: { type: Number, default: 0 }, total: { type: Number, default: 0 } },
+        codeDescription: { input: { type: Number, default: 0 }, output: { type: Number, default: 0 }, total: { type: Number, default: 0 } },
+        p5Visualization: { input: { type: Number, default: 0 }, output: { type: Number, default: 0 }, total: { type: Number, default: 0 } },
+        quickChat: { input: { type: Number, default: 0 }, output: { type: Number, default: 0 }, total: { type: Number, default: 0 } },
       },
       lastResetDate: { type: Date, default: Date.now },
     },

@@ -24,6 +24,7 @@ export interface IQuickChatRepository {
     anchorMessageId: string;
     highlightedText: string;
     quickChatHistory: any[];
+    model?: string;
     onChunk: (textSoFar: string) => void;
   }): Promise<string>;
 }

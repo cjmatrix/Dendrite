@@ -91,3 +91,26 @@ export function isGeminiModel(modelId: string): boolean {
   const option = getModelOption(modelId);
   return option ? option.provider === "gemini" : modelId.startsWith("gemini");
 }
+
+export function getProviderKey(modelId: string | undefined): "google" | "anthropic" | "openai" | "openrouter" | "groq" | "mistral" {
+  if (!modelId) {
+    return "google";
+  }
+  const lower = modelId.toLowerCase();
+  if (lower.startsWith("gemini") || lower.includes("google/") || lower.startsWith("gemma")) {
+    return "google";
+  }
+  if (lower.includes("anthropic/") || lower.includes("claude")) {
+    return "anthropic";
+  }
+  if (lower.includes("openai/") || lower.includes("gpt")) {
+    return "openai";
+  }
+  if (lower.includes("groq/")) {
+    return "groq";
+  }
+  if (lower.includes("mistral/") || lower.includes("mistralai/")) {
+    return "mistral";
+  }
+  return "openrouter";
+}

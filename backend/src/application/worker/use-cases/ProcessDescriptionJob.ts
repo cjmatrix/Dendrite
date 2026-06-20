@@ -1,3 +1,4 @@
+import { getProviderKey, CODE_DESCRIPTION_MODEL } from "../../../constants/models";
 import { injectable, inject } from "tsyringe";
 import { ICodeBlockRepository } from '../../../domain/chat/repositories/ICodeBlockRepository';
 import { IOutboxEventRepository } from '../../../domain/outbox/repositories/IOutboxEventRepository';
@@ -71,11 +72,12 @@ export class ProcessDescriptionJob {
         const totalTokens = inputTokens + outputTokens;
 
         if (totalTokens > 0) {
+          const provider = getProviderKey(CODE_DESCRIPTION_MODEL);
           await this.userRepository.findByIdAndUpdate(userIdStr, {
             $inc: {
-              "token_usage.codeDescription.input": inputTokens,
-              "token_usage.codeDescription.output": outputTokens,
-              "token_usage.codeDescription.total": totalTokens,
+              [`token_usage.${provider}.codeDescription.input`]: inputTokens,
+              [`token_usage.${provider}.codeDescription.output`]: outputTokens,
+              [`token_usage.${provider}.codeDescription.total`]: totalTokens,
               "tokensUsed": totalTokens
             }
           });

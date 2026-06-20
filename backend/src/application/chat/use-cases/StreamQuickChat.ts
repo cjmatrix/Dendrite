@@ -18,7 +18,8 @@ export class StreamQuickChat implements IStreamQuickChatUseCase {
   ) {}
 
   async execute(input: StreamQuickChatInputDTO): Promise<AsyncIterable<any>> {
-    const { userId, chatId, anchorMessageId, highlightedText, quickChatHistory, userTier } = input;
+    const { userId, chatId, anchorMessageId, highlightedText, quickChatHistory, userTier, model } = input;
+    const activeModel = model || QUICK_CHAT_MODEL;
   
     const recentHistory = (quickChatHistory || []).slice(-8);
 
@@ -48,7 +49,7 @@ export class StreamQuickChat implements IStreamQuickChatUseCase {
     ];
 
     try {
-      return await this.aiService.streamAIContent(contents, QUICK_CHAT_MODEL, undefined, userId, userTier);
+      return await this.aiService.streamAIContent(contents, activeModel, undefined, userId, userTier);
     } catch (error: any) {
       this.logger.error("AI streaming failed", error, { contents });
       throw new AppError("All your provided Gemini API keys have exceeded their free-tier limits. Please wait, or add a new key.", 429);

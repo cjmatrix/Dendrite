@@ -1,3 +1,4 @@
+import { getProviderKey, CHAT_SUMMARY_MODEL } from "../../../constants/models";
 import { injectable, inject } from "tsyringe";
 import { IOutboxEventRepository } from "../../../domain/outbox/repositories/IOutboxEventRepository";
 import { IVectorRepository } from "../../../domain/vector/repositories/IVectorRepository";
@@ -205,11 +206,12 @@ export class ProcessSummaryJob {
         const totalTokens = inputTokens + outputTokens;
 
         if (totalTokens > 0) {
+          const provider = getProviderKey(CHAT_SUMMARY_MODEL);
           await this.userRepository.findByIdAndUpdate(userId, {
             $inc: {
-              "token_usage.chatSummary.input": inputTokens,
-              "token_usage.chatSummary.output": outputTokens,
-              "token_usage.chatSummary.total": totalTokens,
+              [`token_usage.${provider}.chatSummary.input`]: inputTokens,
+              [`token_usage.${provider}.chatSummary.output`]: outputTokens,
+              [`token_usage.${provider}.chatSummary.total`]: totalTokens,
               "tokensUsed": totalTokens
             }
           });

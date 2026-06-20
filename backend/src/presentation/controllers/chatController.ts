@@ -4,7 +4,7 @@ import fs from "fs";
 import crypto from "crypto";
 import { BaseController } from "./base/BaseController";
 import { AppError } from "../../utils/AppError";
-import { getModelOption, DEFAULT_MODEL } from "../../constants/models";
+import { getModelOption, DEFAULT_MODEL, getProviderKey, QUICK_CHAT_MODEL } from "../../constants/models";
 import { CHAT_MESSAGES } from "../constants/chatMessages";
 import { logAIQuery } from "../../utils/logger";
 import { getTokenInfo, estimateTokenCount } from "../../utils/tokenCounter";
@@ -261,7 +261,15 @@ export class ChatController extends BaseController {
       const userId = this.validateUserAuth(req);
       const userTier = req.user?.tier;
       const chatId = req.params.id as string;
-      const { anchorMessageId, highlightedText, quickChatHistory } = req.body;
+      const { anchorMessageId, highlightedText, quickChatHistory, model } = req.body;
+
+      let modelStr = typeof model === "string" ? model.trim() : undefined;
+      if (modelStr && modelStr.toUpperCase() === "DEFAULT") {
+        modelStr = DEFAULT_MODEL;
+      }
+      if (modelStr && !getModelOption(modelStr)) {
+        throw new AppError("Invalid model selected. The requested model is not supported.", 400);
+      }
 
       res.setHeader("Content-Type", "text/event-stream");
       res.setHeader("Cache-Control", "no-cache");
@@ -277,6 +285,7 @@ export class ChatController extends BaseController {
           highlightedText,
           quickChatHistory,
           userTier,
+          model: modelStr,
         });
       } catch (error: any) {
         if (error.statusCode === 429) {
@@ -332,11 +341,13 @@ export class ChatController extends BaseController {
           try {
             const { container } = require("tsyringe");
             const userRepo = container.resolve("IUserRepository") as any;
+            const activeModel = modelStr || QUICK_CHAT_MODEL;
+            const provider = getProviderKey(activeModel);
             await userRepo.findByIdAndUpdate(userId, {
               $inc: {
-                "token_usage.quickChat.input": promptTokens,
-                "token_usage.quickChat.output": responseTokens,
-                "token_usage.quickChat.total": quickChatTokens,
+                [`token_usage.${provider}.quickChat.input`]: promptTokens,
+                [`token_usage.${provider}.quickChat.output`]: responseTokens,
+                [`token_usage.${provider}.quickChat.total`]: quickChatTokens,
                 "tokensUsed": quickChatTokens
               }
             });

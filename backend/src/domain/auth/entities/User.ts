@@ -31,13 +31,21 @@ export interface ITokenCategory {
   total: number;
 }
 
-export interface ITokenUsage {
+export interface IFeatureTokenUsage {
   mainChat: ITokenCategory;
   chatSummary: ITokenCategory;
-  compressedChat: ITokenCategory;
   codeDescription: ITokenCategory;
   p5Visualization: ITokenCategory;
   quickChat: ITokenCategory;
+}
+
+export interface ITokenUsage {
+  google: IFeatureTokenUsage;
+  anthropic: IFeatureTokenUsage;
+  openai: IFeatureTokenUsage;
+  openrouter: IFeatureTokenUsage;
+  groq: IFeatureTokenUsage;
+  mistral: IFeatureTokenUsage;
   lastResetDate: Date;
 }
 

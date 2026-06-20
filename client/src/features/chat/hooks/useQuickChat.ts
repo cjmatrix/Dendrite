@@ -12,6 +12,7 @@ interface UseQuickChatParams {
   subChatId?: string;
   relativeY?: number;
   isOpen: boolean;
+  initialModel?: string;
 }
 
 export function useQuickChat({
@@ -21,7 +22,9 @@ export function useQuickChat({
   subChatId,
   relativeY,
   isOpen,
+  initialModel,
 }: UseQuickChatParams) {
+  const [model, setModel] = useState(initialModel || "DEFAULT");
   const queryClient = useQueryClient();
 
   const [input, setInput] = useState("");
@@ -116,6 +119,7 @@ export function useQuickChat({
         anchorMessageId: sourceMessageId,
         highlightedText: selectedText,
         quickChatHistory: subMessages.concat({ role: "user", content: userPrompt }),
+        model: model,
         onChunk: (textSoFar) => setStreamingText(textSoFar),
       });
     },
@@ -201,26 +205,28 @@ export function useQuickChat({
     }
   };
 
-  return {
+    return {
  
-    input,
-    setInput,
-    subMessages,
-    streamingText,
-    isPinned,
-    setIsPinned,
-    isRecalling,
-    recallSelection,
-    scrollRef,
-    existingSubChat,
+      input,
+      setInput,
+      subMessages,
+      streamingText,
+      isPinned,
+      setIsPinned,
+      isRecalling,
+      recallSelection,
+      scrollRef,
+      existingSubChat,
+      model,
+      setModel,
 
 
-    stickToChatMutation,
-    streamChatMutation,
+      stickToChatMutation,
+      streamChatMutation,
 
 
-    handleSend,
-    handleSubChatTextSelection,
-    handleCreateRecall,
-  };
+      handleSend,
+      handleSubChatTextSelection,
+      handleCreateRecall,
+    };
 }
