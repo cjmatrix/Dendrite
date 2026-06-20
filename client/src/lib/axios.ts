@@ -71,7 +71,9 @@ api.interceptors.response.use(
       return api(originalRequest); 
     } catch (refreshError) {
       processQueue(refreshError);
-      window.dispatchEvent(new CustomEvent('auth:session-expired'));
+      const isAdminRequest = originalRequest.url?.includes('/admin');
+      const eventName = isAdminRequest ? 'admin-auth:session-expired' : 'auth:session-expired';
+      window.dispatchEvent(new CustomEvent(eventName));
       return Promise.reject(refreshError);
     } finally {
       isRefreshing = false;

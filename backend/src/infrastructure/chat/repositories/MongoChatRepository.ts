@@ -133,4 +133,15 @@ export class MongoChatRepository
       .lean();
     return docs.map((doc: any) => this.mapToDomain(doc));
   }
+
+  async createMany(chatsData: any[], options?: any): Promise<IChat[]> {
+    const activeSession = (options && options.session) || this.getSession();
+    const finalOptions = activeSession
+      ? { session: activeSession, ...options }
+      : options;
+    const docs = await this.model.insertMany(chatsData, finalOptions) as any;
+    return docs.map((doc: any) =>
+      this.mapToDomain(doc.toObject ? doc.toObject() : doc),
+    );
+  }
 }

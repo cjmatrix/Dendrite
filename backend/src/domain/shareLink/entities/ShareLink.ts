@@ -6,4 +6,12 @@ export interface ISharedLink {
   targetId: string;
   token: string; 
   behaviorSharingPolicy:'READ_ONLY'| 'READ_WRITE'|'INVISIBLE';
+  shareRepo?: {
+    targetType: ShareableType;
+    behaviorSharingPolicy?: 'READ_ONLY'| 'READ_WRITE'|'INVISIBLE';
+    folders?: any[];
+    chats?: any[];
+    messages?: any[];
+    chat?: any;
+  };
 }

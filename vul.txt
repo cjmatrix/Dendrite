@@ -18,6 +18,7 @@ deleting folder or chat wont delete data from cloudinary
 
 quich chat doesnt get user profile
 
+sharing  a single chat only the sideexplorer doesnt show the name
 
 
 

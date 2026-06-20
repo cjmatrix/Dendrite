@@ -8,6 +8,7 @@ import toast from "react-hot-toast";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import type { FileNode } from "../types/types";
+import { useAppSelector } from "../../../store/store";
 
 interface ImportSharedModalProps {
   isOpen: boolean;
@@ -24,7 +25,7 @@ export const ImportSharedModal: React.FC<ImportSharedModalProps> = ({
   const [isImporting, setIsImporting] = useState(false);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-
+  const tree=useAppSelector(state=>state.explorer.tree)
  
   const { data: folders, isLoading: isFoldersLoading, error: foldersError } = useQuery({
     queryKey: ["workspaceFoldersOnly"],
@@ -43,7 +44,7 @@ export const ImportSharedModal: React.FC<ImportSharedModalProps> = ({
       isExpanded: true,
       children: folders as FileNode[],
     } as FileNode;
-  }, [folders]);
+  }, [folders,tree]);
 
   if (!isOpen) return null;
 

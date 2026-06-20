@@ -119,7 +119,9 @@ export function useExplorerMutations() {
       return { previous };
     },
     onError: (_e, _v, ctx) => { if (ctx?.previous) queryClient.setQueryData(["folders"], ctx.previous); },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ["folders"] }),
+    onSettled: () =>{ queryClient.invalidateQueries({ queryKey: ["folders"] })
+      queryClient.invalidateQueries({ queryKey: ["workspaceFoldersOnly"] });
+  },
   });
 
   const { mutate: createChat } = useMutation({

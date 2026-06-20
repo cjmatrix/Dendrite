@@ -1,9 +1,17 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Navigate, Outlet } from "react-router-dom";
-import { useAppSelector } from "../store/store";
+import { useAppSelector, useAppDispatch } from "../store/store";
+import { checkAdminAuth } from "../features/auth/store/authSlice";
 
 const AdminProtectedRoute: React.FC = () => {
+  const dispatch = useAppDispatch();
   const { isAdminAuthenticated, isAdminLoading } = useAppSelector((state) => state.auth);
+
+  useEffect(() => {
+    if (!isAdminAuthenticated && isAdminLoading) {
+      dispatch(checkAdminAuth());
+    }
+  }, [isAdminAuthenticated, isAdminLoading, dispatch]);
 
   if (isAdminLoading) {
     return (

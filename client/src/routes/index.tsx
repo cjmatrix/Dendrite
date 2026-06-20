@@ -14,6 +14,7 @@ import UserManagementPage from "../features/admin/user/UserManagementPage";
 import UserViewPage from "../features/admin/user/UserViewPage";
 import KnowledgeGraphPage from "../features/graph/components/KnowledgeGraphPage";
 import SplitFileViewer from "../features/chat/components/SplitFileViewer";
+import BillingPage from "../features/billing/components/BillingPage";
 
 function SplitFileViewerWrapper() {
   const fileData = sessionStorage.getItem('splitViewFile');
@@ -104,6 +105,10 @@ export const router = createBrowserRouter([
             element: <ChatWindow />
           }
         ]
+      },
+      {
+        path: "/billing",
+        element: <BillingPage />,
       },
     ],
   },

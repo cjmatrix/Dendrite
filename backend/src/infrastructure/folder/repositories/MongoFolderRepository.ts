@@ -3,6 +3,7 @@ import { IFolder } from '../../../domain/folder/entities/Folder';
 import { Folder } from '../models/MongoFolderModel';
 import { MongooseBaseRepository } from '../../shared/BaseRepository';
 import { injectable } from 'tsyringe';
+import mongoose from 'mongoose';
 
 @injectable()
 export class MongoFolderRepository
@@ -37,6 +38,27 @@ export class MongoFolderRepository
     return docs.map(doc => this.mapToDomain(doc));
   }
 
+  async findFolderSubtree(folderId: string) {
+  const result = await this.model.aggregate([
+    {
+      $match: {
+        _id: new mongoose.Types.ObjectId(folderId),
+      },
+    },
+    {
+      $graphLookup: {
+        from: "folders",
+        startWith: "$_id",
+        connectFromField: "_id",
+        connectToField: "parentId",
+        as: "descendants",
+      },
+    },
+  ]);
+
+  return result[0] || null;
+}
+
   async findChildren(parentId: string): Promise<{ _id: string }[]> {
     const docs = await this.model.find({ parentId }).session(this.getSession()).select("_id").lean();
     return docs.map(doc => ({ _id: doc._id.toString() }));
@@ -62,6 +84,17 @@ export class MongoFolderRepository
 
   async findByParentId(parentId: string): Promise<IFolder[]> {
     const docs = await this.model.find({ parentId }).session(this.getSession()).lean();
+    return docs.map(doc => this.mapToDomain(doc));
+  }
+
+  async findByPrefix(userId: string, parentId: string | null, prefix: string): Promise<IFolder[]> {
+    const escapedPrefix = prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regexPattern = `^${escapedPrefix}( \\d+)?$`;
+    const docs = await this.model.find({
+      userId,
+      parentId,
+      name: { $regex: regexPattern }
+    }).session(this.getSession()).lean();
     return docs.map(doc => this.mapToDomain(doc));
   }
 }

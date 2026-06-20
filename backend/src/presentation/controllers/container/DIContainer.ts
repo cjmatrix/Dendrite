@@ -583,7 +583,8 @@ export class DIContainer {
         container.resolve("ISharedLinkRepository"),
         this.getChatRepository(),
         this.getMessageRepository(),
-        this.getFolderRepository()
+        this.getFolderRepository(),
+        container.resolve("IUnitOfWorkRepository")
       );
     }
     return this.downloadSharedLinkUseCase;

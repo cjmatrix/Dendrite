@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from "react";
-import { Plus, FolderPlus, MessageSquare, Check, Folder, ChevronLeft, Brain, Menu, LogOut, Settings, Download } from "lucide-react";
+import { Plus, FolderPlus, MessageSquare, Check, Folder, ChevronLeft, Brain, Menu, LogOut, Settings, Download, Sparkles } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { SettingsModal } from "../../chat/components/SettingsModal";
 import toast from "react-hot-toast";
@@ -149,6 +149,16 @@ export default function FileExplorer() {
         >
           {isCollapsed ? <Menu size={16} /> : <ChevronLeft size={16} />}
         </button>
+
+        {!isShareMode && (
+          <button
+            onClick={() => navigate("/billing")}
+            className="w-8 h-8 rounded-lg text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95"
+            title="Upgrade Plan"
+          >
+            <Sparkles size={16} className="animate-pulse" />
+          </button>
+        )}
 
         {!isShareMode && (
           <button

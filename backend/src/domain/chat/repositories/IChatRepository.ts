@@ -15,4 +15,5 @@ export interface IChatRepository extends IBaseRepository<IChat> {
     documentId: string,
   ): Promise<IChat | null>;
   findByFolderIdsWithoutUserId(folderIds: string[]): Promise<IChat[]>;
+  createMany(chatsData: any[], options?: any): Promise<IChat[]>;
 }

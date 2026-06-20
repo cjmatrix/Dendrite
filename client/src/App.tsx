@@ -1,7 +1,7 @@
 import { RouterProvider } from "react-router-dom";
 import { useEffect } from "react";
 import { useAppDispatch } from "./store/store";
-import { checkAuth, checkAdminAuth, forceLogout } from "./features/auth/store/authSlice";
+import { checkAuth, forceLogout, forceAdminLogout } from "./features/auth/store/authSlice";
 import { messaging } from "./lib/firebase";
 import { onMessage } from "firebase/messaging";
 import toast, { Toaster } from "react-hot-toast";
@@ -15,17 +15,22 @@ function App() {
 
   useEffect(() => {
     dispatch(checkAuth());
-    dispatch(checkAdminAuth());
   }, [dispatch]);
 
   useEffect(() => {
     const handleSessionExpired = () => {
       dispatch(forceLogout());
     };
+    const handleAdminSessionExpired = () => {
+      dispatch(forceAdminLogout());
+    };
 
     window.addEventListener("auth:session-expired", handleSessionExpired);
-    return () =>
+    window.addEventListener("admin-auth:session-expired", handleAdminSessionExpired);
+    return () => {
       window.removeEventListener("auth:session-expired", handleSessionExpired);
+      window.removeEventListener("admin-auth:session-expired", handleAdminSessionExpired);
+    };
   }, [dispatch]);
 
   const queryClient = useQueryClient();

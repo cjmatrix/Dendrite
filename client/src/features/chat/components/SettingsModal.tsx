@@ -15,7 +15,7 @@ type TabType = "profile" | "byok";
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   const dispatch = useAppDispatch();
   const user = useAppSelector((state) => state.auth.user);
-  console.log(user,"here")
+
   const [activeTab, setActiveTab] = useState<TabType>("profile");
   
   // 6 key slots initialized to empty strings

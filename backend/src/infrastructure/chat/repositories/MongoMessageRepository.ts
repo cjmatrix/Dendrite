@@ -33,7 +33,7 @@ export class MongoMessageRepository
     const finalOptions = activeSession
       ? { session: activeSession, ...options }
       : options;
-    const docs = await this.model.create(messagesData, finalOptions);
+    const docs = await this.model.insertMany(messagesData, finalOptions) as any;
     return docs.map((doc: any) =>
       this.mapToDomain(doc.toObject ? doc.toObject() : doc),
     );
@@ -88,6 +88,14 @@ export class MongoMessageRepository
   async findAllByChatId(chatId: string): Promise<IMessage[]> {
     const docs = await this.model
       .find({ chatId })
+      .sort({ createdAt: 1 })
+      .lean();
+    return docs.map((doc: any) => this.mapToDomain(doc));
+  }
+
+  async findAllByChatIds(chatIds: string[]): Promise<IMessage[]> {
+    const docs = await this.model
+      .find({ chatId: { $in: chatIds } })
       .sort({ createdAt: 1 })
       .lean();
     return docs.map((doc: any) => this.mapToDomain(doc));

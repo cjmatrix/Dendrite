@@ -30,6 +30,7 @@ export class ShareLinkController extends BaseController {
       }
 
       const data = await this.createLinkUseCase.execute({
+        userId:req.user._id,
         creatorId,
         targetId,
         targetType,

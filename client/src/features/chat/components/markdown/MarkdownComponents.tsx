@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import P5Sandbox from "../P5Sandbox";
@@ -6,11 +6,82 @@ import { MermaidBlock } from "react-markdown-mermaid";
 // @ts-ignore
 import plantumlEncoder from "plantuml-encoder";
 
+const PlantUMLBlock = ({ codeString }: { codeString: string }) => {
+  const [imageError, setImageError] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [url, setUrl] = useState("");
 
+  useEffect(() => {
+    let active = true;
+    setIsLoading(true);
+    setImageError(false);
 
+    try {
+      const encoded = plantumlEncoder.encode(codeString);
+      const plantumlUrl = `https://www.plantuml.com/plantuml/svg/${encoded}`;
+      setUrl(plantumlUrl);
+
+      fetch(plantumlUrl)
+        .then((res) => {
+          if (!active) return;
+          if (!res.ok) {
+            throw new Error("Failed to load PlantUML");
+          }
+          setImageError(false);
+          setIsLoading(false);
+        })
+        .catch(() => {
+          if (!active) return;
+          setImageError(true);
+          setIsLoading(false);
+        });
+    } catch (e) {
+      if (active) {
+        setImageError(true);
+        setIsLoading(false);
+      }
+    }
+
+    return () => {
+      active = false;
+    };
+  }, [codeString]);
+
+  if (isLoading) {
+    return (
+      <div className="my-6 p-4 rounded-xl border border-zinc-800 bg-zinc-900/10 flex items-center justify-center gap-2">
+        <div className="h-4 w-4 animate-spin rounded-full border-2 border-cyan-500 border-t-transparent"></div>
+        <span className="text-sm text-zinc-500">Generating PlantUML diagram...</span>
+      </div>
+    );
+  }
+
+  if (imageError || !url) {
+    return (
+      <div className="my-6 p-4 rounded-xl border border-zinc-800">
+        <p className="text-red-500/40">Failed to render PlantUML diagram.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="my-6 flex flex-col items-center p-6 rounded-xl hover:scale-120 transition-all overflow-hidden">
+      <div>
+        <button></button>
+      </div>
+      <img
+        src={url}
+        alt="PlantUML Diagram"
+        className="max-w-full h-auto"
+        style={{ filter: "invert(0.9) hue-rotate(180deg)" }}
+        onError={() => setImageError(true)}
+      />
+    </div>
+  );
+};
 
 export const markdownComponents = {
-   MermaidBlock: ({ children }: { children: string }) => {
+  MermaidBlock: ({ children }: { children: string }) => {
     return (
       <div className="my-6 flex justify-center  p-4 rounded-xl bordershadow-lg">
         <MermaidBlock code={children} />
@@ -20,46 +91,21 @@ export const markdownComponents = {
 
   code({ className, children }: any) {
     const match = /language-(\w+)/.exec(className || "");
-   const codeString = Array.isArray(children) 
-    ? children.join("") 
-    : String(children).replace(/\n$/, "");
+    const codeString = Array.isArray(children)
+      ? children.join("")
+      : String(children).replace(/\n$/, "");
 
     if (match && match[1] === "plantuml") {
-      const encoded = plantumlEncoder.encode(codeString);
-      const url = `https://www.plantuml.com/plantuml/svg/${encoded}`;
-
-      
-      return (
-        <div className="my-6 flex flex-col items-center  p-6 rounded-xl hover:scale-120 transition-all overflow-hidden">
-          <div><button></button></div>
-          <img 
-            src={url} 
-            alt="PlantUML Diagram" 
-            className="max-w-full h-auto" 
-            
-            style={{ filter: 'invert(0.9) hue-rotate(180deg)' }} 
-          />
-          {/* <a 
-            href={url} 
-            target="_blank" 
-            rel="noreferrer"
-            className="text-[10px] text-gray-500 mt-2 hover:underline"
-          >
-            Open Original SVG
-          </a> */}
-        </div>
-      );
+      return <PlantUMLBlock codeString={codeString} />;
     }
 
-  if (match && match[1] === "mermaid") {
-   
-    return (
-    
-    <div className="my-6 w-full overflow-x-auto flex justify-center  p-4 rounded-xl ">
-      <div className="mermaid-container min-w-[600px] transition-all">
-        <MermaidBlock code={children} />
-      </div>
-      <style>{`
+    if (match && match[1] === "mermaid") {
+      return (
+        <div className="my-6 w-full overflow-x-auto flex justify-center  p-4 rounded-xl ">
+          <div className="mermaid-container min-w-[600px] transition-all">
+            <MermaidBlock code={children} />
+          </div>
+          <style>{`
         /* Target the mermaid SVG to ensure text remains legible */
         .mermaid-container svg {
           height: auto !important; /* Let the height grow based on content */
@@ -70,14 +116,14 @@ export const markdownComponents = {
           font-size: 16px !important; /* Force a readable font size */
         }
       `}</style>
-    </div>
-  );
-  }
+        </div>
+      );
+    }
 
     if (match && match[1] === "p5") {
       return <P5Sandbox p5CodeString={codeString} />;
     }
-  console.log("markdwon rendering")
+    console.log("markdwon rendering");
     return match ? (
       <div className="my-5 rounded-xl overflow-hidden border border-white/5 bg-[var(--theme-bg-surface)] shadow-lg">
         {/* Language header */}
@@ -121,33 +167,30 @@ export const markdownComponents = {
           {codeString}
         </SyntaxHighlighter>
       </div>
-    ) :  (
- 
-  <SyntaxHighlighter
-    style={vscDarkPlus as any}
-    
-    language="javascript" 
-    PreTag="span"
-    
-    codeTagProps={{
-      style: {
-        fontSize: "15px", 
-        lineHeight: "1.4",
-      }
-    }}
-    customStyle={{
-      display: "inline-block", 
-      verticalAlign: "middle",
-      margin: "0 0.3rem",
-      padding: "0.2rem 0.5rem",
-      background: "rgba(63, 63, 70, 0.2)",
-      borderRadius: "0.375rem",
-      border: "1px solid rgba(82, 82, 91, 0.3)", 
-    }}
-  >
-    {String(children).replace(/\n$/, "")}
-  </SyntaxHighlighter>
-);
+    ) : (
+      <SyntaxHighlighter
+        style={vscDarkPlus as any}
+        language="javascript"
+        PreTag="span"
+        codeTagProps={{
+          style: {
+            fontSize: "15px",
+            lineHeight: "1.4",
+          },
+        }}
+        customStyle={{
+          display: "inline-block",
+          verticalAlign: "middle",
+          margin: "0 0.3rem",
+          padding: "0.2rem 0.5rem",
+          background: "rgba(63, 63, 70, 0.2)",
+          borderRadius: "0.375rem",
+          border: "1px solid rgba(82, 82, 91, 0.3)",
+        }}
+      >
+        {String(children).replace(/\n$/, "")}
+      </SyntaxHighlighter>
+    );
   },
   pre({ children }: any) {
     return <>{children}</>;

@@ -109,26 +109,45 @@ export class GenerateWorkspaceUseCase {
       content: params.message,
     });
 
-    const routerNode = async (state: typeof AgentState.State) => {
-      const lastMsg = state.messages[state.messages.length - 1].content;
+    const getSlidingWindowContext = (messages: any[]): string => {
+      const windowMessages = messages.slice(-10);
+      return windowMessages
+        .map((m) => {
+          let role = "User";
+          if (m._getType) {
+            role = m._getType() === "human" ? "User" : "Agent";
+          } else if (m.role) {
+            role = m.role === "user" ? "User" : "Agent";
+          } else if (m.constructor && m.constructor.name === "AIMessage") {
+            role = "Agent";
+          }
+          return `${role}: ${m.content}`;
+        })
+        .join("\n");
+    };
 
+    const routerNode = async (state: typeof AgentState.State) => {
+      const slidingWindowMsg = getSlidingWindowContext(state.messages);
+      console.log(slidingWindowMsg)
       if (state.status === "awaiting_clarification") {
         return {};
       }
       const folderTree = await this.getMinimalFolders(params.userId);
-      const classification = await this.llm.classifyIntent(lastMsg, folderTree);
-      return { classification, userId: params.userId };
+      const classification = await this.llm.classifyIntent(slidingWindowMsg, folderTree,params.message);
+    
+      return { agentResponse:classification.agentReponse,classification, userId: params.userId };
     };
 
     const checkAmbiguityNode = async (state: typeof AgentState.State) => {
+        console.log(JSON.stringify(state,null,2))
       if (!state.classification.isValidWorkspaceRequest) {
         return {
           status: "rejected",
-          agentResponse: "I can only help you generate structured learning roadmaps and workspaces. Please state a learning goal."
+          agentResponse: state.agentResponse||"I can only help you generate structured learning roadmaps and workspaces. Please state a learning goal."
         };
       }
 
-      if (state.classification.targetFolderId) {
+        if (state.classification.targetFolderId) {
         if (state.classification.targetFolderId === "root") {
           return { status: "generating", resolvedFolderId: null };
         } else {
@@ -136,68 +155,36 @@ export class GenerateWorkspaceUseCase {
         }
       }
 
-      if (!state.classification.targetFolder) {
-        return { status: "generating" };
-      }
 
-      const targetName = state.classification.targetFolder.toLowerCase();
-      if (
-        targetName === "root" ||
-        targetName === "root folder" ||
-        targetName === "at root" ||
-        targetName === "root directory"
-      ) {
-        return { status: "generating", resolvedFolderId: null };
-      }
-
-      const allFolders = await this.folderRepo.findAllByUserId(state.userId);
-      const folderMap = new Map<string, any>();
-      for (const f of allFolders) {
-        folderMap.set(f._id.toString(), f);
-      }
-
-      const buildPath = (folderId: string): string => {
-        const pathParts: string[] = [];
-        let currentId: string | null = folderId;
-        while (currentId) {
-          const folder = folderMap.get(currentId);
-          if (!folder) break;
-          pathParts.unshift(folder.name);
-          currentId = folder.parentId ? folder.parentId.toString() : null;
+      if (state.classification.targetFolder) {
+        const targetName = state.classification.targetFolder.toLowerCase();
+        if (
+          targetName === "root" ||
+          targetName === "root folder" ||
+          targetName === "at root" ||
+          targetName === "root directory"
+        ) {
+          return { status: "generating", resolvedFolderId: null };
         }
-        return pathParts.join(" > ");
-      };
 
-      const matches = allFolders.filter((f) =>
-        f.name.toLowerCase().includes(targetName),
-      );
+        return {
+            status: "awaiting_clarification",
+            agentResponse: state.agentResponse || `I found multiple matching folders. Please clarify which folder you want to target`
+          };
 
-      if (matches.length > 1) {
-        const msg = matches.map((m) => buildPath(m._id.toString())).join(", ");
-        return {
-          status: "awaiting_clarification",
-          ambiguousFolders: matches.map((m) => ({
-            id: m._id.toString(),
-            path: buildPath(m._id.toString()),
-          })),
-          agentResponse: `I found multiple matching folders. Please clarify which folder you want to target: ${msg}`
-        };
-      } else if (matches.length === 1) {
-        return {
-          status: "generating",
-          resolvedFolderId: matches[0]._id.toString(),
-        };
-      } else {
-        return { status: "generating", resolvedFolderId: state.resolvedFolderId || null };
       }
+
+
+      return { status: "generating", resolvedFolderId: state.resolvedFolderId || null };
     };
 
     const resolveNode = async (state: typeof AgentState.State) => {
-      const lastMsg = state.messages[state.messages.length - 1].content.trim();
+      const slidingWindowMsg = getSlidingWindowContext(state.messages);
       const folderTree = await this.getMinimalFolders(state.userId);
       
       const { selectedFolderId, goToRoot } = await this.llm.resolveFolderAmbiguity(
-        lastMsg,
+        slidingWindowMsg,
+        params.message,
         state.ambiguousFolders,
         folderTree
       );
@@ -217,39 +204,73 @@ export class GenerateWorkspaceUseCase {
           ambiguousFolders: [],
         };
       }
-      const msg = state.ambiguousFolders.map((item) => item.path).join(", ");
       return {
         status: "awaiting_clarification",
-        agentResponse: `I didnt found any folder that you mentioned. Please clarify which folder you want to target: ${msg}`
+        agentResponse: "I could not resolve which folder you meant. Please choose one of the options or root."
       };
     };
 
     const blueprintNode = async (state: typeof AgentState.State) => {
       const topic = state.classification.topicToLearn;
-      const blueprint = await this.llm.generateBlueprint(topic);
-      return { blueprint, status: "executing" };
+      const conversationHistory = getSlidingWindowContext(state.messages);
+      const folderTree = await this.getMinimalFolders(state.userId);
+      const blueprint = await this.llm.generateBlueprint(topic, conversationHistory, folderTree, params.message);
+   
+      return { agentResponse:blueprint.agentResponse,blueprint, status: "executing" };
     };
 
     const executeDBNode = async (state: typeof AgentState.State) => {
+      
       if (!state.blueprint || !state.blueprint.folders)
         return {
           status: "completed",
-          agentResponse: "I have successfully generated your workspace roadmaps and milestone chats!"
+          agentResponse: state.agentResponse||"I have successfully generated your workspace roadmaps and milestone chats!"
         };
-      console.log(JSON.stringify(state.blueprint, null, 2));
+      // console.log(JSON.stringify(state.blueprint, null, 2));
 
       const session = await mongoose.startSession();
       session.startTransaction();
 
       try {
         const topic = state.classification.topicToLearn || "Workspace";
-        const rootFolderName = `${topic.charAt(0).toUpperCase() + topic.slice(1)} Roadmap`;
+        const baseName = `${topic.charAt(0).toUpperCase() + topic.slice(1)} Roadmap`;
 
+        const existingFolders = await this.folderRepo.findByPrefix(
+          state.userId,
+          state.resolvedFolderId,
+          baseName
+        );
+
+        let rootFolderName = baseName;
+        if (existingFolders.length > 0) {
+          const escapedBaseName = baseName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const suffixRegex = new RegExp(`^${escapedBaseName}(?: (\\d+))?$`);
+
+          const maxSuffix = existingFolders.reduce((max, folder) => {
+            const match = folder.name.match(suffixRegex);
+            const num = match ? (match[1] ? Number(match[1]) : 0) : -1;
+            return Math.max(max, num);
+          }, -1);
+
+          if (maxSuffix >= 0) {
+            rootFolderName = `${baseName} ${maxSuffix + 1}`;
+          }
+        }
         const rootFolder = await this.folderRepo.create({
           name: rootFolderName,
           parentId: state.resolvedFolderId || null,
           userId: state.userId,
           ownerId: state.userId,
+          behavior: {
+            current: {
+              content: state.blueprint?.rootBehavior || `This workspace contains the learning roadmap for ${topic}.`,
+              updatedAt: new Date()
+            },
+            history: [],
+            settings: {
+              sharingPolicy: 'READ_WRITE'
+            }
+          }
         });
 
         for (const f of state.blueprint.folders) {
@@ -284,7 +305,7 @@ export class GenerateWorkspaceUseCase {
 
       return {
         status: "completed",
-        agentResponse: "I have successfully generated your workspace roadmaps and milestone chats!"
+        agentResponse: state.agentResponse||"I have successfully generated your workspace roadmaps and milestone chats!"
       };
     };
 
@@ -320,7 +341,7 @@ export class GenerateWorkspaceUseCase {
     const hasPreviousState = currentState && currentState.values && currentState.values.messages && currentState.values.messages.length > 0;
 
     const chat = await this.chatRepo.findByIdAndUserId(params.chatId, params.userId);
-    const defaultFolderId = chat && chat.folderId ? chat.folderId.toString() : null;
+    const defaultFolderId = currentState.values.resolvedFolderId|| null;
 
     const initialInput: any = {
       messages: [new HumanMessage(params.message)],
