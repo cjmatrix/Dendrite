@@ -10,6 +10,7 @@ import {
   IUpdateFolderBehaviorUseCase,
   IGetbehaviorUseCase
 } from '../../application/folder/use-cases/interfaces';
+import { SearchExplorerUseCase } from '../../application/folder/use-cases/SearchExplorerUseCase';
 
 @injectable()
 export class FolderController extends BaseController {
@@ -19,7 +20,8 @@ export class FolderController extends BaseController {
     @inject("IUpdateFolderUseCase") private updateFolderUseCase: IUpdateFolderUseCase,
     @inject("IDeleteFolderUseCase") private deleteFolderUseCase: IDeleteFolderUseCase,
     @inject("IUpdateFolderBehaviorUseCase") private updateFolderBehaviorUseCase: IUpdateFolderBehaviorUseCase,
-    @inject("IGetbehaviorUseCase") private getBehavior: IGetbehaviorUseCase
+    @inject("IGetbehaviorUseCase") private getBehavior: IGetbehaviorUseCase,
+    @inject("SearchExplorerUseCase") private searchExplorerUseCase: SearchExplorerUseCase
   ) {
     super();
   }
@@ -110,6 +112,26 @@ export class FolderController extends BaseController {
       const data = await this.deleteFolderUseCase.execute(id, userId);
 
       this.sendSuccess(res, data, 200, 'Folder deleted successfully');
+    } catch (error) {
+      this.sendError(res, error);
+    }
+  };
+
+  public searchItems = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const userId = this.validateUserAuth(req);
+      const query = req.query.q as string || '';
+      const type = (req.query.type as any) || 'all';
+      const folderId = req.query.folderId as string | undefined;
+
+      const results = await this.searchExplorerUseCase.execute({
+        userId,
+        query,
+        type,
+        folderId,
+      });
+
+      this.sendSuccess(res, results, 200, 'Search successful');
     } catch (error) {
       this.sendError(res, error);
     }

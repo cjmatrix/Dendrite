@@ -10,17 +10,17 @@ interface MessageContentProps {
 }
 
 
-function fixMalformedPlantUML(text: string): string {
-  if (!text || !text.includes("plantuml")) return text;
+export function fixMalformedPlantUML(text: string): string {
+  if (!text || (!text.includes("@startuml") && !text.includes("plantuml"))) return text;
 
- 
   return text.replace(
-    /(?<!`)(`)(plantuml\s+@startuml[\s\S]*?@enduml)\1(?!`)/g,
-    (_match, _tick, body) => {
-      return "\n```" + body.trim() + "\n```\n";
+    /(^|\n)\s*(?:`{1,3}\s*(?:plantuml)?\s*)?(@startuml[\s\S]*?@enduml)(?:\s*`{1,3})?(?=\s*(?:\n|$))/gi,
+    (_match, prefix, body) => {
+      return `${prefix}\n\`\`\`plantuml\n${body.trim()}\n\`\`\`\n`;
     }
   );
 }
+
 
 export const MessageContent = React.memo(
   ({ content }: MessageContentProps) => {

@@ -5,7 +5,8 @@ import type {
     SignupRequest, 
     SignupResponse,
     AdminLoginRequest,
-    AdminLoginResponse 
+    AdminLoginResponse,
+    ResetPasswordRequest
 } from "../types/auth.types";
 
 export const authApi = {
@@ -26,5 +27,15 @@ export const authApi = {
 
     adminLogout: async (): Promise<void> => {
         await api.post("/admin/auth/logout");
+    },
+
+    forgotPassword: async (email: string): Promise<{ success: boolean; message: string }> => {
+        const response = await api.post("/auth/forgot-password", { email });
+        return response.data;
+    },
+
+    resetPassword: async (data: ResetPasswordRequest): Promise<{ success: boolean; message: string }> => {
+        const response = await api.post("/auth/reset-password", data);
+        return response.data;
     },
 };

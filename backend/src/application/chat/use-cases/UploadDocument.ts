@@ -11,6 +11,7 @@ import { IDocumentProgressPublisher } from "../../common/ports/IDocumentProgress
 import { AppError } from "../../../utils/AppError";
 import { ILogger } from "../../common/ports/ILogger";
 import { computeFileHash } from "../../../utils/fileHasher";
+import { IRateLimitService } from "../../common/ports/IRateLimitService";
 
 @injectable()
 export class UploadDocument implements IUploadDocumentUseCase {
@@ -22,6 +23,7 @@ export class UploadDocument implements IUploadDocumentUseCase {
     @inject("IDocumentProgressPublisher")
     private progressPublisher: IDocumentProgressPublisher,
     @inject("ILogger") private logger: ILogger,
+    @inject("IRateLimitService") private rateLimitService: IRateLimitService,
   ) {}
 
   async execute(input: UploadDocumentInputDTO): Promise<UploadDocumentOutputDTO> {
@@ -36,10 +38,15 @@ export class UploadDocument implements IUploadDocumentUseCase {
       throw new AppError("No file uploaded", 400);
     }
 
+    try {
+      await this.rateLimitService.incrementCount(userId, "documentUploads");
+    } catch (err) {
+      this.logger.error("Failed to increment documentUploads rate limit counter", err);
+    }
+
     const documentFileName = fileName || "document";
     const documentId = crypto.randomUUID();
 
-   
     const contentHash = computeFileHash(filePath);
 
   

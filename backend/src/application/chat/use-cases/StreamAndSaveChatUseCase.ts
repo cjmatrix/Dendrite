@@ -8,6 +8,7 @@ import { IAIService } from "../../common/ports/IAIService";
 import { ILogger } from "../../common/ports/ILogger";
 import { estimateTokenCount } from "../../../utils/tokenCounter";
 import { DEFAULT_MODEL } from "../../../constants/models";
+import { IRateLimitService } from "../../common/ports/IRateLimitService";
 
 @injectable()
 export class StreamAndSaveChatUseCase implements IStreamAndSaveChatUseCase {
@@ -16,6 +17,7 @@ export class StreamAndSaveChatUseCase implements IStreamAndSaveChatUseCase {
     @inject("ISaveModelReplyUseCase")
     private saveModelReplyUseCase: ISaveModelReplyUseCase,
     @inject("ILogger") private logger: ILogger,
+    @inject("IRateLimitService") private rateLimitService: IRateLimitService,
   ) {}
 
   async *execute(
@@ -129,6 +131,12 @@ export class StreamAndSaveChatUseCase implements IStreamAndSaveChatUseCase {
           originalMessage,
         },
       };
+
+      try {
+        await this.rateLimitService.incrementCount(userId, "mainQueries");
+      } catch (err) {
+        this.logger.error("Failed to increment rate limit counter for mainQueries", err);
+      }
     }
   }
 }

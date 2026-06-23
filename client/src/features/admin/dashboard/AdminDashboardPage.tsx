@@ -13,6 +13,7 @@ import {
   CpuIcon
 } from "lucide-react";
 import { useGetAdminDashboardStats } from "./hook/useGetAdminDashboardStats";
+import { SubscriptionStatsCard } from "./components/SubscriptionStatsCard";
 
 function StatCardSkeleton() {
   return (
@@ -303,6 +304,9 @@ function AdminDashboardPage() {
 
             <DonutChart categories={categories} totalTokens={totalTokens} />
           </div>
+
+          {/* Subscription Stats Ledger & Charts */}
+          <SubscriptionStatsCard />
         </div>
       )}
     </div>

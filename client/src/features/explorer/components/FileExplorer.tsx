@@ -1,9 +1,10 @@
 import { useRef, useState, useEffect } from "react";
-import { Plus, FolderPlus, MessageSquare, Check, Folder, ChevronLeft, Brain, Menu, LogOut, Settings, Download, Sparkles } from "lucide-react";
+import { Plus, FolderPlus, MessageSquare, Check, Folder, ChevronLeft, Brain, Menu, LogOut, Settings, Download, Sparkles, Search } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { SettingsModal } from "../../chat/components/SettingsModal";
 import toast from "react-hot-toast";
 import { ImportSharedModal } from "./ImportSharedModal";
+import { SearchExplorerModal } from "./SearchExplorerModal";
 
 import type { FileType } from "../types/types";
 import { FileItem } from "./FileItem";
@@ -23,7 +24,13 @@ export default function FileExplorer() {
   const { token } = useParams<{ token?: string }>();
   const user = useAppSelector((state) => state.auth.user);
   const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
+  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
+  const [searchInitialFolderId, setSearchInitialFolderId] = useState<string | undefined>(undefined);
   const isAgentPending = useIsMutating({ mutationKey: ["sendAgentMessage"] }) > 0;
+
+  useEffect(()=>{
+    setSearchInitialFolderId(activeSidebarRootId?activeSidebarRootId:undefined)
+  },[activeSidebarRootId])
 
 
   const { recallCount } = useFileTree();
@@ -38,6 +45,15 @@ export default function FileExplorer() {
     };
     window.addEventListener("recall:notification-pushed", triggerAnimation);
     return () => window.removeEventListener("recall:notification-pushed", triggerAnimation);
+  }, []);
+
+  useEffect(() => {
+    const handleSearchInFolder = (e: CustomEvent) => {
+      setSearchInitialFolderId(e.detail.folderId);
+      setIsSearchModalOpen(true);
+    };
+    window.addEventListener("open-search-modal", handleSearchInFolder as EventListener);
+    return () => window.removeEventListener("open-search-modal", handleSearchInFolder as EventListener);
   }, []);
 
 
@@ -162,6 +178,16 @@ export default function FileExplorer() {
 
         {!isShareMode && (
           <button
+            onClick={() => dispatch(toggleExplorerModal())}
+            className="w-8 h-8 rounded-lg text-zinc-400 hover:text-zinc-200 flex items-center justify-center hover:bg-zinc-800/40 transition-colors"
+            title="Full Explorer Center"
+          >
+            <Folder size={16} />
+          </button>
+        )}
+
+        {!isShareMode && (
+          <button
             onClick={() => setIsSettingsOpen(true)}
             className="w-8 h-8 rounded-lg text-zinc-400 hover:text-zinc-200 flex items-center justify-center hover:bg-zinc-800/40 transition-colors"
             title="Settings"
@@ -225,6 +251,14 @@ export default function FileExplorer() {
               </h2>
               {!isShareMode && (
                 <div className="flex items-center gap-1 bg-zinc-900/60 p-1 rounded-lg border border-zinc-800/50 shadow-inner">
+                  <button
+                    onClick={() => setIsSearchModalOpen(true)}
+                    className="p-1.5 text-zinc-400 hover:text-cyan-400 hover:bg-zinc-800 rounded-md transition-all active:scale-95"
+                    title="Search"
+                  >
+                    <Search size={14} strokeWidth={2.5} />
+                  </button>
+                  <div className="w-px h-3.5 bg-zinc-700/50 mx-0.5"></div>
                   <button
                     onClick={() => startRootCreate("chat")}
                     className="p-1.5 text-zinc-400 hover:text-cyan-400 hover:bg-zinc-800 rounded-md transition-all active:scale-95"
@@ -333,24 +367,16 @@ export default function FileExplorer() {
                 <>
                   <button
                     onClick={() => dispatch(toggleRecallOverlay(true))}
-                    className="relative group w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-linear-to-r from-purple-600/10 to-indigo-600/10 hover:from-purple-500/20 hover:to-indigo-500/20 text-purple-400 hover:text-purple-300 transition-all border border-purple-500/20 hover:border-purple-400/50 text-[12px] font-bold shadow-[0_4px_20px_-10px_rgba(168,85,247,0.3)] hover:shadow-[0_4px_20px_-8px_rgba(168,85,247,0.5)] active:scale-[0.98] mb-2"
+                    className="relative group w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-linear-to-r from-purple-600 to-indigo-600/50 hover:from-purple-500 hover:to-indigo-500/50 text-white/90 hover:text-purple-100 transition-all border border-purple-500/20 hover:border-purple-400/50 text-[12px] font-bold shadow-[0_4px_20px_-10px_rgba(168,85,247,0.3)] hover:shadow-[0_4px_20px_-8px_rgba(168,85,247,0.5)] active:scale-[0.98]"
                   >
-                    <Brain size={14} strokeWidth={2.5} className="text-purple-500 group-hover:drop-shadow-[0_0_8px_rgba(168,85,247,0.8)] transition-all" />
+                    <Brain size={14} strokeWidth={2.5} className="text-white/80 group-hover:drop-shadow-[0_0_8px_rgba(168,85,247,0.8)] transition-all" />
                     <p>Active Recall</p>
                     <div className="absolute right-4 top-2 flex items-center justify-between px-1 mb-2">
                       <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/20 ${shouldAnimate ? "animate-bounce-pop border-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.4)]" : ""}`}>
-                        <span className="text-[11px] font-black text-purple-300 tabular-nums">{recallCount}</span>
-                        <div className={`w-1 h-1 rounded-full bg-purple-500 ${shouldAnimate ? "animate-pulse scale-150" : ""}`} />
+                        <span className="text-[11px] font-black text-white tabular-nums">{recallCount}</span>
+                        <div className={`w-1 h-1 rounded-full bg-white ${shouldAnimate ? "animate-pulse scale-150" : ""}`} />
                       </div>
                     </div>
-                  </button>
-
-                  <button
-                    onClick={() => dispatch(toggleExplorerModal())}
-                    className="group w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-linear-to-r from-cyan-600/10 to-sky-600/10 hover:from-cyan-500/20 hover:to-sky-500/20 text-cyan-400 hover:text-cyan-300 transition-all border border-cyan-500/20 hover:border-cyan-400/50 text-[12px] font-bold shadow-[0_4px_20px_-10px_rgba(6,182,212,0.3)] hover:shadow-[0_4px_20px_-8px_rgba(6,182,212,0.5)] active:scale-[0.98]"
-                  >
-                    <Folder size={14} strokeWidth={2.5} className="text-cyan-500 group-hover:drop-shadow-[0_0_8px_rgba(6,182,212,0.8)] transition-all" />
-                    Full Explorer Center
                   </button>
                 </>
               )}
@@ -369,6 +395,23 @@ export default function FileExplorer() {
           isOpen={isDownloadModalOpen}
           onClose={() => setIsDownloadModalOpen(false)}
           token={token}
+        />
+      )}
+
+      {isSearchModalOpen && (
+        <SearchExplorerModal
+          onClose={() => {
+            setIsSearchModalOpen(false);
+            setSearchInitialFolderId(activeSidebarRootId?activeSidebarRootId:undefined);
+          }}
+          initialFolderId={searchInitialFolderId}
+          onNavigate={(type, id) => {
+            if (type === "folder") {
+              dispatch(setActiveSidebarRootId(id));
+            } else {
+              navigate(`/${id}`);
+            }
+          }}
         />
       )}
     </div>

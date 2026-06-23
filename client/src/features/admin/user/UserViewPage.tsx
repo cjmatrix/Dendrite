@@ -1,11 +1,13 @@
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, UserCircle } from "lucide-react";
+import { ArrowLeft, UserCircle, RefreshCw, RotateCcw } from "lucide-react";
 import { useGetUserById } from "./hook/useGetUserById";
 import { useState } from "react";
 import { useSuspendUser } from "./hook/useSuspendUser";
 import { useUnsuspendUser } from "./hook/useUnsuspendUser";
 import { useToggleBan } from "./hook/useToggleBan";
 import { ActionModal } from "../../../components/common/ActionModal";
+import { useGetUserRateLimitUsage } from "./hook/useGetUserRateLimitUsage";
+import { useResetUserRateLimits } from "./hook/useResetUserRateLimits";
 
 function UserViewPage() {
   const { id } = useParams();
@@ -31,6 +33,14 @@ function UserViewPage() {
   const { mutate, isPending } = useSuspendUser();
   const { mutate: unsuspend, isPending: isUnsuspending } = useUnsuspendUser();
   const { mutate: toggleBan, isPending: isBanning } = useToggleBan();
+  const { data: usageData, isLoading: isUsageLoading } = useGetUserRateLimitUsage(id || "");
+  const resetRateLimitsMutation = useResetUserRateLimits();
+
+  const handleResetLimits = () => {
+    if (id) {
+      resetRateLimitsMutation.mutate(id);
+    }
+  };
 
   const handleSuspend = (seconds: number) => {
     mutate(
@@ -188,6 +198,104 @@ function UserViewPage() {
             ))}
           </div>
         </div>
+      </section>
+
+      <section className="mt-8">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2 text-sm text-zinc-300">
+            <span className="text-lg">✧</span>
+            Daily Quotas & Token Usage
+          </div>
+          <button
+            onClick={handleResetLimits}
+            disabled={resetRateLimitsMutation.isPending}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-500/30 text-[11px] uppercase tracking-wider text-red-200 hover:bg-red-500/10 hover:border-red-500/50 transition-all disabled:opacity-50 cursor-pointer active:scale-95"
+          >
+            <RotateCcw size={12} />
+            {resetRateLimitsMutation.isPending ? "Resetting..." : "Reset Daily Limits"}
+          </button>
+        </div>
+
+        {isUsageLoading ? (
+          <div className="bg-zinc-900/60 border border-blue-500/10 rounded-2xl p-6 flex justify-center items-center h-48">
+            <RefreshCw className="animate-spin text-blue-500" size={24} />
+          </div>
+        ) : !usageData ? (
+          <div className="bg-zinc-900/60 border border-blue-500/10 rounded-2xl p-6 text-center text-zinc-400 text-sm">
+            No active usage data found.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Daily Counts Section */}
+            <div className="bg-zinc-900/60 border border-blue-500/10 rounded-2xl p-6 shadow-lg shadow-blue-500/5">
+              <h4 className="text-xs uppercase tracking-wider text-zinc-400 mb-4 font-semibold">
+                Daily Operations Quota
+              </h4>
+              <div className="space-y-4">
+                {Object.entries(usageData.counts).map(([category, { current, limit }]) => {
+                  const percent = limit === -1 ? 0 : Math.min(100, (current / limit) * 100);
+                  return (
+                    <div key={category} className="space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-zinc-300 capitalize">{category.replace(/([A-Z])/g, " $1").trim()}</span>
+                        <span className="text-zinc-400 font-medium">
+                          {current} / {limit === -1 ? "∞" : limit}
+                        </span>
+                      </div>
+                      <div className="w-full bg-zinc-950 rounded-full h-1.5 border border-zinc-800/50 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${
+                            percent > 90
+                              ? "bg-red-500/80"
+                              : percent > 75
+                              ? "bg-yellow-500/80"
+                              : "bg-blue-500/80"
+                          }`}
+                          style={{ width: limit === -1 ? "0%" : `${percent}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Model Tokens Section */}
+            <div className="bg-zinc-900/60 border border-blue-500/10 rounded-2xl p-6 shadow-lg shadow-blue-500/5">
+              <h4 className="text-xs uppercase tracking-wider text-zinc-400 mb-4 font-semibold">
+                Model Token Allocations
+              </h4>
+              <div className="space-y-4 max-h-[300px] overflow-y-auto pr-1">
+                {Object.entries(usageData.tokens).map(([model, { current, limit }]) => {
+                  if (limit === 0) return null; // Model is not available for this tier
+                  const percent = limit === -1 ? 0 : Math.min(100, (current / limit) * 100);
+                  return (
+                    <div key={model} className="space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-zinc-300 font-mono text-[11px]">{model}</span>
+                        <span className="text-zinc-400 font-medium">
+                          {current.toLocaleString()} / {limit === -1 ? "∞" : limit.toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="w-full bg-zinc-950 rounded-full h-1.5 border border-zinc-800/50 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${
+                            percent > 90
+                              ? "bg-red-500/80"
+                              : percent > 75
+                              ? "bg-yellow-500/80"
+                              : "bg-blue-500/80"
+                          }`}
+                          style={{ width: limit === -1 ? "0%" : `${percent}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
       </section>
 
       <section className="mt-10 grid grid-cols-1 xl:grid-cols-[1.2fr_1fr] gap-6">

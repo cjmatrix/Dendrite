@@ -5,6 +5,12 @@ import { store } from "./store/store";
 import "./index.css";
 // import 'react-markdown-mermaid/style.css'; 
 import App from "./App.tsx";
+import { initializePaddle } from "@paddle/paddle-js";
+
+initializePaddle({
+  environment: "sandbox",
+  token: import.meta.env.VITE_PADDLE_CLIENT_TOKEN || "",
+});
 
 import * as Sentry from "@sentry/react";
 

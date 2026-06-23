@@ -73,7 +73,7 @@ export interface IUploadChatImageUseCase {
 }
 
 export interface IStreamQuickChatUseCase {
-  execute(input: StreamQuickChatInputDTO): Promise<AsyncIterable<any>>;
+  execute(input: StreamQuickChatInputDTO, signal?: AbortSignal): AsyncGenerator<any>;
 }
 
 export interface IUploadDocumentUseCase {

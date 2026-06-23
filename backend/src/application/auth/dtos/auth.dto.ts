@@ -48,6 +48,18 @@ export const UpdateByokKeysInputSchema = z.object({
 });
 export type UpdateByokKeysInputDTO = z.infer<typeof UpdateByokKeysInputSchema>;
 
+export const ForgotPasswordInputSchema = z.object({
+  email: z.string().trim().email("Invalid email format"),
+});
+export type ForgotPasswordInputDTO = z.infer<typeof ForgotPasswordInputSchema>;
+
+export const ResetPasswordInputSchema = z.object({
+  email: z.string().trim().email("Invalid email format"),
+  token: z.string().trim().min(1, "Token is required"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+});
+export type ResetPasswordInputDTO = z.infer<typeof ResetPasswordInputSchema>;
+
 
 
 export interface UserOutputDTO {

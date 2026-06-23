@@ -64,107 +64,10 @@ export class CreateLink {
         throw new AppError("Folder not found", 404);
       }
 
-      // const getDescendants = async (folderId: string): Promise<any[]> => {
-      //   const children = await this.folderRepo.findByParentId(folderId);
-      //   let list = [...children];
-      //   for (const child of children) {
-      //     const subChildren = await getDescendants(child._id.toString());
-      //     list = list.concat(subChildren);
-      //   }
-      //   return list;
-      // };
-
-      // const descendants = await getDescendants(targetId);
-      // const folderIds = [targetId, ...descendants.map((d) => d._id.toString())];
 
       let activeChatDoc = null;
       let activeMessages = null;
 
-      // if (chatId) {
-      //   // Fetch specific chat messages under the shared folder
-      //   activeChatDoc = await this.chatRepo.findById(chatId);
-      //   if (
-      //     !activeChatDoc ||
-      //     !activeChatDoc.folderId ||
-      //     !folderIds.includes(activeChatDoc.folderId.toString())
-      //   ) {
-      //     throw new AppError("Chat not found in this shared folder", 404);
-      //   }
-      //   activeMessages = await this.messageRepo.findAllByChatId(chatId);
-      // }
-
-      // Fetch all chats within these folders
-
-      // const allFolders = [rootFolderDoc, ...descendants];
-      // const allFolders = await this.folderRepo.findAllByUserId(userId);
-      // const folderMap = new Map();
-      // const roots: any[] = [];
-
-      // for (const folder of allFolders) {
-      //   folderMap.set(folder._id.toString(), {
-      //     _id: folder._id.toString(),
-      //     id: folder._id.toString(),
-      //     name: folder.name,
-      //     type: "folder",
-      //     parentId: folder.parentId ? folder.parentId.toString() : null,
-      //     children: [],
-      //     isExpanded: folder.isExpanded || false,
-      //     isSystemFolder: folder.isSystemFolder || false,
-      //   });
-      // }
-
-      // for (const folder of allFolders) {
-      //   const node = folderMap.get(folder._id.toString());
-      //   if (folder.parentId) {
-      //     const parent = folderMap.get(folder.parentId.toString());
-      //     if (parent) {
-      //       parent.children.push(node);
-      //     }
-      //   } else {
-      //     roots.push(node);
-      //   }
-      // }
-      // console.log(roots);
-
-      // function getTargetNode(node: any, id: string): any {
-      //   if (node._id === id) {
-      //     return node;
-      //   }
-
-      //   for (const child of node.children || []) {
-      //     const found = getTargetNode(child, id);
-
-      //     if (found) {
-      //       return found;
-      //     }
-      //   }
-
-      //   return null;
-      // }
-
-      // let targetRoot = null;
-
-      // for (const root of roots) {
-      //   targetRoot = getTargetNode(root, targetId);
-
-      //   if (targetRoot) {
-      //     break;
-      //   }
-      // }
-
-      // let folderIds=[];
-      // function getAllFolderIds(node){
-      //     if(node){
-      //       folderIds.push(node._id)
-      //     }
-
-      //     for(const folder of node.children){
-      //       getAllFolderIds(folder)
-      //     }
-      // }
-      // getAllFolderIds(targetRoot)
-
-      // const chats = await this.chatRepo.findByFolderIdsWithoutUserId(folderIds);
       const subtree = await this.folderRepo.findFolderSubtree(targetId);
 
       if (!subtree) {

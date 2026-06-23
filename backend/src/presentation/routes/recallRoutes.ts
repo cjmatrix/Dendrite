@@ -3,12 +3,13 @@ import { recallController } from '../controllers/recallController';
 import { userProtect } from '../middleware/authMiddleware';
 import { validateBody, validateParams } from '../middleware/validateRequest';
 import { CreateCardInputSchema, UpdateCardInputSchema, CardIdParamSchema } from '../../application/recall/dtos/recall.dto';
+import { rateLimit } from '../middleware/rateLimitMiddleware';
 
 const router = express.Router();
 
 router.use(userProtect);
 
-router.post('/save', validateBody(CreateCardInputSchema), (req, res, next) => recallController.createCard(req, res).catch(next));
+router.post('/save', rateLimit("recallCards"), validateBody(CreateCardInputSchema), (req, res, next) => recallController.createCard(req, res).catch(next));
 router.post('/update/:id', validateParams(CardIdParamSchema), validateBody(UpdateCardInputSchema), (req, res, next) => recallController.updateCard(req, res).catch(next));
 router.get('/count', (req, res, next) => recallController.countDueCards(req, res).catch(next));
 router.get('/', (req, res, next) => recallController.getDueCards(req, res).catch(next));

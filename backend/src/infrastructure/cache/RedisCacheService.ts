@@ -1,6 +1,48 @@
-import { ICacheService, CacheSetOptions } from "../../application/common/ports/ICacheService";
+import { ICacheService, CacheSetOptions, ICachePipeline } from "../../application/common/ports/ICacheService";
 import { injectable, inject } from "tsyringe";
-import { Redis } from "ioredis";
+import { Redis, ChainableCommander } from "ioredis";
+
+class RedisCachePipeline implements ICachePipeline {
+  private pipelineInstance: ChainableCommander;
+
+  constructor(redis: Redis) {
+    this.pipelineInstance = redis.pipeline();
+  }
+
+  get(key: string): ICachePipeline {
+    this.pipelineInstance.get(key);
+    return this;
+  }
+
+  set(key: string, value: string, options?: CacheSetOptions): ICachePipeline {
+    if (options) {
+      if (options.EX) {
+        this.pipelineInstance.set(key, value, "EX", options.EX);
+      } else if (options.PX) {
+        this.pipelineInstance.set(key, value, "PX", options.PX);
+      } else {
+        this.pipelineInstance.set(key, value);
+      }
+    } else {
+      this.pipelineInstance.set(key, value);
+    }
+    return this;
+  }
+
+  del(key: string): ICachePipeline {
+    this.pipelineInstance.del(key);
+    return this;
+  }
+
+  async exec(): Promise<unknown[]> {
+    const results = await this.pipelineInstance.exec();
+    if (!results) return [];
+    return results.map(([err, val]: [Error | null, unknown]) => {
+      if (err) throw err;
+      return val;
+    });
+  }
+}
 
 @injectable()
 export class RedisCacheService implements ICacheService {
@@ -43,5 +85,18 @@ export class RedisCacheService implements ICacheService {
       allKeys.push(...keys);
     } while (cursor !== "0");
     return allKeys;
+  }
+
+  async healthCheck(): Promise<boolean> {
+    try {
+      const res = await this.redis.ping();
+      return res === "PONG";
+    } catch {
+      return false;
+    }
+  }
+
+  pipeline(): ICachePipeline {
+    return new RedisCachePipeline(this.redis);
   }
 }

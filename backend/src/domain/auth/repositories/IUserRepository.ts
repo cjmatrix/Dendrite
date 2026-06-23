@@ -10,4 +10,6 @@ export interface IUserRepository extends IBaseRepository<IUser> {
   findAll(filter?: any, options?: { limit?: number; skip?: number; sort?: any }): Promise<IUser[]>;
   count(filter?: any): Promise<number>;
   aggregate(pipeline: any[]): Promise<any[]>;
+  findByBillingCustomerId(customerId: string): Promise<IUser | null>;
+  updateByBillingCustomerId(customerId: string, update: any): Promise<IUser | null>;
 }

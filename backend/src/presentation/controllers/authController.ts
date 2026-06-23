@@ -3,6 +3,8 @@ import { BaseController } from "./base/BaseController";
 import { AppError } from "../../utils/AppError";
 import { setAuthCookies, clearAuthCookies } from "../../utils/cookieUtils";
 import { injectable, inject } from "tsyringe";
+import { IRateLimitService } from "../../application/common/ports/IRateLimitService";
+import { UserTier } from "../../constants/rateLimits";
 import {
   IGetMeUseCase,
   IGoogleLoginUseCase,
@@ -15,6 +17,8 @@ import {
   IVerifyOtpUseCase,
   IUpdateByokKeysUseCase,
   IGetByokKeysUseCase,
+  IForgotPasswordUseCase,
+  IResetPasswordUseCase,
 } from "../../application/auth/use-cases/interfaces";
 import { container } from "tsyringe";
 
@@ -22,8 +26,6 @@ import {
   AUTH_MESSAGES,
   HTTP_STATUS,
 } from "../constants/authController.constants";
-
-
 
 @injectable()
 export class AuthController extends BaseController {
@@ -44,6 +46,12 @@ export class AuthController extends BaseController {
     private updateByokKeysUseCase: IUpdateByokKeysUseCase,
     @inject("IGetByokKeysUseCase")
     private getByokKeysUseCase: IGetByokKeysUseCase,
+    @inject("IForgotPasswordUseCase")
+    private forgotPasswordUseCase: IForgotPasswordUseCase,
+    @inject("IResetPasswordUseCase")
+    private resetPasswordUseCase: IResetPasswordUseCase,
+    @inject("IRateLimitService")
+    private rateLimitService: IRateLimitService,
   ) {
     super();
   }
@@ -72,7 +80,10 @@ export class AuthController extends BaseController {
 
     const output = await this.loginUser.execute(validatedInput);
 
-    setAuthCookies(res, { accessToken: output.accessToken, refreshToken: output.refreshToken });
+    setAuthCookies(res, {
+      accessToken: output.accessToken,
+      refreshToken: output.refreshToken,
+    });
 
     this.sendSuccess(res, output.user, HTTP_STATUS.OK, AUTH_MESSAGES.LOGGED_IN);
   };
@@ -164,7 +175,10 @@ export class AuthController extends BaseController {
       validatedInput.idToken,
     );
 
-    setAuthCookies(res, { accessToken: output.accessToken, refreshToken: output.refreshToken });
+    setAuthCookies(res, {
+      accessToken: output.accessToken,
+      refreshToken: output.refreshToken,
+    });
 
     this.sendSuccess(
       res,
@@ -174,17 +188,20 @@ export class AuthController extends BaseController {
     );
   };
 
-  public updateByokKeys = async (req: Request, res: Response): Promise<void> => {
+  public updateByokKeys = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
       const { provider, keys } = req.body;
-      
+
       const result = await this.updateByokKeysUseCase.execute({
         userId,
         provider,
         keys,
       });
-      
+
       this.sendSuccess(res, result, HTTP_STATUS.OK);
     } catch (error) {
       this.sendError(res, error);
@@ -194,14 +211,59 @@ export class AuthController extends BaseController {
   public getByokKeys = async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
-      const provider = req.query.provider as string || "gemini";
-      
+      const provider = (req.query.provider as string) || "gemini";
+
       const result = await this.getByokKeysUseCase.execute(userId, provider);
-      
+
       this.sendSuccess(res, result, HTTP_STATUS.OK);
     } catch (error) {
       this.sendError(res, error);
     }
+  };
+
+  public getRateLimitUsage = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const userId = this.validateUserAuth(req);
+      const tier = (req.user?.tier || "free") as UserTier;
+
+      const usage = await this.rateLimitService.getUserUsageSummary(
+        userId,
+        tier,
+      );
+
+      this.sendSuccess(res, usage);
+    } catch (error) {
+      this.sendError(res, error);
+    }
+  };
+
+  public forgotPassword = async (req: Request, res: Response): Promise<void> => {
+    const { email } = req.body;
+    const result = await this.forgotPasswordUseCase.execute(email);
+    this.sendSuccess(
+      res,
+      result,
+      HTTP_STATUS.OK,
+      AUTH_MESSAGES.FORGOT_PASSWORD_SENT,
+    );
+  };
+
+  public resetPassword = async (req: Request, res: Response): Promise<void> => {
+    const { email, token, password } = req.body;
+    const result = await this.resetPasswordUseCase.execute({
+      email,
+      token,
+      password,
+    });
+    this.sendSuccess(
+      res,
+      result,
+      HTTP_STATUS.OK,
+      AUTH_MESSAGES.PASSWORD_RESET_SUCCESS,
+    );
   };
 }
 

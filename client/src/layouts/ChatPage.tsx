@@ -5,14 +5,16 @@ import { Menu, X } from "lucide-react";
 import { useAppSelector, useAppDispatch } from "../store/store";
 import FileDisplay from "../features/explorer/components/FileDisplay";
 import { resolveSharedLink } from "../features/explorer/api/shareLinkApi";
-import { setIsShareMode } from "../features/explorer/store/explorerSlice";
+import { setIsShareMode, toggleRecallOverlay } from "../features/explorer/store/explorerSlice";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import DendritesLogo from "../components/DendritesLogo";
+import RecallPage from "../features/recall/components/RecallPage";
 
 function ChatPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { id, token } = useParams<{ id?: string, token?: string }>();
   const isExplorerModalOpen = useAppSelector((state) => state.explorer.isExplorerModalOpen);
+  const isRecallOverlayOpen = useAppSelector((state) => state.explorer.isRecallOverlayOpen);
   
 
   const dispatch = useAppDispatch();
@@ -152,6 +154,12 @@ function ChatPage() {
       <div className="flex-1 min-w-0 overflow-y-auto h-screen custom-scrollbar">
         <Outlet />
       </div>
+      {/* Recall Page Overlay */}
+      {isRecallOverlayOpen && (
+        <div className="fixed inset-0 z-[60] bg-(--theme-bg-base) animate-in fade-in duration-300 overflow-y-auto overflow-x-hidden">
+          <RecallPage onClose={() => dispatch(toggleRecallOverlay(false))} />
+        </div>
+      )}
     </div>
   );
 }

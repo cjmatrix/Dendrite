@@ -1,4 +1,6 @@
 import winston from "winston";
+// @ts-ignore
+import LokiTransport from "winston-loki";
 import { ILogger } from "../../application/common/ports/ILogger";
 
 
@@ -32,6 +34,14 @@ export class WinstonLoggerAdapter implements ILogger {
         new winston.transports.File({
           filename: "logs/combined.log",
           format: winston.format.json(),
+        }),
+        new LokiTransport({
+          host: process.env.LOKI_URL || "http://localhost:3100",
+          labels: { app: "dentrites", service: serviceName },
+          json: true,
+          format: winston.format.json(),
+          replaceTimestamp: true,
+          onConnectionError: (err: any) => console.error("Loki connection error:", err)
         }),
       ],
     });

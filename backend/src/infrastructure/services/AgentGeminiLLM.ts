@@ -43,7 +43,7 @@ export class AgentGeminiLLMService {
       agentReponse: z
         .string()
         .describe(
-          "The assistant's conversational response back to the user. This must be formulated by you. If the request is invalid or unrelated, explain what you can do. If you detect ambiguity (e.g., there are multiple folders with the same name in the folderTree and the user did not specify parent context), write a natural, polite clarifying question listing the full paths of the matching folders and asking the user to clarify which one they mean. Otherwise, briefly describe what you are about to do.",
+          "The assistant's conversational response back to the user. This must be formulated by you. If the request is invalid or unrelated, explain what you can do. If you detect ambiguity (e.g., there are multiple folders with the same name in the folderTree and the user did not specify parent context), write a natural, polite clarifying question listing the full paths of the matching folders and asking the user to clarify which one they mean the path should be beutifull markdown and readable. Otherwise, briefly describe what you are about to do.",
         ),
     });
 

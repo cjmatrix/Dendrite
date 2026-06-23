@@ -47,5 +47,18 @@ router.post(
 	(req, res, next) => userController.toggleBan(req, res).catch(next),
 );
 
+router.get(
+	"/:id/usage",
+	adminProtect,
+	validateParams(GetUserDetailsInputSchema),
+	(req, res, next) => userController.getUsage(req, res).catch(next),
+);
+
+router.post(
+	"/:id/reset-usage",
+	adminProtect,
+	validateParams(GetUserDetailsInputSchema),
+	(req, res, next) => userController.resetUsage(req, res).catch(next),
+);
 
 export default router

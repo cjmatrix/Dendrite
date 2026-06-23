@@ -20,3 +20,11 @@ export interface IToggleBanUserUseCase {
   execute(userId: string): Promise<string>;
 }
 
+export interface IGetUserRateLimitUsageUseCase {
+  execute(targetUserId: string): Promise<any>;
+}
+
+export interface IResetUserRateLimitsUseCase {
+  execute(targetUserId: string): Promise<void>;
+}
+

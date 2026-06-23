@@ -7,11 +7,14 @@ import Login from "../features/auth/components/Login";
 import Signup from "../features/auth/components/Signup";
 import OtpPage from "../features/auth/components/OtpPage";
 import AdminLogin from "../features/auth/components/AdminLogin";
+import ResetPassword from "../features/auth/components/ResetPassword";
 import ChatWindow from "../features/chat/components/ChatWindow";
 import EmptyChatState from "../features/chat/components/EmptyChatState";
 import AdminDashboardPage from "../features/admin/dashboard/AdminDashboardPage";
+import { SystemHealthPage } from "../features/admin/dashboard/SystemHealthPage";
 import UserManagementPage from "../features/admin/user/UserManagementPage";
 import UserViewPage from "../features/admin/user/UserViewPage";
+import RateLimitManagementPage from "../features/admin/rate-limits/RateLimitManagementPage";
 import KnowledgeGraphPage from "../features/graph/components/KnowledgeGraphPage";
 import SplitFileViewer from "../features/chat/components/SplitFileViewer";
 import BillingPage from "../features/billing/components/BillingPage";
@@ -29,6 +32,10 @@ export const router = createBrowserRouter([
   {
     path: "/login",
     element: <Login />,
+  },
+  {
+    path: "/reset-password",
+    element: <ResetPassword />,
   },
   {
     path: "/admin/login",
@@ -53,6 +60,14 @@ export const router = createBrowserRouter([
           {
             path: "users/:id",
             element: <UserViewPage />,
+          },
+          {
+            path: "rate-limits",
+            element: <RateLimitManagementPage />,
+          },
+          {
+            path: "health",
+            element: <SystemHealthPage />,
           },
         ],
       },

@@ -1,8 +1,8 @@
-import { Request, Response } from 'express';
-import { BaseController } from './base/BaseController';
-import { AppError } from '../../utils/AppError';
+import { Request, Response } from "express";
+import { BaseController } from "./base/BaseController";
+import { AppError } from "../../utils/AppError";
 import { injectable, inject, container } from "tsyringe";
-import { IMessageRepository } from '../../domain/chat/repositories/IMessageRepository';
+import { IMessageRepository } from "../../domain/chat/repositories/IMessageRepository";
 import {
   ICreateCardUseCase,
   IUpdateCardUseCase,
@@ -10,17 +10,20 @@ import {
   IDeleteCardUseCase,
   IClearAllCardsUseCase,
   ICountDueCardsUseCase,
-} from '../../application/recall/use-cases/interfaces';
+} from "../../application/recall/use-cases/interfaces";
 
 @injectable()
 export class RecallController extends BaseController {
   constructor(
     @inject("ICreateCardUseCase") private createCardUseCase: ICreateCardUseCase,
     @inject("IUpdateCardUseCase") private updateCardUseCase: IUpdateCardUseCase,
-    @inject("IGetDueCardsUseCase") private getDueCardsUseCase: IGetDueCardsUseCase,
+    @inject("IGetDueCardsUseCase")
+    private getDueCardsUseCase: IGetDueCardsUseCase,
     @inject("IDeleteCardUseCase") private deleteCardUseCase: IDeleteCardUseCase,
-    @inject("IClearAllCardsUseCase") private clearAllCardsUseCase: IClearAllCardsUseCase,
-    @inject("ICountDueCardsUseCase") private countDueCardsUseCase: ICountDueCardsUseCase,
+    @inject("IClearAllCardsUseCase")
+    private clearAllCardsUseCase: IClearAllCardsUseCase,
+    @inject("ICountDueCardsUseCase")
+    private countDueCardsUseCase: ICountDueCardsUseCase,
     @inject("IMessageRepository") private messageRepository: IMessageRepository,
   ) {
     super();
@@ -39,12 +42,16 @@ export class RecallController extends BaseController {
       }
 
       if (!content) {
-        throw new AppError('Card content is required', 400);
+        throw new AppError("Card content is required", 400);
       }
 
-      const result = await this.createCardUseCase.execute(userId, content, chatId);
+      const result = await this.createCardUseCase.execute(
+        userId,
+        content,
+        chatId,
+      );
 
-      this.sendSuccess(res, result, 201, 'Card created successfully');
+      this.sendSuccess(res, result, 201, "Card created successfully");
     } catch (error) {
       this.sendError(res, error);
     }
@@ -53,21 +60,25 @@ export class RecallController extends BaseController {
   public updateCard = async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
-      const cardId = this.getRouteParam(req, 'id');
+      const cardId = this.getRouteParam(req, "id");
       const { rating } = req.body;
 
       if (rating === undefined) {
-        throw new AppError('Rating is required', 400);
+        throw new AppError("Rating is required", 400);
       }
 
       const parsedRating = parseInt(rating, 10);
       if (isNaN(parsedRating) || parsedRating < 0 || parsedRating > 5) {
-        throw new AppError('Rating must be a number between 0 and 5', 400);
+        throw new AppError("Rating must be a number between 0 and 5", 400);
       }
 
-      const result = await this.updateCardUseCase.execute(userId, cardId, parsedRating);
+      const result = await this.updateCardUseCase.execute(
+        userId,
+        cardId,
+        parsedRating,
+      );
 
-      this.sendSuccess(res, result, 200, 'Card updated successfully');
+      this.sendSuccess(res, result, 200, "Card updated successfully");
     } catch (error) {
       this.sendError(res, error);
     }
@@ -88,11 +99,11 @@ export class RecallController extends BaseController {
   public deleteCard = async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
-      const cardId = this.getRouteParam(req, 'id');
+      const cardId = this.getRouteParam(req, "id");
 
       await this.deleteCardUseCase.execute(userId, cardId);
 
-      this.sendSuccess(res, null, 200, 'Card deleted successfully');
+      this.sendSuccess(res, null, 200, "Card deleted successfully");
     } catch (error) {
       this.sendError(res, error);
     }
@@ -104,7 +115,7 @@ export class RecallController extends BaseController {
 
       await this.clearAllCardsUseCase.execute(userId);
 
-      this.sendSuccess(res, null, 200, 'All cards cleared successfully');
+      this.sendSuccess(res, null, 200, "All cards cleared successfully");
     } catch (error) {
       this.sendError(res, error);
     }

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import toast from 'react-hot-toast';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1',
@@ -47,10 +48,63 @@ api.interceptors.response.use(
       '/admin/auth/logout',
     ];
     if (skipUrls.some((url) => originalRequest.url?.includes(url))) {
+      const isSilentEndpoint = originalRequest.url?.includes('/refresh') || originalRequest.url?.includes('/logout');
+      if (!isSilentEndpoint) {
+        let errorMsg = "An unexpected error occurred";
+        if (error.response?.data) {
+        const data = error.response.data;
+        console.log(data)
+        if (data.message) {
+          errorMsg = data.message;
+        } else if (data.error) {
+          errorMsg = data.error;
+        } else if (Array.isArray(data.errors)) {
+          errorMsg = data.errors.map((e: any) => e.message || e).join(", ");
+        }
+      } else if (error.message) {
+        errorMsg = error.message;
+      }
+        toast.error(errorMsg,{
+          style: {
+              background: "#18181b",
+              color: "#e4e4e7",
+              border: "1px solid #3f3f46",
+              borderRadius: "16px",
+              fontSize: "14px",
+              fontWeight: "500",
+              boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.4)",
+            },
+        });
+      }
       return Promise.reject(error);
     }
 
     if (error.response?.status !== 401 || originalRequest._retry) {
+      let errorMsg = "An unexpected error occurred";
+      if (error.response?.data) {
+        const data = error.response.data;
+        console.log(data)
+        if (data.message) {
+          errorMsg = data.message;
+        } else if (data.error) {
+          errorMsg = data.error;
+        } else if (Array.isArray(data.errors)) {
+          errorMsg = data.errors.map((e: any) => e.message || e).join(", ");
+        }
+      } else if (error.message) {
+        errorMsg = error.message;
+      }
+      toast.error(errorMsg,{
+        style: {
+            background: "#18181b",
+            color: "#e4e4e7",
+            border: "1px solid #3f3f46",
+            borderRadius: "16px",
+            fontSize: "14px",
+            fontWeight: "500",
+            boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.4)",
+          },
+      });
       return Promise.reject(error);
     }
 

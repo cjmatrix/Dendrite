@@ -83,4 +83,20 @@ export class CloudinaryStorageAdapter implements IFileStorageService {
       stream.end(buffer);
     });
   }
+
+  async healthCheck(): Promise<boolean> {
+    try {
+      if (
+        !process.env.CLOUDINARY_CLOUD_NAME ||
+        !process.env.CLOUDINARY_API_KEY ||
+        !process.env.CLOUDINARY_API_SECRET
+      ) {
+        return false;
+      }
+      const res = await cloudinary.api.ping();
+      return res?.status === "ok";
+    } catch {
+      return false;
+    }
+  }
 }

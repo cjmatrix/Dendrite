@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAppDispatch } from "../../../store/store";
 import { login as loginAction, adminLogin as adminLoginAction } from "../store/authSlice";
 import { authApi } from "../api/auth.api";
-import type { LoginRequest, SignupRequest, AdminLoginRequest } from "../types/auth.types";
+import type { LoginRequest, SignupRequest, AdminLoginRequest, ResetPasswordRequest } from "../types/auth.types";
 
 export const useAuthMutations = () => {
     const dispatch = useAppDispatch();
@@ -38,10 +38,20 @@ export const useAuthMutations = () => {
         }
     });
 
+    const forgotPasswordMutation = useMutation({
+        mutationFn: (email: string) => authApi.forgotPassword(email),
+    });
+
+    const resetPasswordMutation = useMutation({
+        mutationFn: (data: ResetPasswordRequest) => authApi.resetPassword(data),
+    });
+
     return {
         signupMutation,
         loginMutation,
-        adminLoginMutation
+        adminLoginMutation,
+        forgotPasswordMutation,
+        resetPasswordMutation
     };
 };
 

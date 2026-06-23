@@ -24,6 +24,12 @@ router.get(
   (req, res, next) => folderController.getFolders(req, res).catch(next)
 );
 
+router.get(
+  '/search',
+  userProtect,
+  (req, res, next) => folderController.searchItems(req, res).catch(next)
+);
+
 router.patch(
   '/:id',
   userProtect,

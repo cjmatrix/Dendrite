@@ -11,10 +11,19 @@ export interface CacheSetOptions {
   KEEPTTL?: boolean;
 }
 
+export interface ICachePipeline {
+  get(key: string): ICachePipeline;
+  set(key: string, value: string, options?: CacheSetOptions): ICachePipeline;
+  del(key: string): ICachePipeline;
+  exec(): Promise<unknown[]>;
+}
+
 export interface ICacheService {
   get(key: string): Promise<string | null>;
   set(key: string, value: string, options?: CacheSetOptions): Promise<void>;
   del(key: string): Promise<void>;
   exists(key: string): Promise<boolean>;
   scanKeys(pattern: string): Promise<string[]>;
+  healthCheck(): Promise<boolean>;
+  pipeline(): ICachePipeline;
 }

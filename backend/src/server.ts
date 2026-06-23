@@ -1,4 +1,6 @@
 import "reflect-metadata";
+import dns from "dns";
+dns.setDefaultResultOrder("ipv4first");
 import "./config/di";
 import express from "express";
 import cors from "cors";
@@ -22,6 +24,7 @@ import "./cron/searchCacheSweeper";
 import "./cron/documentCacheSweeper";
 import userRouter from "./presentation/routes/admin/userRoutes";
 import dashboardRouter from "./presentation/routes/admin/dashboardRoutes";
+import adminRateLimitRoutes from "./presentation/routes/admin/rateLimitRoutes";
 import { initQdrant } from "./config/qdrant";
 import { embeddingService } from "./services/EmbeddingService";
 import { setupSuspensionListener } from "./infrastructure/cache/suspendListener";
@@ -51,14 +54,18 @@ app.get('/metrics', async (req, res) => {
 
 
 
-app.use(express.json());
 app.use(cookieParser());
 app.use(
   cors({
-    origin: [process.env.CLIENT_URL || "http://localhost:5173","https://vc92w9h5-5173.inc1.devtunnels.ms"],
+    origin: [process.env.CLIENT_URL || "http://localhost:5173","https://vc92w9h5-5173.inc1.devtunnels.ms","https://turmoil-uptight-palatable.ngrok-free.dev","https://localhost:5173"],
     credentials: true,
   }),
 );
+
+import billingRoutes from "./presentation/routes/billingRoutes";
+app.use("/api/v1/billing", billingRoutes);
+
+app.use(express.json());
 
 
 app.use(trackActiveUserMiddleware);
@@ -73,6 +80,7 @@ app.use("/api/v1/share", shareLinkRoutes);
 
 app.use("/api/v1/admin/user", userRouter);
 app.use("/api/v1/admin/dashboard", dashboardRouter);
+app.use("/api/v1/admin/rate-limits", adminRateLimitRoutes);
 app.use("/api/v1/agents",agentRoutes)
 
 app.get("/", (req, res) => {

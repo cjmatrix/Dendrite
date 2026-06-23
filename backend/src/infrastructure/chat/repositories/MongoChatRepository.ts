@@ -11,6 +11,14 @@ export class MongoChatRepository
     super(Chat);
   }
 
+  protected override mapToDomain(doc: any): IChat {
+    const base = super.mapToDomain(doc);
+    return {
+      ...base,
+      folderId: doc.folderId ? doc.folderId.toString() : null,
+    };
+  }
+
   async findByUserIdAndTitleAndFolderId(
     userId: string,
     title: string,

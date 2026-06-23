@@ -6,6 +6,8 @@ import {
   ISuspendUserUseCase,
   IToggleBanUserUseCase,
   IUnsuspendUserUseCase,
+  IGetUserRateLimitUsageUseCase,
+  IResetUserRateLimitsUseCase,
 } from "../../../application/admin/user/usecases/interfaces";
 
 
@@ -26,6 +28,10 @@ class UserController extends BaseController {
     private unsuspendUser: IUnsuspendUserUseCase,
     @inject("IToggleBanUserUseCase")
     private toggleBanUser: IToggleBanUserUseCase,
+    @inject("IGetUserRateLimitUsageUseCase")
+    private getUserRateLimitUsage: IGetUserRateLimitUsageUseCase,
+    @inject("IResetUserRateLimitsUseCase")
+    private resetUserRateLimits: IResetUserRateLimitsUseCase,
   ) {
     super();
   }
@@ -115,6 +121,34 @@ class UserController extends BaseController {
       ADMIN_USER_MESSAGES.USER_TOGGLE_BAN(
         newStatus === "banned" ? "banned" : "unbanned",
       ),
+    );
+  }
+
+  async getUsage(req: Request, res: Response) {
+    const { id } = req.params;
+    const userId = id as string;
+
+    const output = await this.getUserRateLimitUsage.execute(userId);
+
+    this.sendSuccess(
+      res,
+      output,
+      HTTP_STATUS.OK,
+      "User rate limit usage retrieved successfully"
+    );
+  }
+
+  async resetUsage(req: Request, res: Response) {
+    const { id } = req.params;
+    const userId = id as string;
+
+    await this.resetUserRateLimits.execute(userId);
+
+    this.sendSuccess(
+      res,
+      null,
+      HTTP_STATUS.OK,
+      "User rate limit usage reset successfully"
     );
   }
 }

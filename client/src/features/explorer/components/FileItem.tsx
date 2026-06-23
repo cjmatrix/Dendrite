@@ -17,6 +17,7 @@ import {
   Move,
   Share,
   Brain,
+  Search
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { setActiveSidebarRootId } from "../store/explorerSlice";
@@ -417,6 +418,22 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
             >
               <FolderPlus size={14} /> Open With Folder
             </button>
+            {node.id !== "root" && (
+              <button
+                className="w-full text-left px-3 py-1.5 hover:bg-cyan-600 hover:text-white flex items-center gap-2 transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setContextMenu(null);
+                  window.dispatchEvent(
+                    new CustomEvent("open-search-modal", {
+                      detail: { folderId: node.id },
+                    })
+                  );
+                }}
+              >
+                <Search size={14} /> Search in Folder
+              </button>
+            )}
             <button
               className="w-full text-left px-3 py-1.5 hover:bg-amber-600 hover:text-white flex items-center gap-2 transition-colors"
               onClick={(e) => {

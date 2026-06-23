@@ -37,6 +37,8 @@ export function extractCodeBlocks(text: string) {
   return blocks;
 }
 
+import { IRateLimitService } from "../../common/ports/IRateLimitService";
+
 @injectable()
 export class SaveModelReply implements ISaveModelReplyUseCase {
   constructor(
@@ -52,10 +54,22 @@ export class SaveModelReply implements ISaveModelReplyUseCase {
     @inject("IUnitOfWorkRepository") private unitOfWork: IUnitOfWorkRepository,
     @inject("IUserRepository") private userRepository: IUserRepository,
     @inject("ILogger") private logger: ILogger,
+    @inject("IRateLimitService")
+    private rateLimitService: IRateLimitService,
   ) {}
 
   async execute(input: import("../dtos/chat.dto").SaveModelReplyInputDTO) {
-    const { chatId, userId, modelReply, parentContext, parentSummary, promptTokens, responseTokens, contents, model } = input;
+    const {
+      chatId,
+      userId,
+      modelReply,
+      parentContext,
+      parentSummary,
+      promptTokens,
+      responseTokens,
+      contents,
+      model,
+    } = input;
 
     const chat = await this.chatRepository.findByIdAndUserId(chatId, userId);
 
@@ -67,9 +81,9 @@ export class SaveModelReply implements ISaveModelReplyUseCase {
     let messageToCompress: any[] = [];
 
     await this.unitOfWork.runInTransaction(async () => {
-      const [modelMsg] = await this.messageRepository.createMany(
-        [{ chatId, userId, role: "model", content: modelReply }]
-      );
+      const [modelMsg] = await this.messageRepository.createMany([
+        { chatId, userId, role: "model", content: modelReply },
+      ]);
       modelMessageId = modelMsg._id.toString();
 
       // Accumulate token usage
@@ -81,11 +95,20 @@ export class SaveModelReply implements ISaveModelReplyUseCase {
         p5Tokens += estimateTokenCount(p5Code);
       }
 
-      const calculatedPromptTokens = promptTokens !== undefined ? promptTokens : estimateTokenCount(JSON.stringify(contents || ""));
-      const calculatedResponseTokens = responseTokens !== undefined ? responseTokens : estimateTokenCount(modelReply);
+      const calculatedPromptTokens =
+        promptTokens !== undefined
+          ? promptTokens
+          : estimateTokenCount(JSON.stringify(contents || ""));
+      const calculatedResponseTokens =
+        responseTokens !== undefined
+          ? responseTokens
+          : estimateTokenCount(modelReply);
 
       const p5VisualizationTokens = p5Tokens;
-      const mainChatOutputTokens = Math.max(0, calculatedResponseTokens - p5Tokens);
+      const mainChatOutputTokens = Math.max(
+        0,
+        calculatedResponseTokens - p5Tokens,
+      );
 
       const provider = getProviderKey(model);
 
@@ -93,19 +116,41 @@ export class SaveModelReply implements ISaveModelReplyUseCase {
         $inc: {
           [`token_usage.${provider}.mainChat.input`]: calculatedPromptTokens,
           [`token_usage.${provider}.mainChat.output`]: mainChatOutputTokens,
-          [`token_usage.${provider}.mainChat.total`]: calculatedPromptTokens + mainChatOutputTokens,
+          [`token_usage.${provider}.mainChat.total`]:
+            calculatedPromptTokens + mainChatOutputTokens,
           [`token_usage.${provider}.p5Visualization.input`]: 0,
-          [`token_usage.${provider}.p5Visualization.output`]: p5VisualizationTokens,
-          [`token_usage.${provider}.p5Visualization.total`]: p5VisualizationTokens,
-          "tokensUsed": calculatedPromptTokens + calculatedResponseTokens
-        }
+          [`token_usage.${provider}.p5Visualization.output`]:
+            p5VisualizationTokens,
+          [`token_usage.${provider}.p5Visualization.total`]:
+            p5VisualizationTokens,
+          tokensUsed: calculatedPromptTokens + calculatedResponseTokens,
+        },
       });
 
-      const updatedChat = await this.chatRepository.update(
-        chatId,
-        userId,
-        { $inc: { unsummarizedCount: 2 } }
-      );
+      const activeModel = model || "gemini-3-flash-preview";
+      const totalTokens = calculatedPromptTokens + calculatedResponseTokens;
+      try {
+        await this.rateLimitService.incrementTokens(
+          userId,
+          activeModel,
+          totalTokens,
+        );
+
+        const p5BlockCount = (modelReply.match(/```p5\n/g) || []).length;
+        if (p5BlockCount > 0) {
+          await this.rateLimitService.incrementCount(
+            userId,
+            "p5Visualizations",
+            p5BlockCount,
+          );
+        }
+      } catch (err) {
+        this.logger.error("Failed to increment Redis rate limit counters", err);
+      }
+
+      const updatedChat = await this.chatRepository.update(chatId, userId, {
+        $inc: { unsummarizedCount: 2 },
+      });
 
       if (!updatedChat) {
         throw new AppError("Failed to update chat", 500);
@@ -127,15 +172,18 @@ export class SaveModelReply implements ISaveModelReplyUseCase {
       if (updatedChat && totalUnCount >= CONTEXT_WINDOW) {
         const recent = await this.messageRepository.findRecentByChatId(
           chatId,
-          CONTEXT_WINDOW
+          CONTEXT_WINDOW,
         );
         const totalRecent = [...recent, ...totalParentMessagesToCompress];
         messageToCompress = totalRecent.reverse();
-        this.logger.debug(`Compressed messages for chat`, { chatId, messageCount: messageToCompress.length });
+        this.logger.debug(`Compressed messages for chat`, {
+          chatId,
+          messageCount: messageToCompress.length,
+        });
 
         await this.chatRepository.bulkResetUnsummarizedCount(
           lineageChatIds,
-          userId
+          userId,
         );
       }
 
@@ -149,7 +197,9 @@ export class SaveModelReply implements ISaveModelReplyUseCase {
 
           const cachedDesc = await redisConnection.get(redisKey);
           if (cachedDesc) {
-            this.logger.debug(`[CodeDedup] Redis cache hit for code block`, { hash: block.hash.slice(0, 8) });
+            this.logger.debug(`[CodeDedup] Redis cache hit for code block`, {
+              hash: block.hash.slice(0, 8),
+            });
             continue;
           }
 
@@ -157,7 +207,10 @@ export class SaveModelReply implements ISaveModelReplyUseCase {
             block.hash,
           );
           if (existingBlock) {
-            this.logger.debug(`[CodeDedup] Database cache hit for code block`, { hash: block.hash.slice(0, 8), blockId: existingBlock._id });
+            this.logger.debug(`[CodeDedup] Database cache hit for code block`, {
+              hash: block.hash.slice(0, 8),
+              blockId: existingBlock._id,
+            });
 
             if (existingBlock.description) {
               await redisConnection.setex(
@@ -180,17 +233,24 @@ export class SaveModelReply implements ISaveModelReplyUseCase {
         }
 
         if (newBlockDocs.length > 0) {
-          savedBlocks = await this.codeBlockRepository.insertMany(
-            newBlockDocs
-          );
-          this.logger.info(`[CodeDedup] New code blocks processed`, { newBlocks: newBlockDocs.length, duplicates: codeBlocks.length - newBlockDocs.length, total: codeBlocks.length });
+          savedBlocks = await this.codeBlockRepository.insertMany(newBlockDocs);
+          this.logger.info(`[CodeDedup] New code blocks processed`, {
+            newBlocks: newBlockDocs.length,
+            duplicates: codeBlocks.length - newBlockDocs.length,
+            total: codeBlocks.length,
+          });
         } else {
-          this.logger.info(`[CodeDedup] All code blocks were duplicates`, { count: codeBlocks.length, chatId });
+          this.logger.info(`[CodeDedup] All code blocks were duplicates`, {
+            count: codeBlocks.length,
+            chatId,
+          });
         }
       }
 
       if (messageToCompress.length > 0) {
-        await this.codeBlockRepository.markUndescribedAsNeedingDescription(chatId);
+        await this.codeBlockRepository.markUndescribedAsNeedingDescription(
+          chatId,
+        );
 
         const outboxDoc = {
           eventType: "CHAT_SUMMARY_CREATED",
@@ -201,13 +261,14 @@ export class SaveModelReply implements ISaveModelReplyUseCase {
             content: {
               messages: messageToCompress,
             },
-            metadata: { chatId, previousSummary: chat.summary||parentSummary },
+            metadata: {
+              chatId,
+              previousSummary: chat.summary || parentSummary,
+            },
           },
           status: "pending",
         };
-        const savedOutbox = await this.outboxRepository.insertMany(
-          [outboxDoc]
-        );
+        const savedOutbox = await this.outboxRepository.insertMany([outboxDoc]);
         summaryOutboxEvent = savedOutbox[0];
       }
     });
@@ -225,7 +286,10 @@ export class SaveModelReply implements ISaveModelReplyUseCase {
           hash: b.hash,
         }));
         await this.descriptionPublisher.publish(queuePayload);
-        this.logger.info(`Context window overflow - batched blocks for description`, { blockCount: undescribedBlocks.length, chatId });
+        this.logger.info(
+          `Context window overflow - batched blocks for description`,
+          { blockCount: undescribedBlocks.length, chatId },
+        );
       }
     }
 
@@ -236,7 +300,10 @@ export class SaveModelReply implements ISaveModelReplyUseCase {
         chat.summary,
       );
 
-      this.logger.info(`Triggered memory compression`, { chatId: chat._id.toString(), outboxEventId: summaryOutboxEvent._id.toString() });
+      this.logger.info(`Triggered memory compression`, {
+        chatId: chat._id.toString(),
+        outboxEventId: summaryOutboxEvent._id.toString(),
+      });
     }
 
     return { chat, modelMessageId };

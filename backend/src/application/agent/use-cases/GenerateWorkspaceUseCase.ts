@@ -12,6 +12,7 @@ import { IFolderRepository } from "../../../domain/folder/repositories/IFolderRe
 import { IChatRepository } from "../../../domain/chat/repositories/IChatRepository";
 import { IMessageRepository } from "../../../domain/chat/repositories/IMessageRepository";
 import mongoose from "mongoose";
+import { IRateLimitService } from "../../common/ports/IRateLimitService";
 
 const AgentState = Annotation.Root({
   messages: Annotation<any[]>({
@@ -54,6 +55,7 @@ export class GenerateWorkspaceUseCase {
     @inject("IFolderRepository") private folderRepo: IFolderRepository,
     @inject("IChatRepository") private chatRepo: IChatRepository,
     @inject("IMessageRepository") private messageRepo: IMessageRepository,
+    @inject("IRateLimitService") private rateLimitService: IRateLimitService,
   ) {}
 
   private llm = new AgentGeminiLLMService();
@@ -364,6 +366,14 @@ export class GenerateWorkspaceUseCase {
         role: "model",
         content: modelReply,
       });
+    }
+
+    if (finalState.values.status !== "rejected" && finalState.values.status !== "awaiting_clarification" && finalState.values.status !== "failed") {
+      try {
+        await this.rateLimitService.incrementCount(params.userId, "agentWorkspaces");
+      } catch (err) {
+        console.error("Failed to increment rate limit for agentWorkspaces:", err);
+      }
     }
 
     return {

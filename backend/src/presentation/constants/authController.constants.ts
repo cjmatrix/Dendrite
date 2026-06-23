@@ -15,6 +15,8 @@ export const AUTH_MESSAGES = {
   OTP_VERIFIED: "OTP verified and account activated successfully. Please log in.",
   GOOGLE_AUTH_SUCCESS: "Successfully authenticated with Google",
   UNAUTHORIZED: "Unauthorized",
+  FORGOT_PASSWORD_SENT: "If that email address exists, we have sent a reset link to it.",
+  PASSWORD_RESET_SUCCESS: "Password reset successful. You can now login with your new password.",
 } as const;
 
 export const ADMIN_AUTH_MESSAGES = {

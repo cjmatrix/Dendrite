@@ -360,6 +360,7 @@ export class DIContainer {
         this.getUnitOfWorkRepository(),
         this.getUserRepository(),
         this.getLogger(),
+        container.resolve("IRateLimitService"),
       );
     }
     return this.saveModelReplyUseCase;
@@ -523,7 +524,7 @@ export class DIContainer {
   
   static getCreateCardUseCase(): CreateCard {
     if (!this.createCardUseCase) {
-      this.createCardUseCase = new CreateCard(this.getRecallRepository(), this.getRecallPublisher());
+      this.createCardUseCase = new CreateCard(this.getRecallRepository(), this.getRecallPublisher(), container.resolve("IRateLimitService"));
     }
     return this.createCardUseCase;
   }

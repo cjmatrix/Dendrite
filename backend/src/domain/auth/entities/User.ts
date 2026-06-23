@@ -55,6 +55,11 @@ export interface IUser {
   email: string;
   password: string;
   avatarUrl?: string;
+  passwordResetToken?: string;
+  passwordResetExpires?: Date;
+  billingProvider?: "stripe" | "paddle" | null;
+  billingCustomerId?: string;
+  billingSubscriptionId?: string;
   tier: "free" | "pro" | "enterprise" | "byok";
   tokensUsed: number;
   settings: {

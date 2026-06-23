@@ -46,6 +46,11 @@ const UserSchema = new Schema<IMongoUserDocument>(
       type: [String],
       default: [],
     },
+    passwordResetToken: { type: String, default: null },
+    passwordResetExpires: { type: Date, default: null },
+    billingProvider: { type: String, enum: ["stripe", "paddle"], default: null },
+    billingCustomerId: { type: String, default: null },
+    billingSubscriptionId: { type: String, default: null },
 
     byok_keys: [
       {

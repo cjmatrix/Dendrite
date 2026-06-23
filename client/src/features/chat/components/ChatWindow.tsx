@@ -40,7 +40,6 @@ import { QuickChatModal } from "./QuickChatModal.tsx";
 import { DocumentBrowser } from "./DocumentBrowser";
 import { SettingsModal } from "./SettingsModal";
 import FileDisplay from "../../explorer/components/FileDisplay";
-import RecallPage from "../../recall/components/RecallPage";
 import { ShareLinkModal } from "../../explorer/components/ShareLinkModal";
 import { ImportSharedModal } from "../../explorer/components/ImportSharedModal";
 import toast from "react-hot-toast";
@@ -406,7 +405,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
   return (
     <div
-      className={`flex flex-col h-screen bg-white/1 text-gray-200 font-sans w-full relative overflow-hidden transition-all duration-300 ${
+      className={`flex flex-col h-screen bg-neutral-900 text-gray-200 font-sans w-full relative overflow-hidden transition-all duration-300 ${
         chat?.type === "agent" ? "border border-amber-500/20" : ""
       }`}
       onMouseUp={handleTextSelection}
@@ -1170,13 +1169,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               </button>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Recall Page Overlay */}
-      {isRecallOverlayOpen && (
-        <div className="fixed inset-0 z-[60] bg-(--theme-bg-base) animate-in fade-in duration-300 overflow-y-auto overflow-x-hidden">
-          <RecallPage onClose={() => dispatch(toggleRecallOverlay(false))} />
         </div>
       )}
 

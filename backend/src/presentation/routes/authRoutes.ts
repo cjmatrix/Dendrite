@@ -8,6 +8,8 @@ import {
 	SendOtpInputSchema,
 	UpdateFcmTokenInputSchema,
 	VerifyOtpInputSchema,
+	ForgotPasswordInputSchema,
+	ResetPasswordInputSchema,
 } from "../../application/auth/dtos/auth.dto";
 import {
 	validateBody,
@@ -31,6 +33,7 @@ router.post("/refresh", (req, res, next) => authController.refresh(req, res).cat
 router.post("/logout", (req, res, next) => authController.logout(req, res).catch(next));
 
 router.get("/me", userProtect, (req, res, next) => authController.getMe(req, res).catch(next));
+router.get("/me/usage", userProtect, (req, res, next) => authController.getRateLimitUsage(req, res).catch(next));
 router.get("/me/byok-keys", userProtect, (req, res, next) => authController.getByokKeys(req, res).catch(next));
 router.post("/me/byok-keys", userProtect, (req, res, next) => authController.updateByokKeys(req, res).catch(next));
 router.post(
@@ -54,6 +57,18 @@ router.post(
 	"/google",
 	validateBody(GoogleLoginInputSchema),
 	(req, res, next) => authController.googleLogin(req, res).catch(next),
+);
+
+router.post(
+	"/forgot-password",
+	validateBody(ForgotPasswordInputSchema),
+	(req, res, next) => authController.forgotPassword(req, res).catch(next),
+);
+
+router.post(
+	"/reset-password",
+	validateBody(ResetPasswordInputSchema),
+	(req, res, next) => authController.resetPassword(req, res).catch(next),
 );
 
 export default router;

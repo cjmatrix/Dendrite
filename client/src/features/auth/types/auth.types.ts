@@ -56,3 +56,10 @@ export interface AdminLoginResponse {
     };
     message: string;
 }
+
+export interface ResetPasswordRequest {
+    email: string;
+    token: string;
+    password?: string;
+    confirmPassword?: string;
+}

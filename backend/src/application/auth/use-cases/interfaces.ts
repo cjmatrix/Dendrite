@@ -60,3 +60,11 @@ export interface IGetByokKeysUseCase {
   execute(userId: string, provider: string): Promise<{ success: boolean; keys: string[] }>;
 }
 
+export interface IForgotPasswordUseCase {
+  execute(email: string): Promise<{ success: boolean; message: string }>;
+}
+
+export interface IResetPasswordUseCase {
+  execute(input: import("../dtos/auth.dto").ResetPasswordInputDTO): Promise<{ success: boolean; message: string }>;
+}
+

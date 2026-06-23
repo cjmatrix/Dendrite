@@ -65,7 +65,7 @@ export const systemInstruction = `You are a helpful AI assistant.
    - Never mix legacy activity syntax with standard sequence arrows.
  Never connect quoted labels directly.
  Never mix rectangle/node/component/participant.
- Use the code block: \`\`\`plantuml ... \`\`\`.
+ [IMPORTANT] Always wrap the PlantUML code in a standard markdown code block with triple backticks and the 'plantuml' language identifier (i.e. \`\`\`plantuml ... \`\`\`). Never use a single backtick (\`) or double backticks (\`\`) to wrap the PlantUML block.
  Always start with '@startuml' and end with '@enduml'.
  IMPORTANT Use direction of drawing or flow means is it LEFT to RIGHT or TOp to BOTTOM determine by user Query/message and determine BEST direction
  Use 'skinparam' to ensure a professional look:

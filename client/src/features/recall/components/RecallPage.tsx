@@ -5,6 +5,7 @@ import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import { markdownComponents } from "../../chat/components/markdown/MarkdownComponents";
+import { fixMalformedPlantUML } from "../../chat/components/MessageContent";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "../../../lib/axios";
 import React, { useState } from "react";
@@ -89,7 +90,7 @@ const RecallCard: React.FC<RecallCardProps> = ({ card, index, onReview, onDelete
                 rehypePlugins={[rehypeKatex]}
                 components={markdownComponents}
               >
-                {card.content}
+                {fixMalformedPlantUML(card.content)}
               </ReactMarkdown>
           </div>
       </div>

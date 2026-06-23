@@ -11,6 +11,7 @@ import {
 } from '../../application/chat/dtos/chat.dto';
 
 import { uploadPdfMiddleware } from '../middleware/uploadPdfMiddleware';
+import { rateLimit, rateLimitTokens } from '../middleware/rateLimitMiddleware';
 
 const router = express.Router();
 
@@ -21,14 +22,14 @@ router.get('/:id/messages', userProtect, (req, res, next) => chatController.getC
 router.patch('/:id', userProtect, validateBody(UpdateChatBodySchema), (req, res, next) => chatController.updateChat(req, res).catch(next));
 router.delete('/:id', userProtect, (req, res, next) => chatController.deleteChat(req, res).catch(next));
 
-router.post('/upload-image', userProtect, chatController.uploadChatImageMiddleware, (req, res, next) => chatController.uploadChatImage(req, res).catch(next));
-router.post('/:id/upload-file', userProtect, uploadPdfMiddleware, (req, res, next) => chatController.uploadChatPdf(req, res).catch(next));
+router.post('/upload-image', userProtect, rateLimit("imageUploads"), chatController.uploadChatImageMiddleware, (req, res, next) => chatController.uploadChatImage(req, res).catch(next));
+router.post('/:id/upload-file', userProtect, rateLimit("documentUploads"), uploadPdfMiddleware, (req, res, next) => chatController.uploadChatPdf(req, res).catch(next));
 router.get('/:id/documents/:documentId/progress', userProtect, (req, res, next) => chatController.streamDocumentProgress(req, res).catch(next));
 router.get('/:id/documents', userProtect, (req, res, next) => chatController.getChatDocuments(req, res).catch(next));
 router.delete('/:id/documents', userProtect, (req, res, next) => chatController.removeDocument(req, res).catch(next));
 
-router.post('/:id/message', userProtect, validateBody(SendMessageBodySchema), (req, res, next) => chatController.sendMessage(req, res).catch(next));
-router.post('/:id/quick-chat', userProtect, validateBody(StreamQuickChatBodySchema), (req, res, next) => chatController.streamQuickChat(req, res).catch(next));
+router.post('/:id/message', userProtect, validateBody(SendMessageBodySchema), rateLimit("mainQueries"), rateLimitTokens(), (req, res, next) => chatController.sendMessage(req, res).catch(next));
+router.post('/:id/quick-chat', userProtect, validateBody(StreamQuickChatBodySchema), rateLimit("quickChats"), rateLimitTokens(), (req, res, next) => chatController.streamQuickChat(req, res).catch(next));
 router.get('/:id/subchat', userProtect, (req, res, next) => chatController.getSubChat(req, res).catch(next));
 router.post('/:id/subchat', userProtect, validateBody(SaveSubChatBodySchema), (req, res, next) => chatController.saveSubChat(req, res).catch(next));
 

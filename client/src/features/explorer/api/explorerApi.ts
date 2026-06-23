@@ -62,3 +62,12 @@ export const updateFolderBehavior = async (folderId: string, content: string): P
   const res = await api.patch(`/folders/${folderId}/behavior`, { content });
   return res.data.data;
 };
+
+export const searchExplorer = async (params: { q: string; type?: "all" | "folder" | "chat" | "agent"; folderId?: string }): Promise<any[]> => {
+  const query = new URLSearchParams();
+  if (params.q) query.append("q", params.q);
+  if (params.type) query.append("type", params.type);
+  if (params.folderId) query.append("folderId", params.folderId);
+  const res = await api.get(`/folders/search?${query.toString()}`);
+  return res.data.data;
+};

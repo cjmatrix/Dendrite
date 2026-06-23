@@ -57,4 +57,20 @@ export class MongoUserRepository
   async aggregate(pipeline: any[]): Promise<any[]> {
     return await this.model.aggregate(pipeline).session(this.getSession());
   }
+
+  async findByBillingCustomerId(customerId: string): Promise<IUser | null> {
+    const doc = await this.model
+      .findOne({ billingCustomerId: customerId })
+      .session(this.getSession())
+      .lean();
+    return doc ? this.mapToDomain(doc) : null;
+  }
+
+  async updateByBillingCustomerId(customerId: string, update: any): Promise<IUser | null> {
+  const doc = await this.model
+    .findOneAndUpdate({ billingCustomerId: customerId }, update, { new: true })
+    .session(this.getSession())
+    .lean();
+  return doc ? this.mapToDomain(doc) : null;  
+  } 
 }

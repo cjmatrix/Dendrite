@@ -4,7 +4,7 @@ what if two sticky chat at with same y
 
 
 
-
+active recall dont open in empty chat state
 
 
 
@@ -20,7 +20,7 @@ quich chat doesnt get user profile
 
 sharing  a single chat only the sideexplorer doesnt show the name
 
-
+optimistic creation of chat
 
 
 

@@ -4,12 +4,14 @@ import { UploadChatImageInputDTO, UploadChatImageOutputDTO } from '../dtos/chat.
 import { IFileStorageService } from '../../common/ports/IFileStorageService';
 import { AppError } from '../../../utils/AppError';
 import { injectable, inject } from 'tsyringe';
+import { IRateLimitService } from '../../common/ports/IRateLimitService';
 
 @injectable()
 export class UploadChatImage implements IUploadChatImageUseCase {
   constructor(
     @inject("IChatRepository") private chatRepository: IChatRepository,
     @inject("IFileStorageService") private fileStorageService: IFileStorageService,
+    @inject("IRateLimitService") private rateLimitService: IRateLimitService,
   ) {}
 
   async execute(input: UploadChatImageInputDTO): Promise<UploadChatImageOutputDTO> {
@@ -24,6 +26,12 @@ export class UploadChatImage implements IUploadChatImageUseCase {
       file.buffer,
       file.mimetype,
     );
+
+    try {
+      await this.rateLimitService.incrementCount(userId, "imageUploads");
+    } catch (err) {
+      console.error("Failed to increment imageUploads rate limit counter", err);
+    }
 
     return { url: result.url };
   }

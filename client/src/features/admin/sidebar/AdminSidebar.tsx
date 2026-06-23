@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, LogOut, Users } from "lucide-react";
+import { LayoutDashboard, LogOut, Users, ShieldAlert, Activity } from "lucide-react";
 import { useAdminLogout } from "../../auth/hooks/useAdminLogout";
 
 const navItems = [
@@ -12,6 +12,16 @@ const navItems = [
     label: "User Management",
     to: "/admin/users",
     icon: Users,
+  },
+  {
+    label: "Rate Limits",
+    to: "/admin/rate-limits",
+    icon: ShieldAlert,
+  },
+  {
+    label: "System Health",
+    to: "/admin/health",
+    icon: Activity,
   },
 ];
 
