@@ -79,12 +79,15 @@ export class PaddleService implements IBillingProvider {
       );
    
       return (
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (portalSession.urls as any).general?.overview ||
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (portalSession.urls as any).general?.subscriptions ||
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (portalSession.urls as any).generalSetting ||
         ""
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(" Error in createPortalSession SDK call:", err);
       throw err;
     }
@@ -105,6 +108,7 @@ export class PaddleService implements IBillingProvider {
 
       switch (eventData.eventType) {
         case "transaction.completed": {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const transaction = eventData.data as any;
         const userId = transaction.customData?.userId;
         
@@ -118,7 +122,7 @@ export class PaddleService implements IBillingProvider {
           });
 
           try {
-            const amount = parseFloat(transaction.details?.totals?.total || "0");
+            const amount = parseFloat(transaction.details?.totals?.total || "0") / 100;
             const currency = transaction.details?.totals?.currencyCode || "USD";
 
             await this.transactionRepository.create({
@@ -139,11 +143,12 @@ export class PaddleService implements IBillingProvider {
         }
         case "subscription.updated":
         case "subscription.canceled": {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const subscription = eventData.data as any;
         const isActive = ["active", "trialing"].includes(subscription.status);
 
       
-        const updatePayload: any = {
+        const updatePayload: Record<string, unknown> = {
           billingSubscriptionId: isActive ? subscription.id : null,
         };
 
@@ -159,8 +164,8 @@ export class PaddleService implements IBillingProvider {
         break;
       }
       }
-    } catch (err: any) {
-      throw new Error(`Webhook Error: ${err.message}`);
+    } catch (err: unknown) {
+      throw new Error(`Webhook Error: ${(err as Error).message}`);
     }
   }
 }

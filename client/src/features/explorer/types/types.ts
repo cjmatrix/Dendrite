@@ -28,3 +28,31 @@ export interface FileNode {
     };
   };
 }
+
+export interface FolderBehaviorData {
+  currentBehavior: {
+    current?: {
+      content: string;
+      updatedAt?: string;
+    };
+    history: Array<{
+      content: string;
+      archivedAt: string;
+    }>;
+  };
+  parentBehavior?: {
+    parentContent: string;
+    parentName: string;
+  };
+}
+
+export interface SearchItem {
+  id: string;
+  name: string;
+  type: "folder" | "chat" | "agent";
+  isSystemFolder?: boolean;
+  breadcrumbs: Array<{
+    id: string;
+    name: string;
+  }>;
+}

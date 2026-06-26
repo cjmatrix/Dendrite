@@ -4,7 +4,7 @@ import toast from "react-hot-toast";
 
 interface UpdateRateLimitPayload {
   key: string; // "daily_count_limits" | "model_token_limits" | "default_model_token_limits"
-  value: any;
+  value: Record<string, unknown> | null;
 }
 
 export function useUpdateRateLimit() {
@@ -29,8 +29,18 @@ export function useUpdateRateLimit() {
       });
       queryClient.invalidateQueries({ queryKey: ["rateLimits"] });
     },
-    onError: (error: any) => {
-      const errorMsg = error.response?.data?.message || error.message || "Failed to update rate limits";
+    onError: (error: unknown) => {
+      let errorMsg = "Failed to update rate limits";
+      if (error && typeof error === "object") {
+        if ("response" in error) {
+          const response = (error as { response?: { data?: { message?: string } } }).response;
+          if (response?.data?.message) {
+            errorMsg = response.data.message;
+          }
+        } else if ("message" in error) {
+          errorMsg = (error as { message: string }).message;
+        }
+      }
       toast.error(errorMsg, {
         style: {
           background: "#18181b",

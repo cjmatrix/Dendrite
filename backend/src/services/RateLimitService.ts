@@ -6,6 +6,7 @@ import {
   MODEL_TOKEN_LIMITS,
   DEFAULT_MODEL_TOKEN_LIMITS,
   CountLimits,
+  UPLOAD_SIZE_LIMITS,
 } from "../constants/rateLimits";
 import { ICacheService } from "../application/common/ports/ICacheService";
 import { IRateLimitService, RateLimitCheckResult, UserUsageSummary } from "../application/common/ports/IRateLimitService";
@@ -154,8 +155,9 @@ export class RateLimitService implements IRateLimitService {
       "anthropic/claude-sonnet-4.6",
       "moonshotai/kimi-k2.6:free",
       "nvidia/nemotron-3-ultra-550b-a55b:free",
-      "google/gemma-4-31b-it:free",
       "nvidia/nemotron-3-super-120b-a12b:free",
+      "groq/llama-3.3-70b-versatile",
+      "groq/openai/gpt-oss-120b",
     ];
 
         const pipeline = this.cacheService.pipeline();
@@ -227,7 +229,7 @@ export class RateLimitService implements IRateLimitService {
       const dbDoc = await MongoRateLimit.findOne({ key: "daily_count_limits" }).lean();
       if (dbDoc && dbDoc.value) {
         await this.cacheService.set(cacheKey, JSON.stringify(dbDoc.value));
-        return dbDoc.value;
+        return dbDoc.value as Record<UserTier, CountLimits>;
       }
     } catch (err) {
       console.error("MongoDB error fetching daily count limits config:", err);
@@ -251,7 +253,7 @@ export class RateLimitService implements IRateLimitService {
       const dbDoc = await MongoRateLimit.findOne({ key: "model_token_limits" }).lean();
       if (dbDoc && dbDoc.value) {
         await this.cacheService.set(cacheKey, JSON.stringify(dbDoc.value));
-        return dbDoc.value;
+        return dbDoc.value as Record<string, Record<UserTier, number>>;
       }
     } catch (err) {
       console.error("MongoDB error fetching model token limits config:", err);
@@ -275,7 +277,7 @@ export class RateLimitService implements IRateLimitService {
       const dbDoc = await MongoRateLimit.findOne({ key: "default_model_token_limits" }).lean();
       if (dbDoc && dbDoc.value) {
         await this.cacheService.set(cacheKey, JSON.stringify(dbDoc.value));
-        return dbDoc.value;
+        return dbDoc.value as Record<UserTier, number>;
       }
     } catch (err) {
       console.error("MongoDB error fetching default model token limits config:", err);
@@ -304,8 +306,9 @@ export class RateLimitService implements IRateLimitService {
       "anthropic/claude-sonnet-4.6",
       "moonshotai/kimi-k2.6:free",
       "nvidia/nemotron-3-ultra-550b-a55b:free",
-      "google/gemma-4-31b-it:free",
-      "nvidia/nemotron-3-super-120b-a12b:free"
+      "nvidia/nemotron-3-super-120b-a12b:free",
+      "groq/llama-3.3-70b-versatile",
+      "groq/openai/gpt-oss-120b",
     ];
 
     const keysToDelete: string[] = [];
@@ -321,5 +324,29 @@ export class RateLimitService implements IRateLimitService {
       pipeline.del(key);
     }
     await pipeline.exec();
+  }
+
+  async getUploadSizeLimits(): Promise<Record<UserTier, { document: number; image: number }>> {
+    const cacheKey = "config:upload_size_limits";
+    try {
+      const cached = await this.cacheService.get(cacheKey);
+      if (cached) {
+        return JSON.parse(cached);
+      }
+    } catch (err) {
+      console.error("Redis error fetching upload size limits config:", err);
+    }
+
+    try {
+      const dbDoc = await MongoRateLimit.findOne({ key: "upload_size_limits" }).lean();
+      if (dbDoc && dbDoc.value) {
+        await this.cacheService.set(cacheKey, JSON.stringify(dbDoc.value));
+        return dbDoc.value as Record<UserTier, { document: number; image: number }>;
+      }
+    } catch (err) {
+      console.error("MongoDB error fetching upload size limits config:", err);
+    }
+
+    return UPLOAD_SIZE_LIMITS;
   }
 }

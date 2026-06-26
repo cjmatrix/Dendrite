@@ -39,6 +39,7 @@ export class CloudinaryStorageAdapter implements IFileStorageService {
           folder: "dendrites/docs",
           resource_type: "raw",
         },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (error: any, result: any) => {
           if (error || !result) {
             reject(error || new Error("Cloudinary document upload failed"));
@@ -71,6 +72,7 @@ export class CloudinaryStorageAdapter implements IFileStorageService {
           folder: "dendrites/chat-images",
           resource_type: "image",
         },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (error: any, result: any) => {
           if (error || !result) {
             reject(error || new Error("Cloudinary image upload failed"));

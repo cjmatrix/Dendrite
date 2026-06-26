@@ -10,6 +10,12 @@ export interface RateLimitsData {
   };
   model_token_limits: Record<string, Record<string, number>>;
   default_model_token_limits: Record<string, number>;
+  upload_size_limits: {
+    free: { document: number; image: number };
+    pro: { document: number; image: number };
+    enterprise: { document: number; image: number };
+    byok: { document: number; image: number };
+  };
 }
 
 export function useGetRateLimits() {

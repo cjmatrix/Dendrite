@@ -200,7 +200,7 @@ export function SystemHealthPage() {
 
           {/* Health Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {Object.entries(data?.services || {}).map(([key, service]: [string, any]) => {
+            {Object.entries(data?.services || {}).map(([key, service]: [string, { status: string; latencyMs?: number; error?: string }]) => {
               const cfg = getServiceConfig(key);
               const ServiceIcon = cfg.icon;
               const isOk = service.status === "healthy";

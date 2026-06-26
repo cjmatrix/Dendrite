@@ -6,6 +6,7 @@ import {
   MODEL_TOKEN_LIMITS,
   DEFAULT_MODEL_TOKEN_LIMITS,
   DAILY_COUNT_LIMITS,
+  UPLOAD_SIZE_LIMITS,
 } from "../../../../constants/rateLimits";
 
 @injectable()
@@ -15,8 +16,10 @@ export class GetRateLimits implements IGetRateLimitsUseCase {
     @inject("ICacheService") private cacheService: ICacheService
   ) {}
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async execute(): Promise<Record<string, any>> {
-    const keys = ["daily_count_limits", "model_token_limits", "default_model_token_limits"];
+    const keys = ["daily_count_limits", "model_token_limits", "default_model_token_limits", "upload_size_limits"];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const limits: Record<string, any> = {};
 
     for (const key of keys) {
@@ -41,6 +44,7 @@ export class GetRateLimits implements IGetRateLimitsUseCase {
           if (key === "daily_count_limits") value = DAILY_COUNT_LIMITS;
           if (key === "model_token_limits") value = MODEL_TOKEN_LIMITS;
           if (key === "default_model_token_limits") value = DEFAULT_MODEL_TOKEN_LIMITS;
+          if (key === "upload_size_limits") value = UPLOAD_SIZE_LIMITS;
         }
       }
 

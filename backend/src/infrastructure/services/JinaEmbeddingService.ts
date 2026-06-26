@@ -24,7 +24,7 @@ export class JinaEmbeddingService implements IEmbeddingService {
         throw new Error(`Infinity API responded with status: ${response.status}`);
       }
 
-      const json = await response.json();
+      const json = await response.json() as { data?: { embedding?: number[] }[] };
       const embedding = json.data?.[0]?.embedding;
 
       if (!embedding) {
@@ -32,8 +32,8 @@ export class JinaEmbeddingService implements IEmbeddingService {
       }
 
       return embedding;
-    } catch (error: any) {
-      console.error(" Jina Local Embedding failed:", error.message);
+    } catch (error: unknown) {
+      console.error(" Jina Local Embedding failed:", (error as Error).message);
       throw error;
     }
   }
@@ -53,16 +53,16 @@ export class JinaEmbeddingService implements IEmbeddingService {
         throw new Error(`Infinity API responded with status: ${response.status}`);
       }
 
-      const json = await response.json();
-      const embeddings = json.data?.map((item: any) => item.embedding) ?? [];
+      const json = await response.json() as { data?: { embedding?: number[] }[] };
+      const embeddings = json.data?.map((item) => item.embedding ?? []) ?? [];
 
       if (!embeddings || embeddings.length === 0) {
         throw new Error("No embeddings returned from Infinity local server");
       }
 
       return embeddings;
-    } catch (error: any) {
-      console.error(" Jina Local Batch Embedding failed:", error.message);
+    } catch (error: unknown) {
+      console.error(" Jina Local Batch Embedding failed:", (error as Error).message);
       throw error;
     }
   }

@@ -1,12 +1,14 @@
 import { z } from "zod";
 import { ChatDocument, IChat } from "../../../domain/chat/entities/Chat";
+import { IMessage } from "../../../domain/chat/entities/Message";
+import { IGeminiContent } from "../../../domain/chat/entities/Gemini";
 
 // ─── Input Schemas for Request Body Validation ───────────────────
 
 export const CreateChatBodySchema = z.object({
   title: z.string().trim().min(1, "Title is required"),
   folderId: z.string().trim().nullable().optional(),
-  type:z.string().optional()
+  type: z.string().optional()
 });
 
 export const UpdateChatBodySchema = z.object({
@@ -54,7 +56,7 @@ export interface DeleteChatOutputDTO {
 }
 
 export interface GetChatMessagesOutputDTO {
-  messages: any[];
+  messages: IMessage[];
   nextCursor: string | null;
 }
 
@@ -64,7 +66,7 @@ export interface CreateChatInputDTO {
   userId: string;
   title: string;
   folderId?: string | null;
-  type?:string
+  type?: string;
 }
 
 export interface GetChatsInputDTO {
@@ -109,9 +111,9 @@ export interface PrepareMessageInputDTO {
 }
 
 export interface PrepareMessageOutputDTO {
-  contents: any[];
+  contents: IGeminiContent[];
   userMessageId: string;
-  parentContext: Map<any, any>;
+  parentContext: Map<string, { count: number; messages: IMessage[] }>;
   parentSummary: string | null;
   model?: string;
 }
@@ -120,11 +122,11 @@ export interface SaveModelReplyInputDTO {
   chatId: string;
   userId: string;
   modelReply: string;
-  parentContext: Map<any, any>;
-  parentSummary:string|null;
+  parentContext: Map<string, { count: number; messages: IMessage[] }>;
+  parentSummary: string | null;
   promptTokens?: number;
   responseTokens?: number;
-  contents?: any[];
+  contents?: IGeminiContent[];
   model?: string;
 }
 
@@ -144,7 +146,7 @@ export interface SaveSubChatInputDTO {
   subChatId?: string;
   anchorMessageId: string;
   highlightedText?: string;
-  messages: any[];
+  messages: IMessage[];
   relativeY: number;
 }
 
@@ -172,7 +174,7 @@ export interface StreamQuickChatInputDTO {
   chatId: string;
   anchorMessageId: string;
   highlightedText: string;
-  quickChatHistory: any[];
+  quickChatHistory: IMessage[];
   userTier?: string;
   model?: string;
 }
@@ -198,17 +200,18 @@ export interface ValidateChatAccessInputDTO {
 
 
 export class ChatMapper {
-  static toChatOutput(raw: any): ChatOutputDTO {
+  static toChatOutput(raw: IChat): ChatOutputDTO {
     return {
-      _id: raw._id?.toString() || raw.id,
-      // id: raw._id?.toString() || raw.id,
-      userId: raw.userId?.toString(),
+      _id: raw._id?.toString() || "",
+      userId: raw.userId?.toString() || "",
       folderId: raw.folderId?.toString() || null,
       title: raw.title,
-      type:raw.type,
+      type: raw.type,
       contextParent: raw.contextParent
-        ? (typeof raw.contextParent === 'object' && raw.contextParent._id
-          ? { _id: raw.contextParent._id.toString(), title: raw.contextParent.title || null }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ? (typeof raw.contextParent === 'object' && (raw.contextParent as any)._id
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          ? { _id: (raw.contextParent as any)._id.toString(), title: (raw.contextParent as any).title || null }
           : { _id: raw.contextParent.toString(), title: null })
         : null,
       summary: raw.summary || null,
@@ -220,11 +223,11 @@ export class ChatMapper {
     };
   }
 
-  static toChatOutputList(rawList: any[]): ChatOutputDTO[] {
+  static toChatOutputList(rawList: IChat[]): ChatOutputDTO[] {
     return rawList.map((raw) => ChatMapper.toChatOutput(raw));
   }
 
-  static toMessagesOutput(messages: any[], limit: number): GetChatMessagesOutputDTO {
+  static toMessagesOutput(messages: IMessage[], limit: number): GetChatMessagesOutputDTO {
     const nextCursor = messages.length === limit ? messages[0]._id.toString() : null;
     return { messages, nextCursor };
   }

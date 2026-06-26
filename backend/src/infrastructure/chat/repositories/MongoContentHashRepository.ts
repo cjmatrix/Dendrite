@@ -21,7 +21,7 @@ export class MongoContentHashRepository
       .find({ status: "expired", expireAt: { $lte: now } })
       .session(this.getSession())
       .lean();
-    return docs.map((doc: any) => this.mapToDomain(doc));
+    return docs.map((doc) => this.mapToDomain(doc as Record<string, unknown>));
   }
 
   async deleteByHash(contentHash: string): Promise<boolean> {

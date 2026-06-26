@@ -48,24 +48,28 @@ export class RegisterUser implements IRegisterUserUseCase {
         const systemFolders = [
           {
             userId: user._id,
+            ownerId: user._id,
             parentId: null,
             name: "Documents",
             isSystemFolder: true,
           },
           {
             userId: user._id,
+            ownerId: user._id,
             parentId: null,
             name: "Media",
             isSystemFolder: true,
           },
           {
             userId: user._id,
+            ownerId: user._id,
             parentId: null,
             name: "Research",
             isSystemFolder: true,
           },
           {
             userId: user._id,
+            ownerId: user._id,
             parentId: null,
             name: "Chats",
             isSystemFolder: true,

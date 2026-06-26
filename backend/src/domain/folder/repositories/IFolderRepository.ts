@@ -10,6 +10,6 @@ export interface IFolderRepository extends IBaseRepository<IFolder> {
   deleteMany(ids: string[], userId: string): Promise<void>;
   insertMany(foldersData: Partial<IFolder>[]): Promise<IFolder[]>;
   findByParentId(parentId: string): Promise<IFolder[]>;
-  findFolderSubtree(targetId:string):Promise<any>;
+  findFolderSubtree(targetId:string):Promise<unknown>;
   findByPrefix(userId: string, parentId: string | null, prefix: string): Promise<IFolder[]>;
 }

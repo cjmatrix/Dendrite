@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
-import { Mail, Lock, LogIn, AlertCircle, Loader2, Key, ArrowLeft, CheckCircle } from "lucide-react";
+import { Mail, Lock, LogIn, AlertCircle, Loader2, Key, ArrowLeft, CheckCircle, Eye, EyeOff } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "../../../store/store";
 import { clearError } from "../store/authSlice";
 import { GoogleSignInButton } from "./GoogleSignInButton";
@@ -18,6 +18,7 @@ const Login: React.FC = () => {
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [forgotSuccess, setForgotSuccess] = useState<string | null>(null);
   const [forgotError, setForgotError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const {
     register,
@@ -50,8 +51,19 @@ const Login: React.FC = () => {
       const res = await forgotPasswordMutation.mutateAsync(data.email);
       setForgotSuccess(res.message || "Reset link sent successfully!");
       resetForgotForm();
-    } catch (err: any) {
-      setForgotError(err?.response?.data?.message || err?.message || "Failed to send reset link");
+    } catch (err: unknown) {
+      let errorMsg = "Failed to send reset link";
+      if (err && typeof err === "object") {
+        if ("response" in err) {
+          const response = (err as { response?: { data?: { message?: string } } }).response;
+          if (response?.data?.message) {
+            errorMsg = response.data.message;
+          }
+        } else if ("message" in err) {
+          errorMsg = (err as { message: string }).message;
+        }
+      }
+      setForgotError(errorMsg);
     }
   };
   
@@ -227,13 +239,24 @@ const Login: React.FC = () => {
                     <Lock className="h-5 w-5 text-gray-500 group-focus-within:text-blue-500 transition-colors" />
                   </div>
                   <input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     {...register("password", {
                       required: "Password is required",
                     })}
-                    className="w-full pl-11 pr-4 py-3 bg-(--theme-bg-elevated) border border-white/5 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
+                    className="w-full pl-11 pr-12 py-3 bg-(--theme-bg-elevated) border border-white/5 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
                     placeholder="••••••••"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-500 hover:text-white transition-colors"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-5 w-5" />
+                    ) : (
+                      <Eye className="h-5 w-5" />
+                    )}
+                  </button>
                 </div>
                 {errors.password && (
                   <p className="text-xs text-red-500 mt-1 ml-1">

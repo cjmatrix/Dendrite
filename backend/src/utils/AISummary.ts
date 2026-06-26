@@ -31,6 +31,7 @@ export interface TripleMemoryOutput {
   compressedFacts: string[];
   recursiveSummary: SummaryItem[];
   profileDelta: ProfileDelta;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   usageMetadata?: any;
 }
 
@@ -321,6 +322,7 @@ If no new profile information is discovered, return an empty profileDelta object
 }
 
 export async function generateTripleMemoryOutput(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   messageToCompress: any[],
   previousSummary: string | null,
   existingProfile: IGlobalProfile | null,
@@ -366,11 +368,11 @@ export async function generateTripleMemoryOutput(
         },
       });
       break;
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (
-        error.status === 429 ||
-        error.message?.includes("quota") ||
-        error.message?.includes("RESOURCE_EXHAUSTED")
+        (error as { status?: number }).status === 429 ||
+        (error as Error).message?.includes("quota") ||
+        (error as Error).message?.includes("RESOURCE_EXHAUSTED")
       ) {
         if (isByok) {
           if (userId) {

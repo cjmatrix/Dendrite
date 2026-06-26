@@ -4,19 +4,31 @@ import { IMetricsService } from "../../application/common/ports/IMetricsService"
 import { AIService } from "../../services/AIService";
 import { streamOpenRouterContent } from "../../services/OpenRouterService";
 import { isGeminiModel, DEFAULT_MODEL } from "../../constants/models";
-import {getCachedDecryptedKeys} from "../../utils/byokKeysHelper"
+import { getCachedDecryptedKeys } from "../../utils/byokKeysHelper";
+import { IUserRepository } from "../../domain/auth/repositories/IUserRepository";
+import { IGeminiContent, IAIStreamChunk } from "../../domain/chat/entities/Gemini";
+import { IMessageRepository } from "../../domain/chat/repositories/IMessageRepository";
+import { IMessage } from "../../domain/chat/entities/Message";
+
 @injectable()
 export class AIServiceAdapter implements IAIService {
   constructor(
     @inject("IMetricsService") private readonly metricsService: IMetricsService,
-    @inject("IUserRepository") private readonly userRepository: any
+    @inject("IUserRepository") private readonly userRepository: IUserRepository
   ) {}
 
-  async streamAIContent(contents: any[], model?: string, signal?: AbortSignal, userId?: string, userTier?: string, systemInstruction?: string): Promise<AsyncIterable<any>> {
+  async streamAIContent(
+    contents: IGeminiContent[],
+    model?: string,
+    signal?: AbortSignal,
+    userId?: string,
+    userTier?: string,
+    systemInstruction?: string
+  ): Promise<AsyncIterable<IAIStreamChunk>> {
     const activeModel = model || DEFAULT_MODEL;
 
     try {
-      let stream: AsyncIterable<any>;
+      let stream: AsyncIterable<IAIStreamChunk>;
 
       if (isGeminiModel(activeModel)) {
         if (userId) {
@@ -33,8 +45,10 @@ export class AIServiceAdapter implements IAIService {
         } else {
           stream = await AIService.streamAIContent(contents, activeModel, signal, systemInstruction);
         }
+      } else if (activeModel.startsWith("groq/")) {
+        stream = await AIService.streamGroqContent(contents, activeModel, signal, systemInstruction);
       } else {
-        stream = await streamOpenRouterContent(contents, activeModel, signal, systemInstruction);
+        stream = (await streamOpenRouterContent(contents, activeModel, signal, systemInstruction)) as unknown as AsyncIterable<IAIStreamChunk>;
       }
 
       this.metricsService.incrementAICall("success", activeModel, isGeminiModel(activeModel) ? "main" : "sub");
@@ -45,7 +59,11 @@ export class AIServiceAdapter implements IAIService {
     }
   }
 
-  async getAnchorContext(chatId: string, anchorMessageId: string, messageRepo: any): Promise<any[]> {
+  async getAnchorContext(
+    chatId: string,
+    anchorMessageId: string,
+    messageRepo: IMessageRepository
+  ): Promise<IMessage[]> {
     return AIService.getAnchorContext(chatId, anchorMessageId, messageRepo);
   }
 

@@ -18,7 +18,7 @@ import RateLimitManagementPage from "../features/admin/rate-limits/RateLimitMana
 import KnowledgeGraphPage from "../features/graph/components/KnowledgeGraphPage";
 import SplitFileViewer from "../features/chat/components/SplitFileViewer";
 import BillingPage from "../features/billing/components/BillingPage";
-
+import { DendritesLanding } from "../features/Landing/DendritesLanding";
 function SplitFileViewerWrapper() {
   const fileData = sessionStorage.getItem('splitViewFile');
   if (!fileData) {
@@ -41,6 +41,12 @@ export const router = createBrowserRouter([
     path: "/admin/login",
     element: <AdminLogin />,
   },
+  {
+     path:"/home",
+     element:<DendritesLanding></DendritesLanding>
+  }
+ ,
+
   {
     path: "/admin",
     element: <AdminProtectedRoute />,

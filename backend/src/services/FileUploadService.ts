@@ -108,6 +108,7 @@ export class FileUploadService {
           folder: 'dendrites/chat-images',
           resource_type: 'image',
         },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (error: any, result: any) => {
           if (error || !result) {
             reject(error || new Error('Cloudinary upload failed'));
@@ -133,6 +134,7 @@ export class FileUploadService {
           folder: 'dendrites/docs',
           resource_type: 'raw',
         },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (error: any, result: any) => {
           if (error || !result) {
             reject(error || new Error('Cloudinary upload failed'));

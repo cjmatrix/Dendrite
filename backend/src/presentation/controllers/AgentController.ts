@@ -1,6 +1,8 @@
 import { injectable, inject } from "tsyringe";
 import { Request, Response } from "express";
 import { GenerateWorkspaceUseCase } from "../../application/agent/use-cases/GenerateWorkspaceUseCase";
+import { HttpStatus } from "../constants/httpStatus";
+import { AGENT_MESSAGES } from "../constants/agentMessages";
 
 @injectable()
 export class AgentController {
@@ -22,24 +24,24 @@ export class AgentController {
 
       if (result.status === "rejected") {
         return res
-          .status(200)
+          .status(HttpStatus.OK)
           .json({ type: "rejection", message: result.messages });
       }
 
       if (result.status === "awaiting_clarification") {
-        return res.status(200).json({
+        return res.status(HttpStatus.OK).json({
           type: "clarification_needed",
           message: result.messages,
         });
       }
 
-      return res.status(200).json({
+      return res.status(HttpStatus.OK).json({
         type: "success",
-        message: "Workspace successfully generated!",
+        message: AGENT_MESSAGES.WORKSPACE_GENERATED,
       });
     } catch (error) {
       console.error(error);
-      return res.status(500).json({ error: "Agent execution failed." });
+      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ error: AGENT_MESSAGES.EXECUTION_FAILED });
     }
   }
 }

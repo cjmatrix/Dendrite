@@ -6,7 +6,7 @@ import toast from "react-hot-toast";
 import { ImportSharedModal } from "./ImportSharedModal";
 import { SearchExplorerModal } from "./SearchExplorerModal";
 
-import type { FileType } from "../types/types";
+import type { FileType, FileNode } from "../types/types";
 import { FileItem } from "./FileItem";
 import { useAppDispatch, useAppSelector } from "../../../store/store";
 import { setActiveSidebarRootId, toggleExplorerModal, toggleRecallOverlay } from "../store/explorerSlice";
@@ -95,7 +95,7 @@ export default function FileExplorer() {
 
 
 
-  const findNode = (node: any, targetId: string): any | null => {
+  const findNode = (node: FileNode, targetId: string): FileNode | null => {
     if (node.id === targetId) return node;
     for (const child of node.children || []) {
       const found = findNode(child, targetId);
@@ -149,6 +149,7 @@ export default function FileExplorer() {
 
   const handleBlankContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
+    if (isShareMode) return;
     setBlankContextMenu({ x: e.clientX, y: e.clientY });
   };
 
@@ -283,7 +284,7 @@ export default function FileExplorer() {
               className="flex-1 overflow-y-auto px-4 py-2 scrollbar-thin scrollbar-thumb-zinc-800 hover:scrollbar-thumb-zinc-700 scrollbar-track-transparent space-y-[2px]"
               onContextMenu={handleBlankContextMenu}
             >
-              {displayTree.children?.map((child: any) => (
+              {displayTree.children?.map((child: FileNode) => (
                 <FileItem key={child.id} node={child} />
               ))}
 
@@ -354,6 +355,7 @@ export default function FileExplorer() {
                   onClick={() => {
                     if (!user) {
                       toast.error("Please sign in to import this shared content.");
+                       navigate("/")
                       return;
                     }
                     setIsDownloadModalOpen(true);
@@ -365,6 +367,13 @@ export default function FileExplorer() {
                 </button>
               ) : (
                 <>
+                  <button
+                    onClick={() => navigate("/billing")}
+                    className="group w-full flex items-center justify-center gap-2 py-2 px-3 mb-2 rounded-xl bg-linear-to-r from-amber-500/20 to-amber-600/10 hover:from-amber-500/30 hover:to-amber-600/20 text-amber-400 hover:text-amber-300 transition-all border border-amber-500/20 hover:border-amber-400/50 text-[12px] font-bold shadow-[0_4px_20px_-10px_rgba(245,158,11,0.2)] active:scale-[0.98]"
+                  >
+                    <Sparkles size={14} className="text-amber-400 animate-pulse" />
+                    {user?.tier && user.tier !== "free" ? "Manage Plan" : "Upgrade Plan"}
+                  </button>
                   <button
                     onClick={() => dispatch(toggleRecallOverlay(true))}
                     className="relative group w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-linear-to-r from-purple-600 to-indigo-600/50 hover:from-purple-500 hover:to-indigo-500/50 text-white/90 hover:text-purple-100 transition-all border border-purple-500/20 hover:border-purple-400/50 text-[12px] font-bold shadow-[0_4px_20px_-10px_rgba(168,85,247,0.3)] hover:shadow-[0_4px_20px_-8px_rgba(168,85,247,0.5)] active:scale-[0.98]"

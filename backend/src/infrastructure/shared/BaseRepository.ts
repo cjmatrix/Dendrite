@@ -1,31 +1,32 @@
-import { Model } from "mongoose";
+import { Model, ClientSession } from "mongoose";
 import { IBaseRepository } from "../../application/common/ports/IBaseRepository";
 import { transactionStorage } from "./MongooseUnitOfWork";
 
 export class MongooseBaseRepository<
   T extends { _id: string },
 > implements IBaseRepository<T> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   constructor(protected model: Model<any>) {}
 
-  protected getSession(): any {
-    return transactionStorage.getStore() || undefined;
+  protected getSession(): ClientSession | null {
+    return (transactionStorage.getStore() as ClientSession) || null;
   }
 
-  protected mapToDomain(doc: any): T {
+  protected mapToDomain(doc: Record<string, unknown>): T {
     return {
       ...doc,
-      _id: doc._id.toString(),
+      _id: (doc._id as { toString(): string }).toString(),
     } as T;
   }
 
   async findById(id: string): Promise<T | null> {
-    const doc = await this.model.findById(id).session(this.getSession()).lean();
-    return doc ? this.mapToDomain(doc) : null;
+    const doc = await this.model.findById(id).session(this.getSession() ?? null).lean();
+    return doc ? this.mapToDomain(doc as Record<string, unknown>) : null;
   }
 
-  async create(data: any): Promise<T> {
+  async create(data: Partial<T>): Promise<T> {
     const doc = await this.model.create(data);
-    return this.mapToDomain(doc.toObject ? doc.toObject() : doc);
+    return this.mapToDomain((doc.toObject ? doc.toObject() : doc) as Record<string, unknown>);
   }
 
   async save(entity: T): Promise<T> {
@@ -44,19 +45,19 @@ export class MongooseBaseRepository<
     }
 
     const savedDoc = await doc.save({ session: activeSession });
-    return this.mapToDomain(savedDoc.toObject());
+    return this.mapToDomain(savedDoc.toObject() as Record<string, unknown>);
   }
 
-  async count(filter: any = {}): Promise<number> {
+  async count(filter: Record<string, unknown> = {}): Promise<number> {
     const activeSession = this.getSession();
-    return await this.model.countDocuments(filter).session(activeSession);
+    return await this.model.countDocuments(filter).session(activeSession ?? null);
   }
 
-  async findByIdAndUpdate(id: string, update: any): Promise<T | null> {
+  async findByIdAndUpdate(id: string, update: Record<string, unknown>): Promise<T | null> {
     const doc = await this.model
       .findByIdAndUpdate(id, update, { new: true })
-      .session(this.getSession())
+      .session(this.getSession() ?? null)
       .lean();
-    return doc ? this.mapToDomain(doc) : null;
+    return doc ? this.mapToDomain(doc as Record<string, unknown>) : null;
   }
 }

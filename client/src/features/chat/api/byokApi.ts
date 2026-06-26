@@ -5,7 +5,7 @@ export interface UpdateByokKeysParams {
   keys: string[];
 }
 
-export const updateByokKeys = async ({ provider, keys }: UpdateByokKeysParams): Promise<any> => {
+export const updateByokKeys = async ({ provider, keys }: UpdateByokKeysParams): Promise<{ success: boolean; message?: string; [key: string]: unknown }> => {
   const res = await api.post("/auth/me/byok-keys", {
     provider,
     keys,
@@ -13,7 +13,7 @@ export const updateByokKeys = async ({ provider, keys }: UpdateByokKeysParams): 
   return res.data;
 };
 
-export const getByokKeys = async (provider: string = "gemini"): Promise<any> => {
+export const getByokKeys = async (provider: string = "gemini"): Promise<{ provider: string; keys: string[]; [key: string]: unknown }> => {
   const res = await api.get(`/auth/me/byok-keys?provider=${provider}`);
   return res.data.data;
 };

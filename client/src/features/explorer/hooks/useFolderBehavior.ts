@@ -35,7 +35,7 @@ export function useFolderBehavior(folderId: string, onClose?: () => void) {
         onClose();
       }
     },
-    onError: (err: any) => {
+    onError: (err: unknown) => {
       console.error(err);
       toast.error("Failed to save behavior settings.");
     },

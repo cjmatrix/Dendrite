@@ -1,7 +1,7 @@
-import { IChatRepository } from "../../../domain/chat/repositories/IChatRepository";
 import { Chat } from "../models/MongoChatModel";
-import { MongooseBaseRepository } from "../../shared/BaseRepository";
 import { IChat } from "../../../domain/chat/entities/Chat";
+import { IChatRepository } from "../../../domain/chat/repositories/IChatRepository";
+import { MongooseBaseRepository } from "../../shared/BaseRepository";
 
 export class MongoChatRepository
   extends MongooseBaseRepository<IChat>
@@ -11,12 +11,17 @@ export class MongoChatRepository
     super(Chat);
   }
 
-  protected override mapToDomain(doc: any): IChat {
-    const base = super.mapToDomain(doc);
-    return {
-      ...base,
-      folderId: doc.folderId ? doc.folderId.toString() : null,
-    };
+  async findByUserId(userId: string): Promise<IChat[]> {
+    const docs = await this.model
+      .find({ userId })
+      .sort({ createdAt: 1 })
+      .lean();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return docs.map((doc: any) => this.mapToDomain(doc));
+  }
+
+  async findAllByUserId(userId: string): Promise<IChat[]> {
+    return this.findByUserId(userId);
   }
 
   async findByUserIdAndTitleAndFolderId(
@@ -24,59 +29,50 @@ export class MongoChatRepository
     title: string,
     folderId: string | null,
   ): Promise<IChat | null> {
-    const doc = await this.model.findOne({ userId, title, folderId }).lean();
-    return doc ? this.mapToDomain(doc) : null;
-  }
-
-  async findAllByUserId(userId: string): Promise<IChat[]> {
-    const docs = await this.model
-      .find({ userId })
-      .select("-messages")
-      .sort({ createdAt: 1 })
+    const doc = await this.model
+      .findOne({ userId, title, folderId })
       .lean();
-    return docs.map((doc: any) => this.mapToDomain(doc));
+    return doc ? this.mapToDomain(doc) : null;
   }
 
   async findByIdAndUserId(
     chatId: string,
     userId: string,
-    options?: any,
+    options?: { session?: unknown },
   ): Promise<IChat | null> {
     const activeSession = (options && options.session) || this.getSession();
-    const finalOptions = activeSession
-      ? { session: activeSession, ...options }
-      : options;
-    const doc = await this.model
-      .findOne({ _id: chatId, userId }, null, finalOptions)
-      .populate("contextParent", "title _id")
-      .lean();
+    const query = this.model.findOne({ _id: chatId, userId }, null);
+    if (activeSession) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      query.session(activeSession as any);
+    }
+    const doc = await query.populate("contextParent", "title _id").lean();
     return doc ? this.mapToDomain(doc) : null;
   }
 
   async update(
     chatId: string,
     userId: string,
-    updates: any,
-    options?: any,
+    updates: Partial<IChat>,
+    options?: { session?: unknown },
   ): Promise<IChat | null> {
     const activeSession = (options && options.session) || this.getSession();
-    const finalOptions = activeSession
-      ? { session: activeSession, ...options }
-      : options;
-    const doc = await this.model
-      .findOneAndUpdate({ _id: chatId, userId }, updates, {
-        new: true,
-        ...finalOptions,
-      })
-      .lean();
+    const query = this.model.findOneAndUpdate({ _id: chatId, userId }, updates, {
+      new: true,
+    });
+    if (activeSession) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      query.session(activeSession as any);
+    }
+    const doc = await query.lean();
     return doc ? this.mapToDomain(doc) : null;
   }
 
   async bulkResetUnsummarizedCount(
     chatIds: string[],
     userId: string,
-    options?: any,
-  ): Promise<any> {
+    options?: { session?: unknown },
+  ): Promise<unknown> {
     if (!chatIds.length) {
       return { modifiedCount: 0 };
     }
@@ -90,9 +86,11 @@ export class MongoChatRepository
 
     const activeSession = (options && options.session) || this.getSession();
     const finalOptions = activeSession
-      ? { session: activeSession, ...options }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ? { session: activeSession as any, ...options }
       : options;
-    return this.model.bulkWrite(updates, finalOptions);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return this.model.bulkWrite(updates, finalOptions as any);
   }
 
   async delete(chatId: string, userId: string): Promise<IChat | null> {
@@ -107,13 +105,14 @@ export class MongoChatRepository
     const docs = await this.model
       .find({ folderId: { $in: folderIds }, userId })
       .lean();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return docs.map((doc: any) => this.mapToDomain(doc));
   }
 
   async deleteManyByFolderIds(
     userId: string,
     folderIds: string[],
-  ): Promise<any> {
+  ): Promise<unknown> {
     return this.model.deleteMany({ folderId: { $in: folderIds }, userId });
   }
 
@@ -139,16 +138,18 @@ export class MongoChatRepository
     const docs = await this.model
       .find({ folderId: { $in: folderIds } })
       .lean();
-    return docs.map((doc: any) => this.mapToDomain(doc));
+    return docs.map((doc) => this.mapToDomain(doc));
   }
 
-  async createMany(chatsData: any[], options?: any): Promise<IChat[]> {
+  async createMany(chatsData: Partial<IChat>[], options?: { session?: unknown }): Promise<IChat[]> {
     const activeSession = (options && options.session) || this.getSession();
     const finalOptions = activeSession
-      ? { session: activeSession, ...options }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ? { session: activeSession as any, ...options }
       : options;
-    const docs = await this.model.insertMany(chatsData, finalOptions) as any;
-    return docs.map((doc: any) =>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const docs = await this.model.insertMany(chatsData, finalOptions as any) as unknown as { toObject?: () => Record<string, unknown> }[];
+    return docs.map((doc) =>
       this.mapToDomain(doc.toObject ? doc.toObject() : doc),
     );
   }

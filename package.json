@@ -8,9 +8,12 @@
     "infra:start": "docker start dentrites-qdrant || docker run -d --name dentrites-qdrant -p 6333:6333 -p 6334:6334 -v dentrites_qdrant_storage:/qdrant/storage qdrant/qdrant",
     "infra:stop": "docker stop dentrites-qdrant",
     "install:all": "npm install --prefix backend && npm install --prefix client",
-    "build": "npm run build --prefix client"
+    "build": "npm run build --prefix client",
+    "lint:biome": "biome check .",
+    "format:biome": "biome format --write ."
   },
   "devDependencies": {
+    "@biomejs/biome": "2.5.0",
     "concurrently": "^9.1.2"
   }
 }

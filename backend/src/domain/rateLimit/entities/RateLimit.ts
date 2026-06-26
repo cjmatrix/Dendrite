@@ -1,6 +1,6 @@
 export interface IRateLimit {
   key: string;
-  value: any;
+  value: string | number | boolean | Record<string, unknown>;
   createdAt?: Date;
   updatedAt?: Date;
 }

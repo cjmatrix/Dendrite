@@ -6,7 +6,7 @@ import { IMessageRepository } from "../../../domain/chat/repositories/IMessageRe
 import { IEmbeddingService } from "../../common/ports/IEmbeddingService";
 import CONTEXT_WINDOW from "../../../constants/contextWindow";
 import { systemInstruction } from "../../../config/AIConfig";
-import { redisConfig, redisConnection } from "../../../config/redis";
+import { redisConnection } from "../../../config/redis";
 import { ILogger } from "../../common/ports/ILogger";
 import { injectable, inject } from "tsyringe";
 import { IPrepareMessageUseCase } from "./interfaces";
@@ -16,6 +16,9 @@ import { IUserRepository } from "../../../domain/auth/repositories/IUserReposito
 import { IGlobalProfile } from "../../../domain/auth/entities/User";
 import { IFolderRepository } from "../../../domain/folder/repositories/IFolderRepository";
 import { IUploadedDocumentRepository } from "../../../domain/chat/repositories/IUploadedDocumentRepository";
+import { IMessage } from "../../../domain/chat/entities/Message";
+import { IChat } from "../../../domain/chat/entities/Chat";
+import { IGeminiContent, IGeminiPart } from "../../../domain/chat/entities/Gemini";
 
 @injectable()
 export class PrepareMessage implements IPrepareMessageUseCase {
@@ -140,7 +143,7 @@ ${lines.join("\n")}`;
     let deficit = CONTEXT_WINDOW - recentMessages.length;
     let parentChatId: string | null = chat.contextParent?._id || null;
     let safetyDepth = 0;
-    const map = new Map();
+    const map = new Map<string, { count: number; messages: IMessage[] }>();
     let parentSummary = null;
 
     while (parentChatId && deficit > 0 && safetyDepth < 100) {
@@ -181,7 +184,7 @@ ${lines.join("\n")}`;
 
     const recentMessagesText = recentMessages
       .map(
-        (m: any) =>
+        (m: IMessage) =>
           `${this.stripP5CodeBlocks(m.content)}${m.imageUrl ? `\nAttached image URL: ${m.imageUrl}` : ""}`,
       )
       .join("\n");
@@ -244,11 +247,13 @@ ${lines.join("\n")}`;
         ? Promise.resolve(null)
         : this.embeddingService
             .embed(normalizedMessage, "RETRIEVAL_QUERY")
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             .catch((err: any) => {
               this.logger.warn("Embedding failed, skipping vector search", { error: err?.message });
               return null;
             }),
       AIService.shouldUseInternetSearch(normalizedMessage, userId).catch(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (err: any) => {
           console.warn("[PrepareMessage] Internet search router failed, skipping:", err?.message);
           return false;
@@ -293,10 +298,13 @@ ${lines.join("\n")}`;
             finalDescQueryVector!,
             activeContentHashes,
           ),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ]).catch((err: any) => {
           this.logger.warn("Vector search failed, skipping RAG context", { error: err?.message });
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           return [[], [], []] as [any[], any[], any[]];
         })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       : Promise.resolve([[], [], []] as [any[], any[], any[]]);
 
     const internetContextPromise = queryVec
@@ -307,6 +315,7 @@ ${lines.join("\n")}`;
         )
       : Promise.resolve("");
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const userPromise = this.userRepository.findById(userId).catch((err: any) => {
       this.logger.warn("User profile fetch failed, skipping personalization", { error: err?.message });
       return null;
@@ -336,7 +345,8 @@ ${lines.join("\n")}`;
     console.log(`\n [RAG DIAGNOSTICS]`);
     console.log(` User Message: "${normalizedMessage}"`);
     console.log(` Long-Term Facts Found: ${chatContextStats.length}`);
-    chatContextStats.slice(0, 3).forEach((f, i) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    chatContextStats.slice(0, 3).forEach((f: any, i: number) => {
       console.log(
         `   [Fact ${i + 1}] Score: ${f.score.toFixed(3)} | Content: ${f.fact.fact.substring(0, 100)}...`,
       );
@@ -345,7 +355,8 @@ ${lines.join("\n")}`;
     console.log(` Document Chunks Found: ${documentChunks.length}`);
     console.log(`------------------------\n`);
 
-    const deduplicatedSimilarCode = rawSimilarCode.filter((item) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const deduplicatedSimilarCode = rawSimilarCode.filter((item: any) => {
       return (
         typeof item.content !== "string" &&
         item.content?.code &&
@@ -353,11 +364,12 @@ ${lines.join("\n")}`;
       );
     });
 
-    const deduplicatedChatContext = chatContextStats.filter((item) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const deduplicatedChatContext = chatContextStats.filter((item: any) => {
       return item.fact?.fact && !recentMessagesText.includes(item.fact.fact);
     });
 
-    const deduplicatedDocuments = documentChunks.filter((item: any) => {
+    const deduplicatedDocuments = documentChunks.filter((item: { document?: { text: string } }) => {
       return (
         item.document?.text && !recentMessagesText.includes(item.document.text)
       );
@@ -395,7 +407,8 @@ ${lines.join("\n")}`;
     if (deduplicatedSimilarCode.length > 0) {
       const contextText = deduplicatedSimilarCode
         .map(
-          (item, index) =>
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (item: any, index: number) =>
             `[Snippet ${index + 1} - ${item.language}]\n\`\`\`${item.language}\n${item.content.code}\n\`\`\`\nDescription: ${item.content.description}`,
         )
         .join("\n\n");
@@ -405,7 +418,8 @@ ${lines.join("\n")}`;
 
     if (deduplicatedChatContext.length > 0) {
       const factText = deduplicatedChatContext
-        .map((item, index) => `[Fact ${index + 1}]: ${item.fact.fact}`)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .map((item: any, index: number) => `[Fact ${index + 1}]: ${item.fact.fact}`)
         .join("\n\n");
 
       dynamicSystemInstruction += `\n\n--- [RELEVANT ARCHIVED FACTS] ---\nThese are granular details from deep in the conversation history:\n\n${factText}`;
@@ -413,6 +427,7 @@ ${lines.join("\n")}`;
 
     if (deduplicatedDocuments.length > 0) {
       const docText = deduplicatedDocuments
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .map((item: any, index: number) => {
           const fileName = item.metadata?.fileName || "Unknown File";
           const text = item.document?.text || "";
@@ -522,7 +537,7 @@ If any answer is NO, improve the visualization before returning it.`;
       }
     };
 
-    const contents: any[] = [];
+    const contents: IGeminiContent[] = [];
 
     for (const msg of recentMessages) {
       let sanitizedContent = this.stripP5CodeBlocks(msg.content);
@@ -538,7 +553,7 @@ If any answer is NO, improve the visualization before returning it.`;
           });
         }
       } else {
-        const parts: any[] = [];
+        const parts: IGeminiPart[] = [];
         if (sanitizedContent) {
           parts.push({ text: sanitizedContent });
         }
@@ -575,7 +590,7 @@ If any answer is NO, improve the visualization before returning it.`;
       const lastTurn = contents[contents.length - 1];
       if (lastTurn && lastTurn.role === "user" && lastTurn.parts) {
         const lastTextPart = lastTurn.parts.find(
-          (p: any) => p.text && typeof p.text === "string",
+          (p) => p.text && typeof p.text === "string",
         );
         if (lastTextPart) {
           lastTextPart.text += internetContext;

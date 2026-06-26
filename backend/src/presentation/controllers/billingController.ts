@@ -7,6 +7,8 @@ import {
   IHandleWebhookUseCase,
 } from "../../application/billing/use-cases/interfaces";
 import { container } from "tsyringe";
+import { HttpStatus } from "../constants/httpStatus";
+import { BILLING_MESSAGES } from "../constants/billingMessages";
 
 @injectable()
 export class BillingController extends BaseController {
@@ -22,12 +24,12 @@ export class BillingController extends BaseController {
     try {
       const userId = this.validateUserAuth(req);
       const email = req.user?.email;
-      if (!email) throw new Error("Email is required for billing");
+      if (!email) throw new Error(BILLING_MESSAGES.EMAIL_REQUIRED);
       
       const { tier, billingCycle } = req.body;
       const url = await this.createCheckoutSessionUseCase.execute(userId, email, tier, billingCycle);
       
-      this.sendSuccess(res, { url }, 200, "Checkout session created");
+      this.sendSuccess(res, { url }, HttpStatus.OK, BILLING_MESSAGES.CHECKOUT_SESSION_CREATED);
     } catch (error) {
       this.sendError(res, error);
     }
@@ -37,7 +39,7 @@ export class BillingController extends BaseController {
     try {
       const userId = this.validateUserAuth(req);
       const url = await this.createPortalSessionUseCase.execute(userId);
-      this.sendSuccess(res, { url }, 200, "Portal session created");
+      this.sendSuccess(res, { url }, HttpStatus.OK, BILLING_MESSAGES.PORTAL_SESSION_CREATED);
     } catch (error) {
       this.sendError(res, error);
     }
@@ -47,10 +49,10 @@ export class BillingController extends BaseController {
     try {
       const signature = req.headers["paddle-signature"] as string;
       await this.handleWebhookUseCase.execute(req.body, signature);
-      res.status(200).send("Webhook received");
-    } catch (error: any) {
-      console.error("Webhook Error:", error.message);
-      res.status(400).send(`Webhook Error: ${error.message}`);
+      res.status(HttpStatus.OK).send(BILLING_MESSAGES.WEBHOOK_RECEIVED);
+    } catch (error: unknown) {
+      console.error("Webhook Error:", (error as Error).message);
+      res.status(HttpStatus.BAD_REQUEST).send(`Webhook Error: ${(error as Error).message}`);
     }
   };
 }

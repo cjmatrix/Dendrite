@@ -1,5 +1,5 @@
 import { Queue } from "bullmq";
-import { redisConfig } from "../config/redis";
+import { redisConfig } from "../../config/redis";
 
 export const recallQueue = new Queue("recall-queue", {
   connection: redisConfig,

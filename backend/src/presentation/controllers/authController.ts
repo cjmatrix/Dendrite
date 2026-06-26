@@ -107,6 +107,7 @@ export class AuthController extends BaseController {
       res
         .status(HTTP_STATUS.OK)
         .json({ message: AUTH_MESSAGES.TOKEN_REFRESHED });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       clearAuthCookies(res);
       this.sendError(res, err);

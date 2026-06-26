@@ -49,10 +49,18 @@ export function useSendMessage({
         ? `Uploaded file: ${selectedFile.name}`
         : "Analyze this image";
 
-      queryClient.setQueryData(["chatMessages", chatId], (old: any) => {
-        const existing = old?.pages?.length
-          ? old
-          : { pages: [{ messages: [], nextCursor: null }], pageParams: [null] };
+      queryClient.setQueryData(["chatMessages", chatId], (old: unknown) => {
+        const oldData = old as {
+          pages: {
+            messages: Message[];
+            nextCursor: string | null;
+          }[];
+          pageParams: unknown[];
+        } | undefined;
+
+        const existing = oldData?.pages?.length
+          ? oldData
+          : { pages: [{ messages: [] as Message[], nextCursor: null }], pageParams: [null] };
 
         const newPages = [...existing.pages];
         newPages[0] = {
@@ -112,9 +120,17 @@ export function useSendMessage({
         const modelMessageId = streamModelMessageId;
         const userMessageId = streamUserMessageId;
 
-        queryClient.setQueryData(["chatMessages", chatId], (old: any) => {
-          if (!old?.pages?.length) return old;
-          const newPages = [...old.pages];
+        queryClient.setQueryData(["chatMessages", chatId], (old: unknown) => {
+          const oldData = old as {
+            pages: {
+              messages: Message[];
+              nextCursor: string | null;
+            }[];
+            pageParams: unknown[];
+          } | undefined;
+
+          if (!oldData?.pages?.length) return oldData;
+          const newPages = [...oldData.pages];
           let newMessages = [...newPages[0].messages];
 
           if (fullReply.trim()) {
@@ -132,7 +148,7 @@ export function useSendMessage({
           }
 
           newPages[0] = { ...newPages[0], messages: newMessages };
-          return { ...old, pages: newPages };
+          return { ...oldData, pages: newPages };
         });
 
         setStreamingText("");

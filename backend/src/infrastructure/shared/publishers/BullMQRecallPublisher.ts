@@ -1,5 +1,5 @@
 import { IRecallPublisher } from "../../../application/common/ports/IRecallPublisher";
-import { scheduleRecallNotification, recallQueue } from "../../../queue/recallQueue";
+import { scheduleRecallNotification, recallQueue } from "../../queue/recallQueue";
 
 export class BullMQRecallPublisher implements IRecallPublisher {
   async publish(

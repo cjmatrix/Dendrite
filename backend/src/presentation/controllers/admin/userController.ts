@@ -37,6 +37,7 @@ class UserController extends BaseController {
   }
 
   async findAll(req: Request, res: Response) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { page, limit, search, status, sortBy, sortOrder } = req.query as any;
     const parsedQuery = {
       page: page ? Number(page) : 1,

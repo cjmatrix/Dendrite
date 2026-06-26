@@ -11,7 +11,7 @@ export const DEFAULT_MODEL = MAIN_CHAT_MODEL;
 export interface ModelOption {
   id: string;
   label: string;
-  provider: "gemini" | "openrouter";
+  provider: "gemini" | "openrouter" | "groq";
   tier: "free" | "paid";
 }
 
@@ -56,7 +56,18 @@ export const MODEL_OPTIONS: ModelOption[] = [
     tier: "paid",
   },
 
-  
+  {
+    id: "groq/llama-3.3-70b-versatile",
+    label: "Llama 3.3 70B (Groq)",
+    provider: "groq",
+    tier: "free",
+  },
+  {
+    id: "groq/openai/gpt-oss-120b",
+    label: "GPT OSS 120B (Groq)",
+    provider: "groq",
+    tier: "free",
+  },
   {
     id: "moonshotai/kimi-k2.6:free",
     label: "Kimi K2.6",

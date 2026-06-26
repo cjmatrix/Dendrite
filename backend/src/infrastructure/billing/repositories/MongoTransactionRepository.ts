@@ -29,14 +29,21 @@ export class MongoTransactionRepository implements ITransactionRepository {
   async aggregateSubscriptionStats(
     start: Date,
     end: Date,
-    groupByFormat: string
+    groupByFormat: string,
+    tier?: string
   ): Promise<{ date: string; count: number; revenue: number }[]> {
+    const matchStage: Record<string, unknown> = {
+      createdAt: { $gte: start, $lte: end },
+      status: "completed",
+    };
+
+    if (tier && tier !== "all") {
+      matchStage.tier = tier;
+    }
+
     const result = await MongoTransaction.aggregate([
       {
-        $match: {
-          createdAt: { $gte: start, $lte: end },
-          status: "completed",
-        },
+        $match: matchStage,
       },
       {
         $group: {

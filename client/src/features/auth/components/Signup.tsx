@@ -1,7 +1,7 @@
-import React from "react";
-import { Link } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
-import { UserPlus, Mail, Lock, User, AlertCircle, Loader2 } from "lucide-react";
+import { UserPlus, Mail, Lock, User, AlertCircle, Loader2, Eye, EyeOff } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "../../../store/store";
 import { clearError } from "../store/authSlice";
 import { GoogleSignInButton } from "./GoogleSignInButton";
@@ -11,15 +11,24 @@ import "../styles/auth.css";
 
 const Signup: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { error } = useAppSelector((state) => state.auth);
+  const { error ,isAuthenticated} = useAppSelector((state) => state.auth);
   const { signupMutation } = useAuthMutations();
 
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const navigate = useNavigate();
   const {
     register,
     handleSubmit,
     watch,
     formState: { errors },
   } = useForm<SignupRequest>();
+
+  useEffect(() => {
+      if (isAuthenticated) {
+        navigate("/");
+      }
+    }, [isAuthenticated, navigate]);
 
   const onSubmit = (data: SignupRequest) => {
     dispatch(clearError());
@@ -49,7 +58,7 @@ const Signup: React.FC = () => {
           <div className="mb-6 p-4 rounded-lg bg-red-500/10 border border-red-500/20 flex items-start gap-3">
             <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
             <p className="text-sm text-red-400">
-              {(signupMutation.error as any)?.response?.data?.message || (signupMutation.error as any)?.message || error}
+              {(signupMutation.error as { response?: { data?: { message?: string } } } | null)?.response?.data?.message || (signupMutation.error as { message?: string } | null)?.message || error}
             </p>
           </div>
         )}
@@ -106,14 +115,25 @@ const Signup: React.FC = () => {
                 <Lock className="h-5 w-5 text-gray-500 group-focus-within:text-indigo-500 transition-colors" />
               </div>
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 {...register("password", { 
                   required: "Password is required",
                   minLength: { value: 6, message: "Password must be at least 6 characters" }
                 })}
-                className="w-full pl-11 pr-4 py-3 bg-[var(--theme-bg-elevated)] border border-white/5 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all"
+                className="w-full pl-11 pr-12 py-3 bg-[var(--theme-bg-elevated)] border border-white/5 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all"
                 placeholder="••••••••"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-500 hover:text-white transition-colors"
+              >
+                {showPassword ? (
+                  <EyeOff className="h-5 w-5" />
+                ) : (
+                  <Eye className="h-5 w-5" />
+                )}
+              </button>
             </div>
             {errors.password && <p className="text-xs text-red-500 mt-1 ml-1">{errors.password.message}</p>}
           </div>
@@ -127,15 +147,26 @@ const Signup: React.FC = () => {
                 <Lock className="h-5 w-5 text-gray-500 group-focus-within:text-indigo-500 transition-colors" />
               </div>
               <input
-                type="password"
+                type={showConfirmPassword ? "text" : "password"}
                 {...register("confirmPassword", { 
                   required: "Please confirm your password",
                   validate: (val: string | undefined) =>
                     watch("password") === val || "Your passwords do not match",
                 })}
-                className="w-full pl-11 pr-4 py-3 bg-[var(--theme-bg-elevated)] border border-white/5 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all"
+                className="w-full pl-11 pr-12 py-3 bg-[var(--theme-bg-elevated)] border border-white/5 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all"
                 placeholder="••••••••"
               />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-500 hover:text-white transition-colors"
+              >
+                {showConfirmPassword ? (
+                  <EyeOff className="h-5 w-5" />
+                ) : (
+                  <Eye className="h-5 w-5" />
+                )}
+              </button>
             </div>
             {errors.confirmPassword && <p className="text-xs text-red-500 mt-1 ml-1">{errors.confirmPassword.message}</p>}
           </div>

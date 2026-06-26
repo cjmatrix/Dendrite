@@ -17,7 +17,8 @@ import {
   Move,
   Share,
   Brain,
-  Search
+  Search,
+  ArrowUpRight,
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { setActiveSidebarRootId } from "../store/explorerSlice";
@@ -40,7 +41,9 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
     return v !== undefined ? v : !!node.isExpanded;
   });
   const isShareMode = useAppSelector((state) => state.explorer.isShareMode);
-  const [isCreating, setIsCreating] = useState<"chat" | "folder" | "agent" | null>(null);
+  const [isCreating, setIsCreating] = useState<
+    "chat" | "folder" | "agent" | null
+  >(null);
   const [isRenaming, setIsRenaming] = useState<FileType | null>(null);
   const [isBehaviorOpen, setIsBehaviorOpen] = useState(false);
   const [isMoveOpen, setIsMoveOpen] = useState(false);
@@ -49,6 +52,11 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
   const [renameItemName, setRenameItemName] = useState("");
   const navigate = useNavigate();
   const isFolder = node.type === "folder";
+  const isChat = node.type === "chat";
+  const { id: activeChatId } = useParams<{ id?: string }>();
+  const isSelected =
+    !isFolder && node.type === "chat" && node.id === activeChatId;
+  const isAgent = node.chatType === "agent";
 
   const {
     createFolder,
@@ -129,23 +137,31 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
   } | null>(null);
 
   const handleContextMenu = (e: React.MouseEvent) => {
-    if (isShareMode) return;
     e.preventDefault();
     e.stopPropagation();
+    if (isShareMode) return;
     setContextMenu({ x: e.clientX, y: e.clientY });
   };
 
   useEffect(() => {
     if (!contextMenu) return;
+    console.log(node);
+    console.log(isChat);
     const close = () => setContextMenu(null);
     window.addEventListener("click", close);
     return () => window.removeEventListener("click", close);
   });
 
+  const selectedClass = isSelected
+    ? isAgent
+      ? "bg-amber-500/10 border-amber-500/20 text-amber-200 font-medium shadow-[inset_0_1px_1px_rgba(255,255,255,0.05),0_1px_3px_rgba(0,0,0,0.3)]"
+      : "bg-zinc-800/80 border-black  font-medium "
+    : "hover:bg-zinc-800/60 text-zinc-400 hover:text-zinc-100 border-transparent hover:border-white/5";
+
   return (
     <div className="select-none relative" onContextMenu={handleContextMenu}>
       <div
-        className="group/item flex w-full items-center justify-between py-1.25 px-2 mb-[1px] hover:bg-zinc-800/60 cursor-pointer text-zinc-400 hover:text-zinc-100 rounded-lg transition-all duration-200 border border-transparent hover:border-white/5"
+        className={`group/item flex w-full items-center justify-between py-1.25 px-2 mb-[1px] cursor-pointer rounded-lg transition-all duration-200 border ${selectedClass}`}
         onClick={handleRowClick}
       >
         <div
@@ -290,7 +306,9 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
             </div>
           ) : (
             <div className="flex flex-1 items-center justify-between min-w-0 pr-2">
-              <div className="text-[13px] tracking-wide truncate transition-colors group-hover/item:text-white font-medium">
+              <div
+                className={`text-[13px] tracking-wide truncate transition-colors font-medium group-hover/item:text-white`}
+              >
                 {node.name}
               </div>
               {!isFolder && (node.contextParents?.length || 0) > 0 && (
@@ -316,6 +334,7 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
                 setIsCreating("chat");
               }}
               className="p-1 hover:bg-zinc-700/60 rounded-md text-zinc-500 hover:text-emerald-400 transition-colors active:scale-95"
+              title="New Chat"
             >
               <Plus size={14} strokeWidth={2.5} />
             </button>
@@ -325,8 +344,28 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
                 setIsCreating("folder");
               }}
               className="p-1 hover:bg-zinc-700/60 rounded-md text-zinc-500 hover:text-cyan-400 transition-colors active:scale-95"
+              title="New Folder"
             >
               <FolderPlus size={14} strokeWidth={2.5} />
+            </button>
+          </div>
+        )}
+
+        {!isFolder && node.chatType !== "agent" && (
+          <div className="flex opacity-0 pointer-events-none group-hover/item:pointer-events-auto group-hover/item:opacity-100 items-center gap-0.5 transition-opacity duration-200">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                window.dispatchEvent(
+                  new CustomEvent("insert-chat-name", {
+                    detail: { name: node.name },
+                  }),
+                );
+              }}
+              className="p-1 hover:bg-zinc-700/60 rounded-md text-zinc-500 hover:text-cyan-400 transition-colors active:scale-95"
+              title="Reference chat name in composer"
+            >
+              <ArrowUpRight size={14} strokeWidth={2.5} />
             </button>
           </div>
         )}
@@ -373,18 +412,20 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
             style={{ top: contextMenu.y, left: contextMenu.x }}
             className="fixed z-50 bg-[var(--theme-bg-surface)] border border-zinc-800 shadow-2xl rounded-xl py-1.5 w-48 text-sm text-gray-200 overflow-hidden"
           >
-            <button
-              className="w-full text-left px-3 py-1.5 hover:bg-cyan-600 hover:text-white flex items-center gap-2 transition-colors"
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsCreating("chat");
-                setContextMenu(null);
-                if (!isOpen) dispatch(setIsExpandedTracker(node.id));
-              }}
-            >
-              <MessageSquare size={14} /> New Chat
-            </button>
-           
+            {!isChat && (
+              <button
+                className="w-full text-left px-3 py-1.5 hover:bg-cyan-600 hover:text-white flex items-center gap-2 transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsCreating("chat");
+                  setContextMenu(null);
+                  if (!isOpen) dispatch(setIsExpandedTracker(node.id));
+                }}
+              >
+                <MessageSquare size={14} /> New Chat
+              </button>
+            )}
+
             <button
               className="w-full text-left px-3 py-1.5 hover:bg-cyan-600 hover:text-white flex items-center gap-2 transition-colors"
               onClick={(e) => {
@@ -396,17 +437,19 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
             >
               <FolderPlus size={14} /> New Folder
             </button>
-             <button
-              className="w-full text-left px-3 py-1.5 hover:bg-cyan-600 hover:text-white flex items-center gap-2 transition-colors"
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsCreating("agent");
-                setContextMenu(null);
-                if (!isOpen) dispatch(setIsExpandedTracker(node.id));
-              }}
-            >
-              <Brain size={14} /> New Agent
-            </button>
+            {!isChat && (
+              <button
+                className="w-full text-left px-3 py-1.5 hover:bg-cyan-600 hover:text-white flex items-center gap-2 transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsCreating("agent");
+                  setContextMenu(null);
+                  if (!isOpen) dispatch(setIsExpandedTracker(node.id));
+                }}
+              >
+                <Brain size={14} /> New Agent
+              </button>
+            )}
             <button
               className="w-full text-left px-3 py-1.5 hover:bg-cyan-600 hover:text-white flex items-center gap-2 transition-colors"
               onClick={(e) => {
@@ -418,7 +461,7 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
             >
               <FolderPlus size={14} /> Open With Folder
             </button>
-            {node.id !== "root" && (
+            {node.id !== "root" &&!isChat && (
               <button
                 className="w-full text-left px-3 py-1.5 hover:bg-cyan-600 hover:text-white flex items-center gap-2 transition-colors"
                 onClick={(e) => {
@@ -427,7 +470,7 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
                   window.dispatchEvent(
                     new CustomEvent("open-search-modal", {
                       detail: { folderId: node.id },
-                    })
+                    }),
                   );
                 }}
               >

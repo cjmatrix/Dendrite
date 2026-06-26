@@ -38,7 +38,7 @@ export const streamingFetch = async (url: string, options: RequestInit = {}, con
       } else if (data.message) {
         errorMsg = data.message;
       } else if (Array.isArray(data.errors)) {
-        errorMsg = data.errors.map((e: any) => e.message || e).join(", ");
+        errorMsg = data.errors.map((e: { message?: string } | string) => (typeof e === 'string' ? e : e?.message || String(e))).join(", ");
       } else {
         errorMsg = response.status === 429 
           ? "Daily usage limit reached. Please try again later."

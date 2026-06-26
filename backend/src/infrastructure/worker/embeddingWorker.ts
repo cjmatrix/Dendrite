@@ -1,10 +1,11 @@
 import { Worker, Job } from "bullmq";
-import { redisConfig } from "../config/redis";
-import { ProcessEmbeddingJob } from "../application/worker/use-cases/ProcessEmbeddingJob";
+import { redisConfig } from "../../config/redis";
+import { ProcessEmbeddingJob } from "../../application/worker/use-cases/ProcessEmbeddingJob";
 import { container } from "tsyringe";
 
 interface EmbeddingJobData {
   outboxId: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   content: any;
 }
 

@@ -13,11 +13,12 @@ import recallRoutes from "./presentation/routes/recallRoutes";
 import branchRoutes from "./presentation/routes/branchRoutes";
 import shareLinkRoutes from "./presentation/routes/shareLinkRoutes";
 import agentRoutes from "./presentation/routes/agentRoutes"
-import "./worker/embeddingWorker";
-import "./worker/descriptionWorker";
-import "./worker/summaryWorker";
-import "./worker/recallWorker";
-import "./worker/documentChunkingWorker";
+import "./infrastructure/worker/embeddingWorker";
+import "./infrastructure/worker/descriptionWorker";
+import "./infrastructure/worker/summaryWorker";
+import "./infrastructure/worker/recallWorker";
+import "./infrastructure/worker/emailWorker";
+import "./infrastructure/worker/documentChunkingWorker";
 import "./cron/outboxSweeper";
 import "./cron/descriptionSweeper";
 import "./cron/searchCacheSweeper";

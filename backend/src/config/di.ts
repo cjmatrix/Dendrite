@@ -26,6 +26,7 @@ import { BullMQRecallPublisher } from "../infrastructure/shared/publishers/BullM
 import { BullMQDescriptionPublisher } from "../infrastructure/shared/publishers/BullMQDescriptionPublisher";
 import { BullMQSummaryPublisher } from "../infrastructure/shared/publishers/BullMQSummaryPublisher";
 import { NodemailerEmailService } from "../infrastructure/shared/services/NodemailerEmailService";
+import { BullMQEmailPublisher } from "../infrastructure/shared/publishers/BullMQEmailPublisher";
 import { redisConnection } from "./redis";
 import { RedisCacheService } from "../infrastructure/cache/RedisCacheService";
 import { RegisterUser } from "../application/auth/use-cases/RegisterUser";
@@ -55,6 +56,7 @@ import { ResetUserRateLimits } from "../application/admin/user/usecases/ResetUse
 import { GetRateLimits } from "../application/admin/rateLimit/usecases/GetRateLimits";
 import { UpdateRateLimit } from "../application/admin/rateLimit/usecases/UpdateRateLimit";
 import { MongoRateLimitRepository } from "../infrastructure/auth/repositories/MongoRateLimitRepository";
+import { MongoDailyTokenUsageRepository } from "../infrastructure/usage/repositories/MongoDailyTokenUsageRepository";
 import { MongoTransactionRepository } from "../infrastructure/billing/repositories/MongoTransactionRepository";
 
 import { CreateChat } from "../application/chat/use-cases/CreateChat";
@@ -119,6 +121,7 @@ container.registerSingleton<ILogger>("ILogger", WinstonLoggerAdapter);
 container.registerSingleton("IMetricsService", PrometheusMetricsService);
 
 container.registerSingleton("IRateLimitRepository", MongoRateLimitRepository);
+container.registerSingleton("IDailyTokenUsageRepository", MongoDailyTokenUsageRepository);
 container.registerSingleton("ITransactionRepository", MongoTransactionRepository);
 container.registerSingleton("GetRateLimits", GetRateLimits);
 container.registerSingleton("UpdateRateLimit", UpdateRateLimit);
@@ -157,6 +160,7 @@ container.registerSingleton(
   BullMQDescriptionPublisher,
 );
 container.registerSingleton("ISummaryPublisher", BullMQSummaryPublisher);
+container.registerSingleton("IEmailPublisher", BullMQEmailPublisher);
 container.registerSingleton("IAIService", AIServiceAdapter);
 container.registerSingleton("IDocumentQueue", BullMQDocumentQueue);
 container.registerSingleton("IFileStorageService", CloudinaryStorageAdapter);

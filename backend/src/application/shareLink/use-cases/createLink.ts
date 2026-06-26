@@ -23,6 +23,7 @@ export class CreateLink {
     targetId: string;
     targetType: "chat" | "folder";
     behaviorSharingPolicy?: "READ_ONLY" | "READ_WRITE" | "INVISIBLE";
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   }): Promise<any> {
     const token = crypto.randomBytes(32).toString("hex");
 
@@ -47,11 +48,12 @@ export class CreateLink {
           behaviorSharingPolicy,
           chat: {
             ...chatDoc,
-            id: chatDoc._id.toString(),
+            _id: chatDoc._id.toString(),
           },
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           messages: messages.map((m: any) => ({
             ...m,
-            id: m._id.toString(),
+            _id: m._id.toString(),
           })),
         },
       };
@@ -74,10 +76,18 @@ export class CreateLink {
         throw new AppError("Folder not found", 404);
       }
 
-      const allFolders = [subtree, ...subtree.descendants];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const allFolders = [subtree, ...((subtree as { descendants?: any[] }).descendants || [])] as any[];
+        if ((subtree as { descendants?: unknown[] }).descendants?.length) {
+          const allFolderIds: string[] = [targetId];
+          allFolderIds.push(...((subtree as { descendants?: { _id: { toString: () => string } }[] }).descendants || []).map((d) => d._id.toString()));
+        }
+
       const folderIds = [
         targetId,
-        ...subtree.descendants.map((d: any) => d._id.toString()),
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        ...((subtree as { descendants?: { _id: { toString: () => string } }[] }).descendants || []).map((d) => d._id.toString()),
       ];
 
       const chats = await this.chatRepo.findByFolderIdsWithoutUserId(folderIds);
@@ -113,6 +123,7 @@ export class CreateLink {
           }
         }
       }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const chatIds = chats.map((d: any) => d._id.toString());
       const messages = await this.messageRepo.findAllByChatIds(chatIds);
       
@@ -126,10 +137,12 @@ export class CreateLink {
           targetType: "folder",
           behaviorSharingPolicy,
           folders: [targetRoot],
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           chats: chats.map((c: any) => ({
             ...c,
             id: c._id.toString(),
           })),
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           messages: messages.map((m: any) => ({
             ...m,
             id: m._id.toString(),

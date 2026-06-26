@@ -45,11 +45,11 @@ function ChatPage() {
 
      
       if (id) {
-        const targetChat = sharedData.chats?.find((c: any) => (c._id || c.id) === id);
+        const targetChat = sharedData.chats?.find((c) => c._id === id);
         if (targetChat) {
           queryClient.setQueryData(["chat", id], targetChat);
 
-          const targetMessages = sharedData.messages?.filter((m: any) => m.chatId === id) || [];
+          const targetMessages = sharedData.messages?.filter((m) => m.chatId === id) || [];
           queryClient.setQueryData(["chatMessages", id], {
             pages: [{
               messages: targetMessages,
@@ -68,7 +68,7 @@ function ChatPage() {
       queryClient.setQueryData(["chats"], targetChat ? [targetChat] : []);
 
       if (targetChat) {
-        const chatId = targetChat._id || targetChat.id;
+        const chatId = targetChat._id ;
         queryClient.setQueryData(["chat", chatId], targetChat);
 
         const targetMessages = sharedData.messages || [];

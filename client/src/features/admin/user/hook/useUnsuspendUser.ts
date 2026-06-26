@@ -16,19 +16,21 @@ export function useUnsuspendUser() {
             const previousUser = queryClient.getQueryData(["user", userId]);
            
 
-            queryClient.setQueryData(["user", userId], (old: any) => {
-                if (!old) return old;
+            queryClient.setQueryData(["user", userId], (old: unknown) => {
+                const oldUser = old as { status?: string; [key: string]: unknown } | undefined;
+                if (!oldUser) return oldUser;
                 return {
-                    ...old,
+                    ...oldUser,
                     status: "active",
                 };
             });
 
             return { previousUser };
         },
-        onError: (_, userId, context: any) => {
-            if (context?.previousUser) {
-                queryClient.setQueryData(["user", userId], context.previousUser);
+        onError: (_err: unknown, userId: string, context: unknown) => {
+            const ctx = context as { previousUser?: unknown } | undefined;
+            if (ctx?.previousUser) {
+                queryClient.setQueryData(["user", userId], ctx.previousUser);
             }
            
         },

@@ -22,4 +22,14 @@ export class RedisActiveUserTracker implements IActiveUserTracker {
       return 0;
     }
   }
+
+  async getActiveUserIds(): Promise<string[]> {
+    try {
+      const keys = await this.cacheService.scanKeys(`${this.prefix}*`);
+      return keys.map((key) => key.replace(this.prefix, ""));
+    } catch (err) {
+      console.error("[RedisActiveUserTracker] Failed to get active user IDs:", err);
+      return [];
+    }
+  }
 }

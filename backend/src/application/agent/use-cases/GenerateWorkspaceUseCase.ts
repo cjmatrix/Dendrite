@@ -11,18 +11,21 @@ import { END, START } from "@langchain/langgraph";
 import { IFolderRepository } from "../../../domain/folder/repositories/IFolderRepository";
 import { IChatRepository } from "../../../domain/chat/repositories/IChatRepository";
 import { IMessageRepository } from "../../../domain/chat/repositories/IMessageRepository";
-import mongoose from "mongoose";
+import { IUnitOfWorkRepository } from "../../common/ports/IUnitOfWorkRepository";
 import { IRateLimitService } from "../../common/ports/IRateLimitService";
 
 const AgentState = Annotation.Root({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   messages: Annotation<any[]>({
     reducer: messagesStateReducer,
     default: () => [],
   }),
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   classification: Annotation<any>({
     reducer: (p, n) => n,
     default: () => null,
   }),
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ambiguousFolders: Annotation<any[]>({
     reducer: (p, n) => n,
     default: () => [],
@@ -35,6 +38,7 @@ const AgentState = Annotation.Root({
     reducer: (p, n) => n,
     default: () => "",
   }),
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   blueprint: Annotation<any>({ reducer: (p, n) => n, default: () => null }),
   status: Annotation<string>({
     reducer: (p, n) => n,
@@ -56,6 +60,7 @@ export class GenerateWorkspaceUseCase {
     @inject("IChatRepository") private chatRepo: IChatRepository,
     @inject("IMessageRepository") private messageRepo: IMessageRepository,
     @inject("IRateLimitService") private rateLimitService: IRateLimitService,
+    @inject("IUnitOfWorkRepository") private unitOfWork: IUnitOfWorkRepository,
   ) {}
 
   private llm = new AgentGeminiLLMService();
@@ -85,6 +90,7 @@ export class GenerateWorkspaceUseCase {
       }
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const formatNode = (node: any, depth: number = 0): string => {
       const indent = "  ".repeat(depth);
       let res = `${indent}- ${node.name} (ID: ${node.id})\n`;
@@ -111,6 +117,7 @@ export class GenerateWorkspaceUseCase {
       content: params.message,
     });
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const getSlidingWindowContext = (messages: any[]): string => {
       const windowMessages = messages.slice(-10);
       return windowMessages
@@ -230,79 +237,73 @@ export class GenerateWorkspaceUseCase {
         };
       // console.log(JSON.stringify(state.blueprint, null, 2));
 
-      const session = await mongoose.startSession();
-      session.startTransaction();
-
       try {
-        const topic = state.classification.topicToLearn || "Workspace";
-        const baseName = `${topic.charAt(0).toUpperCase() + topic.slice(1)} Roadmap`;
+        await this.unitOfWork.runInTransaction(async () => {
+          const topic = state.classification.topicToLearn || "Workspace";
+          const baseName = `${topic.charAt(0).toUpperCase() + topic.slice(1)} Roadmap`;
 
-        const existingFolders = await this.folderRepo.findByPrefix(
-          state.userId,
-          state.resolvedFolderId,
-          baseName
-        );
+          const existingFolders = await this.folderRepo.findByPrefix(
+            state.userId,
+            state.resolvedFolderId,
+            baseName
+          );
 
-        let rootFolderName = baseName;
-        if (existingFolders.length > 0) {
-          const escapedBaseName = baseName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          const suffixRegex = new RegExp(`^${escapedBaseName}(?: (\\d+))?$`);
+          let rootFolderName = baseName;
+          if (existingFolders.length > 0) {
+            const escapedBaseName = baseName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const suffixRegex = new RegExp(`^${escapedBaseName}(?: (\\d+))?$`);
 
-          const maxSuffix = existingFolders.reduce((max, folder) => {
-            const match = folder.name.match(suffixRegex);
-            const num = match ? (match[1] ? Number(match[1]) : 0) : -1;
-            return Math.max(max, num);
-          }, -1);
+            const maxSuffix = existingFolders.reduce((max, folder) => {
+              const match = folder.name.match(suffixRegex);
+              const num = match ? (match[1] ? Number(match[1]) : 0) : -1;
+              return Math.max(max, num);
+            }, -1);
 
-          if (maxSuffix >= 0) {
-            rootFolderName = `${baseName} ${maxSuffix + 1}`;
+            if (maxSuffix >= 0) {
+              rootFolderName = `${baseName} ${maxSuffix + 1}`;
+            }
           }
-        }
-        const rootFolder = await this.folderRepo.create({
-          name: rootFolderName,
-          parentId: state.resolvedFolderId || null,
-          userId: state.userId,
-          ownerId: state.userId,
-          behavior: {
-            current: {
-              content: state.blueprint?.rootBehavior || `This workspace contains the learning roadmap for ${topic}.`,
-              updatedAt: new Date()
-            },
-            history: [],
-            settings: {
-              sharingPolicy: 'READ_WRITE'
+          const rootFolder = await this.folderRepo.create({
+            name: rootFolderName,
+            parentId: state.resolvedFolderId || null,
+            userId: state.userId,
+            ownerId: state.userId,
+            behavior: {
+              current: {
+                content: state.blueprint?.rootBehavior || `This workspace contains the learning roadmap for ${topic}.`,
+                updatedAt: new Date()
+              },
+              history: [],
+              settings: {
+                sharingPolicy: 'READ_WRITE'
+              }
+            }
+          });
+
+          for (const f of state.blueprint.folders) {
+            const newFolder = await this.folderRepo.create({
+              name: f.name,
+              parentId: rootFolder._id.toString(),
+              userId: state.userId,
+              ownerId: state.userId,
+            });
+
+            for (const chatTitle of f.chats) {
+              await this.chatRepo.create({
+                title: chatTitle,
+                folderId: newFolder._id,
+                userId: state.userId,
+                type: "normal",
+              });
             }
           }
         });
-
-        for (const f of state.blueprint.folders) {
-          const newFolder = await this.folderRepo.create({
-            name: f.name,
-            parentId: rootFolder._id.toString(),
-            userId: state.userId,
-            ownerId: state.userId,
-          });
-
-          for (const chatTitle of f.chats) {
-            await this.chatRepo.create({
-              title: chatTitle,
-              folderId: newFolder._id,
-              userId: state.userId,
-              type: "normal",
-              messages: [],
-            });
-          }
-        }
-        await session.commitTransaction();
       } catch (error) {
-        await session.abortTransaction();
         console.error("Agent DB Transaction Error:", error);
         return {
           status: "failed",
           agentResponse: "An error occurred while programmatically building your workspace."
         };
-      } finally {
-        session.endSession();
       }
 
       return {
@@ -345,6 +346,7 @@ export class GenerateWorkspaceUseCase {
     const chat = await this.chatRepo.findByIdAndUserId(params.chatId, params.userId);
     const defaultFolderId = currentState.values.resolvedFolderId|| null;
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const initialInput: any = {
       messages: [new HumanMessage(params.message)],
       userId: params.userId,

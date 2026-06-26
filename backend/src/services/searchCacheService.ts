@@ -55,6 +55,7 @@ export async function getTavilySearchContext(query: string, precomputedVector?: 
     let contextString = "";
     if (searchResponse && searchResponse.results && searchResponse.results.length > 0) {
       contextString = `\n\n--- INTERNET SEARCH RESULTS ---\n${searchResponse.results
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .map((r: any) => `Source: ${r.url}\nContent: ${r.content}`)
         .join("\n\n")}\n--- END SEARCH RESULTS ---\n\nPlease utilize the above internet search results to inform your answer if relevant.`;
     }

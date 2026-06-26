@@ -9,20 +9,27 @@ interface OpenRouterMessage {
   content: string | Array<{ type: string; text?: string; image_url?: { url: string } }>;
 }
 
+interface GeminiPart {
+  text?: string;
+}
+
+interface GeminiContent {
+  role?: string;
+  parts?: GeminiPart[];
+  text?: string;
+}
+
 /**
  * Converts Gemini-format contents[] to OpenAI-format messages[]
  */
-function convertContentsToMessages(contents: any[]): OpenRouterMessage[] {
+function convertContentsToMessages(contents: GeminiContent[]): OpenRouterMessage[] {
   const messages: OpenRouterMessage[] = [];
   let currentRole: "user" | "assistant" | null = null;
-  let currentParts: any[] = [];
+  let currentParts: string[] = [];
 
   const flushMessage = () => {
     if (currentRole && currentParts.length > 0) {
-      const textParts = currentParts
-        .filter((p: any) => typeof p === "string" || p.text)
-        .map((p: any) => (typeof p === "string" ? p : p.text))
-        .join("\n");
+      const textParts = currentParts.join("\n");
 
       if (textParts) {
         messages.push({
@@ -39,10 +46,9 @@ function convertContentsToMessages(contents: any[]): OpenRouterMessage[] {
     if (item.role && item.parts) {
       flushMessage();
       currentRole = item.role === "model" ? "assistant" : "user";
-      currentParts = item.parts.map((p: any) => {
-        if (p.text) return p.text;
-        return "";
-      }).filter(Boolean);
+      currentParts = item.parts
+        .map((p) => p.text ?? "")
+        .filter(Boolean);
       flushMessage();
     }
     // Flat text part (used by PrepareMessage for system instruction, context, etc.)
@@ -55,15 +61,19 @@ function convertContentsToMessages(contents: any[]): OpenRouterMessage[] {
   return messages;
 }
 
-/**
- * Streams content from OpenRouter using SSE, yielding chunks compatible with the Gemini stream format
- */
+interface UsageMetadata {
+  prompt_tokens?: number;
+  completion_tokens?: number;
+  total_tokens?: number;
+}
+
+
 export async function streamOpenRouterContent(
-  contents: any[],
+  contents: GeminiContent[],
   model: string,
   signal?: AbortSignal,
   systemInstruction?: string,
-): Promise<AsyncIterable<{ text: string; usageMetadata?: any }>> {
+): Promise<AsyncIterable<{ text: string; usageMetadata?: UsageMetadata }>> {
   if (!OPENROUTER_API_KEY) {
     throw new Error("OPENROUTER_API_KEY is not configured");
   }
@@ -99,11 +109,10 @@ export async function streamOpenRouterContent(
     throw new Error("OpenRouter returned no response body");
   }
 
-  // Return an async iterable that yields chunks in Gemini-compatible format
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
 
-  async function* generateChunks(): AsyncGenerator<{ text: string; usageMetadata?: any }> {
+  async function* generateChunks(): AsyncGenerator<{ text: string; usageMetadata?: UsageMetadata }> {
     let buffer = "";
 
     try {
@@ -123,7 +132,10 @@ export async function streamOpenRouterContent(
           if (data === "[DONE]") return;
 
           try {
-            const parsed = JSON.parse(data);
+            const parsed = JSON.parse(data) as {
+              choices?: { delta?: { content?: string } }[];
+              usage?: UsageMetadata;
+            };
             const delta = parsed.choices?.[0]?.delta;
             const usage = parsed.usage;
 

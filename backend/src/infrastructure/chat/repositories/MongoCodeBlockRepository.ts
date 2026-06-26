@@ -23,17 +23,17 @@ export class MongoCodeBlockRepository
       })
       .limit(limit)
       .lean();
-    return docs.map((doc: any) => this.mapToDomain(doc));
+    return docs.map((doc) => this.mapToDomain(doc as Record<string, unknown>));
   }
 
   async findUndescribedByChatId(chatId: string): Promise<ICodeBlock[]> {
     const docs = await this.model.find({ chatId, description: "" }).lean();
-    return docs.map((doc: any) => this.mapToDomain(doc));
+    return docs.map((doc) => this.mapToDomain(doc as Record<string, unknown>));
   }
 
   async markUndescribedAsNeedingDescription(
     chatId: string,
-    session?: any,
+    session?: unknown,
   ): Promise<void> {
     const activeSession = session || this.getSession();
     const query = this.model.updateMany(
@@ -41,34 +41,37 @@ export class MongoCodeBlockRepository
       { $set: { needsDescription: true } },
     );
     if (activeSession) {
-      query.session(activeSession);
+      query.session(activeSession as import("mongoose").ClientSession);
     }
     await query;
   }
 
-  async bulkUpdateDescriptions(updates: any[], session?: any): Promise<any> {
+  async bulkUpdateDescriptions(updates: Record<string, unknown>[], session?: unknown): Promise<unknown> {
     const activeSession = session || this.getSession();
     if (activeSession) {
-      return this.model.bulkWrite(updates, { session: activeSession });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return this.model.bulkWrite(updates as any[], { session: activeSession as any });
     }
-    return this.model.bulkWrite(updates);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return this.model.bulkWrite(updates as any[]);
   }
 
   async findByHash(hash: string): Promise<ICodeBlock | null> {
     const doc = await this.model.findOne({ hash }).lean();
-    return doc ? this.mapToDomain(doc) : null;
+    return doc ? this.mapToDomain(doc as Record<string, unknown>) : null;
   }
 
-  async insertMany(blocks: any[], session?: any): Promise<ICodeBlock[]> {
+  async insertMany(blocks: Partial<ICodeBlock>[], session?: unknown): Promise<ICodeBlock[]> {
     let docs;
     const activeSession = session || this.getSession();
     if (activeSession) {
-      docs = await this.model.insertMany(blocks, { session: activeSession });
+      docs = await this.model.insertMany(blocks, { session: activeSession as import("mongoose").ClientSession });
     } else {
       docs = await this.model.insertMany(blocks);
     }
-    return docs.map((doc: any) =>
-      this.mapToDomain(doc.toObject ? doc.toObject() : doc),
+    const docsTyped = docs as unknown as { toObject?: () => Record<string, unknown> }[];
+    return docsTyped.map((doc) =>
+      this.mapToDomain((doc.toObject ? doc.toObject() : doc) as Record<string, unknown>),
     );
   }
 

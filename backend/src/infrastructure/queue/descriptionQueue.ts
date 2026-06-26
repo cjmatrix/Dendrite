@@ -1,11 +1,11 @@
 import { Queue } from "bullmq";
-import { redisConfig } from "../config/redis";
+import { redisConfig } from "../../config/redis";
 
 const descriptionQueue = new Queue("description-queue", {
   connection: redisConfig,
 });
 
-export default async function addDescriptionQueue(blocks: any[]) {
+export default async function addDescriptionQueue(blocks: Record<string, unknown>[]) {
   await descriptionQueue.add(
     "process-desc",
     { blocks },

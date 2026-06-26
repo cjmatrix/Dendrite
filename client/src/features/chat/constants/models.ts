@@ -15,6 +15,8 @@ export const MODEL_OPTIONS: ModelOption[] = [
   { id: "anthropic/claude-sonnet-4.6", label: "Claude Sonnet 4.6", tier: "paid" },
 
   // Free Tier
+  { id: "groq/llama-3.3-70b-versatile", label: "Llama 3.3 70B (Groq)", tier: "free" },
+  { id: "groq/openai/gpt-oss-120b", label: "GPT OSS 120B (Groq)", tier: "free" },
   { id: "moonshotai/kimi-k2.6:free", label: "Kimi K2.6", tier: "free" },
   { id: "nvidia/nemotron-3-ultra-550b-a55b:free", label: "Nemotron 3 Ultra", tier: "free" },
   { id: "google/gemma-4-31b-it:free", label: "Gemma 4 31B", tier: "free" },

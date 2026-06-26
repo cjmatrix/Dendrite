@@ -59,7 +59,7 @@ api.interceptors.response.use(
         } else if (data.error) {
           errorMsg = data.error;
         } else if (Array.isArray(data.errors)) {
-          errorMsg = data.errors.map((e: any) => e.message || e).join(", ");
+          errorMsg = data.errors.map((e: { message?: string } | string) => (typeof e === 'string' ? e : e?.message || String(e))).join(", ");
         }
       } else if (error.message) {
         errorMsg = error.message;
@@ -89,7 +89,7 @@ api.interceptors.response.use(
         } else if (data.error) {
           errorMsg = data.error;
         } else if (Array.isArray(data.errors)) {
-          errorMsg = data.errors.map((e: any) => e.message || e).join(", ");
+          errorMsg = data.errors.map((e: { message?: string } | string) => (typeof e === 'string' ? e : e?.message || String(e))).join(", ");
         }
       } else if (error.message) {
         errorMsg = error.message;

@@ -1,6 +1,6 @@
 import { Queue } from "bullmq";
-import { redisConfig } from "../config/redis";
-import { IOutboxEvent } from "../infrastructure/outbox/models/MongoOutboxEventModel";
+import { redisConfig } from "../../config/redis";
+import { IOutboxEvent } from "../outbox/models/MongoOutboxEventModel";
 
 const embeddingQueue = new Queue("embedding-queue", {
   connection: redisConfig,
@@ -8,7 +8,7 @@ const embeddingQueue = new Queue("embedding-queue", {
 
 export default async function embeddingCodeDesc(
   outboxTask: IOutboxEvent,
-  content: any,
+  content: Record<string, unknown>,
 ) {
   await embeddingQueue.add(
     "process-vector",

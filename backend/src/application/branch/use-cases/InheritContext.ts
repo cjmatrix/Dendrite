@@ -22,7 +22,8 @@ export class InheritContext implements IInheritContextUseCase {
 
    
     const updatedChat = await this.chatRepository.update(chatId, userId, { 
-      contextParent: contextParentId 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      contextParent: contextParentId as any 
     });
 
     

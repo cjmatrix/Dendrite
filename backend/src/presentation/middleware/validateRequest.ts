@@ -21,6 +21,7 @@ export const validateQuery = (schema: ZodSchema) =>
     if (!result.success) {
       return next(new AppError(formatZodError(result.error), 400));
     }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     Object.assign(req.query, result.data as any);
     return next();
   };
@@ -31,6 +32,7 @@ export const validateParams = (schema: ZodSchema) =>
     if (!result.success) {
       return next(new AppError(formatZodError(result.error), 400));
     }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     Object.assign(req.params, result.data as any);
     return next();
   };

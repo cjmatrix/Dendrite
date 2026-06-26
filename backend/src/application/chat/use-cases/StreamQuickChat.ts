@@ -6,11 +6,13 @@ import { IMessageRepository } from "../../../domain/chat/repositories/IMessageRe
 import { IAIService } from "../../common/ports/IAIService";
 import { ILogger } from "../../common/ports/ILogger";
 import { AppError } from "../../../utils/AppError";
-import CONTEXT_WINDOW from "../../../constants/contextWindow";
 import { QUICK_CHAT_MODEL, getProviderKey } from "../../../constants/models";
 import { IUserRepository } from "../../../domain/auth/repositories/IUserRepository";
 import { IRateLimitService } from "../../common/ports/IRateLimitService";
+import { IDailyTokenUsageRepository } from "../../../domain/usage/repositories/IDailyTokenUsageRepository";
 import { estimateTokenCount } from "../../../utils/tokenCounter";
+import { IMessage } from "../../../domain/chat/entities/Message";
+import { IAIStreamChunk, IGeminiContent, IGeminiUsageMetadata } from "../../../domain/chat/entities/Gemini";
 
 @injectable()
 export class StreamQuickChat implements IStreamQuickChatUseCase {
@@ -19,10 +21,11 @@ export class StreamQuickChat implements IStreamQuickChatUseCase {
     @inject("IAIService") private aiService: IAIService,
     @inject("ILogger") private logger: ILogger,
     @inject("IUserRepository") private userRepo: IUserRepository,
-    @inject("IRateLimitService") private rateLimitService: IRateLimitService
+    @inject("IRateLimitService") private rateLimitService: IRateLimitService,
+    @inject("IDailyTokenUsageRepository") private dailyTokenUsageRepository: IDailyTokenUsageRepository
   ) {}
 
-  async *execute(input: StreamQuickChatInputDTO, signal?: AbortSignal): AsyncGenerator<any> {
+  async *execute(input: StreamQuickChatInputDTO, signal?: AbortSignal): AsyncGenerator<IAIStreamChunk> {
     const { userId, chatId, anchorMessageId, highlightedText, quickChatHistory, userTier, model } = input;
     const activeModel = model || QUICK_CHAT_MODEL;
   
@@ -35,7 +38,7 @@ export class StreamQuickChat implements IStreamQuickChatUseCase {
     );
 
     const historicalString = backgroundContext
-      .map((msg: any) => `[${msg.role}]: ${msg.content}`)
+      .map((msg) => `[${msg.role}]: ${msg.content}`)
       .join("\n\n");
 
     const systemPrompt = this.aiService.buildQuickChatSystemPrompt(
@@ -43,25 +46,28 @@ export class StreamQuickChat implements IStreamQuickChatUseCase {
       highlightedText
     );
 
-    const contents = [
+    const contents: IGeminiContent[] = [
       { role: "user", parts: [{ text: systemPrompt }] },
-      ...recentHistory.map((msg: any) => ({
-        role: msg.role === "model" ? "model" : "user",
+      ...recentHistory.map((msg) => ({
+        role: (msg.role === "model" ? "model" : "user") as "user" | "model",
         parts: [{ text: msg.role === "model" ? cleanLLMResponse(msg.content) : msg.content }],
       })),
     ];
 
-    let stream: any;
+    let stream: AsyncIterable<IAIStreamChunk> | null = null;
     try {
       stream = await this.aiService.streamAIContent(contents, activeModel, signal, userId, userTier);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       this.logger.error("AI streaming failed", error, { contents });
       throw new AppError("All your provided Gemini API keys have exceeded their free-tier limits. Please wait, or add a new key.", 429);
     }
 
     const onAbort = () => {
-      if (stream && typeof stream.return === "function") {
-        stream.return().catch((err: any) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if (stream && typeof (stream as any).return === "function") {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (stream as any).return().catch((err: any) => {
           this.logger.error("Error terminating AI stream on abort", err);
         });
       }
@@ -75,7 +81,7 @@ export class StreamQuickChat implements IStreamQuickChatUseCase {
     if (signal) signal.addEventListener("abort", onAbort);
 
     let fullReply = "";
-    let finalUsageMetadata: any = null;
+    let finalUsageMetadata: IGeminiUsageMetadata | null = null;
 
     try {
       for await (const chunk of stream) {
@@ -118,6 +124,15 @@ export class StreamQuickChat implements IStreamQuickChatUseCase {
               [`token_usage.${provider}.quickChat.total`]: quickChatTokens,
               tokensUsed: quickChatTokens,
             },
+          });
+
+          const today = new Date();
+          today.setUTCHours(0, 0, 0, 0);
+
+          await this.dailyTokenUsageRepository.upsertUsage(userId, today, userTier || "free", {
+            [`token_usage.${provider}.quickChat.input`]: promptTokens,
+            [`token_usage.${provider}.quickChat.output`]: responseTokens,
+            [`token_usage.${provider}.quickChat.total`]: quickChatTokens,
           });
 
           await this.rateLimitService.incrementCount(userId, "quickChats");

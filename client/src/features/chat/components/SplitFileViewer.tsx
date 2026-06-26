@@ -195,9 +195,9 @@ const SplitFileViewer: React.FC<SplitFileViewerProps> = ({ fileUrl, fileName }) 
             const text = await res.text();
             setTextContent(text);
           }
-        } catch (err: any) {
+        } catch (err: unknown) {
           console.error('Failed to fetch file:', err);
-          setFetchError(err.message || 'Failed to load file content');
+          setFetchError(err instanceof Error ? err.message : 'Failed to load file content');
           if (fileType === 'pdf' || fileType === 'viewer') setLocalBlobUrl(fileUrl);
         } finally {
           setIsFetchingObject(false);

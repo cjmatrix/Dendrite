@@ -1,5 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFolder as apiCreateFolder, updateFolder as apiUpdateFolder, deleteFolder as apiDeleteFolder, createChat as apiCreateChat, updateChat as apiUpdateChat, deleteChat as apiDeleteChat } from "../api/explorerApi";
+import type { Folder } from "../types/Folder";
+import type { Chat } from "../../chat/types/Chat";
 
 export function useFileItemMutations() {
   const queryClient = useQueryClient();
@@ -15,11 +17,11 @@ export function useFileItemMutations() {
     onMutate: async ({ name, parentId }) => {
       await queryClient.cancelQueries({ queryKey: ["folders"] });
       const previous = queryClient.getQueryData(["folders"]);
-      queryClient.setQueryData(["folders"], (old: any[]) => {
+      queryClient.setQueryData(["folders"], (old: Folder[] | undefined) => {
         if (!old) return old;
-        const temp = { id: `temp-${Date.now()}`, name, type: "folder", parentId, children: [], isExpanded: false };
-        const addChild = (nodes: any[]): any[] =>
-          nodes.map((n: any) =>
+        const temp: Folder = { id: `temp-${Date.now()}`, name, type: "folder", parentId, children: [], isExpanded: false };
+        const addChild = (nodes: Folder[]): Folder[] =>
+          nodes.map((n) =>
             n.id === parentId
               ? { ...n, children: [...(n.children || []), temp] }
               : { ...n, children: n.children ? addChild(n.children) : [] },
@@ -42,10 +44,10 @@ export function useFileItemMutations() {
     onMutate: async ({ folderId, updates }) => {
       await queryClient.cancelQueries({ queryKey: ["folders"] });
       const previous = queryClient.getQueryData(["folders"]);
-      queryClient.setQueryData(["folders"], (old: any[]) => {
+      queryClient.setQueryData(["folders"], (old: Folder[] | undefined) => {
         if (!old) return old;
-        const updateNode = (nodes: any[]): any[] =>
-          nodes.map((n: any) =>
+        const updateNode = (nodes: Folder[]): Folder[] =>
+          nodes.map((n) =>
             n.id === folderId
               ? { ...n, ...updates }
               : { ...n, children: n.children ? updateNode(n.children) : [] },
@@ -65,12 +67,12 @@ export function useFileItemMutations() {
     onMutate: async (folderId) => {
       await queryClient.cancelQueries({ queryKey: ["folders"] });
       const previous = queryClient.getQueryData(["folders"]);
-      queryClient.setQueryData(["folders"], (old: any[]) => {
+      queryClient.setQueryData(["folders"], (old: Folder[] | undefined) => {
         if (!old) return old;
-        const removeNode = (nodes: any[]): any[] =>
+        const removeNode = (nodes: Folder[]): Folder[] =>
           nodes
-            .filter((n: any) => n.id !== folderId)
-            .map((n: any) => ({ ...n, children: n.children ? removeNode(n.children) : [] }));
+            .filter((n) => n.id !== folderId)
+            .map((n) => ({ ...n, children: n.children ? removeNode(n.children) : [] }));
         return removeNode(old);
       });
       return { previous };
@@ -101,9 +103,9 @@ export function useFileItemMutations() {
     onMutate: async ({ title, folderId, type }) => {
       await queryClient.cancelQueries({ queryKey: ["chats"] });
       const previous = queryClient.getQueryData(["chats"]);
-      queryClient.setQueryData(["chats"], (old: any[]) => {
+      queryClient.setQueryData(["chats"], (old: Chat[] | undefined) => {
         if (!old) return old;
-        const temp = { _id: `temp-${Date.now()}`, title, folderId, type: type || "chat" };
+        const temp: Chat = { _id: `temp-${Date.now()}`, title, folderId: folderId || undefined, type: (type as "normal" | "agent") || "normal" };
         return [...old, temp];
       });
       return { previous };
@@ -118,9 +120,9 @@ export function useFileItemMutations() {
     onMutate: async ({ chatId, updates }) => {
       await queryClient.cancelQueries({ queryKey: ["chats"] });
       const previous = queryClient.getQueryData(["chats"]);
-      queryClient.setQueryData(["chats"], (old: any[]) => {
+      queryClient.setQueryData(["chats"], (old: Chat[] | undefined) => {
         if (!old) return old;
-        return old.map((c: any) => (c._id === chatId ? { ...c, ...updates } : c));
+        return old.map((c) => (c._id === chatId ? { ...c, ...updates } : c));
       });
       return { previous };
     },
@@ -133,9 +135,9 @@ export function useFileItemMutations() {
     onMutate: async (chatId) => {
       await queryClient.cancelQueries({ queryKey: ["chats"] });
       const previous = queryClient.getQueryData(["chats"]);
-      queryClient.setQueryData(["chats"], (old: any[]) => {
+      queryClient.setQueryData(["chats"], (old: Chat[] | undefined) => {
         if (!old) return old;
-        return old.filter((c: any) => c._id !== chatId);
+        return old.filter((c) => c._id !== chatId);
       });
       return { previous };
     },

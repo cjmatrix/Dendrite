@@ -16,16 +16,24 @@ class DashboardController extends BaseController {
   }
 
   async getStats(req: Request, res: Response) {
-    const stats = await this.getAdminDashboardStats.execute();
+    const { startDate, endDate, tier, provider } = req.query;
+    const stats = await this.getAdminDashboardStats.execute({
+      startDate: startDate as string | undefined,
+      endDate: endDate as string | undefined,
+      tier: tier as string | undefined,
+      provider: provider as string | undefined
+    });
     this.sendSuccess(res, stats, 200, "Dashboard stats retrieved successfully");
   }
 
   async getSubscriptionStats(req: Request, res: Response) {
-    const { timeframe, startDate, endDate } = req.query;
+    const { timeframe, startDate, endDate, tier } = req.query;
     const stats = await this.getSubscriptionStatsUseCase.execute({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       timeframe: timeframe as any,
       startDate: startDate as string,
       endDate: endDate as string,
+      tier: tier as string,
     });
     this.sendSuccess(res, stats, 200, "Subscription stats retrieved successfully");
   }

@@ -43,5 +43,7 @@ export interface IRateLimitService {
     tier: UserTier
   ): Promise<UserUsageSummary>;
 
+  getUploadSizeLimits(): Promise<Record<UserTier, { document: number; image: number }>>;
+
   resetUserLimits(userId: string): Promise<void>;
 }

@@ -1,5 +1,5 @@
 import { IUserRepository } from "../../../domain/auth/repositories/IUserRepository";
-import { IEmailService } from "../../common/ports/IEmailService";
+import { IEmailPublisher } from "../../common/ports/IEmailPublisher";
 import { ICacheService } from "../../common/ports/ICacheService";
 import { injectable, inject } from "tsyringe";
 import { IForgotPasswordUseCase } from "./interfaces";
@@ -9,7 +9,7 @@ import crypto from "crypto";
 export class ForgotPassword implements IForgotPasswordUseCase {
   constructor(
     @inject("IUserRepository") private userRepository: IUserRepository,
-    @inject("IEmailService") private emailService: IEmailService,
+    @inject("IEmailPublisher") private emailPublisher: IEmailPublisher,
     @inject("ICacheService") private cacheService: ICacheService,
   ) {}
 
@@ -30,7 +30,7 @@ export class ForgotPassword implements IForgotPasswordUseCase {
     await this.cacheService.set(`forgot_password:${hashedToken}`, user.email, { EX: 600 });
 
   
-    await this.emailService.sendPasswordResetEmail(user.email, token);
+    await this.emailPublisher.publishPasswordReset(user.email, token);
 
     return {
       success: true,

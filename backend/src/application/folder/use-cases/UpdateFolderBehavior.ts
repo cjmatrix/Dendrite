@@ -43,6 +43,7 @@ export class UpdateFolderBehavior implements IUpdateFolderBehaviorUseCase {
 
     const updatedFolder = await this.folderRepository.update(folderId, userId, {
       behavior: updatedBehavior
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
 
     if (!updatedFolder) {

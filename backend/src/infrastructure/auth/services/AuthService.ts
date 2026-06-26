@@ -24,11 +24,11 @@ export class AuthService implements IAuthService {
     return jwt.sign({ userId }, JWT_REFRESH_SECRET, { expiresIn: '7d' });
   }
 
-  verifyAccessToken(token: string): any {
-    return jwt.verify(token, JWT_ACCESS_SECRET);
+  verifyAccessToken(token: string): Record<string, unknown> {
+    return jwt.verify(token, JWT_ACCESS_SECRET) as Record<string, unknown>;
   }
 
-  verifyRefreshToken(token: string): any {
-    return jwt.verify(token, JWT_REFRESH_SECRET);
+  verifyRefreshToken(token: string): Record<string, unknown> {
+    return jwt.verify(token, JWT_REFRESH_SECRET) as Record<string, unknown>;
   }
 }

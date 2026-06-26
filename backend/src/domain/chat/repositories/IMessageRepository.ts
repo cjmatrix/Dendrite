@@ -2,10 +2,10 @@ import { IBaseRepository } from "../../../application/common/ports/IBaseReposito
 import { IMessage } from "../entities/Message";
 
 export interface IMessageRepository extends IBaseRepository<IMessage> {
-  findMessages(query: any, limit: number, cursor?: string | null): Promise<IMessage[]>;
-  createMany(messagesData: any[], options?: any): Promise<IMessage[]>;
-  findRecentByChatId(chatId: string, limit: number, options?: any): Promise<IMessage[]>;
-  countByChatId(chatId: string, options?: any): Promise<number>;
+  findMessages(query: Record<string, unknown>, limit: number, cursor?: string | null): Promise<IMessage[]>;
+  createMany(messagesData: Partial<IMessage>[], options?: { session?: unknown }): Promise<IMessage[]>;
+  findRecentByChatId(chatId: string, limit: number, options?: { session?: unknown }): Promise<IMessage[]>;
+  countByChatId(chatId: string, options?: { session?: unknown }): Promise<number>;
   findAnchorContext(chatId: string, createdAt: Date, limit: number): Promise<IMessage[]>;
   findByIdsAndDelete(chatId: string, userId: string): Promise<void>;
   findAllByChatId(chatId: string): Promise<IMessage[]>;

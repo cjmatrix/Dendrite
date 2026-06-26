@@ -20,7 +20,7 @@ export const getMessages = async (chatId: string, cursor: string | null, limit: 
 };
 
 export const sendAgentMessage=async( 
-  chatId: string,
+  chatId: string|undefined,
   message: string,
 )=>{
   const res=await api.post(`/agents/workspace/${chatId}`,{

@@ -3,6 +3,6 @@ export interface IAuthService {
   comparePassword(plain: string, hashed: string): Promise<boolean>;
   generateAccessToken(userId: string): string;
   generateRefreshToken(userId: string): string;
-  verifyAccessToken(token: string): any;
-  verifyRefreshToken(token: string): any;
+  verifyAccessToken(token: string): Record<string, unknown>;
+  verifyRefreshToken(token: string): Record<string, unknown>;
 }

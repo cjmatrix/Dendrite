@@ -10,7 +10,7 @@ if (!fs.existsSync(logDir)) {
 }
 
 
-export function logAIQuery(query: string, usageMetadata: any) {
+export function logAIQuery(query: string, usageMetadata: { promptTokenCount?: number; candidatesTokenCount?: number; totalTokenCount?: number }) {
   const timestamp = new Date().toISOString();
 
   const promptTokens = usageMetadata?.promptTokenCount || 0;

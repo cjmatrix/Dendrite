@@ -8,6 +8,7 @@ export async function generateBatchCodeDescriptions(
   blocks: { id: string; code: string; language: string }[],
   keys?: string[],
   userId?: string
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<{ results: { id: string; description: string }[]; usageMetadata?: any }> {
   
 
@@ -78,11 +79,11 @@ ${snippetsText}`;
         }
       });
       break;
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (
-        error.status === 429 ||
-        error.message?.includes("quota") ||
-        error.message?.includes("RESOURCE_EXHAUSTED")
+        (error as { status?: number }).status === 429 ||
+        (error as Error).message?.includes("quota") ||
+        (error as Error).message?.includes("RESOURCE_EXHAUSTED")
       ) {
         if (isByok) {
           if (userId) {

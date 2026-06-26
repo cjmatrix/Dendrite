@@ -9,13 +9,13 @@ export const useSendAgentMessageMutation=()=>{
 
     return useMutation({
         mutationKey: ["sendAgentMessage"],
-        mutationFn:async({message,chatId}:{message:string,chatId:string})=>await sendAgentMessage(chatId,message),
+        mutationFn:async({message,chatId}:{message:string,chatId:string|undefined})=>await sendAgentMessage(chatId,message),
         onMutate: async ({ message, chatId }) => {
             await queryClient.cancelQueries({ queryKey: ["chatMessages", chatId] });
 
             const previousMessages = queryClient.getQueryData(["chatMessages", chatId]);
 
-            queryClient.setQueryData(["chatMessages", chatId], (old: any) => {
+            queryClient.setQueryData(["chatMessages", chatId], (old: unknown) => {
                 const optMessage = {
                     _id: `opt-${Date.now()}-user`,
                     id: `opt-${Date.now()}-user`,
@@ -27,7 +27,15 @@ export const useSendAgentMessageMutation=()=>{
                     subChats: []
                 };
 
-                if (!old || !old.pages || old.pages.length === 0) {
+                const oldData = old as {
+                    pages: {
+                        messages: unknown[];
+                        nextCursor: string | null;
+                    }[];
+                    pageParams: unknown[];
+                } | undefined;
+
+                if (!oldData || !oldData.pages || oldData.pages.length === 0) {
                     return {
                         pages: [{
                             messages: [optMessage],
@@ -37,7 +45,7 @@ export const useSendAgentMessageMutation=()=>{
                     };
                 }
 
-                const newPages = old.pages.map((page: any, idx: number) => {
+                const newPages = oldData.pages.map((page, idx: number) => {
                     if (idx === 0) {
                         return {
                             ...page,
@@ -48,14 +56,14 @@ export const useSendAgentMessageMutation=()=>{
                 });
 
                 return {
-                    ...old,
+                    ...oldData,
                     pages: newPages
                 };
             });
 
             return { previousMessages, chatId };
         },
-        onError: (err, variables, context) => {
+        onError: (_, __, context: { previousMessages: unknown; chatId: string | undefined } | undefined) => {
             if (context) {
                 queryClient.setQueryData(["chatMessages", context.chatId], context.previousMessages);
             }

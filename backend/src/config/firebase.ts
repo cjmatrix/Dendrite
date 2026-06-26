@@ -4,6 +4,7 @@ import serviceAccount from "../../new.json";
 try {
   if (!admin.apps.length) {
     admin.initializeApp({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       credential: admin.credential.cert(serviceAccount as any),
     });
     console.log("🔥 Firebase Admin Initialized successfully.");

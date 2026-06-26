@@ -36,9 +36,16 @@ export const ShareLinkModal: React.FC<ShareLinkModalProps> = ({
       });
       const origin = window.location.origin;
       setGeneratedLink(`${origin}/share/${linkData.token}`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setError(err?.response?.data?.message || "Failed to generate shared link");
+      let errorMsg = "Failed to generate shared link";
+      if (err && typeof err === "object" && "response" in err) {
+        const response = (err as { response: { data?: { message?: string } } }).response;
+        if (response?.data?.message) {
+          errorMsg = response.data.message;
+        }
+      }
+      setError(errorMsg);
     } finally {
       setIsLoading(false);
     }

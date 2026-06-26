@@ -187,7 +187,7 @@ export function useFileUpload(chatId?: string) {
       }
     } catch (error) {
       console.error("File upload failed", error);
-      alert("File upload failed. Please try again.");
+      
       setDocumentUpload(null);
     } finally {
       if (classification === "image") {

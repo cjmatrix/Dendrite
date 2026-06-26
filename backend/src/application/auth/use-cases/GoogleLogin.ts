@@ -35,6 +35,7 @@ export class GoogleLogin implements IGoogleLoginUseCase {
         audience: process.env.GOOGLE_CLIENT_ID,
       });
       payload = ticket.getPayload();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       throw new AppError("Failed to verify Google token: " + err.message, 400);
     }

@@ -1,5 +1,7 @@
+import type { Message } from "../types/Message";
+
 export interface SubChat {
-  messages: any[];
+  messages: Message[];
   highlightedText?: string;
   relativeY?: number;
 }
@@ -14,7 +16,7 @@ export interface IQuickChatRepository {
     subChatId: string;
     anchorMessageId: string;
     highlightedText: string;
-    messages: any[];
+    messages: Message[];
     relativeY: number;
   }): Promise<void>;
 
@@ -23,7 +25,7 @@ export interface IQuickChatRepository {
     chatId: string;
     anchorMessageId: string;
     highlightedText: string;
-    quickChatHistory: any[];
+    quickChatHistory: Message[];
     model?: string;
     onChunk: (textSoFar: string) => void;
   }): Promise<string>;

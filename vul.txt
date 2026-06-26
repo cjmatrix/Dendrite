@@ -1,4 +1,3 @@
-can create subchats for chats.
 
 what if two sticky chat at with same y
 
@@ -11,7 +10,7 @@ active recall dont open in empty chat state
 
 create breathing room for summurizing
 
-recall should have outbox pettern becuase im only depend on redis which may crash and lost the jobs
+
 
 deleting folder or chat wont delete data from cloudinary
 
@@ -22,6 +21,7 @@ sharing  a single chat only the sideexplorer doesnt show the name
 
 optimistic creation of chat
 
+in the backend analyze my sendmessage and stream quicjchat message and aiservice. i Want to add another model groq llama 70b model use the their cloud free tier do that and in the frontend add that optinn as free and in the backend do the streaming for that .only for main chat and quick chat
 
 
 //next week

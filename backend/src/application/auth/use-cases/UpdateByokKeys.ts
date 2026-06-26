@@ -24,6 +24,7 @@ export class UpdateByokKeys implements IUpdateByokKeysUseCase {
       throw new AppError("User not found", 404);
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const existingConfig = user.byok_keys?.find((k: any) => k.provider === provider);
     const existingEncryptedKeys = existingConfig?.encryptedKeys || [];
 
@@ -44,6 +45,7 @@ export class UpdateByokKeys implements IUpdateByokKeysUseCase {
       }
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const existingKeyIndex = user.byok_keys?.findIndex((k: any) => k.provider === provider);
 
     let updateQuery;

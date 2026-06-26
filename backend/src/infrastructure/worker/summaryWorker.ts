@@ -1,10 +1,11 @@
 import { Worker, Job } from "bullmq";
-import { redisConfig } from "../config/redis";
-import { ProcessSummaryJob } from "../application/worker/use-cases/ProcessSummaryJob";
+import { redisConfig } from "../../config/redis";
+import { ProcessSummaryJob } from "../../application/worker/use-cases/ProcessSummaryJob";
 import { container } from "tsyringe";
 
 interface SummaryJobData {
   summaryOutboxEventId: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   messageToCompress: any[];
   previousSummary?: string | null;
 }

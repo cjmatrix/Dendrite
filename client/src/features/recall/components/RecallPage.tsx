@@ -10,8 +10,14 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "../../../lib/axios";
 import React, { useState } from "react";
 
+interface Card {
+  _id: string;
+  content: string;
+  stage: string;
+}
+
 interface RecallCardProps {
-  card: any;
+  card: Card;
   index: number;
   onReview: (cardId: string, rating: number) => void;
   onDelete: (cardId: string) => void;
@@ -181,7 +187,7 @@ export default function RecallPage({ onClose }: RecallPageProps) {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen w-full text-zinc-400 bg-(--theme-bg-base)">
+      <div className="flex flex-col items-center justify-center h-screen w-full text-zinc-400 bg-neutral-900">
         <Loader className="animate-spin mb-4" size={32} />
         <p>Syncing your memory graph...</p>
       </div>
@@ -199,7 +205,7 @@ export default function RecallPage({ onClose }: RecallPageProps) {
           <X size={24} />
         </button>
       )}
-      <div className="flex flex-col items-center justify-center h-screen w-full text-zinc-400 bg-(--theme-bg-base)">
+      <div className="flex flex-col items-center justify-center h-screen w-full text-zinc-400 bg-neutral-900">
         <CheckCircle2 className="mb-4 text-emerald-500" size={48} />
         <h2 className="text-xl font-semibold text-gray-200 mb-2">You're all caught up!</h2>
         <p>You have reviewed all due Active Recall cards for today.</p>
@@ -210,7 +216,7 @@ export default function RecallPage({ onClose }: RecallPageProps) {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-(--theme-bg-base) text-gray-200 px-0 sm:px-4 py-6 md:p-10 w-full max-w-6xl mx-auto animate-in fade-in duration-500 relative">
+    <div className="flex flex-col min-h-screen bg-neutral-900 text-gray-200 px-0 sm:px-4 py-6 md:p-10 w-full max-w-6xl mx-auto animate-in fade-in duration-500 relative">
       {onClose && (
         <button
           onClick={onClose}
@@ -245,7 +251,7 @@ export default function RecallPage({ onClose }: RecallPageProps) {
 
    
       <div className="flex flex-col gap-10 pb-20">
-        {cards.map((card: any, index: number) => (
+        {cards.map((card: Card, index: number) => (
           <RecallCard 
             key={card._id}
             card={card}

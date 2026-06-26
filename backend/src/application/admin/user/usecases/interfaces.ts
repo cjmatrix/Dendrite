@@ -1,6 +1,7 @@
 import { UserPaginationOutputDTO, AdminUserDetailOutputDTO } from "../dtos/userManagement.dto";
 
 export interface IFindAllUserUseCase {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   execute(query: any): Promise<UserPaginationOutputDTO>;
 }
 
@@ -21,6 +22,7 @@ export interface IToggleBanUserUseCase {
 }
 
 export interface IGetUserRateLimitUsageUseCase {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   execute(targetUserId: string): Promise<any>;
 }
 

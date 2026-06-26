@@ -1,6 +1,6 @@
 import { Worker, Job } from "bullmq";
-import { redisConfig } from "../config/redis";
-import { ProcessDescriptionJob } from "../application/worker/use-cases/ProcessDescriptionJob";
+import { redisConfig } from "../../config/redis";
+import { ProcessDescriptionJob } from "../../application/worker/use-cases/ProcessDescriptionJob";
 import { container } from "tsyringe";
 
 interface DescriptionJobData {

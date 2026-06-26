@@ -304,7 +304,7 @@ function UserViewPage() {
             <span className="text-lg">✧</span>
             User Node Configuration
           </div>
-          <div className="bg-zinc-950/70 border border-blue-500/10 rounded-2xl p-6 shadow-lg shadow-blue-500/5 space-y-4 text-sm text-zinc-300">
+          {/* <div className="bg-zinc-950/70 border border-blue-500/10 rounded-2xl p-6 shadow-lg shadow-blue-500/5 space-y-4 text-sm text-zinc-300">
             {[
               { label: "Global Memory", enabled: user.settings.global },
               { label: "Inline Prediction", enabled: user.settings.inline },
@@ -329,21 +329,9 @@ function UserViewPage() {
                 </div>
               </div>
             ))}
-          </div>
+          </div> */}
         </div>
 
-        {/* <div>
-          <div className="flex items-center gap-2 text-sm text-zinc-300 mb-3">
-            <span className="text-lg">✧</span>
-            Inference Model Path
-          </div>
-          <div className="bg-zinc-950/70 border border-red-500/10 rounded-2xl p-6 shadow-lg shadow-red-500/5">
-            <div className="flex items-center justify-between border border-red-500/10 rounded-xl bg-zinc-900/60 px-4 py-3 text-sm">
-              <span className="text-zinc-300">{user.modelPath}</span>
-              <span className="text-zinc-500">▾</span>
-            </div>
-          </div>
-        </div> */}
       </section>
 
       <div className="mt-10 border-t border-blue-500/10 pt-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">

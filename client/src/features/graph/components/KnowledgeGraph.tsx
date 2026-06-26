@@ -102,6 +102,13 @@ const nodeTypes = {
 /*  Custom Edges                                                       */
 
 
+interface RemovableEdgeData {
+  onCancel?: (edgeId: string, targetNodeId: string, sourceId?: string) => void;
+  targetNodeId: string;
+  sourceId: string;
+  targetId: string;
+}
+
 function RemovableEdge({
   id,
   sourceX,
@@ -138,7 +145,7 @@ function RemovableEdge({
           <span className="text-[10px] font-bold text-amber-500 uppercase tracking-widest pl-1">Inherits</span>
           <button
             onClick={() => {
-              const edgeData = data as any;
+              const edgeData = data as RemovableEdgeData | undefined;
               if (edgeData?.onCancel) {
                 edgeData.onCancel(id, edgeData.targetNodeId, edgeData.sourceId);
               }
@@ -436,10 +443,11 @@ function KnowledgeGraphInner({ folderNode, onClose, onConnect, onDisconnect }: K
   );
 
   const onConnectEnd = useCallback(
-    (event: MouseEvent | TouchEvent, connectionState: any) => {
-      
+    (event: MouseEvent | TouchEvent, connectionState: unknown) => {
+      const state = connectionState as { isValid: boolean; fromNodeId: string; fromHandleId: string | null } | undefined;
+      if (!state) return;
 
-      if (!connectionState.isValid) {
+      if (!state.isValid) {
         const coords =
           "clientX" in event
             ? { x: event.clientX, y: event.clientY }
@@ -469,7 +477,7 @@ function KnowledgeGraphInner({ folderNode, onClose, onConnect, onDisconnect }: K
         if (
           targetNode &&
           targetNode.type === "chatNode" &&
-          targetNode.id !== connectionState.fromNodeId
+          targetNode.id !== state.fromNodeId
         ) {
           
           const topDist = Math.abs(flowPosition.y - targetNode.position.y);
@@ -499,8 +507,8 @@ function KnowledgeGraphInner({ folderNode, onClose, onConnect, onDisconnect }: K
 
           
           handleConnect({
-            source: connectionState.fromNodeId,
-            sourceHandle: connectionState.fromHandleId,
+            source: state.fromNodeId,
+            sourceHandle: state.fromHandleId,
             target: targetNode.id,
             targetHandle: closestHandle,
           });

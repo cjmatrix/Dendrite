@@ -42,8 +42,8 @@ export async function generateEmbedding(
     }
 
     return embedding;
-  } catch (error: any) {
-    console.error(" Jina Local Embedding failed:", error.message);
+  } catch (error: unknown) {
+    console.error(" Jina Local Embedding failed:", (error as Error).message);
     throw error;
   }
 

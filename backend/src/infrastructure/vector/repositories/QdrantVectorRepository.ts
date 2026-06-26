@@ -1,6 +1,6 @@
 import { injectable, inject } from 'tsyringe';
 import { IRerankerService } from '../../../application/common/ports/IRerankerService';
-import { IVectorRepository } from '../../../domain/vector/repositories/IVectorRepository';
+import { IVectorRepository, IVectorSearchResult, IVectorPoint } from '../../../domain/vector/repositories/IVectorRepository';
 import {
   qdrantClient,
   COLLECTION_NAME,
@@ -23,7 +23,7 @@ export class QdrantVectorRepository implements IVectorRepository {
     userId: string,
     chatIds: string[],
     topK: number = 3,
-  ): Promise<any[]> {
+  ): Promise<IVectorSearchResult[]> {
     try {
       const filter = {
         must: [
@@ -53,13 +53,13 @@ export class QdrantVectorRepository implements IVectorRepository {
         }),
       ]);
 
-      const scoreMap = new Map();
+      const scoreMap = new Map<string, { id: string | number; score: number; payload?: Record<string, unknown> | null }>();
 
       for (const result of [...codeResults, ...descriptionResults]) {
         const id = String(result.id);
         const existing = scoreMap.get(id);
         if (!existing || result.score > existing.score) {
-          scoreMap.set(id, result);
+          scoreMap.set(id, result as { id: string | number; score: number; payload?: Record<string, unknown> | null });
         }
       }
 
@@ -69,15 +69,15 @@ export class QdrantVectorRepository implements IVectorRepository {
         .slice(0, topK);
 
       return merged.map((result) => ({
+        id: String(result.id),
         score: result.score,
-        codeBlockId: result.id,
-        content: result.payload?.content,
-        language: result.payload?.language,
-        chatId: result.payload?.chatId,
+        payload: (result.payload ?? {}) as Record<string, unknown>,
+        content: result.payload?.['content'] as Record<string, unknown>,
+        language: result.payload?.['language'] as string,
       }));
-    } catch (error: any) {
-      const errorDetails = error.data || error.response?.data || error.message;
-      console.error(" Qdrant search failed:", errorDetails);
+    } catch (error: unknown) {
+      const err = error as { data?: unknown; response?: { data?: unknown }; message?: string };
+      console.error(" Qdrant search failed:", err.data || err.response?.data || err.message);
       return [];
     }
   }
@@ -87,7 +87,7 @@ export class QdrantVectorRepository implements IVectorRepository {
     userId: string,
     chatIds: string[],
     topK: number = 5,
-  ): Promise<any[]> {
+  ): Promise<IVectorSearchResult[]> {
     try {
       const searchResults = await qdrantClient.search(SUMMARY_COLLECTION_NAME, {
         vector: chunkQueryVector,
@@ -112,12 +112,14 @@ export class QdrantVectorRepository implements IVectorRepository {
       );
 
       return relevantResults.map((result) => ({
+        id: String(result.id),
         score: result.score,
-        fact: result.payload?.content as { fact: string },
+        payload: (result.payload ?? {}) as Record<string, unknown>,
+        fact: result.payload?.['content'] as Record<string, unknown>,
       }));
-    } catch (error: any) {
-      const errorDetails = error.data || error.response?.data || error.message;
-      console.error(" Qdrant summary search failed:", errorDetails);
+    } catch (error: unknown) {
+      const err = error as { data?: unknown; response?: { data?: unknown }; message?: string };
+      console.error(" Qdrant summary search failed:", err.data || err.response?.data || err.message);
       return [];
     }
   }
@@ -136,15 +138,15 @@ export class QdrantVectorRepository implements IVectorRepository {
       await qdrantClient.delete(COLLECTION_NAME, { filter });
       await qdrantClient.delete(SUMMARY_COLLECTION_NAME, { filter });
       console.log(`✅ Deleted Qdrant vectors for ${chatIds.length} chats`);
-    } catch (err: any) {
-      console.error(" Qdrant delete failed:", err?.message ?? err);
-      
-      throw err; 
+    } catch (err: unknown) {
+      const e = err as { message?: string };
+      console.error(" Qdrant delete failed:", e?.message ?? err);
+      throw err;
     }
   }
 
-  async deleteDocumentVectorsByFileUrl(userId: string| null, fileUrl: string): Promise<void> {
-    const filter: any = {
+  async deleteDocumentVectorsByFileUrl(userId: string | null, fileUrl: string): Promise<void> {
+    const filter: { must: { key: string; match: { value: string } }[] } = {
       must: [
         { key: "fileUrl", match: { value: fileUrl } },
       ],
@@ -157,8 +159,9 @@ export class QdrantVectorRepository implements IVectorRepository {
     try {
       await qdrantClient.delete(DOCUMENT_COLLECTION_NAME, { filter });
       console.log(`✅ Deleted Qdrant document vectors for fileUrl: ${fileUrl}`);
-    } catch (err: any) {
-      console.error(" Qdrant document delete failed:", err?.message ?? err);
+    } catch (err: unknown) {
+      const e = err as { message?: string };
+      console.error(" Qdrant document delete failed:", e?.message ?? err);
       throw err;
     }
   }
@@ -173,8 +176,9 @@ export class QdrantVectorRepository implements IVectorRepository {
     try {
       await qdrantClient.delete(DOCUMENT_COLLECTION_NAME, { filter });
       console.log(`✅ Deleted Qdrant document vectors for contentHash: ${contentHash}`);
-    } catch (err: any) {
-      console.error(" Qdrant document delete by contentHash failed:", err?.message ?? err);
+    } catch (err: unknown) {
+      const e = err as { message?: string };
+      console.error(" Qdrant document delete by contentHash failed:", e?.message ?? err);
       throw err;
     }
   }
@@ -183,7 +187,7 @@ export class QdrantVectorRepository implements IVectorRepository {
     id: string,
     codeVector: number[],
     descriptionVector: number[],
-    payload: any
+    payload: Record<string, unknown>
   ): Promise<void> {
     await qdrantClient.upsert(COLLECTION_NAME, {
       points: [
@@ -199,13 +203,14 @@ export class QdrantVectorRepository implements IVectorRepository {
     });
   }
 
-  async upsertSummaryVectors(points: any[]): Promise<void> {
+  async upsertSummaryVectors(points: IVectorPoint[]): Promise<void> {
     if (points.length === 0) return;
-    await qdrantClient.upsert(SUMMARY_COLLECTION_NAME, { points });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await qdrantClient.upsert(SUMMARY_COLLECTION_NAME, { points: points as any });
   }
 
-  async searchSemanticCache(queryVector: number[], minTimestamp: number): Promise<any[]> {
-    return await qdrantClient.search("search_cache", {
+  async searchSemanticCache(queryVector: number[], minTimestamp: number): Promise<IVectorSearchResult[]> {
+    const results = await qdrantClient.search("search_cache", {
       vector: queryVector,
       limit: 1,
       with_payload: true,
@@ -218,9 +223,14 @@ export class QdrantVectorRepository implements IVectorRepository {
         ],
       },
     });
+    return results.map((r) => ({
+      id: String(r.id),
+      score: r.score,
+      payload: (r.payload ?? {}) as Record<string, unknown>,
+    }));
   }
 
-  async upsertSearchCache(id: string, queryVector: number[], payload: any): Promise<void> {
+  async upsertSearchCache(id: string, queryVector: number[], payload: Record<string, unknown>): Promise<void> {
     await qdrantClient.upsert("search_cache", {
       points: [
         {
@@ -245,13 +255,15 @@ export class QdrantVectorRepository implements IVectorRepository {
     });
   }
 
-  async upsertDocumentVectors(points: any[]): Promise<void> {
+  async upsertDocumentVectors(points: IVectorPoint[]): Promise<void> {
     if (points.length === 0) return;
     try {
-      await qdrantClient.upsert(DOCUMENT_COLLECTION_NAME, { points });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await qdrantClient.upsert(DOCUMENT_COLLECTION_NAME, { points: points as any });
       console.log(`✅ Upserted ${points.length} document vectors to Qdrant`);
-    } catch (error: any) {
-      console.error(" Failed to upsert document vectors:", error?.message ?? error);
+    } catch (error: unknown) {
+      const e = error as { message?: string };
+      console.error(" Failed to upsert document vectors:", e?.message ?? error);
       throw error;
     }
   }
@@ -261,7 +273,7 @@ export class QdrantVectorRepository implements IVectorRepository {
     queryVector: number[],
     contentHashes: string[],
     topK: number = 5
-  ): Promise<any[]> {
+  ): Promise<IVectorSearchResult[]> {
     try {
       if (contentHashes.length === 0) {
         return [];
@@ -308,22 +320,18 @@ export class QdrantVectorRepository implements IVectorRepository {
         with_payload: true,
       });
 
-      const candidates = response.points.map((result) => ({
+      const candidates: IVectorSearchResult[] = response.points.map((result) => ({
+        id: String(result.id),
         score: result.score,
-        document: result.payload?.content as {
-          text: string;
-          chunkIndex: number;
-          totalChunks: number;
-          headings: string[];
-          kinds: string[];
-        },
-        metadata: result.payload,
+        payload: (result.payload ?? {}) as Record<string, unknown>,
+        document: result.payload?.['content'] as Record<string, unknown>,
+        metadata: result.payload as Record<string, unknown>,
       }));
 
       if (candidates.length > 0) {
         try {
           const documentsToRerank = candidates.map((c) => ({
-            text: c.document?.text || "",
+            text: (c.document?.['text'] as string) || "",
             item: c,
           }));
 
@@ -346,16 +354,17 @@ export class QdrantVectorRepository implements IVectorRepository {
             console.log(`[Reranker] Reranking complete. Top score: ${sliced[0]?.score?.toFixed(4) ?? 0}`);
             return sliced;
           }
-        } catch (rerankError: any) {
-          console.error("[QdrantVectorRepository] Voyage Rerank failed, falling back to Qdrant RRF ranking:", rerankError.message);
+        } catch (rerankError: unknown) {
+          const e = rerankError as { message?: string };
+          console.error("[QdrantVectorRepository] Voyage Rerank failed, falling back to Qdrant RRF ranking:", e.message);
         }
       }
 
       return candidates.slice(0, topK);
-    } catch (error: any) {
-      console.error(" Document hybrid search failed:", error?.message ?? error);
+    } catch (error: unknown) {
+      const e = error as { message?: string };
+      console.error(" Document hybrid search failed:", e?.message ?? error);
       return [];
     }
   }
 }
-

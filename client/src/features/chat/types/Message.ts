@@ -1,10 +1,12 @@
 export interface SubChat {
   subChatId: string;
   relY: number;
+  highlightedText?: string;
 }
 
 export interface Message {
   _id?: string;
+  chatId?: string;
   role: "user" | "model" | "system";
   content: string;
   imageUrl?: string;

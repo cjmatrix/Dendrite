@@ -8,10 +8,12 @@ import { UserManagementMapper, UserPaginationOutputDTO } from "../dtos/userManag
 export class FindAllUser implements IFindAllUserUseCase {
     constructor (@inject("IUserRepository") private userRepo:IUserRepository){}
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     async execute(query: any): Promise<UserPaginationOutputDTO> {
         const { page, limit, search, status, sortBy, sortOrder } = query;
         const skip = (page - 1) * limit;
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const filter: any = {};
         if (search) {
           filter.$or = [{"name":{ $regex: search, $options: "i" }},{"email":{ $regex: search, $options: "i" }}];
@@ -21,6 +23,7 @@ export class FindAllUser implements IFindAllUserUseCase {
           filter.status = status;
         }
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const sort: any = {};
         if (sortBy === "totalTokens") {
           sort["tokensUsed"] = sortOrder === "asc" ? 1 : -1;

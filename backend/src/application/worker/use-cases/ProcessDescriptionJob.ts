@@ -7,19 +7,23 @@ import { generateBatchCodeDescriptions } from '../../../utils/AIDescription';
 import { ILogger } from '../../common/ports/ILogger';
 import { IUnitOfWorkRepository } from "../../common/ports/IUnitOfWorkRepository";
 import { IUserRepository } from "../../../domain/auth/repositories/IUserRepository";
-import {getCachedDecryptedKeys} from "../../../utils/byokKeysHelper"
+import {getCachedDecryptedKeys} from "../../../utils/byokKeysHelper";
+import { IDailyTokenUsageRepository } from "../../../domain/usage/repositories/IDailyTokenUsageRepository";
 @injectable()
 export class ProcessDescriptionJob {
   constructor(
     @inject("ICodeBlockRepository") private codeBlockRepository: ICodeBlockRepository,
     @inject("IOutboxEventRepository") private outboxRepository: IOutboxEventRepository,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     @inject("RedisClient") private redisConnection: any, 
     @inject("IEmbeddingPublisher") private embeddingPublisher: IEmbeddingPublisher,
     @inject("IUnitOfWorkRepository") private unitOfWork: IUnitOfWorkRepository,
     @inject("IUserRepository") private userRepository: IUserRepository,
-    @inject("ILogger") private logger: ILogger
+    @inject("ILogger") private logger: ILogger,
+    @inject("IDailyTokenUsageRepository") private dailyTokenUsageRepository: IDailyTokenUsageRepository
   ) {}
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async execute(blocks: any[]) {
     const finalResults: { [key: string]: string } = {};
     const toProcessBlocks: typeof blocks = [];
@@ -81,6 +85,18 @@ export class ProcessDescriptionJob {
               "tokensUsed": totalTokens
             }
           });
+
+          const today = new Date();
+          today.setUTCHours(0, 0, 0, 0);
+
+          const user = await this.userRepository.findByIdSafe(userIdStr);
+          const userTier = user?.tier || "free";
+
+          await this.dailyTokenUsageRepository.upsertUsage(userIdStr, today, userTier, {
+            [`token_usage.${provider}.codeDescription.input`]: inputTokens,
+            [`token_usage.${provider}.codeDescription.output`]: outputTokens,
+            [`token_usage.${provider}.codeDescription.total`]: totalTokens,
+          });
         }
 
         console.log(inputTokens,outputTokens)
@@ -96,7 +112,9 @@ export class ProcessDescriptionJob {
     }
 
     
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const codeBlockUpdates: any[] = [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const outboxEventsToPush: any[] = [];
 
     for (const block of blocks) {
@@ -128,6 +146,7 @@ export class ProcessDescriptionJob {
 
     
     if (codeBlockUpdates.length > 0) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let savedOutboxEvents: any[] = [];
 
       await this.unitOfWork.runInTransaction(async () => {
@@ -138,6 +157,7 @@ export class ProcessDescriptionJob {
       for (const event of savedOutboxEvents) {
         try {
           await this.embeddingPublisher.publish(event._id.toString(), event.payload.content);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (e: any) {
           this.logger.error(`Status: Failed to push to embedding queue for ${event.payload.sourceId}:`, e);
         }

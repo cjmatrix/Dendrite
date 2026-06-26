@@ -13,12 +13,12 @@ export class MongoUploadedDocumentRepository
 
   async findByChatId(chatId: string): Promise<IUploadedDocument[]> {
     const docs = await this.model.find({ chatId }).session(this.getSession()).lean();
-    return docs.map((doc: any) => this.mapToDomain(doc));
+    return docs.map((doc) => this.mapToDomain(doc));
   }
 
   async findByChatIds(chatIds: string[]): Promise<IUploadedDocument[]> {
     const docs = await this.model.find({ chatId: { $in: chatIds } }).session(this.getSession()).lean();
-    return docs.map((doc: any) => this.mapToDomain(doc));
+    return docs.map((doc) => this.mapToDomain(doc));
   }
 
   async delete(id: string): Promise<boolean> {

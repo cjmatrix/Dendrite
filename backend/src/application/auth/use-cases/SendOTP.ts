@@ -1,5 +1,5 @@
 import { IOTPService } from "../../../domain/auth/services/IOTPService";
-import { IEmailService } from "../../common/ports/IEmailService";
+import { IEmailPublisher } from "../../common/ports/IEmailPublisher";
 import { AppError } from "../../../utils/AppError";
 import { injectable, inject } from "tsyringe";
 import { ISendOtpUseCase } from "./interfaces";
@@ -8,7 +8,7 @@ import { ISendOtpUseCase } from "./interfaces";
 export class SendOTP implements ISendOtpUseCase {
   constructor(
     @inject("IOTPService") private otpService: IOTPService,
-    @inject("IEmailService") private emailService: IEmailService,
+    @inject("IEmailPublisher") private emailPublisher: IEmailPublisher,
   ) {}
 
   async execute(email: string): Promise<{ success: boolean; message: string }> {
@@ -22,7 +22,7 @@ export class SendOTP implements ISendOtpUseCase {
 
     const otp = await this.otpService.generateOTP(email);
 
-    await this.emailService.sendOTPEmail(email, otp);
+    await this.emailPublisher.publishOTP(email, otp);
 
     await this.otpService.setResendCooldown(email);
 

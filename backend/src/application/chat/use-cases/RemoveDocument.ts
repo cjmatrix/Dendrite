@@ -30,7 +30,8 @@ export class RemoveDocument implements IRemoveDocumentUseCase {
     
     const updateResult = await this.chatRepository.update(chatId, userId, {
       $pull: { documents: uploadedDoc._id },
-    });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any);
     if (!updateResult) {
       throw new AppError("Chat not found", 404);
     }

@@ -1,5 +1,7 @@
 import api from "../../../lib/axios";
 import type { Folder } from "../types/Folder";
+import type { Chat } from "../../chat/types/Chat";
+import type { FolderBehaviorData, SearchItem } from "../types/types";
 
 // Folders
 export const getFolders = async (): Promise<Folder[]> => {
@@ -20,7 +22,7 @@ export const deleteFolder = async (folderId: string): Promise<void> => {
 };
 
 // Chats
-export const getChats = async (): Promise<any[]> => {
+export const getChats = async (): Promise<Chat[]> => {
   const res = await api.get("/chats");
   return res.data.data;
 };
@@ -53,17 +55,17 @@ export const getDueCount = async (): Promise<number> => {
 };
 
 // Folder Behavior
-export const getFolderBehavior = async (folderId: string): Promise<any> => {
+export const getFolderBehavior = async (folderId: string): Promise<FolderBehaviorData> => {
   const res = await api.get(`/folders/${folderId}/behavior`);
   return res.data.data;
 };
 
-export const updateFolderBehavior = async (folderId: string, content: string): Promise<any> => {
+export const updateFolderBehavior = async (folderId: string, content: string): Promise<{ success: boolean }> => {
   const res = await api.patch(`/folders/${folderId}/behavior`, { content });
   return res.data.data;
 };
 
-export const searchExplorer = async (params: { q: string; type?: "all" | "folder" | "chat" | "agent"; folderId?: string }): Promise<any[]> => {
+export const searchExplorer = async (params: { q: string; type?: "all" | "folder" | "chat" | "agent"; folderId?: string }): Promise<SearchItem[]> => {
   const query = new URLSearchParams();
   if (params.q) query.append("q", params.q);
   if (params.type) query.append("type", params.type);

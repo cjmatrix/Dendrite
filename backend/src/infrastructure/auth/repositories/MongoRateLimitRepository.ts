@@ -16,7 +16,7 @@ export class MongoRateLimitRepository implements IRateLimitRepository {
     };
   }
 
-  async upsert(key: string, value: any): Promise<IRateLimit> {
+  async upsert(key: string, value: string | number | boolean | Record<string, unknown>): Promise<IRateLimit> {
     const doc = await MongoRateLimit.findOneAndUpdate(
       { key },
       { value },

@@ -1,57 +1,71 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Check, Sparkles, Zap, Shield, Key, Loader2, HelpCircle } from "lucide-react";
-import { useAppSelector } from "../../../store/store";
+import { useAppSelector, useAppDispatch } from "../../../store/store";
 import toast from "react-hot-toast";
-import api from "../../../lib/axios";
+import { useQueryClient } from "@tanstack/react-query";
+import { checkAuth } from "../../auth/store/authSlice";
+import { useCreateCheckoutSession, useCreatePortalSession } from "../hooks/useBilling";
 
 type BillingCycle = "monthly" | "yearly";
 
 export default function BillingPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const queryClient = useQueryClient();
+  const dispatch = useAppDispatch();
   const user = useAppSelector((state) => state.auth.user);
   const currentTier = user?.tier || "free";
   
   const [billingCycle, setBillingCycle] = useState<BillingCycle>("monthly");
-  const [isLoading, setIsLoading] = useState<string | null>(null);
+  const [activePlanId, setActivePlanId] = useState<string | null>(null);
 
-  const handlePlanAction = async (planId: string) => {
-     if(planId==="free")
-        return
-    setIsLoading(planId);
-    
-    try {
-     
+  const checkoutMutation = useCreateCheckoutSession();
+  const portalMutation = useCreatePortalSession();
 
-      if (planId === currentTier) {
-       
-        const response = await api.post('/billing/portal-session');
-        if (response.data?.data?.url) {
-          window.location.href = response.data.data.url;
-        }
-        return;
-      }
+  const isAnyLoading = checkoutMutation.isPending || portalMutation.isPending;
 
-      // Start new subscription
-      const response = await api.post('/billing/checkout-session', {
-        tier: planId,
-        billingCycle
-      });
-
-      if (response.data?.data?.url) {
-        window.location.href = response.data.data.url;
-      }
-    } catch (error: any) {
-      setIsLoading(null);
-      toast.error(error.response?.data?.message || "Failed to process billing request", {
+  useEffect(() => {
+    const success = searchParams.get("success") === "true" || searchParams.get("status") === "success";
+    if (success) {
+      toast.success("Payment completed successfully! Upgrading your plan...", {
         style: {
           background: "#262626",
           color: "#fff",
-          border: "1px solid #3b82f640",
+          border: "1px solid #10b98140",
           fontSize: "14px",
-        }
+        },
       });
+
+
+      queryClient.invalidateQueries({ queryKey: ["user"] });
+      dispatch(checkAuth());
+
+    
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete("success");
+      newParams.delete("status");
+      setSearchParams(newParams, { replace: true });
     }
+  }, [searchParams, setSearchParams, queryClient, dispatch]);
+
+  const handlePlanAction = (planId: string) => {
+    if (planId === "free") return;
+    setActivePlanId(planId);
+    
+    if (planId === currentTier) {
+      portalMutation.mutate(undefined, {
+        onSettled: () => setActivePlanId(null),
+      });
+      return;
+    }
+
+    checkoutMutation.mutate(
+      { tier: planId, billingCycle },
+      {
+        onSettled: () => setActivePlanId(null),
+      }
+    );
   };
 
   const plans = [
@@ -239,7 +253,7 @@ export default function BillingPage() {
 
                 {/* Action Button */}
                 <button
-                  disabled={isLoading !== null}
+                  disabled={isAnyLoading}
                   onClick={() => handlePlanAction(plan.id)}
                   className={`w-full py-2.5 px-4 rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2 ${
                     isCurrent
@@ -249,9 +263,9 @@ export default function BillingPage() {
                       : "bg-neutral-800 text-white hover:bg-neutral-700 border border-neutral-700 hover:border-neutral-600"
                   }`}
                 >
-                  {isLoading === plan.id ? (
+                  {isAnyLoading && activePlanId === plan.id ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : isCurrent&&plan.id!=="free" ? (
+                  ) : isCurrent && plan.id !== "free" ? (
                     "Manage Plan"
                   ) : (
                     plan.cta

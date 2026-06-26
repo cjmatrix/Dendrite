@@ -14,6 +14,7 @@ export class RefreshTokenUser implements IRefreshTokenUserUseCase {
   ) {}
 
   async execute(refreshToken: string) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let decoded: any;
     try {
       decoded = this.authService.verifyRefreshToken(refreshToken);

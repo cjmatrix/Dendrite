@@ -48,8 +48,19 @@ const ResetPassword: React.FC = () => {
         confirmPassword: data.confirmPassword
       });
       setSuccess(res.message || "Your password has been successfully reset.");
-    } catch (err: any) {
-      setError(err?.response?.data?.message || err?.message || "Failed to reset password.");
+    } catch (err: unknown) {
+      let errorMsg = "Failed to reset password.";
+      if (err && typeof err === "object") {
+        if ("response" in err) {
+          const response = (err as { response?: { data?: { message?: string } } }).response;
+          if (response?.data?.message) {
+            errorMsg = response.data.message;
+          }
+        } else if ("message" in err) {
+          errorMsg = (err as { message: string }).message;
+        }
+      }
+      setError(errorMsg);
     }
   };
 

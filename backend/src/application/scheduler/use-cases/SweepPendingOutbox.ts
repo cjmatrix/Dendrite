@@ -28,12 +28,13 @@ export class SweepPendingOutbox {
         }
 
         if (job.eventType === "CODE_BLOCK_CREATED") {
-          await this.embeddingPublisher.publish(job._id.toString(), job.payload.content);
+          await this.embeddingPublisher.publish(job._id.toString(), job.payload.content as Record<string, unknown>);
         } else if (job.eventType === "CHAT_SUMMARY_CREATED") {
           await this.summaryPublisher.publish(
             job._id.toString(),
-            job.payload.content.messages,
-            job.payload.metadata?.previousSummary,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (job.payload.content as { messages: any[] }).messages,
+            ((job.payload.metadata || {}) as Record<string, string>).previousSummary,
           );
         }
 

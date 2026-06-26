@@ -3,12 +3,14 @@ import {
   ISaveModelReplyUseCase,
   IStreamAndSaveChatUseCase,
   StreamResult,
+  IStreamAndSaveChatParams,
 } from "./interfaces";
 import { IAIService } from "../../common/ports/IAIService";
 import { ILogger } from "../../common/ports/ILogger";
 import { estimateTokenCount } from "../../../utils/tokenCounter";
 import { DEFAULT_MODEL } from "../../../constants/models";
 import { IRateLimitService } from "../../common/ports/IRateLimitService";
+import { IAIStreamChunk, IGeminiUsageMetadata } from "../../../domain/chat/entities/Gemini";
 
 @injectable()
 export class StreamAndSaveChatUseCase implements IStreamAndSaveChatUseCase {
@@ -21,7 +23,7 @@ export class StreamAndSaveChatUseCase implements IStreamAndSaveChatUseCase {
   ) {}
 
   async *execute(
-    params: any,
+    params: IStreamAndSaveChatParams,
     signal: AbortSignal,
   ): AsyncGenerator<StreamResult> {
     const {
@@ -38,7 +40,7 @@ export class StreamAndSaveChatUseCase implements IStreamAndSaveChatUseCase {
     } = params;
     const activeModel = model || DEFAULT_MODEL;
 
-    let stream: any;
+    let stream: AsyncIterable<IAIStreamChunk> | null = null;
     
     try {
       stream = await this.aiService.streamAIContent(
@@ -49,14 +51,17 @@ export class StreamAndSaveChatUseCase implements IStreamAndSaveChatUseCase {
         userTier,
         systemInstruction,
       );
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
-      yield { type: "error", value: "Quota Exhausted or AI Error" };
+      yield { type: "error", value: error instanceof Error ? error.message : "Quota Exhausted or AI Error" };
       return;
     }
 
     const onAbort = () => {
-      if (stream && typeof stream.return === "function") {
-        stream.return().catch((err: any) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if (stream && typeof (stream as any).return === "function") {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (stream as any).return().catch((err: any) => {
           this.logger.error("Error terminating AI stream on abort", err);
         });
       }
@@ -70,7 +75,7 @@ export class StreamAndSaveChatUseCase implements IStreamAndSaveChatUseCase {
     signal.addEventListener("abort", onAbort);
 
     let fullReply = "";
-    let finalUsageMetadata: any = null;
+    let finalUsageMetadata: IGeminiUsageMetadata | null = null;
     console.log("STarting MY ASYC GENERATOR")
     try {
       for await (const chunk of stream) {
@@ -127,7 +132,8 @@ export class StreamAndSaveChatUseCase implements IStreamAndSaveChatUseCase {
         value: {
           userMessageId,
           modelMessageId,
-          usage: finalUsageMetadata,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          usage: finalUsageMetadata as any,
           originalMessage,
         },
       };

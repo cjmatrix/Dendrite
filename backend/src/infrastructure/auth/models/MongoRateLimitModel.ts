@@ -2,7 +2,7 @@ import mongoose, { Schema, Document } from "mongoose";
 
 export interface IRateLimitDocument extends Document {
   key: string;
-  value: any;
+  value: string | number | boolean | Record<string, unknown>;
   createdAt?: Date;
   updatedAt?: Date;
 }

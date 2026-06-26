@@ -6,8 +6,8 @@ export interface IOutboxEvent extends Document {
     sourceId: mongoose.Types.ObjectId;
     sourceType: string;
     userId: mongoose.Types.ObjectId;
-    content: any;
-    metadata: Record<string, any>;
+    content: Record<string, unknown>;
+    metadata: Record<string, unknown>;
   };
   status: "pending" | "processed" | "failed";
   retryCount: number;

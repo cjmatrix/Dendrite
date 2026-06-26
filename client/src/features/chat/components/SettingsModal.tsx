@@ -81,8 +81,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
       setTimeout(() => {
         onClose();
       }, 1800);
-    } catch (err: any) {
-      setError(err.response?.data?.message || err.message || "Failed to upload keys.");
+    } catch (err: unknown) {
+      let errorMsg = "Failed to upload keys.";
+      if (err && typeof err === "object") {
+        if ("response" in err) {
+          const response = (err as { response?: { data?: { message?: string } } }).response;
+          if (response?.data?.message) {
+            errorMsg = response.data.message;
+          }
+        } else if ("message" in err) {
+          errorMsg = (err as { message: string }).message;
+        }
+      }
+      setError(errorMsg);
     }
   };
 

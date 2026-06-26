@@ -19,6 +19,7 @@ export class SweepStrandedBlocks {
 
     console.log(`[Description Sweeper] Found ${strandedBlocks.length} stranded code blocks without descriptions.`);
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const queuePayload = strandedBlocks.map((b: any) => ({
       _id: b._id.toString(),
       userId: b.userId.toString(),

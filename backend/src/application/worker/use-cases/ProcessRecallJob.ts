@@ -40,6 +40,7 @@ export class ProcessRecallJob {
       const response = await admin.messaging().sendEachForMulticast(message);
       this.logger.info(`Successfully sent recall notification to User: ${userId}`);
       
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       this.logger.error(`Failed to process recall notification for ${cardId}`, error);
       throw error; 

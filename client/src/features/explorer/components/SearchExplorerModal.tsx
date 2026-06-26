@@ -5,6 +5,7 @@ import { useAppSelector } from "../../../store/store";
 import toast from "react-hot-toast";
 import { createPortal } from "react-dom";
 import { useDebouncedValue } from "../../../components/common/useDebouncedValue";
+import type { SearchItem, FileNode } from "../types/types";
 
 interface SearchExplorerModalProps {
   onClose: () => void;
@@ -19,7 +20,7 @@ export const SearchExplorerModal: React.FC<SearchExplorerModalProps> = ({
 }) => {
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<"all" | "folder" | "chat" | "agent">("all");
-  const [results, setResults] = useState<any[]>([]);
+  const [results, setResults] = useState<SearchItem[]>([]);
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const tree = useAppSelector(state => state.explorer.tree);
@@ -54,7 +55,7 @@ export const SearchExplorerModal: React.FC<SearchExplorerModalProps> = ({
     }
   };
 
-  const getIconForType = (item: any) => {
+  const getIconForType = (item: SearchItem) => {
     if (item.type === "folder") {
       if (item.isSystemFolder) {
         let color = "text-cyan-400";
@@ -95,14 +96,14 @@ export const SearchExplorerModal: React.FC<SearchExplorerModalProps> = ({
     );
   };
 
-  const handleSelect = (item: any) => {
+  const handleSelect = (item: SearchItem) => {
     if (onNavigate) {
       onNavigate(item.type, item.id);
     }
     onClose();
   };
 
-  const findNode = (node: any, targetId: string): any | null => {
+  const findNode = (node: FileNode, targetId: string): FileNode | null => {
     if (node.id === targetId) return node;
     for (const child of node.children || []) {
       const found = findNode(child, targetId);
@@ -166,7 +167,7 @@ export const SearchExplorerModal: React.FC<SearchExplorerModalProps> = ({
                   <button
                     onClick={() => handleSelect(item)}
                     className="w-full px-4 py-3 flex items-start gap-3 hover:bg-zinc-800/50 transition-colors text-left group"
-                    title={item.breadcrumbs.map((b: any, index: number) => (
+                    title={item.breadcrumbs.map((b, index: number) => (
                             
                               b.name 
                          
@@ -181,7 +182,7 @@ export const SearchExplorerModal: React.FC<SearchExplorerModalProps> = ({
                       </div>
                       {item.breadcrumbs && item.breadcrumbs.length > 0 && (
                         <div className="flex items-center gap-1 mt-1 flex-wrap text-xs text-zinc-500">
-                          {item.breadcrumbs.map((b: any, index: number) => (
+                          {item.breadcrumbs.map((b, index: number) => (
                             <React.Fragment key={b.id}>
                               <span className="truncate max-w-[100px]">{b.name}</span>
                               {index < item.breadcrumbs.length - 1 && (

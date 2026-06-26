@@ -28,6 +28,7 @@ export class GetByokKeys implements IGetByokKeysUseCase {
       throw new AppError("User not found", 404);
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const keyConfig = user.byok_keys?.find((k: any) => k.provider === provider);
     const resultKeys: string[] = ["", "", "", "", "", ""];
 

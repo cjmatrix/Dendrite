@@ -68,9 +68,19 @@ export const ImportSharedModal: React.FC<ImportSharedModalProps> = ({
       }
 
       onClose();
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.dismiss(loadingToast);
-      const errMsg = err.response?.data?.message || err.message || "Failed to import shared content";
+      let errMsg = "Failed to import shared content";
+      if (err && typeof err === "object") {
+        if ("response" in err) {
+          const response = (err as { response: { data?: { message?: string } } }).response;
+          if (response?.data?.message) {
+            errMsg = response.data.message;
+          }
+        } else if ("message" in err) {
+          errMsg = (err as { message: string }).message;
+        }
+      }
       toast.error(errMsg);
     } finally {
       setIsImporting(false);

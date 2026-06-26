@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getSubChat, stickToChat, streamQuickChat } from "../api/quickChatApi";
 import { saveRecallCard } from "../api/recallApi";
+import type { Message } from "../types/Message";
 import { getMarkdownFromDOMSelection } from "../../../utils/markdownUtils";
 import { requestFirebaseNotificationPermission } from "../../../lib/firebase";
 
@@ -22,13 +23,12 @@ export function useQuickChat({
   subChatId,
   relativeY,
   isOpen,
-  initialModel,
 }: UseQuickChatParams) {
-  const [model, setModel] = useState(initialModel || "DEFAULT");
+  const [model, setModel] = useState("gemini-2.5-flash" );
   const queryClient = useQueryClient();
 
   const [input, setInput] = useState("");
-  const [subMessages, setSubMessages] = useState<any[]>([]);
+  const [subMessages, setSubMessages] = useState<Message[]>([]);
   const [streamingText, setStreamingText] = useState("");
   const [isPinned, setIsPinned] = useState(false);
   const [isRecalling, setIsRecalling] = useState(false);
@@ -157,7 +157,7 @@ export function useQuickChat({
       const rect = range?.getBoundingClientRect();
 
       let insideModal = false;
-      let curr: any = sel?.anchorNode;
+      let curr: HTMLElement | null = sel?.anchorNode?.parentElement || null;
       let msgIndex = -1;
       while (curr && curr !== document.body) {
         if (curr.dataset?.subchatMsgIndex !== undefined) {

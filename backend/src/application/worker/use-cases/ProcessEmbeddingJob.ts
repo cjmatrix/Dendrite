@@ -13,6 +13,7 @@ export class ProcessEmbeddingJob {
     @inject("ILogger") private logger: ILogger
   ) {}
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async execute(outboxId: string, content: any) {
     try {
       const outboxEvent = await this.outboxRepository.findById(outboxId);
@@ -25,12 +26,13 @@ export class ProcessEmbeddingJob {
         embeddingService.embed(content.description, "RETRIEVAL_DOCUMENT"),
       ]);
 
+      const payloadData = outboxEvent.payload as { sourceId: string, sourceType: string, userId: string, content: unknown, metadata: Record<string, unknown> };
       const payload = {
-        sourceId: outboxEvent.payload.sourceId.toString(),
-        sourceType: outboxEvent.payload.sourceType,
-        userId: outboxEvent.payload.userId.toString(),
-        content: outboxEvent.payload.content,
-        ...outboxEvent.payload.metadata, // e.g. language, chatId
+        sourceId: payloadData.sourceId.toString(),
+        sourceType: payloadData.sourceType,
+        userId: payloadData.userId.toString(),
+        content: payloadData.content,
+        ...payloadData.metadata, // e.g. language, chatId
       };
 
       await this.vectorRepository.upsertCodeVector(
@@ -43,6 +45,7 @@ export class ProcessEmbeddingJob {
       this.logger.info(`✅ Embedded outbox ${outboxId}`);
 
       await this.outboxRepository.updateStatus(outboxId, "processed");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       await this.outboxRepository.updateStatus(outboxId, "failed", { error: error.message, incrementRetry: true });
       this.logger.error(`Failed to embed outbox event: ${outboxId}`, error);

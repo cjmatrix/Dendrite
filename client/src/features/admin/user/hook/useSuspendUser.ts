@@ -23,7 +23,7 @@ export function useSuspendUser(){
             const previousUser = queryClient.getQueryData(["user", userId]);
             const previousQueries = queryClient.getQueriesData({ queryKey: ["users"] });
 
-            queryClient.setQueryData(["user", userId], (old: any) => {
+            queryClient.setQueryData(["user", userId], (old: Record<string, unknown> | undefined) => {
                 if (!old) return old;
                 return {
                     ...old,
@@ -31,11 +31,11 @@ export function useSuspendUser(){
                 };
             });
 
-            queryClient.setQueriesData({ queryKey: ["users"] }, (old: any) => {
+            queryClient.setQueriesData({ queryKey: ["users"] }, (old: { users?: Record<string, unknown>[] } | undefined) => {
                 if (!old || !old.users) return old;
                 return {
                     ...old,
-                    users: old.users.map((u: any) => {
+                    users: old.users.map((u: Record<string, unknown>) => {
                         if (u._id === userId) {
                             return {
                                 ...u,
@@ -49,13 +49,13 @@ export function useSuspendUser(){
 
             return { previousUser, previousQueries };
         },
-        onError: (err, { userId }, context: any) => {
+        onError: (err, { userId }, context: { previousUser?: unknown; previousQueries?: [import("@tanstack/react-query").QueryKey, unknown][] } | undefined) => {
             if (!userId) return;
             if (context?.previousUser) {
                 queryClient.setQueryData(["user", userId], context.previousUser);
             }
             if (context?.previousQueries) {
-                context.previousQueries.forEach(([queryKey, value]: any) => {
+                context.previousQueries.forEach(([queryKey, value]) => {
                     queryClient.setQueryData(queryKey, value);
                 });
             }

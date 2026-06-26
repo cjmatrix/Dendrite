@@ -1,6 +1,6 @@
 import { Worker, Job } from "bullmq";
-import { redisConfig } from "../config/redis";
-import { ProcessRecallJob } from "../application/worker/use-cases/ProcessRecallJob";
+import { redisConfig } from "../../config/redis";
+import { ProcessRecallJob } from "../../application/worker/use-cases/ProcessRecallJob";
 import { container } from "tsyringe";
 
 interface RecallJobData {

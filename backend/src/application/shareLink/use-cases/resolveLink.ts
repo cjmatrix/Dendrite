@@ -14,6 +14,7 @@ export class ResolveLink {
     @inject("IFolderRepository") private folderRepo: IFolderRepository
   ) {}
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async execute(token: string, chatId?: string): Promise<any> {
     const link = await this.shareLinkRepo.findByToken(token);
     if (!link) {

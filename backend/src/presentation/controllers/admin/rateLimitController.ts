@@ -17,6 +17,7 @@ class RateLimitController extends BaseController {
     try {
       const limits = await this.getRateLimitsUseCase.execute();
       this.sendSuccess(res, limits, 200, "Rate limits retrieved successfully");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       this.sendError(res, err.message || "Failed to retrieve rate limits", err.statusCode || 500);
     }
@@ -30,6 +31,7 @@ class RateLimitController extends BaseController {
       await this.updateRateLimitUseCase.execute(key, value);
 
       this.sendSuccess(res, null, 200, `Rate limit ${key} updated successfully and cache invalidated`);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       this.sendError(res, err.message || "Failed to update rate limit", err.statusCode || 500);
     }

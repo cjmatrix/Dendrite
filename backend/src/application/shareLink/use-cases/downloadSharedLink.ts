@@ -53,28 +53,29 @@ export class DownloadSharedLink {
      
         const existingChat = await this.chatRepo.findByUserIdAndTitleAndFolderId(
           userId,
-          snapshotChat.title,
+          snapshotChat.title || "Shared Chat",
           destinationFolderId
         );
         if (existingChat) {
           throw new AppError(`A chat named "${snapshotChat.title}" already exists in the destination folder`, 409);
         }
 
-        const newChatId = new mongoose.Types.ObjectId();
+        const newChatId = new mongoose.Types.ObjectId().toString();
         const chatsToCreate = [{
           _id: newChatId,
           userId,
-          folderId: destinationFolderId ? new mongoose.Types.ObjectId(destinationFolderId) : null,
+          folderId: destinationFolderId,
           title: snapshotChat.title,
           summary: snapshotChat.summary,
           type: snapshotChat.type || "normal",
-          documents: [],
+          documents: [] as string[],
           tokenCount: snapshotChat.tokenCount || 0,
           unsummarizedCount: snapshotChat.unsummarizedCount || 0,
           contextParent: null,
         }];
 
         const snapshotMessages = shareRepo.messages || [];
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const messagesToCreate = snapshotMessages.map((m: any) => ({
           chatId: newChatId,
           userId,
@@ -103,7 +104,7 @@ export class DownloadSharedLink {
         
         const existingFolder = await this.folderRepo.findByUserIdAndNameAndParent(
           userId,
-          rootFolder.name,
+          rootFolder.name || "Shared Folder",
           destinationFolderId
         );
         if (existingFolder) {
@@ -111,12 +112,13 @@ export class DownloadSharedLink {
         }
 
      
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const folderDocs: any[] = [];
         const folderIdMap = new Map<string, mongoose.Types.ObjectId>();
 
-        const rootFolderOriginalId = rootFolder._id || rootFolder.id;
+        const rootFolderOriginalId = rootFolder._id;
         const rootFolderNewId = new mongoose.Types.ObjectId();
-        folderIdMap.set(rootFolderOriginalId.toString(), rootFolderNewId);
+        folderIdMap.set((rootFolderOriginalId || "").toString(), rootFolderNewId);
 
         folderDocs.push({
           _id: rootFolderNewId,
@@ -129,8 +131,9 @@ export class DownloadSharedLink {
           behavior: rootFolder.behavior,
         });
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const prepareFolders = (node: any, parentNewId: mongoose.Types.ObjectId) => {
-          const originalId = node._id || node.id;
+          const originalId = node._id;
           const newId = new mongoose.Types.ObjectId();
           folderIdMap.set(originalId.toString(), newId);
 
@@ -150,23 +153,24 @@ export class DownloadSharedLink {
           }
         };
 
-        for (const child of rootFolder.children || []) {
+        for (const child of (rootFolder as { children?: unknown[] }).children || []) {
           prepareFolders(child, rootFolderNewId);
         }
 
       
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const chatDocs: any[] = [];
         const chatIdMap = new Map<string, mongoose.Types.ObjectId>();
         const snapshotChats = shareRepo.chats || [];
 
         for (const chat of snapshotChats) {
-          const originalChatId = chat._id || chat.id;
+          const originalChatId = chat._id;
           const originalFolderId = chat.folderId;
           const mappedFolderId = originalFolderId ? folderIdMap.get(originalFolderId.toString()) : null;
 
           if (mappedFolderId) {
             const newChatId = new mongoose.Types.ObjectId();
-            chatIdMap.set(originalChatId.toString(), newChatId);
+            chatIdMap.set((originalChatId || "").toString(), newChatId);
 
             chatDocs.push({
               _id: newChatId,
@@ -184,6 +188,7 @@ export class DownloadSharedLink {
         }
 
         
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const messageDocs: any[] = [];
         const snapshotMessages = shareRepo.messages || [];
 

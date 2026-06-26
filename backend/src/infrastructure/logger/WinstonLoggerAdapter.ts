@@ -1,5 +1,4 @@
 import winston from "winston";
-// @ts-ignore
 import LokiTransport from "winston-loki";
 import { ILogger } from "../../application/common/ports/ILogger";
 
@@ -41,25 +40,25 @@ export class WinstonLoggerAdapter implements ILogger {
           json: true,
           format: winston.format.json(),
           replaceTimestamp: true,
-          onConnectionError: (err: any) => console.error("Loki connection error:", err)
+          onConnectionError: (err: Error) => console.error("Loki connection error:", err)
         }),
       ],
     });
   }
 
-  debug(message: string, meta?: Record<string, any>): void {
+  debug(message: string, meta?: Record<string, unknown>): void {
     this.logger.debug(message, meta);
   }
 
-  info(message: string, meta?: Record<string, any>): void {
+  info(message: string, meta?: Record<string, unknown>): void {
     this.logger.info(message, meta);
   }
 
-  warn(message: string, meta?: Record<string, any>): void {
+  warn(message: string, meta?: Record<string, unknown>): void {
     this.logger.warn(message, meta);
   }
 
-  error(message: string, error?: Error | unknown, meta?: Record<string, any>): void {
+  error(message: string, error?: Error | unknown, meta?: Record<string, unknown>): void {
     if (error instanceof Error) {
       this.logger.error(message, { error: error.message, stack: error.stack, ...meta });
     } else {

@@ -27,6 +27,7 @@ export class GetChatMessages implements IGetChatMessagesUseCase {
     const messageIds = messages.map(m => m._id);
     const subChats = await this.subChatRepository.findByAnchorMessageIdsAndChatId(messageIds, chatId,userId);
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const subChatMap = new Map<string, any[]>();
     subChats.forEach(sc => {
       const key = sc.anchorMessageId.toString();
@@ -35,7 +36,8 @@ export class GetChatMessages implements IGetChatMessagesUseCase {
       }
       subChatMap.get(key)!.push({
         subChatId: sc._id,
-        relY: sc.relativeY ?? 0
+        relY: sc.relativeY ?? 0,
+        highlightedText: sc.highlightedText
       });
     });
 

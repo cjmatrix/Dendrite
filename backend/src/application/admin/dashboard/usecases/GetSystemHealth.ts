@@ -34,6 +34,7 @@ export class GetSystemHealth {
   ) {}
 
   async execute(): Promise<SystemHealthReport> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const services: any = {};
 
    
@@ -83,6 +84,7 @@ export class GetSystemHealth {
 
   
     let overall: "healthy" | "unhealthy" | "degraded" = "healthy";
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const statuses = Object.values(services).map((s: any) => s.status);
     
     if (statuses.includes("unhealthy")) {
@@ -106,6 +108,7 @@ export class GetSystemHealth {
         status: "healthy",
         latencyMs,
       };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       const latencyMs = Date.now() - startTime;
       return {

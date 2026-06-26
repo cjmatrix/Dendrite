@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import { BaseController } from './base/BaseController';
 import { injectable, inject, container } from 'tsyringe';
 import { IInheritContextUseCase, IUnlinkInheritanceUseCase } from '../../application/branch/use-cases/interfaces';
+import { HttpStatus } from '../constants/httpStatus';
+import { CHAT_MESSAGES } from '../constants/chatMessages';
 
 @injectable()
 export class BranchController extends BaseController {
@@ -20,7 +22,7 @@ export class BranchController extends BaseController {
 
       const updatedChat = await this.inheritContextUseCase.execute(id, userId, contextParentId);
 
-      this.sendSuccess(res, updatedChat, 200, 'Context inherited successfully');
+      this.sendSuccess(res, updatedChat, HttpStatus.OK, CHAT_MESSAGES.CONTEXT_INHERITED);
     } catch (error) {
       this.sendError(res, error);
     }
@@ -33,7 +35,7 @@ export class BranchController extends BaseController {
 
       const updatedChat = await this.unlinkInheritanceUseCase.execute(id, userId);
 
-      this.sendSuccess(res, updatedChat, 200, 'Inheritance unlinked successfully');
+      this.sendSuccess(res, updatedChat, HttpStatus.OK, CHAT_MESSAGES.INHERITANCE_UNLINKED);
     } catch (error) {
       this.sendError(res, error);
     }

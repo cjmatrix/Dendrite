@@ -81,6 +81,31 @@ const PlantUMLBlock = ({ codeString }: { codeString: string }) => {
 };
 
 export const markdownComponents = {
+  img({ src, alt, ...props }: React.ComponentPropsWithoutRef<"img">) {
+    const isPlantUML = src && (src.includes("plantuml.com") || src.includes("plantuml"));
+    if (isPlantUML) {
+      return (
+        <div className="my-6 flex flex-col items-center p-6 rounded-xl hover:scale-120 transition-all overflow-hidden w-full">
+          <img
+            src={src}
+            alt={alt}
+            style={{ filter: "invert(0.9) hue-rotate(180deg)" }}
+            className="max-w-full h-auto"
+            {...props}
+          />
+        </div>
+      );
+    }
+    return (
+      <img
+        src={src}
+        alt={alt}
+        className="max-w-full h-auto my-4 rounded-lg"
+        {...props}
+      />
+    );
+  },
+
   MermaidBlock: ({ children }: { children: string }) => {
     return (
       <div className="my-6 flex justify-center  p-4 rounded-xl bordershadow-lg">
@@ -89,7 +114,7 @@ export const markdownComponents = {
     );
   },
 
-  code({ className, children }: any) {
+  code({ className, children }: { className?: string; children?: React.ReactNode }) {
     const match = /language-(\w+)/.exec(className || "");
     const codeString = Array.isArray(children)
       ? children.join("")
@@ -103,7 +128,7 @@ export const markdownComponents = {
       return (
         <div className="my-6 w-full overflow-x-auto flex justify-center  p-4 rounded-xl ">
           <div className="mermaid-container min-w-[600px] transition-all">
-            <MermaidBlock code={children} />
+            <MermaidBlock code={codeString} />
           </div>
           <style>{`
         /* Target the mermaid SVG to ensure text remains legible */
@@ -153,7 +178,7 @@ export const markdownComponents = {
         </div>
         {/* Code block */}
         <SyntaxHighlighter
-          style={vscDarkPlus as any}
+          style={vscDarkPlus as { [key: string]: React.CSSProperties }}
           language={match[1]}
           PreTag="pre"
           customStyle={{
@@ -169,7 +194,7 @@ export const markdownComponents = {
       </div>
     ) : (
       <SyntaxHighlighter
-        style={vscDarkPlus as any}
+        style={vscDarkPlus as { [key: string]: React.CSSProperties }}
         language="javascript"
         PreTag="span"
         codeTagProps={{
@@ -192,10 +217,10 @@ export const markdownComponents = {
       </SyntaxHighlighter>
     );
   },
-  pre({ children }: any) {
+  pre({ children }: { children?: React.ReactNode }) {
     return <>{children}</>;
   },
-  table({ children, ...props }: any) {
+  table({ children, ...props }: React.TableHTMLAttributes<HTMLTableElement>) {
     return (
       <div className="w-full overflow-x-auto my-6 rounded-xl border border-zinc-700/50 shadow-md">
         <table
@@ -207,21 +232,21 @@ export const markdownComponents = {
       </div>
     );
   },
-  thead({ children, ...props }: any) {
+  thead({ children, ...props }: React.HTMLAttributes<HTMLTableSectionElement>) {
     return (
       <thead className="bg-zinc-800/40 border-b border-zinc-700/60" {...props}>
         {children}
       </thead>
     );
   },
-  tbody({ children, ...props }: any) {
+  tbody({ children, ...props }: React.HTMLAttributes<HTMLTableSectionElement>) {
     return (
       <tbody className="divide-y divide-zinc-700/40" {...props}>
         {children}
       </tbody>
     );
   },
-  th({ children, ...props }: any) {
+  th({ children, ...props }: React.ThHTMLAttributes<HTMLTableHeaderCellElement>) {
     return (
       <th
         className="px-4 py-3 text-xs font-semibold text-gray-300 uppercase tracking-wider"
@@ -231,14 +256,14 @@ export const markdownComponents = {
       </th>
     );
   },
-  td({ children, ...props }: any) {
+  td({ children, ...props }: React.TdHTMLAttributes<HTMLTableDataCellElement>) {
     return (
       <td className="px-4 py-3 text-gray-300" {...props}>
         {children}
       </td>
     );
   },
-  tr({ children, ...props }: any) {
+  tr({ children, ...props }: React.HTMLAttributes<HTMLTableRowElement>) {
     return (
       <tr
         className="hover:bg-zinc-800/50 transition-colors even:bg-zinc-800/30"
@@ -248,20 +273,20 @@ export const markdownComponents = {
       </tr>
     );
   },
-  blockquote({ children, ...props }: any) {
+  blockquote({ children, ...props }: React.BlockquoteHTMLAttributes<HTMLQuoteElement>) {
     // Extract the text content to detect callout patterns
     let isCallout = false;
     let calloutType = "note";
     let title = "";
 
     // A helper to recursively extract the first text string from React children
-    const extractFirstText = (nodes: any): string => {
+    const extractFirstText = (nodes: React.ReactNode): string => {
       let text = "";
       React.Children.forEach(nodes, (child) => {
         if (typeof child === "string") {
           text += child;
-        } else if (child && child.props && child.props.children) {
-          text += extractFirstText(child.props.children);
+        } else if (React.isValidElement(child)) {
+          text += extractFirstText((child as React.ReactElement<{ children?: React.ReactNode }>).props.children);
         }
       });
       return text;
@@ -282,7 +307,7 @@ export const markdownComponents = {
     }
 
     // A helper to clone the children and strip the [!TYPE] string from the start.
-    const stripCalloutPrefix = (nodes: any, prefixToStrip: string): any => {
+    const stripCalloutPrefix = (nodes: React.ReactNode, prefixToStrip: string): React.ReactNode => {
       let stripped = false; // Only strip once
       return React.Children.map(nodes, (child) => {
         if (
@@ -303,9 +328,9 @@ export const markdownComponents = {
         if (React.isValidElement(child)) {
           return React.cloneElement(
             child,
-            (child as React.ReactElement<any>).props,
+            (child as React.ReactElement<{ children?: React.ReactNode }>).props,
             stripCalloutPrefix(
-              (child as React.ReactElement<any>).props.children,
+              (child as React.ReactElement<{ children?: React.ReactNode }>).props.children,
               prefixToStrip,
             ),
           );
@@ -424,7 +449,7 @@ export const markdownComponents = {
         <div
           data-callout-type={calloutType}
           className={`my-5 p-4 rounded-xl border-l-[3px] ${style.bg} ${style.border} text-gray-300 text-[15.5px] shadow-sm`}
-          {...props}
+          {...(props as unknown as React.HTMLAttributes<HTMLDivElement>)}
         >
           <div
             className={`flex items-center gap-2 mb-2 font-semibold ${style.text}`}

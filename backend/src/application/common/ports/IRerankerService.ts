@@ -1,7 +1,7 @@
 export interface RerankResult<T> {
   score: number;
   document: T;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
 }
 
 export interface IRerankerService {

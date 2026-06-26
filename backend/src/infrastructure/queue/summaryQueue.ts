@@ -1,4 +1,4 @@
-import { redisConfig } from "../config/redis";
+import { redisConfig } from "../../config/redis";
 import { Queue } from "bullmq";
 
 const summaryQueue = new Queue("summaryQueue", {
@@ -7,7 +7,7 @@ const summaryQueue = new Queue("summaryQueue", {
 
 export default async function addSummaryQueue(
   summaryOutboxEventId: string,
-  messageToCompress: any[],
+  messageToCompress: Record<string, unknown>[],
   previousSummary: string | null = null,
 ) {
   await summaryQueue.add("process-summary", {

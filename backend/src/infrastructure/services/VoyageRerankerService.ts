@@ -60,8 +60,8 @@ export class VoyageRerankerService implements IRerankerService {
           };
         })
         .filter((res): res is RerankResult<T> => res !== null);
-    } catch (error: any) {
-      console.error("[VoyageRerankerService] Voyage Reranking failed:", error.message);
+    } catch (error: unknown) {
+      console.error("[VoyageRerankerService] Voyage Reranking failed:", (error as Error).message);
       throw error;
     }
   }

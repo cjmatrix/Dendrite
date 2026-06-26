@@ -7,7 +7,14 @@ import { AlertCircle } from "lucide-react";
 
 declare global {
   interface Window {
-    google?: any;
+    google?: {
+      accounts: {
+        id: {
+          initialize: (config: { client_id: string; callback: (response: { credential: string }) => void }) => void;
+          renderButton: (parent: HTMLElement, options: Record<string, unknown>) => void;
+        };
+      };
+    };
   }
 }
 
@@ -28,7 +35,7 @@ export const GoogleSignInButton: React.FC = () => {
       document.body.appendChild(script);
     }
 
-    const handleCredentialResponse = async (response: any) => {
+    const handleCredentialResponse = async (response: { credential: string }) => {
       try {
         setError(null);
         // Send the Google idToken to backend
@@ -39,9 +46,16 @@ export const GoogleSignInButton: React.FC = () => {
         
         // Redirect to homepage
         navigate("/");
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Google authentication failed", err);
-        setError(err.response?.data?.message || "Google authentication failed. Please try again.");
+        let errorMsg = "Google authentication failed. Please try again.";
+        if (err && typeof err === "object" && "response" in err) {
+          const response = (err as { response?: { data?: { message?: string } } }).response;
+          if (response?.data?.message) {
+            errorMsg = response.data.message;
+          }
+        }
+        setError(errorMsg);
       }
     };
 

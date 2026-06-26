@@ -19,19 +19,18 @@ Sentry.init({
   integrations: [Sentry.browserTracingIntegration()],
   tracePropagationTargets: ["localhost", /^\//, 'https://yourdomain.com'],
   tracesSampleRate: 1.0,
-  beforeSend(event: any) {
+  
+  beforeSend(event: Sentry.ErrorEvent) {
     console.log(event)
    
     if (event.user) {
       delete event.user.email;
       delete event.user.ip_address;
     }
-
-    // 2. Clear out sensitive Request Headers (like Auth tokens or Cookies)
     if (event && event.request && event.request.headers) {
       const sensitiveHeaders = ['authorization', 'cookie', 'x-api-key'];
       sensitiveHeaders.forEach(header => {
-        if (event.request.headers[header]) {
+        if (event.request?.headers?.[header]) {
           event.request.headers[header] = '[FILTERED]';
         }
       });

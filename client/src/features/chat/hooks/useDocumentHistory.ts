@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import api from "../../../lib/axios";
+import { useAppSelector } from "../../../store/store";
 
 export interface UploadedDocument {
   _id:string
@@ -11,7 +12,9 @@ export interface UploadedDocument {
   uploadedAt: Date;
 }
 
+
 export function useDocumentHistory(chatId?: string) {
+  const {isShareMode } = useAppSelector((state) => state.explorer);
   const [isShowingBrowser, setIsShowingBrowser] = useState(false);
 
   const { data: documents = [], isLoading, refetch } = useQuery<UploadedDocument[]>({
@@ -21,7 +24,7 @@ export function useDocumentHistory(chatId?: string) {
       const response = await api.get(`/chats/${chatId}/documents`);
       return response.data.data.documents || [];
     },
-    enabled: !!chatId,
+    enabled: !!chatId&&!isShareMode,
   });
 
   const addDocument = useCallback(

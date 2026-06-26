@@ -5,6 +5,7 @@ export interface ITransactionRepository {
   aggregateSubscriptionStats(
     start: Date,
     end: Date,
-    groupByFormat: string
+    groupByFormat: string,
+    tier?: string
   ): Promise<{ date: string; count: number; revenue: number }[]>;
 }

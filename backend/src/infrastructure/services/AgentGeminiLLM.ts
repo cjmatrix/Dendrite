@@ -136,7 +136,7 @@ CONTENT GUIDELINES:
 Workspace Folder Tree:
 ${folderTree}`;
 
-    const result = await structuredModel.invoke([
+    const result = await structuredModel.invoke([ 
       ["system", systemPrompt],
       [
         "human",

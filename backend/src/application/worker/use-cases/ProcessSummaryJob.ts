@@ -12,6 +12,7 @@ import {
 } from "../../../utils/AISummary";
 import { embeddingService } from "../../../services/EmbeddingService";
 import { IGlobalProfile } from "../../../domain/auth/entities/User";
+import { IDailyTokenUsageRepository } from "../../../domain/usage/repositories/IDailyTokenUsageRepository";
 import { estimateTokenCount } from "../../../utils/tokenCounter";
 import crypto from "crypto";
 import { ILogger } from "../../common/ports/ILogger";
@@ -66,6 +67,7 @@ function enforceSummaryBudget(items: SummaryItem[], logger: ILogger): SummaryIte
 function mergeProfileDelta(
   existing: IGlobalProfile | null,
   delta: ProfileDelta,
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Record<string, any> | null {
   const updates: Record<string, string | string[]> = {};
   const profile = existing || {
@@ -87,6 +89,7 @@ function mergeProfileDelta(
   ] as const;
 
   for (const field of scalarFields) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     if (delta[field] && delta[field] !== (profile as any)[field]) {
       updates[`globalProfile.${field}`] = String(delta[field]).slice(0, 100);
     }
@@ -110,7 +113,9 @@ function mergeProfileDelta(
     const deltaItems = delta[field];
     if (deltaItems && deltaItems.length > 0) {
       
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const existingItems: string[] = ((profile as any)[field] || [])
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .map((item: any) => String(item).slice(0, MAX_ITEM_LENGTH));
         
       const existingSet = new Set(
@@ -119,6 +124,7 @@ function mergeProfileDelta(
       
       
       const newItems = deltaItems
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .map((item: any) => String(item).slice(0, MAX_ITEM_LENGTH))
         .filter((item) => !existingSet.has(item.toLowerCase()));
 
@@ -146,8 +152,10 @@ export class ProcessSummaryJob {
     @inject("IVectorRepository") private vectorRepository: IVectorRepository,
     @inject("IChatRepository") private chatRepository: IChatRepository,
     @inject("IUserRepository") private userRepository: IUserRepository,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     @inject("RedisClient") private redisConnection: any,
     @inject("ILogger") private logger: ILogger,
+    @inject("IDailyTokenUsageRepository") private dailyTokenUsageRepository: IDailyTokenUsageRepository,
   ) {}
 
   async execute(
@@ -162,7 +170,7 @@ export class ProcessSummaryJob {
         throw new Error(`Outbox event not found: ${summaryOutboxEventId}`);
       }
 
-      const userId = outboxEvent.payload.userId.toString();
+      const userId = (outboxEvent.payload as { userId: string }).userId.toString();
 
       const cacheKey = `triple_memory:${summaryOutboxEventId}`;
       const cachedResult = await this.redisConnection.get(cacheKey);
@@ -215,6 +223,18 @@ export class ProcessSummaryJob {
               "tokensUsed": totalTokens
             }
           });
+
+          const today = new Date();
+          today.setUTCHours(0, 0, 0, 0);
+
+          const user = await this.userRepository.findByIdSafe(userId);
+          const userTier = user?.tier || "free";
+
+          await this.dailyTokenUsageRepository.upsertUsage(userId, today, userTier, {
+            [`token_usage.${provider}.chatSummary.input`]: inputTokens,
+            [`token_usage.${provider}.chatSummary.output`]: outputTokens,
+            [`token_usage.${provider}.chatSummary.total`]: totalTokens,
+          });
         }
 
         await this.redisConnection.setex(
@@ -243,6 +263,7 @@ export class ProcessSummaryJob {
         summaryOutboxEventId,
         "processed",
       );
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       await this.outboxRepository.updateStatus(summaryOutboxEventId, "failed", {
         error: error.message,
@@ -257,6 +278,7 @@ export class ProcessSummaryJob {
 
   private async processCompressedFacts(
     facts: string[],
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     outboxEvent: any,
     summaryOutboxEventId: string,
   ) {
@@ -299,6 +321,7 @@ export class ProcessSummaryJob {
 
   private async processRecursiveSummary(
     summaryItems: SummaryItem[],
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     outboxEvent: any,
   ) {
     if (!summaryItems || summaryItems.length === 0) return;

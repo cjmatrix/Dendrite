@@ -54,8 +54,15 @@ export const ByokModal: React.FC<ByokModalProps> = ({ isOpen, onClose }) => {
       setTimeout(() => {
         onClose();
       }, 2000);
-    } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to upload keys.");
+    } catch (err: unknown) {
+      let errorMsg = "Failed to upload keys.";
+      if (err && typeof err === "object" && "response" in err) {
+        const response = (err as { response?: { data?: { message?: string } } }).response;
+        if (response?.data?.message) {
+          errorMsg = response.data.message;
+        }
+      }
+      setError(errorMsg);
     } finally {
       setIsLoading(false);
     }

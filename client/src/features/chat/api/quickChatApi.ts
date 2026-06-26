@@ -1,5 +1,6 @@
 import api from "../../../lib/axios";
 import { streamingFetch } from "../../../lib/streamingFetch";
+import type { Message } from "../types/Message";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -7,7 +8,7 @@ export interface SubChat {
   subChatId: string;
   anchorMessageId: string;
   highlightedText: string;
-  messages: any[];
+  messages: Message[];
   relativeY?: number;
 }
 
@@ -21,7 +22,7 @@ export const stickToChat = async (params: {
   subChatId: string;
   anchorMessageId: string;
   highlightedText: string;
-  messages: any[];
+  messages: Message[];
   relativeY: number;
 }): Promise<void> => {
   if (!params.anchorMessageId || !params.anchorMessageId.trim()) {
@@ -47,7 +48,7 @@ export const streamQuickChat = async (params: {
   chatId: string;
   anchorMessageId: string;
   highlightedText: string;
-  quickChatHistory: any[];
+  quickChatHistory: Message[];
   model?: string;
   onChunk: (textSoFar: string) => void;
 }): Promise<string> => {

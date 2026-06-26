@@ -6,6 +6,7 @@ export interface SubscriptionStatsFilterDTO {
   timeframe: "7days" | "30days" | "12months" | "custom";
   startDate?: string;
   endDate?: string;
+  tier?: string;
 }
 
 @injectable()
@@ -56,7 +57,7 @@ export class GetSubscriptionStats {
       start.setHours(0, 0, 0, 0);
     }
 
-    const chartData = await this.transactionRepo.aggregateSubscriptionStats(start, end, groupByFormat);
+    const chartData = await this.transactionRepo.aggregateSubscriptionStats(start, end, groupByFormat, filter.tier);
 
     const totalTransactions = chartData.reduce((acc, cur) => acc + cur.count, 0);
     const totalRevenue = chartData.reduce((acc, cur) => acc + cur.revenue, 0);

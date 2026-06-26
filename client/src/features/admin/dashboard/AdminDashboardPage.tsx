@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useMemo } from "react";
 import {
   Users,
   Activity,
@@ -10,7 +10,7 @@ import {
   TrendingUp,
   Shield,
   Cpu,
-  CpuIcon
+  Calendar
 } from "lucide-react";
 import { useGetAdminDashboardStats } from "./hook/useGetAdminDashboardStats";
 import { SubscriptionStatsCard } from "./components/SubscriptionStatsCard";
@@ -76,7 +76,8 @@ function StatCard({
   );
 }
 
-function DonutChart({ categories, totalTokens }: { categories: any[]; totalTokens: number }) {
+type CategoryData = { name: string; key: string; stroke: string; data?: { total?: number; input?: number; output?: number } };
+function DonutChart({ categories, totalTokens }: { categories: CategoryData[]; totalTokens: number }) {
   let accumulatedPercent = 0;
   const radius = 60;
   const circumference = 2 * Math.PI * radius;
@@ -99,7 +100,6 @@ function DonutChart({ categories, totalTokens }: { categories: any[]; totalToken
             if (pct <= 0) return null;
 
             const strokeLength = pct * circumference;
-            const strokeOffset = circumference - strokeLength;
             const rotationOffset = (accumulatedPercent / 100) * circumference;
             accumulatedPercent += pct * 100;
 
@@ -164,7 +164,21 @@ function DonutChart({ categories, totalTokens }: { categories: any[]; totalToken
 }
 
 function AdminDashboardPage() {
-  const { data, isLoading, error, refetch, isFetching } = useGetAdminDashboardStats();
+  const [timeframe, setTimeframe] = useState<"24h" | "7d" | "30d" | "12m" | "custom" | "all">("all");
+  const [tier, setTier] = useState<string>("all");
+  const [provider, setProvider] = useState<string>("all");
+  const [customStartDate, setCustomStartDate] = useState("");
+  const [customEndDate, setCustomEndDate] = useState("");
+
+  const filterParams = useMemo(() => ({
+    timeframe,
+    tier,
+    provider,
+    customStartDate,
+    customEndDate
+  }), [timeframe, tier, provider, customStartDate, customEndDate]);
+
+  const { data, isLoading, error, refetch, isFetching } = useGetAdminDashboardStats(filterParams);
 
   const totalTokens = data?.tokenUsage?.totalTokens || 0;
   const categories = [
@@ -188,18 +202,74 @@ function AdminDashboardPage() {
           </p>
         </div>
 
-        <button
-          onClick={() => refetch()}
-          disabled={isLoading}
-          className="flex items-center justify-center gap-2 px-4.5 py-2.5 bg-zinc-900/80 hover:bg-zinc-800 border border-zinc-850 hover:border-zinc-750 text-sm font-semibold rounded-xl text-zinc-200 transition-all duration-200 disabled:opacity-50"
-        >
-          {isFetching ? (
-            <Loader2 className="h-4 w-4 animate-spin text-zinc-400" />
-          ) : (
-            <RefreshCw className="h-4 w-4 text-zinc-400" />
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Timeframe Buttons */}
+          <div className="flex bg-zinc-900/60 border border-zinc-800 p-1 rounded-xl">
+            {(["24h", "7d", "30d", "12m", "custom", "all"] as const).map((t) => (
+              <button
+                key={t}
+                onClick={() => setTimeframe(t)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer ${
+                  timeframe === t
+                    ? "bg-blue-600 text-white shadow-lg shadow-blue-600/10"
+                    : "text-zinc-400 hover:text-zinc-200"
+                }`}
+              >
+                {t === "24h" ? "24H" : t === "7d" ? "7D" : t === "30d" ? "30D" : t === "12m" ? "12M" : t === "custom" ? "Custom" : "All"}
+              </button>
+            ))}
+          </div>
+
+          {/* Custom Date Picker (Visible when timeframe is 'custom') */}
+          {timeframe === "custom" && (
+            <div className="flex items-center gap-2 bg-zinc-900/60 border border-zinc-800 p-1 px-2.5 rounded-xl text-xs">
+              <Calendar className="h-3.5 w-3.5 text-zinc-400" />
+              <input
+                type="date"
+                value={customStartDate}
+                onChange={(e) => setCustomStartDate(e.target.value)}
+                className="bg-transparent border-none text-zinc-300 outline-none w-24 [color-scheme:dark]"
+              />
+              <span className="text-zinc-500">to</span>
+              <input
+                type="date"
+                value={customEndDate}
+                onChange={(e) => setCustomEndDate(e.target.value)}
+                className="bg-transparent border-none text-zinc-300 outline-none w-24 [color-scheme:dark]"
+              />
+            </div>
           )}
-          Refresh Data
-        </button>
+
+          {/* Tier Selector */}
+          <div className="flex bg-zinc-900/60 border border-zinc-800 p-1 rounded-xl">
+            {(["all", "free", "pro", "enterprise", "byok"] as const).map((t) => (
+              <button
+                key={t}
+                onClick={() => setTier(t)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer ${
+                  tier === t
+                    ? "bg-blue-600 text-white shadow-lg shadow-blue-600/10"
+                    : "text-zinc-400 hover:text-zinc-200"
+                }`}
+              >
+                {t === "all" ? "All Tiers" : t === "free" ? "Free" : t === "pro" ? "Pro" : t === "enterprise" ? "Enterprise" : "BYOK"}
+              </button>
+            ))}
+          </div>
+
+          {/* Refresh Button */}
+          <button
+            onClick={() => refetch()}
+            disabled={isLoading || isFetching}
+            className="p-2.5 bg-zinc-900/60 border border-zinc-800 hover:border-zinc-750 text-zinc-300 hover:text-white rounded-xl transition-all disabled:opacity-50 cursor-pointer"
+          >
+            {isFetching ? (
+              <Loader2 className="h-4 w-4 animate-spin text-zinc-400" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
+          </button>
+        </div>
       </div>
 
       {error ? (
@@ -297,8 +367,23 @@ function AdminDashboardPage() {
                   Aggregated platform costs and API volumes across all non-BYOK users.
                 </p>
               </div>
-              <div className="text-xs text-zinc-500 font-semibold bg-zinc-900/60 border border-zinc-800 px-3.5 py-1.5 rounded-lg">
-                Tier exclusions: BYOK Accounts
+              <div className="flex flex-wrap items-center gap-3">
+                <select
+                  value={provider}
+                  onChange={(e) => setProvider(e.target.value)}
+                  className="px-3 py-1.5 bg-zinc-900/60 border border-zinc-800 text-xs font-semibold rounded-xl text-zinc-300 focus:outline-none focus:border-zinc-700 transition-all cursor-pointer"
+                >
+                  <option value="all">All Providers</option>
+                  <option value="google">Gemini (Google)</option>
+                  <option value="anthropic">Claude (Anthropic)</option>
+                  <option value="openai">OpenAI</option>
+                  <option value="openrouter">OpenRouter</option>
+                  <option value="groq">Groq</option>
+                  <option value="mistral">Mistral</option>
+                </select>
+                <div className="text-xs text-zinc-500 font-semibold bg-zinc-900/60 border border-zinc-800 px-3.5 py-1.5 rounded-lg">
+                  Tier exclusions: BYOK Accounts
+                </div>
               </div>
             </div>
 
@@ -306,7 +391,7 @@ function AdminDashboardPage() {
           </div>
 
           {/* Subscription Stats Ledger & Charts */}
-          <SubscriptionStatsCard />
+          <SubscriptionStatsCard filter={filterParams} />
         </div>
       )}
     </div>

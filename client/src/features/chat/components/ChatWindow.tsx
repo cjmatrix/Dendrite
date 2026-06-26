@@ -25,8 +25,8 @@ import {
   Key,
   Shield,
   Files,
+  Lock,
   AlertCircle,
-  CheckCircle,
   Download,
 } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
@@ -34,7 +34,7 @@ import type { VirtuosoHandle } from "react-virtuoso";
 import { Virtuoso } from "react-virtuoso";
 import "../styles/markdown.css";
 import { useAppSelector, useAppDispatch } from "../../../store/store";
-import { setActiveSidebarRootId, toggleRecallOverlay } from "../../explorer/store/explorerSlice";
+import { setActiveSidebarRootId } from "../../explorer/store/explorerSlice";
 import DendritesLogo from "../../../components/DendritesLogo";
 import { QuickChatModal } from "./QuickChatModal.tsx";
 import { DocumentBrowser } from "./DocumentBrowser";
@@ -85,7 +85,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const { id, token } = useParams<{ id?: string, token?: string }>();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const { tree, isRecallOverlayOpen, isShareMode } = useAppSelector((state) => state.explorer);
+  const { tree, isShareMode } = useAppSelector((state) => state.explorer);
   const queryClient = useQueryClient();
 
   const { data: chat, isLoading: isChatLoading } = useChatDetails(id);
@@ -109,7 +109,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
   const [mode, setMode] = useState<"general" | "visual">("general");
   const [model, setModel] = useState(DEFAULT_MODEL);
-  const [isModeOpen, setIsModeOpen] = useState(false);
+
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [isModelOpen, setIsModelOpen] = useState(false);
   const user = useAppSelector((state) => state.auth.user);
   const [isByokModalOpen, setIsByokModalOpen] = useState(false);
@@ -117,6 +118,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
   const [input, setInput] = useState("");
   const [isQuickChatOpen, setIsQuickChatOpen] = useState(false);
+
+  console.log(user)
+
   const [externalSelectedFile, setExternalSelectedFile] = useState<{
     name: string;
     url: string;
@@ -233,7 +237,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
 
 
-  // Tracer animation on Firebase push notification
+
   useEffect(() => {
     const handleNotification = () => {
       setIsTracerActive(true);
@@ -244,6 +248,21 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       window.removeEventListener(
         "recall:notification-pushed",
         handleNotification,
+      );
+  }, []);
+
+
+  useEffect(() => {
+    const handleInsertChatName = (e: Event) => {
+      const customEvent = e as CustomEvent<{ name: string }>;
+      setInput((prev) => (prev ? prev + " " + customEvent.detail.name : customEvent.detail.name));
+      requestAnimationFrame(() => composerRef.current?.focus());
+    };
+    window.addEventListener("insert-chat-name", handleInsertChatName as EventListener);
+    return () =>
+      window.removeEventListener(
+        "insert-chat-name",
+        handleInsertChatName as EventListener,
       );
   }, []);
 
@@ -562,7 +581,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 </p>
               </div>
 
-              {chat?.type !== "agent" && (
+              {chat?.type !== "agent" && !isShareMode && (
                 <>
                   {/* Sophisticated OR separator */}
                   <div className="flex items-center gap-4 w-full">
@@ -649,7 +668,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               if (hasNextPage && !isFetchingNextPage) fetchNextPage();
             }}
             itemContent={(_, msg) => (
-              <div className="max-w-4xl mx-auto w-full px-4 md:px-8 pb-0">
+              <div className="max-w-4xl mx-auto w-full pl-12 pr-12 md:px-8 pb-0">
                 <MessageBubble
                   msg={msg}
                   onOpenSubChat={handleOpenSubChat}
@@ -810,7 +829,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                     </h4>
                     <p className="text-gray-300 text-sm mb-3">{sendAgentMessage.data.message}</p>
                     <div className="flex flex-col gap-2">
-                      {sendAgentMessage.data.options?.map((opt: any) => (
+                      {sendAgentMessage.data.options?.map((opt: { id: string; path: string }) => (
                         <button
                           key={opt.id}
                           onClick={() => {
@@ -832,74 +851,81 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           <div className={`flex items-center bg-(--theme-bg-elevated)/90 backdrop-blur-xl border rounded-2xl px-3 md:px-4 py-3 md:py-3.5 transition-all shadow-2xl ${
             chat?.type === "agent"
               ? "border-amber-500/40 focus-within:border-amber-500 focus-within:shadow-[0_0_15px_rgba(245,158,11,0.15)]"
-              : "border-white/10 focus-within:border-blue-500/50 focus-within:bg-(--theme-bg-elevated)"
+              : mode === "visual"
+                ? "border-violet-500/30 focus-within:border-violet-500/50 focus-within:shadow-[0_0_15px_rgba(139,92,246,0.2)] focus-within:bg-(--theme-bg-elevated)"
+                : "border-white/10 focus-within:border-blue-500/50 focus-within:bg-(--theme-bg-elevated)"
           }`}>
             {chat?.type !== "agent" && (
               <>
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="p-2 hover:bg-white/5 rounded-xl text-gray-400 hover:text-gray-200 transition-colors hidden md:block group"
-                  disabled={isUploading || isStreaming}
-                  title="Upload image or file"
-                >
-                  <Paperclip
-                    size={20}
-                    className="group-hover:rotate-12 transition-transform"
-                  />
-                </button>
-
-                <button
-                  onClick={() => setIsShowingBrowser(true)}
-                  className="p-2 hover:bg-white/5 rounded-xl text-gray-400 hover:text-gray-200 transition-colors hidden md:block group relative"
-                  disabled={isStreaming}
-                  title={`View uploaded files (${documents.length})`}
-                >
-                  <Files
-                    size={20}
-                    className="group-hover:scale-110 transition-transform"
-                  />
-                  {documents.length > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                      {documents.length}
-                    </span>
-                  )}
-                </button>
-
-                {/* Mode Selector */}
-                <div className="relative z-50 ">
+                <div className="relative z-50">
                   <button
-                    onClick={() => setIsModeOpen(!isModeOpen)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 ml-1 rounded-lg text-xs font-semibold bg-white/5 hover:bg-white/10 text-gray-300 transition-colors border border-white/5 shadow-sm"
+                    onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
+                    className="p-2 hover:bg-white/5 rounded-xl text-gray-400 hover:text-gray-200 transition-colors group relative"
+                    disabled={isUploading || isStreaming}
+                    title="More actions"
                   >
-                    {mode === "general" ? (
-                      <Sparkles size={14} className="text-blue-400" />
-                    ) : (
-                      <Image size={14} className="text-purple-400" />
-                    )}
-                    <span className="hidden sm:inline">
-                      {mode === "general" ? "General" : "Visual"}
-                    </span>
-                    <ChevronDown
-                      size={14}
-                      className={`text-gray-500 transition-transform ${isModeOpen ? "rotate-180" : ""}`}
+                    <MoreVertical
+                      size={20}
+                      className="group-hover:scale-110 transition-transform"
                     />
+                    {documents.length > 0 && (
+                      <span className="absolute -top-0.5 -right-0.5 bg-blue-600 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center animate-pulse">
+                        {documents.length}
+                      </span>
+                    )}
                   </button>
 
-                  {isModeOpen && (
+                  {isMoreMenuOpen && (
                     <>
                       <div
                         className="fixed inset-0 z-40"
-                        onClick={() => setIsModeOpen(false)}
+                        onClick={() => setIsMoreMenuOpen(false)}
                       ></div>
-                      <div className="absolute bottom-full left-0 mb-3 w-48 bg-(--theme-bg-surface) border border-zinc-700 shadow-2xl rounded-xl overflow-hidden py-1.5 z-50">
+                      <div className="absolute bottom-full left-0 mb-3 w-56 bg-(--theme-bg-surface) border border-zinc-700 shadow-2xl rounded-xl overflow-hidden py-1.5 z-50">
                         <button
                           onClick={() => {
-                            setMode("general");
-                            setIsModeOpen(false);
+                            fileInputRef.current?.click();
+                            setIsMoreMenuOpen(false);
+                          }}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-gray-300 hover:bg-white/5 transition-colors"
+                          disabled={isUploading || isStreaming}
+                        >
+                          <Paperclip size={16} className="text-gray-400" />
+                          <span>Upload Image or File</span>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setIsShowingBrowser(true);
+                            setIsMoreMenuOpen(false);
                           }}
                           className="w-full flex items-center justify-between px-3 py-2.5 text-sm text-gray-300 hover:bg-white/5 transition-colors"
                         >
-                          <div className="flex items-center gap-3 font-medium">
+                          <div className="flex items-center gap-3">
+                            <Files size={16} className="text-gray-400" />
+                            <span>View Uploaded Files</span>
+                          </div>
+                          {documents.length > 0 && (
+                            <span className="bg-blue-600 text-white text-[10px] font-bold rounded-full px-2 py-0.5">
+                              {documents.length}
+                            </span>
+                          )}
+                        </button>
+
+                        <div className="h-px bg-zinc-700/50 my-1"></div>
+
+                        <div className="px-3 py-1 text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                          Mode
+                        </div>
+
+                        <button
+                          onClick={() => {
+                            setMode("general");
+                            setIsMoreMenuOpen(false);
+                          }}
+                          className="w-full flex items-center justify-between px-3 py-2 text-sm text-gray-300 hover:bg-white/5 transition-colors"
+                        >
+                          <div className="flex items-center gap-3">
                             <Sparkles size={16} className="text-blue-400" />
                             <span>General Mode</span>
                           </div>
@@ -907,14 +933,15 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                             <Check size={16} className="text-blue-400" />
                           )}
                         </button>
+
                         <button
                           onClick={() => {
                             setMode("visual");
-                            setIsModeOpen(false);
+                            setIsMoreMenuOpen(false);
                           }}
-                          className="w-full flex items-center justify-between px-3 py-2.5 text-sm text-gray-300 hover:bg-white/5 transition-colors"
+                          className="w-full flex items-center justify-between px-3 py-2 text-sm text-gray-300 hover:bg-white/5 transition-colors"
                         >
-                          <div className="flex items-center gap-3 font-medium">
+                          <div className="flex items-center gap-3">
                             <Image size={16} className="text-purple-400" />
                             <span>Visual Mode</span>
                           </div>
@@ -950,30 +977,41 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                         onClick={() => setIsModelOpen(false)}
                       ></div>
                       <div className="absolute bottom-full left-0 mb-3 w-48 bg-(--theme-bg-surface) border border-zinc-700 shadow-2xl rounded-xl overflow-hidden py-1.5 z-50 max-h-[300px] overflow-y-auto no-scrollbar">
-                        {MODEL_OPTIONS.map((opt) => (
-                          <button
-                            key={opt.id}
-                            onClick={() => {
-                              setModel(opt.id);
-                              setIsModelOpen(false);
-                            }}
-                            className="w-full flex items-center justify-between px-3 py-2 text-sm text-gray-300 hover:bg-white/5 transition-colors"
-                          >
-                            <div className="flex flex-col items-start gap-0.5">
-                              <span className="font-medium text-left truncate max-w-[120px]">{opt.label}</span>
-                              <span className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">{opt.tier}</span>
-                            </div>
-                            {model === opt.id && (
-                              <Check size={16} className="text-emerald-400 shrink-0" />
-                            )}
-                          </button>
-                        ))}
+                        {MODEL_OPTIONS.map((opt) => {
+                          const isLocked = opt.tier === "paid" && user?.tier === "free";
+                          return (
+                            <button
+                              key={opt.id}
+                              onClick={() => {
+                                if (isLocked) {
+                                  toast.error("This premium model is locked on the Free tier. Upgrade your plan to access it!");
+                                  return;
+                                }
+                                setModel(opt.id);
+                                setIsModelOpen(false);
+                              }}
+                              className={`w-full flex items-center justify-between px-3 py-2 text-sm text-gray-300 hover:bg-white/5 transition-colors ${
+                                isLocked ? "opacity-50 cursor-not-allowed" : ""
+                              }`}
+                            >
+                              <div className="flex flex-col items-start gap-0.5">
+                                <span className="font-medium text-left truncate max-w-[120px]">{opt.label}</span>
+                                <span className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">{opt.tier}</span>
+                              </div>
+                              {isLocked ? (
+                                <Lock size={14} className="text-zinc-500 shrink-0" />
+                              ) : model === opt.id ? (
+                                <Check size={16} className="text-emerald-400 shrink-0" />
+                              ) : null}
+                            </button>
+                          );
+                        })}
                       </div>
                     </>
                   )}
                 </div>
 
-                {user?.tier === "byok" && (
+                {user?.tier === "byok"&&user.byokKeysCount===0 && (
                   <button
                     onClick={() => setIsByokModalOpen(true)}
                     className="flex items-center gap-1.5 px-3 py-1.5 ml-1 rounded-lg text-xs font-semibold bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 transition-colors border border-emerald-500/20 shadow-sm whitespace-nowrap"
@@ -987,7 +1025,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             )}
 
             <textarea
-              placeholder="Ask follow-up or research next steps..."
+              placeholder={mode==="general"?"Ask follow-up or research next steps...":"Create an interactive visualization of NGINX."}
               className="flex-1  bg-transparent border-none outline-none px-3 text-[16px] text-gray-200 placeholder:text-gray-500 resize-none max-h-48 py-1 overflow-y-auto no-scrollbar"
               value={input}
               rows={1}
@@ -1023,7 +1061,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                     isStreaming
                       ? "bg-red-600 text-white hover:bg-red-500 shadow-md shadow-red-500/20"
                       : (input.trim() || selectedImageUrl || activeSelectedFile) && !isUploading
-                        ? "bg-blue-600 text-white hover:bg-blue-500 shadow-md shadow-blue-500/20"
+                        ? mode === "visual"
+                          ? "bg-violet-600 text-white hover:bg-violet-500 shadow-md shadow-violet-500/20"
+                          : "bg-blue-600 text-white hover:bg-blue-500 shadow-md shadow-blue-500/20"
                         : "bg-white/5 text-gray-500 cursor-not-allowed"
                   }`}
                 >
@@ -1063,7 +1103,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           className="fixed z-99 -translate-x-1/2 -translate-y-full mb-4 flex gap-2 animate-in fade-in slide-in-from-bottom-2 duration-200"
           style={{ top: selection.y - 10, left: selection.x }}
         >
-          <button
+          {!isShareMode&&<button
             className="px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-lg shadow-xl hover:bg-blue-500 transition-all flex items-center gap-2"
             onClick={() => {
               setPinnedQuickChatSelection({
@@ -1077,8 +1117,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           >
             <Sparkles size={14} />
             Quick Chat
-          </button>
-          <button
+          </button>}
+          {!isShareMode&&<button
             className="px-3 py-1.5 bg-purple-600 text-white text-xs font-bold rounded-lg shadow-xl hover:bg-purple-500 transition-all flex items-center gap-2"
             onClick={() =>
               handleCreateRecall(selection.markdown, selection.messageId)
@@ -1087,7 +1127,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           >
             <Brain size={14} />
             {isRecalling ? "Saving..." : "Recall"}
-          </button>
+          </button>}
         </div>
       )}
 
@@ -1121,7 +1161,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       />
 
       {/* Inherit Context Modal */}
-      {isInheritModalOpen && (
+      {isInheritModalOpen && !isShareMode && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-6 sm:p-10 backdrop-blur-sm bg-black/60 animate-in fade-in duration-300">
           <div className="bg-(--theme-bg-surface) border border-zinc-800 w-full max-w-5xl h-[80vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
             {/* Modal Header */}

@@ -88,7 +88,7 @@ export function Table<T>({
                 >
                   {columns.map((column) => (
                     <td key={column.key} className="px-6 py-4">
-                      {column.render ? column.render(item) : (item as any)[column.key]}
+                      {column.render ? column.render(item) : (item as Record<string, React.ReactNode>)[column.key]}
                     </td>
                   ))}
                 </tr>

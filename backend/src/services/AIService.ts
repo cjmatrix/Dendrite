@@ -1,5 +1,6 @@
 import { redisConnection } from "../config/redis";
 import { GoogleGenAI, ThinkingLevel } from "@google/genai";
+import Groq from "groq-sdk";
 import { getTavilySearchContext } from "./searchCacheService";
 import {
   getRotatedAI,
@@ -15,6 +16,9 @@ import {
   rotateBYOKKeyIndex,
 } from "../utils/byokKeysHelper";
 import { INTERNET_SEARCH_ROUTER_MODEL } from "../constants/models";
+import { IGeminiContent, IAIStreamChunk } from "../domain/chat/entities/Gemini";
+import { IMessageRepository } from "../domain/chat/repositories/IMessageRepository";
+import { IMessage } from "../domain/chat/entities/Message";
 
 export class AIService {
   static async shouldUseInternetSearch(
@@ -53,11 +57,12 @@ User query: "${queryText}"`;
           contents: [{ role: "user", parts: [{ text: routingPrompt }] }],
         });
         return routerResponse?.text?.trim().toUpperCase() === "YES";
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const e = error as { status?: number; message?: string };
         if (
-          error.status === 429 ||
-          error.message?.includes("quota") ||
-          error.message?.includes("RESOURCE_EXHAUSTED")
+          e.status === 429 ||
+          e.message?.includes("quota") ||
+          e.message?.includes("RESOURCE_EXHAUSTED")
         ) {
           if (instances.length > 0 && userId) {
             currentIdx = await rotateBYOKKeyIndex(
@@ -79,7 +84,7 @@ User query: "${queryText}"`;
 
   static async getInternetContext(
     queryText: string,
-    descQueryVector: any,
+    descQueryVector: number[] | null,
     userId?: string,
   ): Promise<string> {
     try {
@@ -101,7 +106,7 @@ User query: "${queryText}"`;
 
   static async getInternetContextWithPrecomputedDecision(
     queryText: string,
-    descQueryVector: any,
+    descQueryVector: number[] | null,
     shouldSearch: boolean,
   ): Promise<string> {
     try {
@@ -111,7 +116,7 @@ User query: "${queryText}"`;
         );
         const context = await getTavilySearchContext(
           queryText,
-          descQueryVector,
+          descQueryVector ?? undefined,
         );
         return context || "";
       }
@@ -127,11 +132,11 @@ User query: "${queryText}"`;
   }
 
   static async streamAIContent(
-    contents: any[],
+    contents: IGeminiContent[],
     model: string = "gemini-3-flash-preview",
     signal?: AbortSignal,
     systemInstruction?: string,
-  ) {
+  ): Promise<AsyncIterable<IAIStreamChunk>> {
     // console.log(JSON.stringify(contents,null,2));
 
 
@@ -152,18 +157,19 @@ User query: "${queryText}"`;
           },
         });
          console.log("Strem Returning ")
-        return stream;
-      } catch (error: any) {
-        console.log(error.status, error.message);
+        return stream as unknown as AsyncIterable<IAIStreamChunk>;
+      } catch (error: unknown) {
+        const e = error as { status?: number; message?: string };
+        console.log(e.status, e.message);
         if (
-          error.status === 429 ||
-          error.status === 503 ||
-          error.status === 400 ||
-          error.message?.includes("API key not valid") ||
-          error.message?.includes("API_KEY_INVALID") ||
-          error.message?.includes("high demand") ||
-          error.message?.includes("quota") ||
-          error.message?.includes("RESOURCE_EXHAUSTED")
+          e.status === 429 ||
+          e.status === 503 ||
+          e.status === 400 ||
+          e.message?.includes("API key not valid") ||
+          e.message?.includes("API_KEY_INVALID") ||
+          e.message?.includes("high demand") ||
+          e.message?.includes("quota") ||
+          e.message?.includes("RESOURCE_EXHAUSTED")
         ) {
           await rotateAIKey();
           attempts++;
@@ -177,13 +183,13 @@ User query: "${queryText}"`;
   }
 
   static async streamAIContentWithKeys(
-    contents: any[],
+    contents: IGeminiContent[],
     model: string,
     keys: string[],
     signal?: AbortSignal,
     userId?: string,
     systemInstruction?: string,
-  ) {
+  ): Promise<AsyncIterable<IAIStreamChunk>> {
     let stream;
     let attempts = 0;
 
@@ -204,17 +210,18 @@ User query: "${queryText}"`;
             ...(systemInstruction ? { systemInstruction } : {}),
           },
         });
-        return stream;
-      } catch (error: any) {
+        return stream as unknown as AsyncIterable<IAIStreamChunk>;
+      } catch (error: unknown) {
+        const e = error as { status?: number; message?: string };
         if (
-          error.status === 429 ||
-          error.status === 503 ||
-          error.status === 400 ||
-          error.message?.includes("API key not valid") ||
-          error.message?.includes("API_KEY_INVALID") ||
-          error.message?.includes("high demand") ||
-          error.message?.includes("quota") ||
-          error.message?.includes("RESOURCE_EXHAUSTED")
+          e.status === 429 ||
+          e.status === 503 ||
+          e.status === 400 ||
+          e.message?.includes("API key not valid") ||
+          e.message?.includes("API_KEY_INVALID") ||
+          e.message?.includes("high demand") ||
+          e.message?.includes("quota") ||
+          e.message?.includes("RESOURCE_EXHAUSTED")
         ) {
           if (userId) {
             currentIdx = await rotateBYOKKeyIndex(
@@ -238,8 +245,8 @@ User query: "${queryText}"`;
   static async getAnchorContext(
     chatId: string,
     anchorMessageId: string,
-    messageRepo: any,
-  ): Promise<any[]> {
+    messageRepo: IMessageRepository,
+  ): Promise<IMessage[]> {
     const cacheKey = `anchor_ctx:${anchorMessageId}`;
 
     try {
@@ -253,7 +260,7 @@ User query: "${queryText}"`;
 
       const contextMessages = await messageRepo.findAnchorContext(
         chatId,
-        anchorMsg.createdAt,
+        anchorMsg.createdAt as Date,
         2,
       );
 
@@ -275,7 +282,7 @@ User query: "${queryText}"`;
  
 
     return `You are a surgical AI Assistant specialized in analyzing highlights within a side-modal.
-    IMPORTANT- Use this format by default First breifly answer what user asked in one sentence means you should answer user query in one sentence first  it is IMPORTANT, and then format for all answers: [Concept] - [1-sentence definition]. Key points: [bullet points].YTou can check USER'S Query to see if user explitly asked in detail explanation you could provide detail explanation
+    IMPORTANT- Use this if user query about for doubts or explanation First breifly answer what user asked in one sentence means you should answer user query in one sentence first  it is IMPORTANT, and then format for all answers: [Concept] - [1-sentence definition]. Key points: [bullet points].You should only focus on user Query and prioratize it first.
      When providing code, always use fenced code blocks with the language specified
      IF User asked detailed explanation or user says user doesnt understand the concept Use below Rules that i given
 
@@ -317,7 +324,7 @@ USER'S HIGHLIGHT (your primary focus):
 ---
 RESPONSE GUIDELINES:
 - DEFAULT:IMPORTANT Be brief. Use crisp bullet points and short, punchy sentences and give example according to the context..
-- DO NOT PROVIDE DETAILED EXPLANATION. ONLY provide an expansive/detailed explanation if the user specifically asks to explanation in detail".
+- DO NOT PROVIDE DETAILED EXPLANATION. ONLY provide an expansive/detailed explanation if the user specifically asks to explanation in detail ".
 .`;
   }
 
@@ -330,5 +337,40 @@ RESPONSE GUIDELINES:
       console.error("Error converting image URL to base64:", error);
       return "";
     }
+  }
+
+  static async streamGroqContent(
+    contents: IGeminiContent[],
+    model: string,
+    signal?: AbortSignal,
+    systemInstruction?: string,
+  ): Promise<AsyncIterable<IAIStreamChunk>> {
+    const groqModel = model.replace("groq/", "");
+    const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+    const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [];
+    if (systemInstruction) {
+      messages.push({ role: "system", content: systemInstruction });
+    }
+    for (const content of contents) {
+      const textParts = content.parts.map(p => p.text).filter(Boolean).join("\n");
+      messages.push({ role: content.role === "model" ? "assistant" : "user", content: textParts });
+    }
+
+    const stream = await groq.chat.completions.create({
+      messages,
+      model: groqModel,
+      stream: true,
+    });
+
+    async function* generateStream() {
+      for await (const chunk of stream) {
+        if (signal?.aborted) {
+           break;
+        }
+        const content = chunk.choices[0]?.delta?.content || "";
+        yield { text: content } as IAIStreamChunk;
+      }
+    }
+    return generateStream();
   }
 }

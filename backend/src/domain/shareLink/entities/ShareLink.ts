@@ -1,3 +1,7 @@
+import { IChat } from "../../chat/entities/Chat";
+import { IMessage } from "../../chat/entities/Message";
+import { IFolder } from "../../folder/entities/Folder";
+
 export type ShareableType = 'chat' | 'folder';
 
 export interface ISharedLink {
@@ -9,9 +13,9 @@ export interface ISharedLink {
   shareRepo?: {
     targetType: ShareableType;
     behaviorSharingPolicy?: 'READ_ONLY'| 'READ_WRITE'|'INVISIBLE';
-    folders?: any[];
-    chats?: any[];
-    messages?: any[];
-    chat?: any;
+    folders?: Partial<IFolder>[];
+    chats?: Partial<IChat>[];
+    messages?: Partial<IMessage>[];
+    chat?: Partial<IChat>;
   };
 }

@@ -502,6 +502,7 @@ export class SemanticChunkingService {
       }
 
       let markdown = result.markdown.pages
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .map((page: any) => page.markdown ?? "")
         .filter((text: string) => text.length > 0)
         .join("\n\n");
@@ -525,9 +526,9 @@ export class SemanticChunkingService {
       }
 
       return markdown;
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw new Error(
-        `LlamaParse extraction failed: ${error.message || "Unknown error"}`,
+        `LlamaParse extraction failed: ${(error as Error).message || "Unknown error"}`,
       );
     }
   }

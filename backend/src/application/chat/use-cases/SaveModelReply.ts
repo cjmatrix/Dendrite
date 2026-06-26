@@ -2,7 +2,6 @@ import { getProviderKey } from "../../../constants/models";
 import { AppError } from "../../../utils/AppError";
 import { hashCode } from "../../../utils/stripComments";
 import { redisConnection } from "../../../config/redis";
-import mongoose from "mongoose";
 import CONTEXT_WINDOW from "../../../constants/contextWindow";
 import { IChatRepository } from "../../../domain/chat/repositories/IChatRepository";
 import { IMessageRepository } from "../../../domain/chat/repositories/IMessageRepository";
@@ -16,6 +15,8 @@ import { IUnitOfWorkRepository } from "../../common/ports/IUnitOfWorkRepository"
 import { IUserRepository } from "../../../domain/auth/repositories/IUserRepository";
 import { injectable, inject } from "tsyringe";
 import { ISaveModelReplyUseCase } from "./interfaces";
+import { IMessage } from "../../../domain/chat/entities/Message";
+import { ICodeBlock } from "../../../domain/chat/entities/CodeBlock";
 
 export function extractCodeBlocks(text: string) {
   const regex = /```(\w+)?\n([\s\S]*?)```/g;
@@ -38,6 +39,7 @@ export function extractCodeBlocks(text: string) {
 }
 
 import { IRateLimitService } from "../../common/ports/IRateLimitService";
+import { IDailyTokenUsageRepository } from "../../../domain/usage/repositories/IDailyTokenUsageRepository";
 
 @injectable()
 export class SaveModelReply implements ISaveModelReplyUseCase {
@@ -56,6 +58,8 @@ export class SaveModelReply implements ISaveModelReplyUseCase {
     @inject("ILogger") private logger: ILogger,
     @inject("IRateLimitService")
     private rateLimitService: IRateLimitService,
+    @inject("IDailyTokenUsageRepository")
+    private dailyTokenUsageRepository: IDailyTokenUsageRepository,
   ) {}
 
   async execute(input: import("../dtos/chat.dto").SaveModelReplyInputDTO) {
@@ -77,8 +81,9 @@ export class SaveModelReply implements ISaveModelReplyUseCase {
       throw new AppError("Chat not found", 404);
     }
     let modelMessageId: string | null = null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let summaryOutboxEvent: any = null;
-    let messageToCompress: any[] = [];
+    let messageToCompress: IMessage[] = [];
 
     await this.unitOfWork.runInTransaction(async () => {
       const [modelMsg] = await this.messageRepository.createMany([
@@ -127,6 +132,21 @@ export class SaveModelReply implements ISaveModelReplyUseCase {
         },
       });
 
+      const today = new Date();
+      today.setUTCHours(0, 0, 0, 0);
+
+      const user = await this.userRepository.findByIdSafe(userId);
+      const userTier = user?.tier || "free";
+
+      await this.dailyTokenUsageRepository.upsertUsage(userId, today, userTier, {
+        [`token_usage.${provider}.mainChat.input`]: calculatedPromptTokens,
+        [`token_usage.${provider}.mainChat.output`]: mainChatOutputTokens,
+        [`token_usage.${provider}.mainChat.total`]: calculatedPromptTokens + mainChatOutputTokens,
+        [`token_usage.${provider}.p5Visualization.input`]: 0,
+        [`token_usage.${provider}.p5Visualization.output`]: p5VisualizationTokens,
+        [`token_usage.${provider}.p5Visualization.total`]: p5VisualizationTokens,
+      });
+
       const activeModel = model || "gemini-3-flash-preview";
       const totalTokens = calculatedPromptTokens + calculatedResponseTokens;
       try {
@@ -150,14 +170,15 @@ export class SaveModelReply implements ISaveModelReplyUseCase {
 
       const updatedChat = await this.chatRepository.update(chatId, userId, {
         $inc: { unsummarizedCount: 2 },
-      });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any);
 
       if (!updatedChat) {
         throw new AppError("Failed to update chat", 500);
       }
 
       let totalUnCount = updatedChat.unsummarizedCount;
-      const totalParentMessagesToCompress: any[] = [];
+      const totalParentMessagesToCompress: IMessage[] = [];
       const lineageChatIds = [chatId];
 
       if (parentContext && parentContext.size > 0) {
@@ -176,7 +197,7 @@ export class SaveModelReply implements ISaveModelReplyUseCase {
         );
         const totalRecent = [...recent, ...totalParentMessagesToCompress];
         messageToCompress = totalRecent.reverse();
-        this.logger.debug(`Compressed messages for chat`, {
+        this.logger.debug("Compressed messages for chat", {
           chatId,
           messageCount: messageToCompress.length,
         });
@@ -188,16 +209,16 @@ export class SaveModelReply implements ISaveModelReplyUseCase {
       }
 
       const codeBlocks = extractCodeBlocks(modelReply);
-      let savedBlocks: any[] = [];
+      let savedBlocks: ICodeBlock[] = [];
 
       if (codeBlocks.length > 0) {
-        const newBlockDocs: any[] = [];
+        const newBlockDocs: Partial<ICodeBlock>[] = [];
         for (const block of codeBlocks) {
           const redisKey = `code_dedup:${block.hash}`;
 
           const cachedDesc = await redisConnection.get(redisKey);
           if (cachedDesc) {
-            this.logger.debug(`[CodeDedup] Redis cache hit for code block`, {
+            this.logger.debug("[CodeDedup] Redis cache hit for code block", {
               hash: block.hash.slice(0, 8),
             });
             continue;
@@ -207,7 +228,7 @@ export class SaveModelReply implements ISaveModelReplyUseCase {
             block.hash,
           );
           if (existingBlock) {
-            this.logger.debug(`[CodeDedup] Database cache hit for code block`, {
+            this.logger.debug("[CodeDedup] Database cache hit for code block", {
               hash: block.hash.slice(0, 8),
               blockId: existingBlock._id,
             });
@@ -234,13 +255,13 @@ export class SaveModelReply implements ISaveModelReplyUseCase {
 
         if (newBlockDocs.length > 0) {
           savedBlocks = await this.codeBlockRepository.insertMany(newBlockDocs);
-          this.logger.info(`[CodeDedup] New code blocks processed`, {
+          this.logger.info("[CodeDedup] New code blocks processed", {
             newBlocks: newBlockDocs.length,
             duplicates: codeBlocks.length - newBlockDocs.length,
             total: codeBlocks.length,
           });
         } else {
-          this.logger.info(`[CodeDedup] All code blocks were duplicates`, {
+          this.logger.info("[CodeDedup] All code blocks were duplicates", {
             count: codeBlocks.length,
             chatId,
           });
@@ -269,7 +290,7 @@ export class SaveModelReply implements ISaveModelReplyUseCase {
           status: "pending",
         };
         const savedOutbox = await this.outboxRepository.insertMany([outboxDoc]);
-        summaryOutboxEvent = savedOutbox[0];
+        summaryOutboxEvent = savedOutbox[0] as unknown as { _id: { toString(): string } };
       }
     });
 
@@ -277,7 +298,7 @@ export class SaveModelReply implements ISaveModelReplyUseCase {
       const undescribedBlocks =
         await this.codeBlockRepository.findUndescribedByChatId(chatId);
       if (undescribedBlocks.length > 0) {
-        const queuePayload = undescribedBlocks.map((b: any) => ({
+        const queuePayload = undescribedBlocks.map((b: ICodeBlock) => ({
           _id: b._id.toString(),
           userId: b.userId,
           chatId: b.chatId,
@@ -287,7 +308,7 @@ export class SaveModelReply implements ISaveModelReplyUseCase {
         }));
         await this.descriptionPublisher.publish(queuePayload);
         this.logger.info(
-          `Context window overflow - batched blocks for description`,
+          "Context window overflow - batched blocks for description",
           { blockCount: undescribedBlocks.length, chatId },
         );
       }
@@ -297,10 +318,10 @@ export class SaveModelReply implements ISaveModelReplyUseCase {
       await this.summaryPublisher.publish(
         summaryOutboxEvent._id.toString(),
         messageToCompress,
-        chat.summary,
+        chat.summary ?? undefined,
       );
 
-      this.logger.info(`Triggered memory compression`, {
+      this.logger.info("Triggered memory compression", {
         chatId: chat._id.toString(),
         outboxEventId: summaryOutboxEvent._id.toString(),
       });

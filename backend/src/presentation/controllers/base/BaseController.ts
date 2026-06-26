@@ -13,6 +13,7 @@ export abstract class BaseController {
 
   protected sendSuccess(
     res: Response,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     data: any,
     statusCode: number = 200,
     message?: string,
@@ -27,10 +28,11 @@ export abstract class BaseController {
   
   protected sendError(
     res: Response,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     error: any,
     statusCode: number = 500,
   ): void {
-    const message = error instanceof AppError ? error.message : 'Internal server error';
+    const message = error instanceof AppError ? (error as Error).message : 'Internal server error';
     const code = error instanceof AppError ? error.statusCode : statusCode;
 
     res.status(code).json({

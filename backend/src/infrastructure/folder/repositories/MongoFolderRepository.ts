@@ -14,13 +14,13 @@ export class MongoFolderRepository
     super(Folder);
   }
 
-  protected override mapToDomain(doc: any): IFolder {
+  protected override mapToDomain(doc: Record<string, unknown>): IFolder {
     return {
       ...doc,
-      _id: doc._id.toString(),
-      userId: doc.userId.toString(),
-      parentId: doc.parentId ? doc.parentId.toString() : null,
-    };
+      _id: (doc._id as { toString(): string }).toString(),
+      userId: (doc.userId as { toString(): string }).toString(),
+      parentId: doc.parentId ? (doc.parentId as { toString(): string }).toString() : null,
+    } as IFolder;
   }
 
   async findByIdAndUserId(id: string, userId: string): Promise<IFolder | null> {
@@ -74,12 +74,12 @@ export class MongoFolderRepository
   }
 
   async insertMany(foldersData: Partial<IFolder>[]): Promise<IFolder[]> {
-    const docs = await this.model.insertMany(foldersData, { session: this.getSession() });
+    const docs = await this.model.insertMany(foldersData, { session: this.getSession() || undefined });
     return docs.map(doc => this.mapToDomain(doc.toObject ? doc.toObject() : doc));
   }
 
   async deleteMany(ids: string[], userId: string): Promise<void> {
-    await this.model.deleteMany({ _id: { $in: ids }, userId }, { session: this.getSession() });
+    await this.model.deleteMany({ _id: { $in: ids }, userId }, { session: this.getSession() || undefined });
   }
 
   async findByParentId(parentId: string): Promise<IFolder[]> {

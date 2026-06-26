@@ -12,6 +12,7 @@ export class GetFolders implements IGetFoldersUseCase {
     const folders = await this.folderRepository.findAllByUserId(userId);
 
     const folderMap = new Map();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const roots: any[] = [];
 
     for (const folder of folders) {

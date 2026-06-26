@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk, type PayloadAction } from '@reduxjs/toolkit';
 import api from '../../../lib/axios';
+import type { LoginRequest, SignupRequest } from '../types/auth.types';
 
 export interface User {
   _id: string;
@@ -39,8 +40,9 @@ export const checkAuth = createAsyncThunk('auth/checkAuth', async (_, { rejectWi
   try {
     const response = await api.get('/auth/me');
     return response.data.data;
-  } catch (error: any) {
-    return rejectWithValue(error.response?.data?.message || 'Authentication failed');
+  } catch (error: unknown) {
+    const err = error as { response?: { data?: { message?: string } } };
+    return rejectWithValue(err.response?.data?.message || 'Authentication failed');
   }
 });
 
@@ -48,36 +50,39 @@ export const checkAdminAuth = createAsyncThunk('auth/checkAdminAuth', async (_, 
   try {
     const response = await api.get('/admin/auth/me');
     return response.data.data;
-  } catch (error: any) {
-    return rejectWithValue(error.response?.data?.message || 'Admin authentication failed');
+  } catch (error: unknown) {
+    const err = error as { response?: { data?: { message?: string } } };
+    return rejectWithValue(err.response?.data?.message || 'Admin authentication failed');
   }
 });
 
-export const login = createAsyncThunk('auth/login', async (credentials: any, { rejectWithValue }) => {
+export const login = createAsyncThunk('auth/login', async (credentials: LoginRequest, { rejectWithValue }) => {
   try {
     const response = await api.post('/auth/login', credentials);
     return response.data.data;
-  } catch (error: any) {
-   
-    return rejectWithValue(error.response?.data?.message || 'Failed to login');
+  } catch (error: unknown) {
+    const err = error as { response?: { data?: { message?: string } } };
+    return rejectWithValue(err.response?.data?.message || 'Failed to login');
   }
 });
 
-export const adminLogin = createAsyncThunk('auth/adminLogin', async (credentials: any, { rejectWithValue }) => {
+export const adminLogin = createAsyncThunk('auth/adminLogin', async (credentials: LoginRequest, { rejectWithValue }) => {
   try {
     const response = await api.post('/admin/auth/login', credentials);
     return response.data.data;
-  } catch (error: any) {
-    return rejectWithValue(error.response?.data?.message || 'Failed to login as admin');
+  } catch (error: unknown) {
+    const err = error as { response?: { data?: { message?: string } } };
+    return rejectWithValue(err.response?.data?.message || 'Failed to login as admin');
   }
 });
 
-export const registerUser = createAsyncThunk('auth/register', async (userData: any, { rejectWithValue }) => {
+export const registerUser = createAsyncThunk('auth/register', async (userData: SignupRequest, { rejectWithValue }) => {
   try {
     const response = await api.post('/auth/register', userData);
     return response.data.data;
-  } catch (error: any) {
-    return rejectWithValue(error.response?.data?.message || 'Failed to register');
+  } catch (error: unknown) {
+    const err = error as { response?: { data?: { message?: string } } };
+    return rejectWithValue(err.response?.data?.message || 'Failed to register');
   }
 });
 
@@ -85,8 +90,9 @@ export const logout = createAsyncThunk('auth/logout', async (_, { rejectWithValu
   try {
     const response = await api.post('/auth/logout');
     return response.data;
-  } catch (error: any) {
-    return rejectWithValue(error.response?.data?.message || 'Failed to logout');
+  } catch (error: unknown) {
+    const err = error as { response?: { data?: { message?: string } } };
+    return rejectWithValue(err.response?.data?.message || 'Failed to logout');
   }
 });
 
@@ -94,8 +100,9 @@ export const adminLogout = createAsyncThunk('auth/adminLogout', async (_, { reje
   try {
     const response = await api.post('/admin/auth/logout');
     return response.data;
-  } catch (error: any) {
-    return rejectWithValue(error.response?.data?.message || 'Failed to logout admin');
+  } catch (error: unknown) {
+    const err = error as { response?: { data?: { message?: string } } };
+    return rejectWithValue(err.response?.data?.message || 'Failed to logout admin');
   }
 });
 

@@ -97,8 +97,15 @@ const OtpPage: React.FC = () => {
       const cooldownEnd = Date.now() + 60 * 1000;
       localStorage.setItem(`otp_cooldown_end:${email}`, cooldownEnd.toString());
       setCooldown(60);
-    } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to resend OTP");
+    } catch (err: unknown) {
+      let errorMsg = "Failed to resend OTP";
+      if (err && typeof err === "object" && "response" in err) {
+        const response = (err as { response?: { data?: { message?: string } } }).response;
+        if (response?.data?.message) {
+          errorMsg = response.data.message;
+        }
+      }
+      setError(errorMsg);
     } finally {
       setIsLoading(false);
     }
@@ -130,8 +137,19 @@ const OtpPage: React.FC = () => {
       setTimeout(() => {
         navigate("/login");
       }, 2500);
-    } catch (err: any) {
-      setError(err.response?.data?.message || err.message || "Invalid or expired OTP");
+    } catch (err: unknown) {
+      let errorMsg = "Invalid or expired OTP";
+      if (err && typeof err === "object") {
+        if ("response" in err) {
+          const response = (err as { response?: { data?: { message?: string } } }).response;
+          if (response?.data?.message) {
+            errorMsg = response.data.message;
+          }
+        } else if ("message" in err) {
+          errorMsg = (err as { message: string }).message;
+        }
+      }
+      setError(errorMsg);
     } finally {
       setIsLoading(false);
     }

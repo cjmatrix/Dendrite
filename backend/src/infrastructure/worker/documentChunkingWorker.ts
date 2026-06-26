@@ -1,10 +1,10 @@
 import { Queue, Worker } from "bullmq";
 import fs from "fs";
 import { container } from "tsyringe";
-import { redisConfig } from "../config/redis";
-import { ProcessDocumentUpload } from "../application/worker/use-cases/ProcessDocumentUpload";
-import { ProcessDocumentChunking } from "../application/worker/use-cases/ProcessDocumentChunking";
-import { ILogger } from "../application/common/ports/ILogger";
+import { redisConfig } from "../../config/redis";
+import { ProcessDocumentUpload } from "../../application/worker/use-cases/ProcessDocumentUpload";
+import { ProcessDocumentChunking } from "../../application/worker/use-cases/ProcessDocumentChunking";
+import { ILogger } from "../../application/common/ports/ILogger";
 
 export const documentChunkingQueue = new Queue("document-chunking", {
   connection: redisConfig,
@@ -99,10 +99,11 @@ new Worker(
         };
       }
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       throw new Error(`Unknown stage: ${(data as any).stage}`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error(
-        `Error processing document ${data.documentId}: ${error.message}`,
+        `Error processing document ${data.documentId}: ${(error as Error).message}`,
       );
 
       // Cleanup temp files on error
@@ -125,11 +126,13 @@ new Worker(
   },
 );
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 documentChunkingQueue.on("completed" as any, (job: any) => {
   const { stage, documentId } = job.data;
   console.log(`Document job completed: ${documentId} | Stage: ${stage}`);
 });
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 documentChunkingQueue.on("failed" as any, (job: any, err: any) => {
   const { stage, documentId } = job.data;
   console.error(

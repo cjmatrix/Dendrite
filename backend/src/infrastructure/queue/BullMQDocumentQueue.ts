@@ -4,7 +4,7 @@ import {
   QueueDocumentInput,
   QueueChunkingInput,
 } from "../../application/common/ports/IDocumentQueue";
-import { documentChunkingQueue } from "../../worker/documentChunkingWorker";
+import { documentChunkingQueue } from "../worker/documentChunkingWorker";
 
 @injectable()
 export class BullMQDocumentQueue implements IDocumentQueue {

@@ -1,3 +1,21 @@
+export interface IVectorSearchResult {
+  id: string;
+  score: number;
+  payload: Record<string, unknown>;
+  content?: Record<string, unknown>;
+  fact?: Record<string, unknown>;
+  document?: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
+  language?: string;
+}
+
+export interface IVectorPoint {
+  id: string;
+  vector?: number[];
+  vectors?: Record<string, unknown>;
+  payload: Record<string, unknown>;
+}
+
 export interface IVectorRepository {
   searchSimilarCode(
     codeQueryVector: number[],
@@ -5,14 +23,14 @@ export interface IVectorRepository {
     userId: string,
     chatIds: string[],
     topK?: number,
-  ): Promise<any[]>;
+  ): Promise<IVectorSearchResult[]>;
 
   searchSimilarChatChunk(
     chunkQueryVector: number[],
     userId: string,
     chatIds: string[],
     topK?: number
-  ): Promise<any[]>;
+  ): Promise<IVectorSearchResult[]>;
 
   deleteVectorsByChatIds(userId: string, chatIds: string[]): Promise<void>;
 
@@ -24,16 +42,16 @@ export interface IVectorRepository {
     id: string,
     codeVector: number[],
     descriptionVector: number[],
-    payload: any
+    payload: Record<string, unknown>
   ): Promise<void>;
 
-  upsertSummaryVectors(points: any[]): Promise<void>;
+  upsertSummaryVectors(points: IVectorPoint[]): Promise<void>;
 
-  upsertDocumentVectors(points: any[]): Promise<void>;
+  upsertDocumentVectors(points: IVectorPoint[]): Promise<void>;
 
-  searchSemanticCache(queryVector: number[], minTimestamp: number): Promise<any[]>;
+  searchSemanticCache(queryVector: number[], minTimestamp: number): Promise<IVectorSearchResult[]>;
 
-  upsertSearchCache(id: string, queryVector: number[], payload: any): Promise<void>;
+  upsertSearchCache(id: string, queryVector: number[], payload: Record<string, unknown>): Promise<void>;
 
   deleteOldSearchCache(minTimestamp: number): Promise<void>;
 
@@ -42,5 +60,5 @@ export interface IVectorRepository {
     queryVector: number[],
     contentHashes: string[],
     topK?: number
-  ): Promise<any[]>;
+  ): Promise<IVectorSearchResult[]>;
 }

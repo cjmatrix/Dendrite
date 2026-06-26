@@ -12,7 +12,7 @@ export const CHAT_MESSAGES = {
   ONLY_IMAGES_ALLOWED: "Only image files are allowed",
   IMAGE_UPLOADED: "Image uploaded successfully",
   FAILED_TO_SAVE_FILE: "Failed to save uploaded file",
-  FILE_TOO_LARGE: "File too large. Max allowed is 100MB.",
+  FILE_TOO_LARGE: "File too large.Upgrade your plan for maximum capability.",
   NO_FILE_UPLOADED: "No file uploaded",
   FAILED_TO_QUEUE: "Failed to queue document processing",
   FAILED_TO_PROCESS: "Failed to process upload",
@@ -21,4 +21,8 @@ export const CHAT_MESSAGES = {
   INPUT_REQUIRED: "Message, image, or file is required",
   QUOTA_EXHAUSTED: "All your provided Gemini API keys have exceeded their free-tier limits. Please wait, or add a new key.",
   EMPTY_AI_RESPONSE: "The AI returned an empty response. Please try again.",
+  INVALID_MODEL: "Invalid model selected. The requested model is not supported.",
+  CONTEXT_INHERITED: "Context inherited successfully",
+  INHERITANCE_UNLINKED: "Inheritance unlinked successfully",
+  FILE_EXCEEDS_LIMIT: "File too large. It exceeds your subscription plan's maximum allowed size.",
 };

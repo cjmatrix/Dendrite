@@ -5,6 +5,8 @@ import { injectable, inject, container } from "tsyringe";
 import { CreateLink } from "../../application/shareLink/use-cases/createLink";
 import { ResolveLink } from "../../application/shareLink/use-cases/resolveLink";
 import { DownloadSharedLink } from "../../application/shareLink/use-cases/downloadSharedLink";
+import { HttpStatus } from "../constants/httpStatus";
+import { SHARE_MESSAGES } from "../constants/shareMessages";
 
 @injectable()
 export class ShareLinkController extends BaseController {
@@ -22,11 +24,11 @@ export class ShareLinkController extends BaseController {
       const { targetId, targetType, behaviorSharingPolicy } = req.body;
 
       if (!targetId || typeof targetId !== "string") {
-        throw new AppError("targetId is required and must be a string", 400);
+        throw new AppError(SHARE_MESSAGES.TARGET_ID_REQUIRED, HttpStatus.BAD_REQUEST);
       }
 
       if (targetType !== "chat" && targetType !== "folder") {
-        throw new AppError("targetType must be either 'chat' or 'folder'", 400);
+        throw new AppError(SHARE_MESSAGES.TARGET_TYPE_INVALID, HttpStatus.BAD_REQUEST);
       }
 
       const data = await this.createLinkUseCase.execute({
@@ -37,7 +39,7 @@ export class ShareLinkController extends BaseController {
         behaviorSharingPolicy,
       });
 
-      this.sendSuccess(res, data, 201, "Shared link created successfully");
+      this.sendSuccess(res, data, HttpStatus.CREATED, SHARE_MESSAGES.LINK_CREATED);
     } catch (error) {
       this.sendError(res, error);
     }
@@ -49,12 +51,12 @@ export class ShareLinkController extends BaseController {
       const { chatId } = req.query;
 
       if (!token || typeof token !== "string") {
-        throw new AppError("token is required", 400);
+        throw new AppError(SHARE_MESSAGES.TOKEN_REQUIRED, HttpStatus.BAD_REQUEST);
       }
 
       const data = await this.resolveLinkUseCase.execute(token, chatId as string);
 
-      this.sendSuccess(res, data, 200, "Shared link resolved successfully");
+      this.sendSuccess(res, data, HttpStatus.OK, SHARE_MESSAGES.LINK_RESOLVED);
     } catch (error) {
       this.sendError(res, error);
     }
@@ -67,7 +69,7 @@ export class ShareLinkController extends BaseController {
       const { destinationFolderId } = req.body;
 
       if (!token || typeof token !== "string") {
-        throw new AppError("token is required", 400);
+        throw new AppError(SHARE_MESSAGES.TOKEN_REQUIRED, HttpStatus.BAD_REQUEST);
       }
 
       const result = await this.downloadSharedLinkUseCase.execute({
@@ -76,7 +78,7 @@ export class ShareLinkController extends BaseController {
         destinationFolderId: destinationFolderId || null
       });
 
-      this.sendSuccess(res, result, 200, "Shared contents imported successfully");
+      this.sendSuccess(res, result, HttpStatus.OK, SHARE_MESSAGES.CONTENTS_IMPORTED);
     } catch (error) {
       this.sendError(res, error);
     }

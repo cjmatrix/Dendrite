@@ -25,7 +25,7 @@ export function useTextSelection() {
 
       let messageId = "";
       let bubbleElement: HTMLElement | null = null;
-      let curr: any = sel?.anchorNode;
+      let curr: HTMLElement | null = sel?.anchorNode?.parentElement || null;
       while (curr && curr !== document.body) {
         if (curr.dataset?.messageId) {
           messageId = curr.dataset.messageId;

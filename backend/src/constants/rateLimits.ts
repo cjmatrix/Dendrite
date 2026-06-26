@@ -69,6 +69,18 @@ export const MODEL_TOKEN_LIMITS: Record<string, Record<UserTier, number>> = {
     enterprise: 2_000_000,
     byok: -1,
   },
+  "groq/llama-3.3-70b-versatile": {
+    free: 100_000,
+    pro: 500_000,
+    enterprise: 2_000_000,
+    byok: -1,
+  },
+  "groq/openai/gpt-oss-120b": {
+    free: 100_000,
+    pro: 500_000,
+    enterprise: 2_000_000,
+    byok: -1,
+  },
 };
 
 
@@ -107,7 +119,7 @@ export const DAILY_COUNT_LIMITS: Record<UserTier, CountLimits> = {
     p5Visualizations: 30,
     documentUploads: 20,
     agentWorkspaces: 10,
-    imageUploads: 30,
+    imageUploads: 3,
   },
   enterprise: {
     mainQueries: 1500,
@@ -129,5 +141,23 @@ export const DAILY_COUNT_LIMITS: Record<UserTier, CountLimits> = {
   },
 };
 
+export const UPLOAD_SIZE_LIMITS: Record<UserTier, { document: number; image: number }> = {
+  free: {
+    document: 5 * 1024 * 1024, // 5MB
+    image: 2 * 1024 * 1024,    // 2MB
+  },
+  pro: {
+    document: 20 * 1024 * 1024, // 20MB
+    image: 10 * 1024 * 1024,    // 10MB
+  },
+  enterprise: {
+    document: 100 * 1024 * 1024, // 100MB
+    image: 50 * 1024 * 1024,     // 50MB
+  },
+  byok: {
+    document: 100 * 1024 * 1024, // 100MB
+    image: 50 * 1024 * 1024,     // 50MB
+  },
+};
 
 export type CountLimitCategory = keyof CountLimits;

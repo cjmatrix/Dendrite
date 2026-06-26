@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { ArrowUp, StickyNote, Brain } from "lucide-react";
 import DendritesLogo from "../../../components/DendritesLogo";
 import { MessageContent } from "./MessageContent";
@@ -10,6 +10,53 @@ const clampText = (text: string, maxLines: number = 3) => {
   const clampedLines = lines.slice(0, maxLines).join("\n");
   return { clampedLines, isClamped, fullText: text };
 };
+
+function getRelativeYOfText(container: HTMLElement, searchText: string): number | null {
+  if (!searchText) return null;
+  const normalizedSearch = searchText.trim().toLowerCase().replace(/\s+/g, " ");
+  if (!normalizedSearch) return null;
+
+  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null);
+  let textNode = walker.nextNode();
+  while (textNode) {
+    const nodeText = textNode.textContent || "";
+    const normalizedNode = nodeText.toLowerCase().replace(/\s+/g, " ");
+    
+    const index = normalizedNode.indexOf(normalizedSearch);
+    if (index !== -1) {
+      try {
+        const range = document.createRange();
+        let rawIndex = nodeText.toLowerCase().indexOf(searchText.trim().toLowerCase());
+        if (rawIndex === -1) {
+          rawIndex = 0;
+        }
+        
+        range.setStart(textNode, rawIndex);
+        range.setEnd(textNode, Math.min(nodeText.length, rawIndex + searchText.length));
+        
+        const rangeRect = range.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
+        return rangeRect.top - containerRect.top;
+      } catch (e) {
+        console.error("Error calculating range rect", e);
+      }
+    }
+    textNode = walker.nextNode();
+  }
+
+  // Fallback: search HTML element hierarchy
+  const allElements = container.getElementsByTagName("*");
+  for (let i = 0; i < allElements.length; i++) {
+    const el = allElements[i] as HTMLElement;
+    if (el.innerText && el.innerText.toLowerCase().includes(searchText.toLowerCase())) {
+      const elRect = el.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
+      return elRect.top - containerRect.top;
+    }
+  }
+
+  return null;
+}
 
 interface MessageBubbleProps {
   msg: Message;
@@ -34,6 +81,39 @@ export const MessageBubble = React.memo(
     });
     const [isExpanded, setIsExpanded] = useState(false);
     const { clampedLines, isClamped, fullText } = clampText(msg.content, 3);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [resolvedYOffsets, setResolvedYOffsets] = useState<Record<string, number>>({});
+
+    useEffect(() => {
+      if (!containerRef.current || !msg.subChats || msg.subChats.length === 0) return;
+
+      const updateOffsets = () => {
+        if (!containerRef.current) return;
+        const newOffsets: Record<string, number> = {};
+        for (const sc of msg.subChats!) {
+          const calculatedY = getRelativeYOfText(containerRef.current, sc.highlightedText || "");
+          newOffsets[sc.subChatId] = calculatedY !== null ? calculatedY : sc.relY;
+        }
+        setResolvedYOffsets(newOffsets);
+      };
+
+      updateOffsets();
+
+      // Recalculate when container size changes (e.g., when sidebar is collapsed/expanded)
+      const observer = new ResizeObserver(() => {
+        updateOffsets();
+      });
+      observer.observe(containerRef.current);
+      
+      window.addEventListener("resize", updateOffsets);
+      const timer = setTimeout(updateOffsets, 100);
+
+      return () => {
+        observer.disconnect();
+        window.removeEventListener("resize", updateOffsets);
+        clearTimeout(timer);
+      };
+    }, [msg.subChats, isExpanded, msg.content]);
 
     return (
       <div
@@ -41,7 +121,7 @@ export const MessageBubble = React.memo(
         className={` flex w-full message-bubble-container group/bubble relative ${isUser ? "justify-end" : "justify-start"}`}
       >
         {isUser ? (
-          <div className="flex flex-col items-end max-w-[85%] md:max-w-[70%] relative">
+          <div ref={containerRef} className="flex flex-col items-end max-w-[85%] md:max-w-[70%] relative">
             <div className="flex items-center gap-2 mb-1.5 px-1">
               <span className="text-[12px] text-gray-500 font-medium">
                 {time}
@@ -113,7 +193,7 @@ export const MessageBubble = React.memo(
                   key={sc.subChatId}
                   onClick={() => onOpenSubChat(msg._id!, sc.subChatId)}
                   className="absolute left-full ml-4 p-1.5 rounded-lg bg-blue-600/20 border border-blue-500/30 text-blue-400 hover:bg-blue-600 hover:text-white transition-all group shadow-xl backdrop-blur-sm z-10"
-                  style={{ top: sc.relY }}
+                  style={{ top: resolvedYOffsets[sc.subChatId] ?? sc.relY }}
                   title="View sticky deep-dive"
                 >
                   <StickyNote
@@ -137,7 +217,7 @@ export const MessageBubble = React.memo(
           <div className="flex w-full gap-4 max-w-[95%] md:max-w-full group/bubble relative">
             <DendritesLogo className="mt-1 hidden sm:flex shrink-0" />
 
-            <div className="flex-1 flex flex-col min-w-0 relative">
+            <div ref={containerRef} className="flex-1 flex flex-col min-w-0 relative">
               <div className="flex items-center gap-2 mb-1.5">
                 <span className="text-[13px] font-semibold text-gray-200">
                   AI ASSISTANT
@@ -155,7 +235,7 @@ export const MessageBubble = React.memo(
                     key={sc.subChatId}
                     onClick={() => onOpenSubChat(msg._id!, sc.subChatId)}
                     className="absolute right-full mr-4 p-1.5 rounded-lg bg-blue-600/20 border border-blue-500/30 text-blue-400 hover:bg-blue-600 hover:text-white transition-all group shadow-xl backdrop-blur-sm z-10"
-                    style={{ top: sc.relY }}
+                    style={{ top: resolvedYOffsets[sc.subChatId] ?? sc.relY }}
                     title="View sticky deep-dive"
                   >
                     <StickyNote

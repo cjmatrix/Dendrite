@@ -1,14 +1,13 @@
 import { useState, useMemo, useRef } from "react";
 import { useGetSubscriptionStats } from "../hook/useGetSubscriptionStats";
 import type { SubscriptionStatsFilter } from "../hook/useGetSubscriptionStats";
-import { Calendar, TrendingUp, CreditCard, RefreshCw, Loader2 } from "lucide-react";
+import { TrendingUp, CreditCard, Loader2 } from "lucide-react";
 
-export function SubscriptionStatsCard() {
-  const [filter, setFilter] = useState<SubscriptionStatsFilter>({
-    timeframe: "30days",
-  });
-  const [customStartDate, setCustomStartDate] = useState("");
-  const [customEndDate, setCustomEndDate] = useState("");
+interface SubscriptionStatsCardProps {
+  filter: SubscriptionStatsFilter;
+}
+
+export function SubscriptionStatsCard({ filter }: SubscriptionStatsCardProps) {
   const [activeMetric, setActiveMetric] = useState<"revenue" | "transactions">("revenue");
   
   // Hover/Tooltip State
@@ -22,29 +21,7 @@ export function SubscriptionStatsCard() {
 
   const svgRef = useRef<SVGSVGElement>(null);
 
-  const { data, isLoading, isFetching, refetch } = useGetSubscriptionStats(filter);
-
-  const handleTimeframeChange = (timeframe: SubscriptionStatsFilter["timeframe"]) => {
-    if (timeframe === "custom") {
-      setFilter({
-        timeframe: "custom",
-        startDate: customStartDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-        endDate: customEndDate || new Date().toISOString().split("T")[0],
-      });
-    } else {
-      setFilter({ timeframe });
-    }
-  };
-
-  const handleApplyCustomDates = () => {
-    if (customStartDate && customEndDate) {
-      setFilter({
-        timeframe: "custom",
-        startDate: customStartDate,
-        endDate: customEndDate,
-      });
-    }
-  };
+  const { data, isLoading } = useGetSubscriptionStats(filter);
 
   // Chart Rendering Math
   const chartWidth = 800;
@@ -148,65 +125,6 @@ export function SubscriptionStatsCard() {
             Analyze paddle upgrades and revenue streams with dynamic date ranges.
           </p>
         </div>
-
-        {/* Filters Panel */}
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Timeframe Buttons */}
-          <div className="flex bg-zinc-900/60 border border-zinc-800 p-1 rounded-xl">
-            {(["7days", "30days", "12months", "custom"] as const).map((t) => (
-              <button
-                key={t}
-                onClick={() => handleTimeframeChange(t)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer ${
-                  filter.timeframe === t
-                    ? "bg-blue-600 text-white shadow-lg shadow-blue-600/10"
-                    : "text-zinc-400 hover:text-zinc-200"
-                }`}
-              >
-                {t === "7days" ? "7D" : t === "30days" ? "30D" : t === "12months" ? "12M" : "Custom"}
-              </button>
-            ))}
-          </div>
-
-          {/* Custom Date Picker (Visible when timeframe is 'custom') */}
-          {filter.timeframe === "custom" && (
-            <div className="flex items-center gap-2 bg-zinc-900/60 border border-zinc-800 p-1 px-2.5 rounded-xl text-xs">
-              <Calendar className="h-3.5 w-3.5 text-zinc-400" />
-              <input
-                type="date"
-                value={customStartDate}
-                onChange={(e) => setCustomStartDate(e.target.value)}
-                className="bg-transparent border-none text-zinc-300 outline-none w-24 [color-scheme:dark]"
-              />
-              <span className="text-zinc-500">to</span>
-              <input
-                type="date"
-                value={customEndDate}
-                onChange={(e) => setCustomEndDate(e.target.value)}
-                className="bg-transparent border-none text-zinc-300 outline-none w-24 [color-scheme:dark]"
-              />
-              <button
-                onClick={handleApplyCustomDates}
-                className="px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded font-medium cursor-pointer transition-colors"
-              >
-                Apply
-              </button>
-            </div>
-          )}
-
-          {/* Manual Refresh */}
-          <button
-            onClick={() => refetch()}
-            disabled={isLoading || isFetching}
-            className="p-2 bg-zinc-900/60 border border-zinc-800 hover:border-zinc-700 text-zinc-300 hover:text-white rounded-xl transition-all disabled:opacity-50 cursor-pointer"
-          >
-            {isFetching ? (
-              <Loader2 className="h-4 w-4 animate-spin text-zinc-400" />
-            ) : (
-              <RefreshCw className="h-4 w-4" />
-            )}
-          </button>
-        </div>
       </div>
 
       {/* Main content grid */}
@@ -268,7 +186,7 @@ export function SubscriptionStatsCard() {
           </div>
 
           {/* SVG Line Chart */}
-          <div className="bg-zinc-950/30 border border-zinc-900 rounded-2xl p-4 relative overflow-hidden">
+          <div className="bg-zinc-950/30 border border-zinc-900 rounded-2xl p-4 relative">
             {points.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-64 text-zinc-500 text-sm">
                 No checkout data found for this time period.

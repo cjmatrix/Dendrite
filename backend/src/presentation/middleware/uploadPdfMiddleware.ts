@@ -4,14 +4,29 @@ import fs from "fs";
 import { FileUploadService } from "../../services/FileUploadService";
 import { CHAT_MESSAGES } from "../constants/chatMessages";
 
-export const uploadPdfMiddleware = (req: Request, res: Response, next: NextFunction) => {
+import { container } from "tsyringe";
+import { IRateLimitService } from "../../application/common/ports/IRateLimitService";
+import { UserTier } from "../../constants/rateLimits";
+
+export const uploadPdfMiddleware = async (req: Request, res: Response, next: NextFunction) => {
   if (!req.headers["content-type"]?.includes("multipart/form-data")) {
     return res.status(400).json({ message: "Invalid content-type" });
   }
 
+  let docLimit = 50 * 1024 * 1024; 
+  try {
+    const userTier = (req.user?.tier || "free") as UserTier;
+    const rateLimitService = container.resolve<IRateLimitService>("IRateLimitService");
+    const uploadSizeLimits = await rateLimitService.getUploadSizeLimits();
+    docLimit = uploadSizeLimits[userTier]?.document ?? (5 * 1024 * 1024);
+  } catch (err) {
+    console.error("Error resolving upload size limit, falling back to free limit:", err);
+    docLimit = 5 * 1024 * 1024;
+  }
+
   const busboy = Busboy({
     headers: req.headers,
-    limits: { fileSize: 50 * 1024 * 1024 },
+    limits: { fileSize: docLimit },
   });
 
   let filePath = "";
@@ -54,8 +69,8 @@ export const uploadPdfMiddleware = (req: Request, res: Response, next: NextFunct
 
           writeStream.write(total);
           file.resume();
-        } catch (error: any) {
-          sendError(error.statusCode || 415, error.message);
+        } catch (error: unknown) {
+          sendError((error as { statusCode?: number }).statusCode || 415, (error as Error).message);
           file.resume();
           reject(error);
         }
@@ -104,12 +119,13 @@ export const uploadPdfMiddleware = (req: Request, res: Response, next: NextFunct
       req.file = {
         path: filePath,
         originalname: fileName || "document",
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any;
 
       next();
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (filePath && fs.existsSync(filePath)) fs.unlinkSync(filePath);
-      sendError(error.statusCode || 500, error.message || CHAT_MESSAGES.FAILED_TO_QUEUE);
+      sendError((error as { statusCode?: number }).statusCode || 500, (error as Error).message || CHAT_MESSAGES.FAILED_TO_QUEUE);
     }
   });
 

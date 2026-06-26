@@ -12,11 +12,11 @@ export class MongoMessageRepository
   }
 
   async findMessages(
-    query: any,
+    query: Record<string, unknown>,
     limit: number,
     cursor?: string | null,
   ): Promise<IMessage[]> {
-    const dbQuery: any = { ...query };
+    const dbQuery: Record<string, unknown> = { ...query };
     if (cursor) {
       dbQuery._id = { $lt: cursor };
     }
@@ -25,16 +25,21 @@ export class MongoMessageRepository
       .sort({ _id: -1 })
       .limit(limit)
       .lean();
-    return docs.map((doc: any) => this.mapToDomain(doc));
+    return docs.map((doc) => this.mapToDomain(doc));
   }
 
-  async createMany(messagesData: any[], options?: any): Promise<IMessage[]> {
+  async createMany(
+    messagesData: Partial<IMessage>[],
+    options?: { session?: unknown },
+  ): Promise<IMessage[]> {
     const activeSession = (options && options.session) || this.getSession();
     const finalOptions = activeSession
-      ? { session: activeSession, ...options }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ? { session: activeSession as any, ...options }
       : options;
-    const docs = await this.model.insertMany(messagesData, finalOptions) as any;
-    return docs.map((doc: any) =>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const docs = await this.model.insertMany(messagesData, finalOptions as any) as unknown as { toObject?: () => Record<string, unknown> }[];
+    return docs.map((doc) =>
       this.mapToDomain(doc.toObject ? doc.toObject() : doc),
     );
   }
@@ -42,7 +47,7 @@ export class MongoMessageRepository
   async findRecentByChatId(
     chatId: string,
     limit: number,
-    options?: any,
+    options?: { session?: unknown },
   ): Promise<IMessage[]> {
     let query = this.model
       .find({ chatId })
@@ -50,17 +55,17 @@ export class MongoMessageRepository
       .limit(limit);
     const activeSession = (options && options.session) || this.getSession();
     if (activeSession) {
-      query = query.session(activeSession);
+      query = query.session(activeSession as import("mongoose").ClientSession);
     }
     const docs = await query.lean();
-    return docs.map((doc: any) => this.mapToDomain(doc));
+    return docs.map((doc) => this.mapToDomain(doc));
   }
 
-  async countByChatId(chatId: string, options?: any): Promise<number> {
+  async countByChatId(chatId: string, options?: { session?: unknown }): Promise<number> {
     let query = this.model.countDocuments({ chatId });
     const activeSession = (options && options.session) || this.getSession();
     if (activeSession) {
-      query = query.session(activeSession);
+      query = query.session(activeSession as import("mongoose").ClientSession);
     }
     return query.exec();
   }
@@ -78,7 +83,7 @@ export class MongoMessageRepository
       .sort({ createdAt: -1 })
       .limit(limit)
       .lean();
-    return docs.map((doc: any) => this.mapToDomain(doc));
+    return docs.map((doc) => this.mapToDomain(doc));
   }
 
   async findByIdsAndDelete(chatId: string, userId: string): Promise<void> {
@@ -90,7 +95,7 @@ export class MongoMessageRepository
       .find({ chatId })
       .sort({ createdAt: 1 })
       .lean();
-    return docs.map((doc: any) => this.mapToDomain(doc));
+    return docs.map((doc) => this.mapToDomain(doc));
   }
 
   async findAllByChatIds(chatIds: string[]): Promise<IMessage[]> {
@@ -98,6 +103,6 @@ export class MongoMessageRepository
       .find({ chatId: { $in: chatIds } })
       .sort({ createdAt: 1 })
       .lean();
-    return docs.map((doc: any) => this.mapToDomain(doc));
+    return docs.map((doc) => this.mapToDomain(doc));
   }
 }

@@ -11,6 +11,8 @@ import {
   IClearAllCardsUseCase,
   ICountDueCardsUseCase,
 } from "../../application/recall/use-cases/interfaces";
+import { HttpStatus } from "../constants/httpStatus";
+import { RECALL_MESSAGES } from "../constants/recallMessages";
 
 @injectable()
 export class RecallController extends BaseController {
@@ -42,7 +44,7 @@ export class RecallController extends BaseController {
       }
 
       if (!content) {
-        throw new AppError("Card content is required", 400);
+        throw new AppError(RECALL_MESSAGES.CONTENT_REQUIRED, HttpStatus.BAD_REQUEST);
       }
 
       const result = await this.createCardUseCase.execute(
@@ -51,7 +53,7 @@ export class RecallController extends BaseController {
         chatId,
       );
 
-      this.sendSuccess(res, result, 201, "Card created successfully");
+      this.sendSuccess(res, result, HttpStatus.CREATED, RECALL_MESSAGES.CARD_CREATED);
     } catch (error) {
       this.sendError(res, error);
     }
@@ -64,12 +66,12 @@ export class RecallController extends BaseController {
       const { rating } = req.body;
 
       if (rating === undefined) {
-        throw new AppError("Rating is required", 400);
+        throw new AppError(RECALL_MESSAGES.RATING_REQUIRED, HttpStatus.BAD_REQUEST);
       }
 
       const parsedRating = parseInt(rating, 10);
       if (isNaN(parsedRating) || parsedRating < 0 || parsedRating > 5) {
-        throw new AppError("Rating must be a number between 0 and 5", 400);
+        throw new AppError(RECALL_MESSAGES.RATING_INVALID, HttpStatus.BAD_REQUEST);
       }
 
       const result = await this.updateCardUseCase.execute(
@@ -78,7 +80,7 @@ export class RecallController extends BaseController {
         parsedRating,
       );
 
-      this.sendSuccess(res, result, 200, "Card updated successfully");
+      this.sendSuccess(res, result, HttpStatus.OK, RECALL_MESSAGES.CARD_UPDATED);
     } catch (error) {
       this.sendError(res, error);
     }
@@ -103,7 +105,7 @@ export class RecallController extends BaseController {
 
       await this.deleteCardUseCase.execute(userId, cardId);
 
-      this.sendSuccess(res, null, 200, "Card deleted successfully");
+      this.sendSuccess(res, null, HttpStatus.OK, RECALL_MESSAGES.CARD_DELETED);
     } catch (error) {
       this.sendError(res, error);
     }
@@ -115,7 +117,7 @@ export class RecallController extends BaseController {
 
       await this.clearAllCardsUseCase.execute(userId);
 
-      this.sendSuccess(res, null, 200, "All cards cleared successfully");
+      this.sendSuccess(res, null, HttpStatus.OK, RECALL_MESSAGES.ALL_CLEARED);
     } catch (error) {
       this.sendError(res, error);
     }

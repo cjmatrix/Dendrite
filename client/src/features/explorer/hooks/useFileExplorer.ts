@@ -5,6 +5,8 @@ import { useEffect } from "react";
 import { useAppDispatch } from "../../../store/store";
 import { setTree } from "../store/explorerSlice";
 import type { FileNode } from "../types/types";
+import type { Folder } from "../types/Folder";
+import type { Chat } from "../../chat/types/Chat";
 
 
 import { useParams } from "react-router-dom";
@@ -105,11 +107,11 @@ export function useExplorerMutations() {
     onMutate: async ({ name, parentId }) => {
       await queryClient.cancelQueries({ queryKey: ["folders"] });
       const previous = queryClient.getQueryData(["folders"]);
-      queryClient.setQueryData(["folders"], (old: any[]) => {
+      queryClient.setQueryData(["folders"], (old: Folder[] | undefined) => {
         if (!old) return old;
-        const temp = { id: `temp-${Date.now()}`, name, type: "folder", parentId, children: [], isExpanded: false };
-        const addChild = (nodes: any[]): any[] =>
-          nodes.map((n: any) =>
+        const temp: Folder = { id: `temp-${Date.now()}`, name, type: "folder", parentId, children: [], isExpanded: false };
+        const addChild = (nodes: Folder[]): Folder[] =>
+          nodes.map((n) =>
             n.id === parentId
               ? { ...n, children: [...(n.children || []), temp] }
               : { ...n, children: n.children ? addChild(n.children) : [] },
@@ -131,16 +133,10 @@ export function useExplorerMutations() {
     onMutate: async ({ title, folderId, type }) => {
       await queryClient.cancelQueries({ queryKey: ["chats"] });
       const previous = queryClient.getQueryData(["chats"]);
-      queryClient.setQueryData(["chats"], (old: any[]) => {
+      queryClient.setQueryData(["chats"], (old: Chat[] | undefined) => {
         if (!old) return old;
-        const temp = { _id: `temp-${Date.now()}`, title, folderId, type: type || "normal" };
-        const addChild = (nodes: any[]): any[] =>
-          nodes.map((n: any) =>
-            n.id === folderId
-              ? { ...n, children: [...(n.children || []), temp] }
-              : { ...n, children: n.children ? addChild(n.children) : [] },
-          );
-        return folderId ? addChild(old) : [...old, temp];
+        const temp: Chat = { _id: `temp-${Date.now()}`, title, folderId: folderId || undefined, type: (type as "normal" | "agent") || "normal" };
+        return [...old, temp];
       });
       return { previous };
     },

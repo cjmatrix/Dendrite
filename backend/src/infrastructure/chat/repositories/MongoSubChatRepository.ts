@@ -13,7 +13,7 @@ export class MongoSubChatRepository
   }
 
   async findByAnchorMessageIdsAndChatId(
-    anchorMessageIds: any[],
+    anchorMessageIds: string[],
     chatId: string,
     userId: string,
   ): Promise<ISubChat[]> {
@@ -23,9 +23,9 @@ export class MongoSubChatRepository
         chatId: new mongoose.Types.ObjectId(chatId),
         userId: new mongoose.Types.ObjectId(userId),
       })
-      .select("anchorMessageId relativeY")
+      .select("anchorMessageId relativeY highlightedText")
       .lean();
-    return docs.map((doc: any) => this.mapToDomain(doc));
+    return docs.map((doc) => this.mapToDomain(doc));
   }
 
   async findByIdAndUserId(
@@ -46,7 +46,7 @@ export class MongoSubChatRepository
   async update(
     subChatId: string,
     userId: string,
-    updates: any,
+    updates: Partial<ISubChat>,
   ): Promise<ISubChat | null> {
     const doc = await this.model
       .findOneAndUpdate({ _id: subChatId, userId }, updates, { new: true })

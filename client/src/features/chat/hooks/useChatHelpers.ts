@@ -1,17 +1,18 @@
 import { useMemo } from "react";
-import type { Message } from "../types/Message";
+import type { InfiniteData } from "@tanstack/react-query";
+import type { Message, MessagePage } from "../types/Message";
 import type { FileNode } from "../../explorer/types/types";
 
 
 
 //flattens paginated infinite query data into a flat message
 
-export function useFlattenedMessages(messagesData: any) {
+export function useFlattenedMessages(messagesData: InfiniteData<MessagePage> | undefined) {
   return useMemo(() => {
     if (!messagesData) return { messages: [] as Message[], firstItemIndex: 10000 };
 
     const allPagesReversed = [...messagesData.pages].reverse();
-    const mergedMessages: Message[] = allPagesReversed.flatMap((p: any) => p.messages);
+    const mergedMessages: Message[] = allPagesReversed.flatMap((p: MessagePage) => p.messages);
 
     let prepended = 0;
     for (let i = 1; i < messagesData.pages.length; i++) {

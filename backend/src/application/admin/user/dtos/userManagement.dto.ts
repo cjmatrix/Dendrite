@@ -157,6 +157,7 @@ export class UserManagementMapper {
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function sumFeatureTokens(tokenUsage: any, feature: string) {
   const result = { input: 0, output: 0, total: 0 };
   if (!tokenUsage) return result;

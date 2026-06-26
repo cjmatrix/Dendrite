@@ -11,11 +11,14 @@ import {
   QUICK_CHAT_MODEL,
 } from "../../constants/models";
 import { CHAT_MESSAGES } from "../constants/chatMessages";
+import { UserTier } from "../../constants/rateLimits";
+import { HttpStatus } from "../constants/httpStatus";
 import { logAIQuery } from "../../utils/logger";
 import { getTokenInfo, estimateTokenCount } from "../../utils/tokenCounter";
 import { documentProgressPubSub } from "../../services/documentProgressPubSub";
 import { ILogger } from "../../application/common/ports/ILogger";
 import { IAIService } from "../../application/common/ports/IAIService";
+import { IRateLimitService } from "../../application/common/ports/IRateLimitService";
 
 import { injectable, inject, container } from "tsyringe";
 import {
@@ -42,7 +45,7 @@ import {
 export class ChatController extends BaseController {
   private readonly upload = multer({
     storage: multer.memoryStorage(),
-    limits: { fileSize: 8 * 1024 * 1024 },
+    limits: { fileSize: 50 * 1024 * 1024 },
   });
 
   constructor(
@@ -77,6 +80,7 @@ export class ChatController extends BaseController {
     @inject("IAIService") private aiService: IAIService,
     @inject("IStreamAndSaveChatUseCase")
     private streamAndSaveChatUseCase: IStreamAndSaveChatUseCase,
+    @inject("IRateLimitService") private rateLimitService: IRateLimitService,
   ) {
     super();
   }
@@ -87,7 +91,7 @@ export class ChatController extends BaseController {
       const { title, folderId, type } = req.body;
 
       if (!title || typeof title !== "string") {
-        throw new AppError(CHAT_MESSAGES.TITLE_REQUIRED, 400);
+        throw new AppError(CHAT_MESSAGES.TITLE_REQUIRED, HttpStatus.BAD_REQUEST);
       }
 
       const data = await this.createChatUseCase.execute({
@@ -97,7 +101,7 @@ export class ChatController extends BaseController {
         type,
       });
 
-      this.sendSuccess(res, data, 201, CHAT_MESSAGES.CHAT_CREATED);
+      this.sendSuccess(res, data, HttpStatus.CREATED, CHAT_MESSAGES.CHAT_CREATED);
     } catch (error) {
       this.sendError(res, error);
     }
@@ -155,7 +159,7 @@ export class ChatController extends BaseController {
       const { title, folderId } = req.body;
 
       if (!title && folderId === undefined) {
-        throw new AppError(CHAT_MESSAGES.FIELDS_REQUIRED, 400);
+        throw new AppError(CHAT_MESSAGES.FIELDS_REQUIRED, HttpStatus.BAD_REQUEST);
       }
 
       const data = await this.updateChatUseCase.execute({
@@ -164,7 +168,7 @@ export class ChatController extends BaseController {
         title,
         folderId,
       });
-      this.sendSuccess(res, data, 200, CHAT_MESSAGES.CHAT_UPDATED);
+      this.sendSuccess(res, data, HttpStatus.OK, CHAT_MESSAGES.CHAT_UPDATED);
     } catch (error) {
       this.sendError(res, error);
     }
@@ -176,7 +180,7 @@ export class ChatController extends BaseController {
       const id = this.getRouteParam(req, "id");
 
       const data = await this.deleteChatUseCase.execute(id, userId);
-      this.sendSuccess(res, data, 200, CHAT_MESSAGES.CHAT_DELETED);
+      this.sendSuccess(res, data, HttpStatus.OK, CHAT_MESSAGES.CHAT_DELETED);
     } catch (error) {
       this.sendError(res, error);
     }
@@ -203,6 +207,16 @@ export class ChatController extends BaseController {
       const userId = this.validateUserAuth(req);
       const chatId = this.getRouteParam(req, "id");
       const input = this.normalizeInput(req.body);
+
+      const userTier = req.user?.tier || "free";
+      const requestedModel = input.model || DEFAULT_MODEL;
+      const modelOption = getModelOption(requestedModel);
+      if (modelOption && modelOption.tier === "paid" && userTier === "free") {
+        throw new AppError(
+          "Paid models from OpenRouter are locked on the Free plan. Please upgrade to Pro or Enterprise.",
+          HttpStatus.FORBIDDEN
+        );
+      }
 
       const messageContext = await this.prepareMessageUseCase.execute({
         chatId,
@@ -234,24 +248,29 @@ export class ChatController extends BaseController {
         if (chunk.type === "text") {
           res.write(`data: ${JSON.stringify({ text: chunk.value })}\n\n`);
         } else if (chunk.type === "metadata") {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const metaVal = chunk.value as Record<string, any>;
           res.write(
-            `data: ${JSON.stringify({ type: "metadata", ...chunk.value })}\n\n`,
+            `data: ${JSON.stringify({ type: "metadata", ...metaVal })}\n\n`,
           );
 
-          if (chunk.value.usage)
-            logAIQuery(chunk.value.originalMessage, chunk.value.usage);
+          if (metaVal.usage)
+            logAIQuery(metaVal.originalMessage, metaVal.usage);
         } else if (chunk.type === "error") {
-          res.write(`data: ${JSON.stringify({ text: chunk.value })}\n\n`);
+          res.write(
+            `data: ${JSON.stringify({ text: `\n\n**Error:** ${chunk.value}` })}\n\n`,
+          );
         }
       }
 
       res.write("data: [DONE]\n\n");
       res.end();
-    } catch (error: any) {
-      if (!res.headersSent) res.status(500);
+    } catch (error) {
+      this.logger.error("Error in sendMessage controller", error);
       res.write(
-        `data: ${JSON.stringify({ text: "Error: " + error.message })}\n\n`,
+        `data: ${JSON.stringify({ text: `\n\n**System Error:** ${(error as Error).message}` })}\n\n`,
       );
+      res.write("data: [DONE]\n\n");
       res.end();
     }
   };
@@ -262,7 +281,7 @@ export class ChatController extends BaseController {
   ): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
-      const userTier = req.user?.tier;
+      const userTier = req.user?.tier || "free";
       const chatId = req.params.id as string;
       const { anchorMessageId, highlightedText, quickChatHistory, model } =
         req.body;
@@ -271,11 +290,20 @@ export class ChatController extends BaseController {
       if (modelStr && modelStr.toUpperCase() === "DEFAULT") {
         modelStr = DEFAULT_MODEL;
       }
-      if (modelStr && !getModelOption(modelStr)) {
-        throw new AppError(
-          "Invalid model selected. The requested model is not supported.",
-          400,
-        );
+      if (modelStr) {
+        const modelOption = getModelOption(modelStr);
+        if (!modelOption) {
+          throw new AppError(
+            CHAT_MESSAGES.INVALID_MODEL,
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+        if (modelOption.tier === "paid" && userTier === "free") {
+          throw new AppError(
+            "Paid models from OpenRouter are locked on the Free plan. Please upgrade to Pro or Enterprise.",
+            HttpStatus.FORBIDDEN
+          );
+        }
       }
 
       res.setHeader("Content-Type", "text/event-stream");
@@ -298,14 +326,14 @@ export class ChatController extends BaseController {
           },
           abortController.signal
         );
-      } catch (error: any) {
-        if (error.statusCode === 429) {
+      } catch (error: unknown) {
+        if ((error as { statusCode?: number }).statusCode === HttpStatus.TOO_MANY_REQUESTS) {
           res.write(
-            `data: ${JSON.stringify({ text: "\n\n**Quota Exhausted:** " + error.message })}\n\n`,
+            `data: ${JSON.stringify({ text: "\n\n**Quota Exhausted:** " + (error as Error).message })}\n\n`,
           );
         } else {
           res.write(
-            `data: ${JSON.stringify({ text: "\n\n**System Error:** " + error.message })}\n\n`,
+            `data: ${JSON.stringify({ text: "\n\n**System Error:** " + (error as Error).message })}\n\n`,
           );
         }
         res.write("data: [DONE]\n\n");
@@ -326,14 +354,14 @@ export class ChatController extends BaseController {
 
       res.write("data: [DONE]\n\n");
       res.end();
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (!res.headersSent) {
         res.setHeader("Content-Type", "text/event-stream");
         res.setHeader("Cache-Control", "no-cache");
         res.setHeader("Connection", "keep-alive");
       }
       res.write(
-        `data: ${JSON.stringify({ text: "\n\n**System Error:** " + error.message })}\n\n`,
+        `data: ${JSON.stringify({ text: "\n\n**System Error:** " + (error as Error).message })}\n\n`,
       );
       res.write("data: [DONE]\n\n");
       res.end();
@@ -347,7 +375,7 @@ export class ChatController extends BaseController {
       const subChatId = this.getQueryParam(req, "subChatId");
 
       if (!subChatId) {
-        throw new AppError(CHAT_MESSAGES.SUBCHAT_ID_REQUIRED, 400);
+        throw new AppError(CHAT_MESSAGES.SUBCHAT_ID_REQUIRED, HttpStatus.BAD_REQUEST);
       }
 
       const subChat = await this.getSubChatUseCase.execute(
@@ -374,7 +402,7 @@ export class ChatController extends BaseController {
       } = req.body;
 
       if (!anchorMessageId) {
-        throw new AppError(CHAT_MESSAGES.SUBCHAT_ANCHOR_REQUIRED, 400);
+        throw new AppError(CHAT_MESSAGES.SUBCHAT_ANCHOR_REQUIRED, HttpStatus.BAD_REQUEST);
       }
 
       const subChat = await this.saveSubChatUseCase.execute({
@@ -387,7 +415,7 @@ export class ChatController extends BaseController {
         relativeY,
       });
 
-      this.sendSuccess(res, subChat, 201, CHAT_MESSAGES.SUBCHAT_SAVED);
+      this.sendSuccess(res, subChat, HttpStatus.CREATED, CHAT_MESSAGES.SUBCHAT_SAVED);
     } catch (error) {
       this.sendError(res, error);
     }
@@ -406,15 +434,23 @@ export class ChatController extends BaseController {
       const chatId = req.body.chatId;
 
       if (!chatId || typeof chatId !== "string") {
-        throw new AppError(CHAT_MESSAGES.CHAT_ID_REQUIRED, 400);
+        throw new AppError(CHAT_MESSAGES.CHAT_ID_REQUIRED, HttpStatus.BAD_REQUEST);
       }
 
       if (!req.file) {
-        throw new AppError(CHAT_MESSAGES.IMAGE_REQUIRED, 400);
+        throw new AppError(CHAT_MESSAGES.IMAGE_REQUIRED, HttpStatus.BAD_REQUEST);
       }
 
       if (!req.file.mimetype.startsWith("image/")) {
-        throw new AppError(CHAT_MESSAGES.ONLY_IMAGES_ALLOWED, 400);
+        throw new AppError(CHAT_MESSAGES.ONLY_IMAGES_ALLOWED, HttpStatus.BAD_REQUEST);
+      }
+
+      const userTier = (req.user?.tier || "free") as UserTier;
+      const uploadSizeLimits = await this.rateLimitService.getUploadSizeLimits();
+      const imageLimit = uploadSizeLimits[userTier]?.image ?? (2 * 1024 * 1024);
+
+      if (req.file.size > imageLimit) {
+        throw new AppError(CHAT_MESSAGES.FILE_EXCEEDS_LIMIT, HttpStatus.PAYLOAD_TOO_LARGE);
       }
 
       const result = await this.uploadChatImageUseCase.execute({
@@ -426,7 +462,7 @@ export class ChatController extends BaseController {
         },
       });
 
-      this.sendSuccess(res, result, 201, CHAT_MESSAGES.IMAGE_UPLOADED);
+      this.sendSuccess(res, result, HttpStatus.CREATED, CHAT_MESSAGES.IMAGE_UPLOADED);
     } catch (error) {
       this.sendError(res, error);
     }
@@ -438,7 +474,7 @@ export class ChatController extends BaseController {
       const chatId = this.getRouteParam(req, "id");
 
       if (!req.file) {
-        throw new AppError(CHAT_MESSAGES.NO_FILE_UPLOADED, 400);
+        throw new AppError(CHAT_MESSAGES.NO_FILE_UPLOADED, HttpStatus.BAD_REQUEST);
       }
 
       const result = await this.uploadDocumentUseCase.execute({
@@ -448,7 +484,7 @@ export class ChatController extends BaseController {
         fileName: req.file.originalname,
       });
 
-      this.sendSuccess(res, result, 202);
+      this.sendSuccess(res, result, HttpStatus.ACCEPTED);
     } catch (error) {
       if (req.file?.path && fs.existsSync(req.file.path)) {
         fs.unlinkSync(req.file.path);
@@ -586,7 +622,7 @@ export class ChatController extends BaseController {
       const { fileUrl } = req.body;
 
       if (!fileUrl || typeof fileUrl !== "string") {
-        throw new AppError(CHAT_MESSAGES.FILE_URL_REQUIRED, 400);
+        throw new AppError(CHAT_MESSAGES.FILE_URL_REQUIRED, HttpStatus.BAD_REQUEST);
       }
 
       const data = await this.removeDocumentUseCase.execute({
@@ -600,6 +636,7 @@ export class ChatController extends BaseController {
     }
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private normalizeInput(body: any) {
     const { message, mode, model, imageUrl, fileUrl, fileName } = body;
     const normalizedMessage = typeof message === "string" ? message.trim() : "";
@@ -610,7 +647,7 @@ export class ChatController extends BaseController {
       typeof fileName === "string" ? fileName.trim() : "";
 
     if (!normalizedMessage && !normalizedImageUrl && !normalizedFileUrl) {
-      throw new AppError(CHAT_MESSAGES.INPUT_REQUIRED, 400);
+      throw new AppError(CHAT_MESSAGES.INPUT_REQUIRED, HttpStatus.BAD_REQUEST);
     }
 
     const queryText =
@@ -624,8 +661,8 @@ export class ChatController extends BaseController {
     }
     if (modelStr && !getModelOption(modelStr)) {
       throw new AppError(
-        "Invalid model selected. The requested model is not supported.",
-        400,
+        CHAT_MESSAGES.INVALID_MODEL,
+        HttpStatus.BAD_REQUEST,
       );
     }
 
@@ -678,7 +715,7 @@ export class ChatController extends BaseController {
   //       "gemini-3-flash-preview",
   //       abortController.signal,
   //     );
-  //   } catch (error: any) {
+  //   } catch (error: unknown) {
   //     res.write(
   //       `data: ${JSON.stringify({ text: "\n\n**Quota Exhausted:** " + CHAT_MESSAGES.QUOTA_EXHAUSTED })}\n\n`,
   //     );

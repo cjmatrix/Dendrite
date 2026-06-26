@@ -12,6 +12,7 @@ export class GetUserRateLimitUsage implements IGetUserRateLimitUsageUseCase {
     @inject("IRateLimitService") private rateLimitService: IRateLimitService,
   ) {}
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async execute(targetUserId: string): Promise<any> {
     const user = await this.userRepo.findByIdSafe(targetUserId);
     if (!user) {

@@ -28,7 +28,7 @@ export class VoyageEmbeddingService implements IEmbeddingService {
       }
 
       const inputType = this.mapTaskType(taskType);
-      const bodyPayload: any = {
+      const bodyPayload: Record<string, unknown> = {
         model: this.model,
         input: [text],
         output_dimension: this.dimension
@@ -51,7 +51,7 @@ export class VoyageEmbeddingService implements IEmbeddingService {
         throw new Error(`Voyage AI API responded with status ${response.status}: ${errorText}`);
       }
 
-      const json = await response.json();
+      const json = await response.json() as { data?: { embedding?: number[] }[] };
       const embedding = json.data?.[0]?.embedding;
 
       if (!embedding) {
@@ -59,8 +59,8 @@ export class VoyageEmbeddingService implements IEmbeddingService {
       }
 
       return embedding;
-    } catch (error: any) {
-      console.error(" Voyage Embedding failed:", error.message);
+    } catch (error: unknown) {
+      console.error(" Voyage Embedding failed:", (error as Error).message);
       throw error;
     }
   }
@@ -79,7 +79,7 @@ export class VoyageEmbeddingService implements IEmbeddingService {
       for (let i = 0; i < texts.length; i += BATCH_SIZE) {
         const batchTexts = texts.slice(i, i + BATCH_SIZE);
         
-        const bodyPayload: any = {
+        const bodyPayload: Record<string, unknown> = {
           model: this.model,
           input: batchTexts,
           output_dimension: this.dimension
@@ -102,8 +102,8 @@ export class VoyageEmbeddingService implements IEmbeddingService {
           throw new Error(`Voyage AI API responded with status ${response.status}: ${errorText}`);
         }
 
-        const json = await response.json();
-        const batchEmbeddings = json.data?.map((item: any) => item.embedding) ?? [];
+        const json = await response.json() as { data?: { embedding?: number[] }[] };
+        const batchEmbeddings = json.data?.map((item) => item.embedding ?? []) ?? [];
 
         if (!batchEmbeddings || batchEmbeddings.length === 0) {
           throw new Error("No embeddings returned from Voyage AI API for batch");
@@ -113,8 +113,8 @@ export class VoyageEmbeddingService implements IEmbeddingService {
       }
 
       return allEmbeddings;
-    } catch (error: any) {
-      console.error(" Voyage Batch Embedding failed:", error.message);
+    } catch (error: unknown) {
+      console.error(" Voyage Batch Embedding failed:", (error as Error).message);
       throw error;
     }
   }

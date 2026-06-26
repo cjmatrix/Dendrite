@@ -11,8 +11,9 @@ export class UpdateRateLimit implements IUpdateRateLimitUseCase {
     @inject("ICacheService") private cacheService: ICacheService
   ) {}
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async execute(key: string, value: any): Promise<void> {
-    const allowedKeys = ["daily_count_limits", "model_token_limits", "default_model_token_limits"];
+    const allowedKeys = ["daily_count_limits", "model_token_limits", "default_model_token_limits", "upload_size_limits"];
     if (!allowedKeys.includes(key)) {
       throw new AppError("Invalid rate limit key", 400);
     }

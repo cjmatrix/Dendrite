@@ -95,6 +95,7 @@ export class AuthMapper {
     };
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   static toAuthOutput(user: any, accessToken: string, refreshToken: string): AuthOutputDTO {
     return {
       user: this.toUserOutput(user),
