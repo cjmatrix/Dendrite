@@ -29,8 +29,8 @@ export const FolderBehaviorModal: React.FC<FolderBehaviorModalProps> = ({
     if (behaviorData) {
       setContent(behaviorData.currentBehavior.current?.content || "");
       setHistory(behaviorData.currentBehavior.history.reverse() || []);
-      setInheritedBehavior(behaviorData.parentBehavior?.parentContent)
-      setInheritedFolderName(behaviorData.parentBehavior?.parentName)
+      setInheritedBehavior(behaviorData.parentBehavior?.parentContent ?? null)
+      setInheritedFolderName(behaviorData.parentBehavior?.parentName ?? null)
     } else {
       setContent("");
       setHistory([]);

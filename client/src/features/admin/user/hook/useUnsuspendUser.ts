@@ -34,7 +34,7 @@ export function useUnsuspendUser() {
             }
            
         },
-        onSettled: (_,__, userId) => {
+        onSettled: (_,__, _userId) => {
             // queryClient.invalidateQueries({ queryKey: ["users"] });
             // queryClient.invalidateQueries({ queryKey: ["user", userId] });
         },

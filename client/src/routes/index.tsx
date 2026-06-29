@@ -1,24 +1,28 @@
 import { createBrowserRouter } from "react-router-dom";
+import { lazy } from "react";
 import ProtectedRoute from "../components/ProtectedRoute";
 import AdminProtectedRoute from "../components/AdminProtectedRoute";
-import ChatPage from "../layouts/ChatPage";
-import AdminPage from "../layouts/AdminPage";
-import Login from "../features/auth/components/Login";
-import Signup from "../features/auth/components/Signup";
-import OtpPage from "../features/auth/components/OtpPage";
-import AdminLogin from "../features/auth/components/AdminLogin";
-import ResetPassword from "../features/auth/components/ResetPassword";
-import ChatWindow from "../features/chat/components/ChatWindow";
-import EmptyChatState from "../features/chat/components/EmptyChatState";
-import AdminDashboardPage from "../features/admin/dashboard/AdminDashboardPage";
-import { SystemHealthPage } from "../features/admin/dashboard/SystemHealthPage";
-import UserManagementPage from "../features/admin/user/UserManagementPage";
-import UserViewPage from "../features/admin/user/UserViewPage";
-import RateLimitManagementPage from "../features/admin/rate-limits/RateLimitManagementPage";
-import KnowledgeGraphPage from "../features/graph/components/KnowledgeGraphPage";
-import SplitFileViewer from "../features/chat/components/SplitFileViewer";
-import BillingPage from "../features/billing/components/BillingPage";
-import { DendritesLanding } from "../features/Landing/DendritesLanding";
+
+const ChatPage = lazy(() => import("../layouts/ChatPage"));
+const AdminPage = lazy(() => import("../layouts/AdminPage"));
+const Login = lazy(() => import("../features/auth/components/Login"));
+const Signup = lazy(() => import("../features/auth/components/Signup"));
+const OtpPage = lazy(() => import("../features/auth/components/OtpPage"));
+const AdminLogin = lazy(() => import("../features/auth/components/AdminLogin"));
+const ResetPassword = lazy(() => import("../features/auth/components/ResetPassword"));
+const ChatWindow = lazy(() => import("../features/chat/components/ChatWindow"));
+const EmptyChatState = lazy(() => import("../features/chat/components/EmptyChatState"));
+const AdminDashboardPage = lazy(() => import("../features/admin/dashboard/AdminDashboardPage"));
+const SystemHealthPage = lazy(() => import("../features/admin/dashboard/SystemHealthPage").then(module => ({ default: module.SystemHealthPage })));
+const UserManagementPage = lazy(() => import("../features/admin/user/UserManagementPage"));
+const UserViewPage = lazy(() => import("../features/admin/user/UserViewPage"));
+const RateLimitManagementPage = lazy(() => import("../features/admin/rate-limits/RateLimitManagementPage"));
+const FeedbackManagementPage = lazy(() => import("../features/admin/feedback/FeedbackManagementPage"));
+const KnowledgeGraphPage = lazy(() => import("../features/graph/components/KnowledgeGraphPage"));
+const SplitFileViewer = lazy(() => import("../features/chat/components/SplitFileViewer"));
+const BillingPage = lazy(() => import("../features/billing/components/BillingPage"));
+const DendritesLanding = lazy(() => import("../features/Landing/DendritesLanding").then(module => ({ default: module.DendritesLanding })));
+
 function SplitFileViewerWrapper() {
   const fileData = sessionStorage.getItem('splitViewFile');
   if (!fileData) {
@@ -74,6 +78,10 @@ export const router = createBrowserRouter([
           {
             path: "health",
             element: <SystemHealthPage />,
+          },
+          {
+            path: "feedback",
+            element: <FeedbackManagementPage />,
           },
         ],
       },

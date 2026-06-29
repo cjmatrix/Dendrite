@@ -58,9 +58,9 @@ export class SearchExplorerUseCase {
     const results: SearchResultItem[] = [];
 
 
-    const getBreadcrumbs = (itemFolderId: string | null): { id: string; name: string }[] => {
+    const getBreadcrumbs = (itemFolderId: unknown): { id: string; name: string }[] => {
       const breadcrumbs: { id: string; name: string }[] = [];
-      let currentId = itemFolderId;
+      let currentId = itemFolderId ? String(itemFolderId) : null;
       while (currentId && folderMap.has(currentId)) {
         const folder = folderMap.get(currentId)!;
         breadcrumbs.unshift({ id: folder._id, name: folder.name });
@@ -92,7 +92,8 @@ export class SearchExplorerUseCase {
     if (type === "all" || type === "chat" || type === "agent") {
       const allChats = await this.chatRepository.findAllByUserId(userId);
       allChats.forEach(chat => {
-        if (allowedFolderIds && (!chat.folderId || !allowedFolderIds.has(chat.folderId))) return;
+        const chatFolderIdStr = chat.folderId ? chat.folderId.toString() : null;
+        if (allowedFolderIds && (!chatFolderIdStr || !allowedFolderIds.has(chatFolderIdStr))) return;
         
         const chatType = chat.type === "agent" ? "agent" : "chat";
         if (type !== "all" && type !== chatType) return;
@@ -102,7 +103,7 @@ export class SearchExplorerUseCase {
           id: chat._id,
           name: chat.title,
           type: chatType,
-          parentId: chat.folderId,
+          parentId: chatFolderIdStr,
           breadcrumbs: getBreadcrumbs(chat.folderId),
           createdAt: chat.createdAt || new Date(),
         });

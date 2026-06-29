@@ -117,7 +117,7 @@ function ChatPage() {
   }
 
   return (
-    <div className="flex h-screen relative">
+    <div className="flex h-[100dvh] relative">
       <button
         onClick={() => setSidebarOpen(!sidebarOpen)}
         className="md:hidden fixed top-3 left-3 z-50 p-2 bg-(--theme-bg-surface) border border-zinc-800 rounded-lg text-gray-400 hover:text-white transition-colors"
@@ -134,7 +134,7 @@ function ChatPage() {
 
       <div
         className={`
-        fixed md:sticky md:top-0 md:h-screen md:self-start z-40
+        fixed md:sticky md:top-0 md:h-[100dvh] md:self-start z-40
         transition-transform duration-300 ease-in-out
         ${sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
       `}
@@ -151,7 +151,7 @@ function ChatPage() {
       )}
 
       {/* Main content */}
-      <div className="flex-1 min-w-0 overflow-y-auto h-screen custom-scrollbar">
+      <div className="flex-1 min-w-0 overflow-y-auto h-[100dvh] custom-scrollbar">
         <Outlet />
       </div>
       {/* Recall Page Overlay */}

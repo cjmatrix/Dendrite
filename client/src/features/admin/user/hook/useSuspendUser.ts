@@ -15,7 +15,7 @@ export function useSuspendUser(){
             return { userId, data: response.data };
         },
         onMutate: async ({ userId }) => {
-            if (!userId) return;
+            if (!userId) return { previousUser: undefined, previousQueries: undefined };
 
             await queryClient.cancelQueries({ queryKey: ["users"] });
             await queryClient.cancelQueries({ queryKey: ["user", userId] });
@@ -49,7 +49,7 @@ export function useSuspendUser(){
 
             return { previousUser, previousQueries };
         },
-        onError: (err, { userId }, context: { previousUser?: unknown; previousQueries?: [import("@tanstack/react-query").QueryKey, unknown][] } | undefined) => {
+        onError: (_err, { userId }, context: { previousUser?: unknown; previousQueries?: [import("@tanstack/react-query").QueryKey, unknown][] } | undefined) => {
             if (!userId) return;
             if (context?.previousUser) {
                 queryClient.setQueryData(["user", userId], context.previousUser);
@@ -60,7 +60,7 @@ export function useSuspendUser(){
                 });
             }
         },
-        onSettled: (data, error, { userId }) => {
+        onSettled: (_data, _error, { userId }) => {
             if (userId) {
                 queryClient.invalidateQueries({ queryKey: ["users"] });
                 queryClient.invalidateQueries({ queryKey: ["user", userId] });

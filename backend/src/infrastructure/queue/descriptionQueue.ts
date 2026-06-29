@@ -5,10 +5,17 @@ const descriptionQueue = new Queue("description-queue", {
   connection: redisConfig,
 });
 
-export default async function addDescriptionQueue(blocks: Record<string, unknown>[]) {
+export default async function addDescriptionQueue(
+  blocks: Record<string, unknown>[],
+) {
   await descriptionQueue.add(
     "process-desc",
     { blocks },
-    { attempts: 5, backoff: { type: "exponential", delay: 1000 } },
+    {
+      attempts: 5,
+      backoff: { type: "exponential", delay: 1000 },
+      removeOnComplete: { count: 10 },
+      removeOnFail:{count:50}
+    },
   );
 }

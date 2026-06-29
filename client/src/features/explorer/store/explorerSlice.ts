@@ -73,6 +73,21 @@ const explorerSlice = createSlice({
         JSON.stringify(state.isExpandedTracker),
       );
     },
+    collapseAllFolders: (state) => {
+      const newTracker: Record<string, boolean> = {};
+      const traverse = (node: FileNode) => {
+        if (node.type === "folder") {
+          newTracker[node.id] = false;
+          node.children?.forEach(traverse);
+        }
+      };
+      traverse(state.tree);
+      state.isExpandedTracker = newTracker;
+      localStorage.setItem(
+        "dendrites_expanded_folder",
+        JSON.stringify(newTracker),
+      );
+    },
   },
 });
 
@@ -83,5 +98,6 @@ export const {
   toggleRecallOverlay,
   setIsShareMode,
   setIsExpandedTracker,
+  collapseAllFolders,
 } = explorerSlice.actions;
 export default explorerSlice.reducer;

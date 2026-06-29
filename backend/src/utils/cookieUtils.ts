@@ -5,7 +5,7 @@ const isProduction = process.env.NODE_ENV === "production";
 export const cookieOptions = {
   httpOnly: true,
   secure: true,
-  sameSite: isProduction?"strict" as const:"none" as const,
+  sameSite: isProduction ? "lax" as const : "none" as const,
 };
 
 export const accessTokenMaxAge = Number(

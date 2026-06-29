@@ -41,7 +41,8 @@ export class AgentController {
       });
     } catch (error) {
       console.error(error);
-      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ error: AGENT_MESSAGES.EXECUTION_FAILED });
+      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
+      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ error: errorMessage });
     }
   }
 }

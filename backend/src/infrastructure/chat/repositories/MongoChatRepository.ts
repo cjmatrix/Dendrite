@@ -11,6 +11,18 @@ export class MongoChatRepository
     super(Chat);
   }
 
+  protected override mapToDomain(doc: Record<string, unknown>): IChat {
+    return {
+      ...doc,
+      _id: (doc._id as { toString(): string }).toString(),
+      userId: (doc.userId as { toString(): string }).toString(),
+      folderId: doc.folderId ? (doc.folderId as { toString(): string }).toString() : null,
+      documents: Array.isArray(doc.documents)
+        ? doc.documents.map((d) => String(d))
+        : [],
+    } as IChat;
+  }
+
   async findByUserId(userId: string): Promise<IChat[]> {
     const docs = await this.model
       .find({ userId })

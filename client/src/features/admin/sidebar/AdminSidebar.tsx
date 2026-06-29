@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, LogOut, Users, ShieldAlert, Activity } from "lucide-react";
+import { LayoutDashboard, LogOut, Users, ShieldAlert, Activity, MessageSquareHeart } from "lucide-react";
 import { useAdminLogout } from "../../auth/hooks/useAdminLogout";
 
 const navItems = [
@@ -23,6 +23,11 @@ const navItems = [
     to: "/admin/health",
     icon: Activity,
   },
+  {
+    label: "User Feedback",
+    to: "/admin/feedback",
+    icon: MessageSquareHeart,
+  },
 ];
 
 function AdminSidebar({ onClose }: { onClose?: () => void }) {
@@ -34,7 +39,7 @@ function AdminSidebar({ onClose }: { onClose?: () => void }) {
         <div className="w-10 h-10 rounded-xl bg-linear-to-br from-blue-600 to-indigo-700 flex items-center justify-center shadow-lg shadow-blue-500/30">
           <LayoutDashboard size={18} />
         </div>
-        <h1 className="text-lg font-semibold tracking-wide mt-4">Dendrites Admin</h1>
+        <h1 className="text-lg font-semibold tracking-wide mt-4">Nurons Admin</h1>
         <p className="text-xs text-zinc-400 mt-1">Management Console</p>
       </div>
       <nav className="flex-1 px-4 py-6 space-y-2">

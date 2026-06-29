@@ -18,6 +18,7 @@ export class QdrantVectorRepository implements IVectorRepository {
   ) {}
 
   async searchSimilarCode(
+    queryText: string,
     codeQueryVector: number[],
     descQueryVector: number[],
     userId: string,
@@ -38,33 +39,63 @@ export class QdrantVectorRepository implements IVectorRepository {
         ],
       };
 
+      const sparseVector = textToSparseVector(queryText);
+      const limitCandidates = Math.max(topK * 4, 20);
+
       const [codeResults, descriptionResults] = await Promise.all([
-        qdrantClient.search(COLLECTION_NAME, {
-          vector: { name: "code", vector: codeQueryVector },
-          limit: topK,
-          filter,
+        qdrantClient.query(COLLECTION_NAME, {
+          prefetch: [
+            {
+              using: "code",
+              query: codeQueryVector,
+              filter,
+              limit: limitCandidates,
+              score_threshold: 0.49,
+            },
+            {
+              using: "code-sparse",
+              query: sparseVector,
+              filter,
+              limit: limitCandidates,
+            },
+          ],
+          query: { rrf: { fusion: "rrf" } },
+          limit: limitCandidates,
           with_payload: true,
         }),
-        qdrantClient.search(COLLECTION_NAME, {
-          vector: { name: "description", vector: descQueryVector },
-          limit: topK,
-          filter,
+        qdrantClient.query(COLLECTION_NAME, {
+          prefetch: [
+            {
+              using: "description",
+              query: descQueryVector,
+              filter,
+              limit: limitCandidates,
+              score_threshold: 0.49,
+            },
+            {
+              using: "description-sparse",
+              query: sparseVector,
+              filter,
+              limit: limitCandidates,
+            },
+          ],
+          query: { rrf: { fusion: "rrf" } },
+          limit: limitCandidates,
           with_payload: true,
         }),
       ]);
 
       const scoreMap = new Map<string, { id: string | number; score: number; payload?: Record<string, unknown> | null }>();
 
-      for (const result of [...codeResults, ...descriptionResults]) {
+      for (const result of [...codeResults.points, ...descriptionResults.points]) {
         const id = String(result.id);
         const existing = scoreMap.get(id);
-        if (!existing || result.score > existing.score) {
+        if (!existing || (result.score ?? 0) > existing.score) {
           scoreMap.set(id, result as { id: string | number; score: number; payload?: Record<string, unknown> | null });
         }
       }
 
       const merged = Array.from(scoreMap.values())
-        .filter((r) => r.score >= SIMILARITY_THRESHOLD)
         .sort((a, b) => b.score - a.score)
         .slice(0, topK);
 
@@ -189,6 +220,14 @@ export class QdrantVectorRepository implements IVectorRepository {
     descriptionVector: number[],
     payload: Record<string, unknown>
   ): Promise<void> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const codeContent = (payload.content as any)?.code || "";
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const descriptionContent = (payload.content as any)?.description || "";
+
+    const codeSparse = textToSparseVector(codeContent);
+    const descriptionSparse = textToSparseVector(descriptionContent);
+
     await qdrantClient.upsert(COLLECTION_NAME, {
       points: [
         {
@@ -196,6 +235,8 @@ export class QdrantVectorRepository implements IVectorRepository {
           vector: {
             code: codeVector,
             description: descriptionVector,
+            "code-sparse": codeSparse,
+            "description-sparse": descriptionSparse,
           },
           payload,
         },

@@ -19,6 +19,7 @@ import {
   Brain,
   Search,
   ArrowUpRight,
+  MoreVertical,
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { setActiveSidebarRootId } from "../store/explorerSlice";
@@ -29,6 +30,7 @@ import { useFileItemMutations } from "../hooks/useFileItemMutations";
 import { FolderBehaviorModal } from "./FolderBehaviorModal";
 import { MoveItemModal } from "./MoveItemModal";
 import { ShareLinkModal } from "./ShareLinkModal";
+import { ActionModal } from "../../../components/common/ActionModal";
 
 interface FileItemProps {
   node: FileNode;
@@ -48,6 +50,7 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
   const [isBehaviorOpen, setIsBehaviorOpen] = useState(false);
   const [isMoveOpen, setIsMoveOpen] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [newItemName, setNewItemName] = useState("");
   const [renameItemName, setRenameItemName] = useState("");
   const navigate = useNavigate();
@@ -105,6 +108,7 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
     } else {
       deleteChat(node.id);
     }
+    setIsDeleteModalOpen(false);
   };
 
   const { token } = useParams<{ token?: string }>();
@@ -122,8 +126,10 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
     dispatch(setActiveSidebarRootId(node.id));
   };
 
+  const isPending = String(node.id).startsWith("temp-");
+
   const handleRowClick = () => {
-    if (isRenaming) return;
+    if (isRenaming || isPending) return;
     if (isFolder) {
       handleToggle();
       return;
@@ -139,8 +145,20 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (isShareMode) return;
-    setContextMenu({ x: e.clientX, y: e.clientY });
+    if (isShareMode || isPending) return;
+    const menuWidth = 192; 
+    const menuHeight = 380; 
+    const x = e.clientX + menuWidth > window.innerWidth ? Math.max(10, window.innerWidth - menuWidth - 10) : e.clientX;
+    const y = e.clientY + menuHeight > window.innerHeight ? Math.max(10, window.innerHeight - menuHeight - 10) : e.clientY;
+    setContextMenu({ x, y });
+  };
+
+  const handleThreeDotsClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isPending) return;
+   
+    setContextMenu({ x: Math.max(e.clientX - 200, 10), y: e.clientY });
   };
 
   useEffect(() => {
@@ -158,10 +176,12 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
       : "bg-zinc-800/80 border-black  font-medium "
     : "hover:bg-zinc-800/60 text-zinc-400 hover:text-zinc-100 border-transparent hover:border-white/5";
 
+  const pendingClass = isPending ? "opacity-50 pointer-events-none cursor-not-allowed select-none" : "";
+
   return (
     <div className="select-none relative" onContextMenu={handleContextMenu}>
       <div
-        className={`group/item flex w-full items-center justify-between py-1.25 px-2 mb-[1px] cursor-pointer rounded-lg transition-all duration-200 border ${selectedClass}`}
+        className={`group/item flex w-full items-center justify-between py-1.25 px-2 mb-[1px] cursor-pointer rounded-lg transition-all duration-200 border ${selectedClass} ${pendingClass}`}
         onClick={handleRowClick}
       >
         <div
@@ -352,7 +372,7 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
         )}
 
         {!isFolder && node.chatType !== "agent" && (
-          <div className="flex opacity-0 pointer-events-none group-hover/item:pointer-events-auto group-hover/item:opacity-100 items-center gap-0.5 transition-opacity duration-200">
+          <div className="flex opacity-100 pointer-events-auto lg:opacity-0 lg:pointer-events-none group-hover/item:pointer-events-auto group-hover/item:opacity-100 items-center gap-0.5 transition-opacity duration-200">
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -369,6 +389,17 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
             </button>
           </div>
         )}
+
+        {/* 3 Dots Context Menu for Touch / Smaller Screens */}
+        <div className="flex lg:hidden items-center opacity-70 hover:opacity-100 transition-opacity">
+          <button
+            onClick={handleThreeDotsClick}
+            className="p-1.5 text-zinc-500 hover:text-cyan-400 active:scale-95"
+            title="Options"
+          >
+            <MoreVertical size={16} strokeWidth={2.5} />
+          </button>
+        </div>
       </div>
 
       {isCreating && (
@@ -540,7 +571,7 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
                 onClick={(e) => {
                   e.stopPropagation();
                   setContextMenu(null);
-                  handleDelete();
+                  setIsDeleteModalOpen(true);
                 }}
               >
                 <Trash size={14} /> Delete
@@ -589,6 +620,15 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
           targetName={node.name}
         />
       )}
+      <ActionModal
+        isOpen={isDeleteModalOpen}
+        title={`Delete ${isFolder ? "Folder" : "Chat"}`}
+        description={`Are you sure you want to delete "${node.name}"? This action cannot be undone.`}
+        variant="warning"
+        confirmLabel="Delete"
+        onConfirm={handleDelete}
+        onCancel={() => setIsDeleteModalOpen(false)}
+      />
     </div>
   );
 });

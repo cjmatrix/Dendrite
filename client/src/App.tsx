@@ -1,5 +1,5 @@
 import { RouterProvider } from "react-router-dom";
-import { useEffect } from "react";
+import { useEffect, Suspense } from "react";
 import { useAppDispatch } from "./store/store";
 import { checkAuth, forceLogout, forceAdminLogout } from "./features/auth/store/authSlice";
 import { messaging } from "./lib/firebase";
@@ -76,8 +76,9 @@ function App() {
       fallback={<p>Something went wrong. Our team has been notified!</p>}
     >
      <Toaster />
-      <RouterProvider router={router} />
-      
+      <Suspense fallback={<div className="h-screen w-screen flex items-center justify-center bg-zinc-950"><div className="h-8 w-8 animate-spin rounded-full border-b-2 border-white"></div></div>}>
+        <RouterProvider router={router} />
+      </Suspense>
     </Sentry.ErrorBoundary>
      
     </>

@@ -1,15 +1,16 @@
 import { useRef, useState, useEffect } from "react";
-import { Plus, FolderPlus, MessageSquare, Check, Folder, ChevronLeft, Brain, Menu, LogOut, Settings, Download, Sparkles, Search } from "lucide-react";
+import { Plus, FolderPlus, FolderMinus, MessageSquare, Check, Folder, ChevronLeft, Brain, Menu, LogOut, Settings, Download, Crown, Search } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { SettingsModal } from "../../chat/components/SettingsModal";
 import toast from "react-hot-toast";
+import { useResizable } from "../../../hooks/useResizable";
 import { ImportSharedModal } from "./ImportSharedModal";
 import { SearchExplorerModal } from "./SearchExplorerModal";
 
-import type { FileType, FileNode } from "../types/types";
+import type { FileNode } from "../types/types";
 import { FileItem } from "./FileItem";
 import { useAppDispatch, useAppSelector } from "../../../store/store";
-import { setActiveSidebarRootId, toggleExplorerModal, toggleRecallOverlay } from "../store/explorerSlice";
+import { setActiveSidebarRootId, toggleExplorerModal, toggleRecallOverlay, collapseAllFolders } from "../store/explorerSlice";
 import DendritesLogo from "../../../components/DendritesLogo";
 import { logout } from "../../auth/store/authSlice";
 
@@ -57,39 +58,25 @@ export default function FileExplorer() {
   }, []);
 
 
-  const [width, setWidth] = useState(380);
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
+
+  const {
+    width,
+    isResizing,
+    startResizing: triggerStartResizing,
+  } = useResizable({
+    initialWidth: 380,
+    minWidth: 150,
+    maxWidth: 1280,
+    direction: "right",
+    containerRef: sidebarRef,
+  });
 
   const startResizing = (e: React.MouseEvent) => {
     if (isCollapsed) return;
-    e.preventDefault();
-    setIsResizing(true);
+    triggerStartResizing(e);
   };
-  const resize = (e: MouseEvent) => {
-    if (isResizing && sidebarRef.current && !isCollapsed) {
-      const newWidth = e.clientX - sidebarRef.current.getBoundingClientRect().left;
-      if (newWidth > 150 && newWidth < 1280) setWidth(newWidth);
-    }
-  };
-  const stopResizing = () => setIsResizing(false);
-
-
-
-  useEffect(() => {
-    if (isResizing) {
-      window.addEventListener("mousemove", resize);
-      window.addEventListener("mouseup", stopResizing);
-    } else {
-      window.removeEventListener("mousemove", resize);
-      window.removeEventListener("mouseup", stopResizing);
-    }
-    return () => {
-      window.removeEventListener("mousemove", resize);
-      window.removeEventListener("mouseup", stopResizing);
-    };
-  }, [isResizing]);
 
 
 
@@ -150,13 +137,17 @@ export default function FileExplorer() {
   const handleBlankContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
     if (isShareMode) return;
-    setBlankContextMenu({ x: e.clientX, y: e.clientY });
+    const menuWidth = 192; 
+    const menuHeight = 130; 
+    const x = e.clientX + menuWidth > window.innerWidth ? Math.max(10, window.innerWidth - menuWidth - 10) : e.clientX;
+    const y = e.clientY + menuHeight > window.innerHeight ? Math.max(10, window.innerHeight - menuHeight - 10) : e.clientY;
+    setBlankContextMenu({ x, y });
   };
 
   return (
     <div className=" flex ">
       <div
-        className="relative h-[100vh] z-40 flex flex-col items-center bg-neutral-950/40 border-r border-zinc-900 pt-3 gap-3"
+        className="relative h-[100dvh] z-40 flex flex-col items-center bg-neutral-950/40 border-r border-zinc-900 pt-3 gap-3"
         style={{ width: 50 }}
       >
         <button
@@ -170,10 +161,10 @@ export default function FileExplorer() {
         {!isShareMode && (
           <button
             onClick={() => navigate("/billing")}
-            className="w-8 h-8 rounded-lg text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95"
-            title="Upgrade Plan"
+            className="w-8 h-8 rounded-lg text-zinc-400 hover:text-zinc-205 flex items-center justify-center hover:bg-zinc-800/40 transition-colors"
+            title={user?.tier && user.tier !== "free" ? "Manage Subscription" : "Upgrade Plan"}
           >
-            <Sparkles size={16} className="animate-pulse" />
+            <Crown size={16} className=" text-amber-300" />
           </button>
         )}
 
@@ -216,7 +207,7 @@ export default function FileExplorer() {
       <div
         ref={sidebarRef}
         style={{ width: `${isCollapsed ? 0 : width}px` }}
-        className={`relative h-screen bg-neutral-950/40 shrink-0 flex flex-col pt-0 z-20 backdrop-blur-3xl ${
+        className={`relative h-[100dvh] bg-neutral-950/40 shrink-0 flex flex-col pt-0 z-20 backdrop-blur-3xl ${
           isResizing ? "" : "transition-all duration-500"
         } ${
           isAgentPending 
@@ -227,10 +218,10 @@ export default function FileExplorer() {
         {!isCollapsed && (
           <>
             {/* Logo */}
-            <div className="h-14 flex items-center gap-2.5 px-5 py-4 border-b border-zinc-800/40 bg-zinc-900/20 backdrop-blur-md">
+            <div className="h-13 flex items-center gap-2.5 px-5 py-4 border-b border-zinc-800/40 bg-zinc-900/20 backdrop-blur-md">
               <DendritesLogo size={28} />
               <span className="text-[18px] font-black tracking-tight bg-clip-text text-transparent bg-linear-to-r from-neutral-200 to-sky-200/40 drop-shadow-sm select-none">
-                Dendrites
+                Nurons
               </span>
             </div>
 
@@ -274,6 +265,14 @@ export default function FileExplorer() {
                     title="New Folder"
                   >
                     <FolderPlus size={14} strokeWidth={2.5} />
+                  </button>
+                  <div className="w-px h-3.5 bg-zinc-700/50 mx-0.5"></div>
+                  <button
+                    onClick={() => dispatch(collapseAllFolders())}
+                    className="p-1.5 text-zinc-400 hover:text-cyan-400 hover:bg-zinc-800 rounded-md transition-all active:scale-95"
+                    title="Collapse All Folders"
+                  >
+                    <FolderMinus size={14} strokeWidth={2.5} />
                   </button>
                 </div>
               )}
@@ -369,10 +368,10 @@ export default function FileExplorer() {
                 <>
                   <button
                     onClick={() => navigate("/billing")}
-                    className="group w-full flex items-center justify-center gap-2 py-2 px-3 mb-2 rounded-xl bg-linear-to-r from-amber-500/20 to-amber-600/10 hover:from-amber-500/30 hover:to-amber-600/20 text-amber-400 hover:text-amber-300 transition-all border border-amber-500/20 hover:border-amber-400/50 text-[12px] font-bold shadow-[0_4px_20px_-10px_rgba(245,158,11,0.2)] active:scale-[0.98]"
+                    className="group w-full flex items-center justify-center gap-2 py-2 px-3 mb-2 rounded-xl bg-zinc-800 hover:bg-zinc-800/80 text-zinc-300 hover:text-zinc-100 transition-all border border-zinc-800/60 hover:border-zinc-700 text-[12px] font-bold active:scale-[0.98]"
                   >
-                    <Sparkles size={14} className="text-amber-400 animate-pulse" />
-                    {user?.tier && user.tier !== "free" ? "Manage Plan" : "Upgrade Plan"}
+                    <Crown size={14} className="text-amber-300 group-hover:text-zinc-205 transition-colors" />
+                    {user?.tier && user.tier !== "free" ? "Manage Subscription" : "Upgrade Plan"}
                   </button>
                   <button
                     onClick={() => dispatch(toggleRecallOverlay(true))}

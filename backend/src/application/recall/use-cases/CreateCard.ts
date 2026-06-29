@@ -13,7 +13,7 @@ export class CreateCard implements ICreateCardUseCase {
   ) {}
 
   async execute(userId: string, content: string, chatId: string) {
-    const nextReview = new Date(Date.now() + 60000); 
+    const nextReview = new Date(Date.now() + 5000); 
 
     const recall = await this.recallRepository.create({
       userId,

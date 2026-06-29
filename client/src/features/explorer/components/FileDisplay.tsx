@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../../../store/store';
 import { Folder, MessageSquare, ChevronRight, MessageCircle, FolderPlus, Edit, Trash, Check, Sparkles, Brain, Component, Database, Cpu, X, Move } from 'lucide-react';
-import type { FileNode, FileType } from '../types/types';
+import type { FileNode } from '../types/types';
 import { setActiveSidebarRootId, toggleExplorerModal } from '../store/explorerSlice';
 
 
 import { useFileItemMutations } from '../hooks/useFileItemMutations';
 import { useFileDisplayTree } from '../hooks/useFileDisplayTree';
 import { MoveItemModal } from './MoveItemModal';
+import { ActionModal } from '../../../components/common/ActionModal';
 
 export default function FileDisplay({
   isModal = false,
@@ -54,6 +55,8 @@ export default function FileDisplay({
   const [renameItemName, setRenameItemName] = useState("");
   const [isMoveOpen, setIsMoveOpen] = useState(false);
   const [itemToMove, setItemToMove] = useState<FileNode | null>(null);
+  const [showAllCrumbs, setShowAllCrumbs] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<FileNode | null>(null);
 
 
   const handleCreate = () => {
@@ -84,25 +87,33 @@ export default function FileDisplay({
   };
 
   const handleDelete = () => {
-    if (contextMenu?.node) {
-      if (contextMenu.node.type === "folder") {
-        deleteFolder(contextMenu.node.id);
+    if (itemToDelete) {
+      if (itemToDelete.type === "folder") {
+        deleteFolder(itemToDelete.id);
       } else {
-        deleteChat(contextMenu.node.id);
+        deleteChat(itemToDelete.id);
       }
     }
-    setContextMenu(null);
+    setItemToDelete(null);
   };
 
   const handleBackgroundContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
-    setContextMenu({ x: e.clientX, y: e.clientY, node: null });
+    const menuWidth = 208; 
+    const menuHeight = 130; 
+    const x = e.clientX + menuWidth > window.innerWidth ? Math.max(10, window.innerWidth - menuWidth - 10) : e.clientX;
+    const y = e.clientY + menuHeight > window.innerHeight ? Math.max(10, window.innerHeight - menuHeight - 10) : e.clientY;
+    setContextMenu({ x, y, node: null });
   };
 
   const handleNodeContextMenu = (e: React.MouseEvent, node: FileNode) => {
     e.preventDefault();
     e.stopPropagation();
-    setContextMenu({ x: e.clientX, y: e.clientY, node });
+    const menuWidth = 208; 
+    const menuHeight = 220; 
+    const x = e.clientX + menuWidth > window.innerWidth ? Math.max(10, window.innerWidth - menuWidth - 10) : e.clientX;
+    const y = e.clientY + menuHeight > window.innerHeight ? Math.max(10, window.innerHeight - menuHeight - 10) : e.clientY;
+    setContextMenu({ x, y, node });
   };
 
   useEffect(() => {
@@ -119,14 +130,16 @@ export default function FileDisplay({
       onContextMenu={(isModal && !!onSelect) ? undefined : handleBackgroundContextMenu}
     >
       {/* Header */}
-      <div className="flex items-center justify-between mb-10 bg-zinc-900/40 p-4 px-6 rounded-2xl border border-white/5 shadow-xl backdrop-blur-md" onContextMenu={e => e.stopPropagation()}>
-        <div className="flex items-center gap-4">
-          <div className="p-2.5 bg-linear-to-br from-indigo-500/20 to-purple-600/20 rounded-xl border border-indigo-500/20 shadow-[0_0_15px_-5px_rgba(99,102,241,0.4)]">
-            <Cpu size={22} className="text-indigo-400" />
+      <div className="relative flex items-center justify-between mb-6 sm:mb-10 bg-zinc-900/40 p-3 sm:p-4 px-4 sm:px-6 rounded-2xl border border-white/5 shadow-xl backdrop-blur-md" onContextMenu={e => e.stopPropagation()}>
+        <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+          <div className="p-2 sm:p-2.5 bg-linear-to-br from-indigo-500/20 to-purple-600/20 rounded-xl border border-indigo-500/20 shadow-[0_0_15px_-5px_rgba(99,102,241,0.4)] shrink-0">
+            <Cpu size={20} className="text-indigo-400" />
           </div>
-          <div className="flex flex-col">
+          <div className="flex flex-col min-w-0">
             <span className="text-[10px] font-bold tracking-widest text-indigo-400/80 uppercase mb-0.5">Dendrites Workspace</span>
-            <h2 className="text-xl font-semibold flex items-center gap-2 text-gray-300 tracking-tight">
+
+            {/* Desktop: full breadcrumb path always visible */}
+            <h2 className="hidden sm:flex text-xl font-semibold items-center gap-2 text-gray-300 tracking-tight flex-wrap">
               {path.map((node, index) => (
                 <React.Fragment key={index}>
                   <span
@@ -147,17 +160,62 @@ export default function FileDisplay({
                 </React.Fragment>
               ))}
             </h2>
+
+            {/* Mobile: current folder + clickable "…" to expand */}
+            <div className="flex sm:hidden items-center gap-1.5 min-w-0">
+              {path.length > 1 && (
+                <button
+                  onClick={() => setShowAllCrumbs(prev => !prev)}
+                  className="flex items-center gap-0.5 text-zinc-500 hover:text-zinc-200 px-1.5 py-0.5 rounded-lg hover:bg-zinc-800/60 transition-all text-sm font-semibold shrink-0"
+                  title="Show full path"
+                >
+                  <span>…</span>
+                  <ChevronRight size={12} className={`text-zinc-600 transition-transform duration-200 ${showAllCrumbs ? 'rotate-90' : ''}`} />
+                </button>
+              )}
+              <span className="text-base font-semibold text-white tracking-tight truncate">
+                {path[path.length - 1]?.name || 'Workspace'}
+              </span>
+            </div>
           </div>
         </div>
 
         {isModal && !onSelect && (
           <button
             onClick={() => dispatch(toggleExplorerModal())}
-            className="p-2.5 hover:bg-white/5 rounded-xl text-zinc-500 hover:text-white transition-all ml-auto"
+            className="p-2.5 hover:bg-white/5 rounded-xl text-zinc-500 hover:text-white transition-all ml-auto shrink-0"
             title="Close Explorer"
           >
             <X size={20} />
           </button>
+        )}
+
+        {/* Mobile breadcrumb dropdown */}
+        {showAllCrumbs && path.length > 1 && (
+          <div className="sm:hidden absolute top-full left-0 right-0 mt-2 z-30 bg-zinc-900/95 backdrop-blur-xl border border-white/5 rounded-2xl px-3 py-2 flex flex-col gap-0.5 animate-in slide-in-from-top-2 duration-200 shadow-2xl">
+            {/* Dismiss overlay */}
+            <div className="fixed inset-0 z-[-1]" onClick={() => setShowAllCrumbs(false)} />
+            {path.slice(0, -1).map((node, i) => (
+              <button
+                key={node.id}
+                onClick={() => {
+                  if (isModal) {
+                    const nextId = node.id === 'root' ? 'root' : node.id;
+                    setLocalFolderId(nextId);
+                    if (onFolderChange) onFolderChange(nextId);
+                  } else {
+                    navigate(node.id === 'root' ? '/explorer' : `/explorer/${node.id}`);
+                  }
+                  setShowAllCrumbs(false);
+                }}
+                className="flex items-center gap-2 px-3 py-2.5 rounded-xl hover:bg-zinc-800/80 transition-all text-left group"
+              >
+                <span className="text-zinc-600 text-xs">{i + 1}.</span>
+                <Folder size={14} className="text-zinc-500 group-hover:text-indigo-300 transition-colors shrink-0" />
+                <span className="text-zinc-300 group-hover:text-white font-medium text-sm transition-colors">{node.name}</span>
+              </button>
+            ))}
+          </div>
         )}
       </div>
 
@@ -331,9 +389,16 @@ export default function FileDisplay({
                   </button>
                 )}
                 {contextMenu.node.id !== "root" && !contextMenu.node.isSystemFolder && (
-                  <button className="w-full text-left px-3 py-2 hover:bg-red-500/20 hover:text-red-300 flex items-center gap-2 text-red-400 transition-colors" onClick={(e) => { e.stopPropagation(); handleDelete(); }}>
-                    <Trash size={15} /> Delete
-                  </button>
+                <button
+                  className="w-full text-left px-3 py-2 hover:bg-red-500/20 hover:text-red-300 flex items-center gap-2 text-red-400 transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setItemToDelete(contextMenu.node);
+                    setContextMenu(null);
+                  }}
+                >
+                  <Trash size={15} /> Delete
+                </button>
                 )}
               </>
             ) : (
@@ -370,6 +435,15 @@ export default function FileDisplay({
           }}
         />
       )}
+      <ActionModal
+        isOpen={itemToDelete !== null}
+        title={`Delete ${itemToDelete?.type === "folder" ? "Folder" : "Chat"}`}
+        description={`Are you sure you want to delete "${itemToDelete?.name}"? This action cannot be undone.`}
+        variant="warning"
+        confirmLabel="Delete"
+        onConfirm={handleDelete}
+        onCancel={() => setItemToDelete(null)}
+      />
     </div>
   );
 }

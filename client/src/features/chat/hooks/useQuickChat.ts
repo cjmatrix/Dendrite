@@ -5,6 +5,7 @@ import { saveRecallCard } from "../api/recallApi";
 import type { Message } from "../types/Message";
 import { getMarkdownFromDOMSelection } from "../../../utils/markdownUtils";
 import { requestFirebaseNotificationPermission } from "../../../lib/firebase";
+import toast from "react-hot-toast";
 
 interface UseQuickChatParams {
   chatId: string | undefined;
@@ -36,6 +37,7 @@ export function useQuickChat({
     markdown: string;
     x: number;
     y: number;
+    bottomY: number;
     msgIndex: number;
     visible: boolean;
   } | null>(null);
@@ -45,7 +47,7 @@ export function useQuickChat({
 
 
 
-  // ── Fetch existing subchat ───────────────────────
+ 
   const { data: existingSubChat, isLoading: isHistoryLoading } = useQuery({
     queryKey: ["subchat", chatId, sourceMessageId, subChatId],
     queryFn: () => getSubChat(chatId!, subChatId!),
@@ -59,7 +61,7 @@ export function useQuickChat({
 
 
 
-  // Sync fetched history into local state
+
   useEffect(() => {
     if (isHistoryLoading) {
       setSubMessages([]);
@@ -78,19 +80,14 @@ export function useQuickChat({
     }
   }, [selectedText, subMessages.length]);
 
-  
-  // useEffect(() => {
-  //   if (scrollRef.current) {
-  //     scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-  //   }
-  // }, [subMessages, streamingText]);
 
 
 
 
 
 
-  // Stick to chat mutation ────────────────────────────────
+
+ 
   const stickToChatMutation = useMutation({
     mutationFn: async () => {
       await stickToChat({
@@ -106,12 +103,17 @@ export function useQuickChat({
       setIsPinned(true);
       queryClient.invalidateQueries({ queryKey: ["subchat", chatId, sourceMessageId, subChatId] });
       queryClient.invalidateQueries({ queryKey: ["chatMessages", chatId] });
+      toast.success("Chat pinned successfully!");
+    },
+    onError: (err) => {
+      console.error("Failed to pin chat", err);
+      toast.error("Failed to pin chat");
     },
   });
 
 
 
-  // Stream quick chat mutation ───────────────────
+
   const streamChatMutation = useMutation({
     mutationFn: async ({ userPrompt }: { userPrompt: string }) => {
       return streamQuickChat({
@@ -138,6 +140,25 @@ export function useQuickChat({
     },
   });
 
+  const prevMessagesLength = useRef(subMessages.length);
+  const prevIsPending = useRef(false);
+
+  useEffect(() => {
+    const messagesChanged = subMessages.length !== prevMessagesLength.current;
+    const streamStarted = streamChatMutation.isPending && !prevIsPending.current;
+
+    if (messagesChanged || streamStarted) {
+      setTimeout(() => {
+        if (scrollRef.current) {
+          scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        }
+      }, 50);
+    }
+
+    prevMessagesLength.current = subMessages.length;
+    prevIsPending.current = streamChatMutation.isPending;
+  }, [subMessages, streamChatMutation.isPending]);
+
   // Handlers ─────────────────────────────────────
 
 
@@ -148,12 +169,17 @@ export function useQuickChat({
     streamChatMutation.mutate({ userPrompt });
   };
 
-  const handleSubChatTextSelection = () => {
+  const processSubChatSelection = () => {
     const sel = window.getSelection();
     const selectedStr = sel?.toString().trim();
 
     if (selectedStr && selectedStr.length > 0) {
-      const range = sel?.getRangeAt(0);
+      let range;
+      try {
+        range = sel?.getRangeAt(0);
+      } catch {
+        return;
+      }
       const rect = range?.getBoundingClientRect();
 
       let insideModal = false;
@@ -170,20 +196,50 @@ export function useQuickChat({
         curr = curr.parentElement;
       }
 
-      if (rect && insideModal && msgIndex >= 0) {
+      if (rect && rect.width > 0 && insideModal && msgIndex >= 0) {
         const capturedMarkdown = getMarkdownFromDOMSelection() || selectedStr;
         setRecallSelection({
           markdown: capturedMarkdown,
           x: rect.left + rect.width / 2,
           y: rect.top + window.scrollY,
+          bottomY: rect.bottom + window.scrollY,
           msgIndex,
           visible: true,
         });
       }
     } else {
-      setTimeout(() => setRecallSelection((prev) => (prev ? { ...prev, visible: false } : null)), 200);
+      setRecallSelection((prev) => (prev ? { ...prev, visible: false } : null));
     }
   };
+
+ 
+  const handleSubChatTextSelection = () => {
+    setTimeout(() => processSubChatSelection(), 80);
+  };
+
+  
+  const subChatSelectionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    const isTouchDevice = "ontouchstart" in window || navigator.maxTouchPoints > 0;
+    if (!isTouchDevice || !isOpen) return;
+
+    const handleSelectionChange = () => {
+      if (subChatSelectionTimerRef.current) {
+        clearTimeout(subChatSelectionTimerRef.current);
+      }
+      subChatSelectionTimerRef.current = setTimeout(() => {
+        processSubChatSelection();
+      }, 300);
+    };
+
+    document.addEventListener("selectionchange", handleSelectionChange);
+    return () => {
+      document.removeEventListener("selectionchange", handleSelectionChange);
+      if (subChatSelectionTimerRef.current) {
+        clearTimeout(subChatSelectionTimerRef.current);
+      }
+    };
+  }, [isOpen]);
 
   const handleCreateRecall = async (markdownContent: string | null, msgIndex?: number) => {
     try {
@@ -198,8 +254,15 @@ export function useQuickChat({
 
       await saveRecallCard(content || null, chatId!, sourceMessageId);
       setRecallSelection(null);
+      toast.success("Recall card created successfully!");
+      try {
+        window.getSelection()?.removeAllRanges();
+      } catch (e) {
+        console.error(e);
+      }
     } catch (error) {
       console.error("Failed to save recall card from subchat", error);
+      toast.error("Failed to create recall card");
     } finally {
       setIsRecalling(false);
     }

@@ -42,72 +42,72 @@ interface Feature {
 const FEATURES: Feature[] = [
   {
     tag: "agent",
-    title: "Say what you want to learn. Watch the structure grow.",
-    body: "One sentence becomes a folder tree, named for the real subtopics of your subject, each one an empty chat waiting for your first question — plus a roadmap written just for you.",
-    detail: "Topic → folder tree → roadmap, generated live",
+    title: "Instantly organize any topic into a study path",
+    body: "Tell the AI what you want to learn. It automatically structures the subject into folders, creates dedicated chats for each subtopic, and maps out a custom learning guide.",
+    detail: "Type a topic → get a structured workspace instantly",
     accent: "#ef4444",
   },
   {
     tag: "workspaces",
-    title: "Infinite folder depth and workspace scoping",
-    body: "Structure your learning environments with nested folders and distinct workspaces. Set systemic configurations, files, and personas at any level, and watch child folders inherit them automatically.",
-    detail: "Recursive scoping · document workspaces",
+    title: "Organize with nested folders and custom workspaces",
+    body: "Create separate workspaces and nesting folders for different subjects. Set specific guidelines or reference files at any level, and watch nested chats adapt automatically.",
+    detail: "Clean workspaces · hierarchical organization",
     accent: "#f97316",
   },
   {
     tag: "documents",
-    title: "Document uploads and hybrid RAG retrieval",
-    body: "Upload PDFs, markdown, text files, or documentation. Dendrites splits, embeds, and indexes them with hybrid dense-sparse retrieval, allowing you to search and ask questions across thousands of pages with pinpoint accuracy.",
-    detail: "Hybrid vector search · BM25 keyword matching · PDF parsing",
+    title: "Learn directly from your files and documents",
+    body: "Upload study materials like PDFs, books, and articles. Ask questions, search for facts, and get answers grounded entirely in your uploaded sources.",
+    detail: "Document uploads · smart text search & extraction",
     accent: "#eab308",
   },
   {
     tag: "visualization",
-    title: "Concept mapping and dynamic visualization",
-    body: "Convert complex topics into interactive visual maps. Explore node trees, flowchart roadmaps, and linked concepts to gain an instant spatial understanding of what you're learning.",
-    detail: "Interactive tree rendering · spatial roadmap mapping",
+    title: "See your learning roadmap in a visual map",
+    body: "Visualize complex topics in an interactive graph. Navigate through node connections and flowcharts to see how concepts connect and map out your progress.",
+    detail: "Interactive roadmaps · spatial visual views",
     accent: "#22c55e",
   },
   {
     tag: "memory",
-    title: "Four layers of memory, none of them yours to manage",
-    body: "Every reply you read is built from a sliding window of the last few messages, a rolling summary of the whole session, and a vector search across everything you've ever discussed — code, documents, decisions.",
-    detail: "L0 identity · L1 window · L2 recursive summary · L3 vector recall",
+    title: "AI companion that remembers your past chats",
+    body: "No more re-explaining context. The AI naturally references your past discussions, uploaded files, and preferences, making responses relevant over time.",
+    detail: "Continuous learning context · smart long-term memory",
     accent: "#10b981",
   },
   {
     tag: "branch",
-    title: "Conversations fork like the thing they're named after",
-    body: "Open a tangent without losing the trunk. A branched chat inherits everything its parent knew, so depth never costs you continuity.",
-    detail: "Context inheritance · seamless continuity",
+    title: "Explore subtopics without losing your place",
+    body: "Branch out off-shoot chats to explore deep questions without disrupting your main conversation. The new branch retains the context of the main discussion automatically.",
+    detail: "Context-aware sub-chats · focused tangents",
     accent: "#06b6d4",
   },
   {
     tag: "behavior",
-    title: "Folders that decide who the AI is before you ask",
-    body: "Write a behavior once, drop in a markdown file, and every chat inside that folder — and every folder inside that — inherits it from whichever ancestor set it nearest.",
-    detail: "Recursive nearest-ancestor resolution",
+    title: "Teach the AI who to be for different subjects",
+    body: "Set distinct rules or personas for your folders. Have one behave like a demanding coding mentor and another like a simple teacher, depending on the subject.",
+    detail: "Folder-level instructions · custom AI behavior",
     accent: "#3b82f6",
   },
   {
     tag: "quick chat",
-    title: "Sandbox sessions with quick chat",
-    body: "Need a fast answer without cluttering your workspaces? Fire up a quick chat session. Perfect for disposable queries, code checking, and off-topic questions that don't need a folder.",
-    detail: "Clutter-free sandbox · instant scratchpad sessions",
+    title: "A sandbox for quick, disposable questions",
+    body: "Need to quickly test code or ask a fast, off-topic question? Use quick chat as a scratchpad that won't clutter your organized workspace.",
+    detail: "Instant sandbox sessions · clutter-free queries",
     accent: "#6366f1",
   },
   {
     tag: "recall",
-    title: "It teaches you, then makes sure you keep it",
-    body: "Turn any answer into a flashcard. The scheduling runs on SM-2 — the same spacing algorithm behind Anki — so review lands right before you'd otherwise forget.",
-    detail: "SM-2 scheduling · push reminders",
+    title: "Turn key insights into smart study cards",
+    body: "Convert any AI response into a flashcard. The system automatically schedules reviews for when you're about to forget them, helping you remember forever.",
+    detail: "Smart spaced repetition · personalized card decks",
     accent: "#8b5cf6",
   },
   {
     tag: "share",
-    title: "Hand someone your whole train of thought",
-    body: "Share a folder, not a screenshot. Whoever opens the link can preview it without an account, then pull the entire tree — chats, behavior, structure — into their own.",
-    detail: "Public preview · one-click import",
+    title: "Share your complete workspaces in one click",
+    body: "Share entire folder structures, chats, and guides with others. Anyone with the link can preview your workflow and copy the entire tree into their own workspace.",
+    detail: "Instant web previews · one-click workspace copies",
     accent: "#ec4899",
   },
 ];
@@ -683,7 +683,7 @@ export function DendritesLanding() {
         <div className="nav-mark text-neutral-900 flex items-center gap-2">
           <DendritesLogo size={28} />
           <span className="text-blue-600 font-bold">
-            Dendrites
+            Nurons
           </span>
         </div>
         <nav className="nav-links">
@@ -734,7 +734,7 @@ export function DendritesLanding() {
             <h1 className="hero-title text-neutral-900">
               Most AI chat forgets you the moment you close the tab.
               <span className="hero-title-accent text-blue-600 font-extrabold">
-                Dendrites doesn't.
+                Nurons doesn't.
               </span>
             </h1>
             <p className="hero-sub text-neutral-500">
@@ -895,7 +895,7 @@ export function DendritesLanding() {
             Start for free
           </Link>
           <p className="closing-foot text-neutral-500">
-            Dendrites — built to remember what ChatGPT lets you forget.
+            Nurons — built to remember what ChatGPT lets you forget.
           </p>
         </div>
       </section>

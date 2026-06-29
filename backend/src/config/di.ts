@@ -250,6 +250,17 @@ container.registerSingleton(
   GenerateWorkspaceUseCase,
 );
 
+import { FeedbackRepository } from "../infrastructure/feedback/repositories/FeedbackRepository";
+import { CreateFeedback } from "../application/feedback/use-cases/CreateFeedback";
+import { GetAllFeedback } from "../application/feedback/use-cases/GetAllFeedback";
+import { UpdateFeedbackStatus } from "../application/feedback/use-cases/UpdateFeedbackStatus";
+
+container.registerSingleton("IFeedbackRepository", FeedbackRepository);
+container.registerSingleton("ICreateFeedbackUseCase", CreateFeedback);
+container.registerSingleton("IGetAllFeedbackUseCase", GetAllFeedback);
+container.registerSingleton("IUpdateFeedbackStatusUseCase", UpdateFeedbackStatus);
+
+
 import { PaddleService } from "../infrastructure/shared/services/PaddleService";
 import { CreateCheckoutSession } from "../application/billing/use-cases/CreateCheckoutSession";
 import { CreatePortalSession } from "../application/billing/use-cases/CreatePortalSession";

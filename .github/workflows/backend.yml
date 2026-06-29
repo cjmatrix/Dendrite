@@ -1,0 +1,38 @@
+name: Deploy Backend
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+      - 'docker-compose.yml'
+      - 'docker-compose.prod.yml'
+      - '.github/workflows/backend.yml'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Deploy to EC2 via SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            # Navigate to the repository directory on your EC2 instance
+            # UPDATE THIS PATH to where your project lives on the server (e.g., /home/ubuntu/Dentrites)
+            cd /path/to/your/project
+            
+            # Pull the latest code from GitHub
+            git pull origin main
+            
+            # Rebuild and restart the Docker containers in detached mode
+            # Ensure you are using the correct compose file (e.g. docker-compose.prod.yml)
+            docker compose -f docker-compose.prod.yml build
+            docker compose -f docker-compose.prod.yml up -d

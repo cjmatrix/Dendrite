@@ -1,6 +1,6 @@
 import React from "react";
 import { AlertTriangle, CheckCircle2, X } from "lucide-react";
-
+import { createPortal } from "react-dom";
 export type ActionModalVariant = "warning" | "confirmation";
 
 interface ActionModalProps {
@@ -32,7 +32,7 @@ export const ActionModal: React.FC<ActionModalProps> = ({
 
   const isWarning = variant === "warning";
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[120] flex items-center justify-center">
       <div
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
@@ -93,6 +93,6 @@ export const ActionModal: React.FC<ActionModalProps> = ({
           </button>
         </div>
       </div>
-    </div>
+    </div>,document.body
   );
 };

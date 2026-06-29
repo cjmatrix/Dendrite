@@ -6,9 +6,17 @@ services:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml 
       - prometheus-data:/prometheus 
     ports:
-      - "9090:9090" 
+      - "127.0.0.1:9090:9090"
     extra_hosts:
-      - "host.docker.internal:host-gateway" 
+      - "host.docker.internal:host-gateway"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 256M
+        reservations:
+          cpus: "0.1"
+          memory: 128M
 
   grafana:
     image: grafana/grafana:latest
@@ -16,52 +24,210 @@ services:
     volumes:
       - grafana-data:/var/lib/grafana
     ports:
-      - "3000:3000" 
+      - "127.0.0.1:3000:3000"
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin 
     depends_on:
       - prometheus
       - loki
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 256M
+        reservations:
+          cpus: "0.1"
+          memory: 128M
 
   loki:
     image: grafana/loki:latest
     container_name: loki
+    volumes:
+      - loki-data:/loki
     ports:
-      - "3100:3100"
+      - "127.0.0.1:3100:3100"
     command: -config.file=/etc/loki/local-config.yaml
+    deploy:
+      resources:
+        limits:
+          cpus: "0.15"
+          memory: 192M
+        reservations:
+          cpus: "0.05"
+          memory: 64M
 
-  # qdrant:
-  #   image: qdrant/qdrant:latest
-  #   container_name: dentrites-qdrant
-  #   ports:
-  #     - "6333:6333"
-  #     - "6334:6334"
-  #   volumes:
-  #     - qdrant-data:/qdrant/storage
+  redis:
+    image: redis:7-alpine
+    container_name: redis_dendrites
+    restart: always
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis_data:/data
+    env_file:
+      - ./backend/.env
+    command: >
+      sh -c 'redis-server 
+      --requirepass "$$REDIS_PASSWORD" 
+      --appendonly yes 
+      --maxmemory 256mb 
+      --maxmemory-policy noeviction'
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 384M
+        reservations:
+          cpus: "0.1"
+          memory: 128M
 
-  # redis:
-  #   image: redis:alpine
-  #   container_name: dentrites-redis
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: dentrites-backend
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    ports:
+      - "5000:5000"
+    environment:
+      - REDIS_HOST=redis
+      - LOKI_URL=http://loki:3100
+    env_file:
+      - ./backend/.env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - redis
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 512M
+        reservations:
+          cpus: "0.2"
+          memory: 256M
 
-  # backend:
-  #   build:
-  #     context: ./backend
-  #     dockerfile: Dockerfile
-  #   container_name: dentrites-backend
-  #   ports:
-  #     - "5000:5000"
-  #   environment:
-  #     - QDRANT_URL=http://qdrant:6333
-  #     - REDIS_HOST=redis
-  #   env_file:
-  #     - ./backend/.env
-  #   extra_hosts:
-  #     - "host.docker.internal:host-gateway"
-  #   depends_on:
-  #     - qdrant
-  #     - redis
+  backend-fast-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: dentrites-fast-worker
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    command: npm run start:fast-worker
+    environment:
+      - REDIS_HOST=redis
+      - LOKI_URL=http://loki:3100
+    env_file:
+      - ./backend/.env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - redis
+    deploy:
+      resources:
+        limits:
+          cpus: "0.30"
+          memory: 384M
+        reservations:
+          cpus: "0.1"
+          memory: 128M
+
+  backend-ai-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: dentrites-ai-worker
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    command: npm run start:ai-worker
+    environment:
+      - REDIS_HOST=redis
+      - LOKI_URL=http://loki:3100
+    env_file:
+      - ./backend/.env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - redis
+    deploy:
+      resources:
+        limits:
+          cpus: "0.30"
+          memory: 512M
+        reservations:
+          cpus: "0.1"
+          memory: 128M
+
+  backend-cpu-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: dentrites-cpu-worker
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    command: npm run start:cpu-worker
+    environment:
+      - REDIS_HOST=redis
+      - LOKI_URL=http://loki:3100
+    env_file:
+      - ./backend/.env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - redis
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 512M
+        reservations:
+          cpus: "0.15"
+          memory: 192M
+  nginx:
+    image: nginx:alpine
+    container_name: dentrites-nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro
+    depends_on:
+      - backend
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+        reservations:
+          cpus: "0.05"
+          memory: 64M
+    command: '/bin/sh -c "while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\""'
+
+  certbot:
+    image: certbot/certbot
+    container_name: dentrites-certbot
+    restart: unless-stopped
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.10"
+          memory: 64M
 
 volumes:
   prometheus-data:
   grafana-data:
-  # qdrant-data:
+  redis_data:
+  loki-data:

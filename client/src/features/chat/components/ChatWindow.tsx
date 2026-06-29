@@ -28,6 +28,7 @@ import {
   Lock,
   AlertCircle,
   Download,
+  MessageSquareHeart,
 } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
 import type { VirtuosoHandle } from "react-virtuoso";
@@ -42,7 +43,9 @@ import { SettingsModal } from "./SettingsModal";
 import FileDisplay from "../../explorer/components/FileDisplay";
 import { ShareLinkModal } from "../../explorer/components/ShareLinkModal";
 import { ImportSharedModal } from "../../explorer/components/ImportSharedModal";
+import { FeedbackModal } from "./FeedbackModal";
 import toast from "react-hot-toast";
+import { useResizable } from "../../../hooks/useResizable";
 
 import { MessageBubble } from "./MessageBubble";
 import { VirtuosoHeader } from "./VirtuosoHeader";
@@ -115,9 +118,37 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const user = useAppSelector((state) => state.auth.user);
   const [isByokModalOpen, setIsByokModalOpen] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
   const [input, setInput] = useState("");
   const [isQuickChatOpen, setIsQuickChatOpen] = useState(false);
+  const [isQuickChatSplit, setIsQuickChatSplit] = useState(false);
+  const quickChatContainerRef = useRef<HTMLDivElement>(null);
+
+  const {
+    width: quickChatWidth,
+    isResizing: isResizingQuickChat,
+    startResizing: startResizingQuickChat,
+  } = useResizable({
+    initialWidth: 450,
+    minWidth: 300,
+    maxWidth: 900,
+    direction: "left",
+    containerRef: quickChatContainerRef,
+  });
+
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  const isSplitModeActive = isQuickChatSplit && !isMobile;
 
   console.log(user)
 
@@ -365,25 +396,22 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       return;
     }
 
-    if (latestMessageId) {
-      setExternalQuickSelection({
-        text: selectedText,
-        messageId: latestMessageId,
-        relativeY: 0,
-      });
-      setPinnedQuickChatSelection({
-        text: selectedText,
-        messageId: latestMessageId,
-        relativeY: 0,
-        subChatId: null,
-      });
-      setIsQuickChatOpen(true);
-    } else {
-      setInput(
-        `Based on this selected text:\n\"\"\"\n${selectedText}\n\"\"\"\n\n`,
-      );
-      requestAnimationFrame(() => composerRef.current?.focus());
-    }
+    // type === "quick" — always open Quick Chat, never fall through to setInput
+    // Since this action comes from the split file viewer (e.g. PDF), we explicitly
+    // use this placeholder ID so the QuickChatModal knows to disable the 'Stick to Chat' feature.
+    const anchorMessageId = "__split_view_quick__";
+    setExternalQuickSelection({
+      text: selectedText,
+      messageId: anchorMessageId,
+      relativeY: 0,
+    });
+    setPinnedQuickChatSelection({
+      text: selectedText,
+      messageId: anchorMessageId,
+      relativeY: 0,
+      subChatId: null,
+    });
+    setIsQuickChatOpen(true);
 
     onExternalSelectionHandled?.();
   }, [externalSelectionAction, latestMessageId, onExternalSelectionHandled]);
@@ -424,25 +452,31 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
   return (
     <div
-      className={`flex flex-col h-screen bg-neutral-900 text-gray-200 font-sans w-full relative overflow-hidden transition-all duration-300 ${
-        chat?.type === "agent" ? "border border-amber-500/20" : ""
-      }`}
+      className="flex h-full w-full bg-neutral-900 text-gray-200 font-sans relative overflow-hidden"
       onMouseUp={handleTextSelection}
+      onTouchEnd={handleTextSelection}
     >
-      {/* Animated Edge Tracer */}
       <div
-        className={`violet-edge-tracer ${isTracerActive ? "active-tracer" : ""}`}
-      ></div>
+        className={`flex-1 flex flex-col h-full relative overflow-hidden transition-all duration-300 ${
+          chat?.type === "agent" ? "border border-amber-500/20" : ""
+        }`}
+      >
+        {/* Animated Edge Tracer */}
+        <div
+          className={`violet-edge-tracer ${isTracerActive ? "active-tracer" : ""}`}
+        ></div>
 
       {/* Top Header */}
-      <div className="h-14 border-b border-white/5 flex items-center justify-between px-6 bg-(--theme-bg-base)/80 backdrop-blur-xl shrink-0 z-20">
-        <div className="flex items-center text-sm font-medium gap-1 min-w-0 overflow-x-auto no-scrollbar py-1">
+      <div className="h-13 border-b border-white/5 flex items-center justify-between px-3 sm:px-6 bg-(--theme-bg-base)/80 backdrop-blur-xl shrink-0 z-20">
+        {/* Breadcrumbs */}
+        <div className="flex items-center text-sm font-medium gap-0.5 sm:gap-1 min-w-0 flex-1 overflow-x-auto no-scrollbar whitespace-nowrap py-1">
+          {/* Home button — always visible */}
           <button
             onClick={() => {
               dispatch(setActiveSidebarRootId(null));
-              navigate("/explorer");
+              navigate("/");
             }}
-            className="flex items-center p-2 hover:bg-zinc-800/80 rounded-lg transition-all cursor-pointer group hover:scale-105 active:scale-95"
+            className="flex items-center p-2 hover:bg-zinc-800/80 rounded-lg transition-all cursor-pointer group hover:scale-105 active:scale-95 shrink-0"
           >
             <Home
               size={15}
@@ -451,36 +485,51 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           </button>
           <ChevronRight size={14} className="text-zinc-700 mx-0.5 shrink-0" />
 
-          {breadCrumbs.map((crumb) => (
-            <React.Fragment key={crumb.id}>
-              <button
-                onClick={() => dispatch(setActiveSidebarRootId(crumb.id))}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 hover:bg-zinc-800/80 rounded-lg transition-all cursor-pointer group whitespace-nowrap hover:scale-[1.02] active:scale-[0.98]"
-              >
-                <Folder
-                  size={14}
-                  className="text-zinc-600 group-hover:text-amber-200/90 transition-colors"
-                />
-                <span className="text-zinc-500 group-hover:text-zinc-200 transition-colors font-semibold">
-                  {crumb.name}
-                </span>
-              </button>
-              <ChevronRight
-                size={14}
-                className="text-zinc-700 mx-0.5 shrink-0"
-              />
-            </React.Fragment>
-          ))}
+          {/* Folder crumbs */}
+          {breadCrumbs.length > 0 && (
+            <div className="flex items-center gap-0.5 shrink-0">
+              {breadCrumbs.map((crumb) => (
+                <React.Fragment key={crumb.id}>
+                  <button
+                    onClick={() => dispatch(setActiveSidebarRootId(crumb.id))}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 hover:bg-zinc-800/80 rounded-lg transition-all cursor-pointer group whitespace-nowrap hover:scale-[1.02] active:scale-[0.98] shrink-0"
+                  >
+                    <Folder
+                      size={14}
+                      className="text-zinc-600 group-hover:text-amber-200/90 transition-colors"
+                    />
+                    <span className="text-zinc-500 group-hover:text-zinc-200 transition-colors font-semibold">
+                      {crumb.name}
+                    </span>
+                  </button>
+                  <ChevronRight
+                    size={14}
+                    className="text-zinc-700 mx-0.5 shrink-0"
+                  />
+                </React.Fragment>
+              ))}
+            </div>
+          )}
 
-          <div className="ml-1 px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-xl shadow-[0_0_20px_-10px_rgba(245,158,11,0.4)] animate-in fade-in zoom-in duration-300">
-            <span className="text-amber-200/90 font-bold tracking-tight text-[13px]">
+          {/* Current chat title — always visible */}
+          <div className="ml-0.5 sm:ml-1 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-xl shadow-[0_0_20px_-10px_rgba(245,158,11,0.4)] animate-in fade-in zoom-in duration-300 shrink-0">
+            <span className="text-amber-200/90 font-bold tracking-tight text-[12px] sm:text-[13px] whitespace-nowrap block">
               {chat?.title || "New Chat"}
             </span>
           </div>
         </div>
-        <div className="flex items-center gap-2 text-zinc-400 shrink-0 ml-4">
+
+        {/* Right-side actions */}
+        <div className="flex items-center gap-1 sm:gap-2 text-zinc-400 shrink-0 ml-2 sm:ml-4">
           {!isShareMode ? (
             <>
+              <button
+                onClick={() => setIsFeedbackOpen(true)}
+                className="p-2 hover:bg-zinc-800/80 hover:text-emerald-400 rounded-lg transition-all cursor-pointer hover:scale-105 active:scale-95"
+                title="Send Feedback"
+              >
+                <MessageSquareHeart size={18} />
+              </button>
               <button 
                 onClick={() => setIsShareOpen(true)}
                 className="p-2 hover:bg-zinc-800/80 hover:text-amber-200/90 rounded-lg transition-all cursor-pointer hover:scale-105 active:scale-95"
@@ -488,9 +537,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               >
                 <Share size={18} />
               </button>
-              <button className="p-2 hover:bg-zinc-800/80 hover:text-amber-200/90 rounded-lg transition-all cursor-pointer hover:scale-105 active:scale-95">
-                <MoreVertical size={18} />
-              </button>
+              
             </>
           ) : (
             <button
@@ -501,11 +548,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 }
                 setIsDownloadModalOpen(true);
               }}
-              className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer"
+              className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer"
               title="Import shared content to workspace"
             >
               <Download size={15} />
-              <span>Import Workspace</span>
+              <span className="hidden sm:inline">Import Workspace</span>
+              <span className="sm:hidden">Import</span>
             </button>
           )}
         </div>
@@ -557,7 +605,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             <DendritesLogo size={80} className="mb-6 opacity-80 animate-pulse text-amber-400" />
 
             <h1 className="text-3xl font-bold text-white mb-3 tracking-tight">
-              {chat?.type === "agent" ? "Agent Workspace Architect" : "Welcome to Dendrites"}
+              {chat?.type === "agent" ? "Agent Workspace Architect" : "Welcome to Nurons"}
             </h1>
             {chat?.type !== "agent" ? (
               <p className="text-zinc-500 text-lg mb-10 max-w-md mx-auto">
@@ -653,11 +701,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             data={messages}
             firstItemIndex={firstItemIndex}
             initialTopMostItemIndex={
-              messages.length > 0 ? messages.length - 1 : 0
+              messages.length > 0 ? messages.length - 1 + firstItemIndex : 0
             }
             computeItemKey={(index, item) => item._id || String(index)}
             followOutput={isStreaming ? "smooth" : false}
-            increaseViewportBy={{ top: 4000, bottom: 4000 }}
+            increaseViewportBy={{ top: 1000, bottom: 1000 }}
             atBottomStateChange={(bottom) => setAtBottom(bottom)}
             context={{
               isFetchingNextPage,
@@ -668,7 +716,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               if (hasNextPage && !isFetchingNextPage) fetchNextPage();
             }}
             itemContent={(_, msg) => (
-              <div className="max-w-4xl mx-auto w-full pl-12 pr-12 md:px-8 pb-0">
+              <div className="max-w-4xl mx-auto w-full pl-12 pr-4 md:px-8 pb-0">
                 <MessageBubble
                   msg={msg}
                   onOpenSubChat={handleOpenSubChat}
@@ -690,7 +738,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           <button
             onClick={() =>
               virtuosoRef.current?.scrollToIndex({
-                index: messages.length - 1,
+                index: messages.length - 1 + firstItemIndex,
                 align: "end",
                 behavior: "smooth",
               })
@@ -1096,12 +1144,13 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           )}
         </div>
       </div>
+      </div>
 
       {/* Floating Actions Trigger */}
-      {selection && selection.visible &&!isQuickChatOpen && (
+      {selection && selection.visible && !isQuickChatOpen && (
         <div
-          className="fixed z-99 -translate-x-1/2 -translate-y-full mb-4 flex gap-2 animate-in fade-in slide-in-from-bottom-2 duration-200"
-          style={{ top: selection.y - 10, left: selection.x }}
+          className="fixed z-[999] -translate-x-1/2 flex gap-2 animate-in fade-in slide-in-from-top-2 duration-200"
+          style={{ top: selection.bottomY + 8, left: selection.x }}
         >
           {!isShareMode&&<button
             className="px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-lg shadow-xl hover:bg-blue-500 transition-all flex items-center gap-2"
@@ -1113,6 +1162,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 subChatId: selection.subChatId,
               });
               setIsQuickChatOpen(true);
+              clearSelection();
             }}
           >
             <Sparkles size={14} />
@@ -1131,25 +1181,53 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         </div>
       )}
 
-      {/* Quick Chat Modal */}
-      {quickChatSelection && (
-        <QuickChatModal
-          key={`${quickChatSelection.messageId}-${quickChatSelection.text}`}
-          isOpen={isQuickChatOpen}
-          onClose={() => {
-            setIsQuickChatOpen(false);
-            clearSelection();
-            setExternalQuickSelection(null);
-            setPinnedQuickChatSelection(null);
-          }}
-          selectedText={quickChatSelection.text}
-          sourceMessageId={quickChatSelection.messageId}
-          chatId={id}
-          relativeY={quickChatSelection.relativeY}
-          subChatId={quickChatSelection?.subChatId ?? undefined}
-          initialModel={model}
-        />
-      )}
+      {/* Quick Chat Container Wrapper */}
+      <div
+        ref={quickChatContainerRef}
+        style={{
+          width: isSplitModeActive && isQuickChatOpen && quickChatSelection ? `${quickChatWidth}px` : "0px",
+        }}
+        className={`shrink-0 h-full flex flex-row relative z-30 ${
+          isResizingQuickChat ? "" : "transition-all duration-300"
+        } ${
+          isSplitModeActive && isQuickChatOpen && quickChatSelection
+            ? "border-l border-white/10 bg-neutral-900"
+            : "border-l-0 bg-transparent overflow-visible pointer-events-none"
+        }`}
+      >
+        {isSplitModeActive && isQuickChatOpen && quickChatSelection && (
+          <div
+            onMouseDown={startResizingQuickChat}
+            className={`absolute top-0 bottom-0 left-0 w-1.5 cursor-col-resize hover:bg-blue-500/40 active:bg-blue-500 transition-colors z-50 ${
+              isResizingQuickChat ? "bg-blue-500" : ""
+            }`}
+            style={{ transform: "translateX(-50%)" }}
+          />
+        )}
+        
+        {isQuickChatOpen && quickChatSelection && (
+          <div className="w-full h-full flex flex-col pointer-events-auto">
+            <QuickChatModal
+              key={`${quickChatSelection.messageId}-${quickChatSelection.text}`}
+              isOpen={isQuickChatOpen}
+              onClose={() => {
+                setIsQuickChatOpen(false);
+                clearSelection();
+                setExternalQuickSelection(null);
+                setPinnedQuickChatSelection(null);
+              }}
+              selectedText={quickChatSelection.text}
+              sourceMessageId={quickChatSelection.messageId}
+              chatId={id}
+              relativeY={quickChatSelection.relativeY}
+              subChatId={quickChatSelection?.subChatId ?? undefined}
+              initialModel={model}
+              isSplit={isSplitModeActive}
+              onToggleSplit={isMobile ? undefined : () => setIsQuickChatSplit(!isQuickChatSplit)}
+            />
+          </div>
+        )}
+      </div>
 
       {/* Document Browser Modal */}
       <DocumentBrowser
@@ -1215,6 +1293,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       <SettingsModal 
         isOpen={isByokModalOpen} 
         onClose={() => setIsByokModalOpen(false)} 
+      />
+
+      <FeedbackModal
+        isOpen={isFeedbackOpen}
+        onClose={() => setIsFeedbackOpen(false)}
       />
 
       {isShareOpen && id && (

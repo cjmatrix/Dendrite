@@ -1,4 +1,4 @@
-import { Brain, Search, Loader, CheckCircle2, Award, Clock, Trash2, PenLine, ChevronDown, ChevronUp, X } from "lucide-react";
+import { Brain, Search, Loader, CheckCircle2, Award, Clock, Trash2, PenLine, ChevronDown, ChevronUp, X, MessageSquare } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import "../../chat/styles/markdown.css";
 import remarkGfm from "remark-gfm";
@@ -9,11 +9,14 @@ import { fixMalformedPlantUML } from "../../chat/components/MessageContent";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "../../../lib/axios";
 import React, { useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { ActionModal } from "../../../components/common/ActionModal";
 
 interface Card {
   _id: string;
   content: string;
   stage: string;
+  chatId: string;
 }
 
 interface RecallCardProps {
@@ -22,104 +25,121 @@ interface RecallCardProps {
   onReview: (cardId: string, rating: number) => void;
   onDelete: (cardId: string) => void;
   isReviewPending: boolean;
+  onGoToChat: (chatId: string) => void;
 }
 
-const RecallCard: React.FC<RecallCardProps> = ({ card, index, onReview, onDelete, isReviewPending }) => {
+const RecallCard: React.FC<RecallCardProps> = ({ card, index, onReview, onDelete, isReviewPending, onGoToChat }) => {
   const [isPracticeOpen, setIsPracticeOpen] = useState(false);
   const [practiceText, setPracticeText] = useState("");
 
   return (
-    <div 
-      className="w-full relative rounded-none sm:rounded-[32px] border-x-0 sm:border-x border-y border-zinc-800 bg-(--theme-bg-surface) shadow-2xl flex flex-col items-center pt-20 pb-10 px-4 md:px-12 animate-in slide-in-from-bottom-4 duration-500"
-    >
-      {/* Metadata Badges */}
-      <div className="absolute top-8 left-8 flex items-center gap-4">
-        <div className="flex items-center gap-2 text-xs font-semibold text-zinc-500 px-4 py-2 rounded-full bg-white/5 border border-white/5 backdrop-blur-md">
-           <Search size={14}/> CARD {index + 1}
+    <div className="w-full relative rounded-2xl sm:rounded-[32px] border border-white/10 bg-neutral-900 shadow-2xl flex flex-col mb-8 animate-in slide-in-from-bottom-4 duration-500 overflow-hidden">
+      {/* Card Header */}
+      <div className="flex flex-wrap items-center justify-between gap-4 p-4 sm:p-6 border-b border-white/5 bg-white/[0.02]">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs font-semibold text-zinc-400 px-3 py-1.5 rounded-full bg-white/5 border border-white/5">
+            <Search size={14}/> Card {index + 1}
+          </div>
+          {card.stage === "learning" ? (
+            <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-bold text-amber-500 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20">
+              <Clock size={12}/> LEARNING
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-bold text-emerald-500 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+              <Award size={12}/> SPACED REVIEW
+            </div>
+          )}
         </div>
-        <button 
-          onClick={() => onDelete(card._id)}
-          className="p-2 text-zinc-600 hover:text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all"
-          title="Delete Card"
-        >
-          <Trash2 size={16} />
-        </button>
-      </div>
+        
+        <div className="flex items-center gap-2">
+          {card.chatId && (
+            <button
+              onClick={() => onGoToChat(card.chatId)}
+              className="flex items-center gap-1.5 text-[11px] sm:text-xs font-bold px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-full border bg-white/5 border-transparent text-zinc-400 hover:text-zinc-200 hover:bg-white/10 hover:border-white/10 transition-all"
+              title="Go to original chat"
+            >
+              <MessageSquare size={14} />
+              <span className="hidden sm:inline">GO TO CHAT</span>
+              <span className="sm:hidden">CHAT</span>
+            </button>
+          )}
 
-      <div className="absolute top-8 right-8 flex items-center gap-3">
-        <button
-          onClick={() => setIsPracticeOpen(!isPracticeOpen)}
-          className={`flex items-center gap-2 text-xs font-bold px-4 py-2 rounded-full border transition-all backdrop-blur-md ${
-            isPracticeOpen 
-              ? "bg-purple-500/20 border-purple-500/40 text-purple-400" 
-              : "bg-white/5 border-white/5 text-zinc-500 hover:text-zinc-300 hover:bg-white/10"
-          }`}
-        >
-          <PenLine size={14} />
-          <span>PRACTICE BY WRITING</span>
-          {isPracticeOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-        </button>
-
-        {card.stage === "learning" ? (
-           <div className="flex items-center gap-2 text-xs font-bold text-amber-500 px-4 py-2 rounded-full bg-amber-500/10 border border-amber-500/20 backdrop-blur-md">
-             <Clock size={14}/> LEARNING PHASE
-           </div>
-        ) : (
-           <div className="flex items-center gap-2 text-xs font-bold text-emerald-500 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 backdrop-blur-md">
-             <Award size={14}/> SPACED REVIEW
-           </div>
-        )}
+          <button
+            onClick={() => setIsPracticeOpen(!isPracticeOpen)}
+            className={`flex items-center gap-1.5 text-[11px] sm:text-xs font-bold px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-full border transition-all ${
+              isPracticeOpen 
+                ? "bg-purple-500/20 border-purple-500/40 text-purple-300" 
+                : "bg-white/5 border-transparent text-zinc-400 hover:text-zinc-200 hover:bg-white/10"
+            }`}
+          >
+            <PenLine size={14} />
+            <span className="hidden sm:inline">PRACTICE BY WRITING</span>
+            <span className="sm:hidden">PRACTICE</span>
+            {isPracticeOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          </button>
+          
+          <button 
+            onClick={() => onDelete(card._id)}
+            className="p-1.5 sm:p-2 text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg sm:rounded-xl transition-all"
+            title="Delete Card"
+          >
+            <Trash2 size={16} />
+          </button>
+        </div>
       </div>
 
       {/* Practice Area */}
-      <div className={`w-full transition-all duration-500 ease-in-out overflow-hidden ${isPracticeOpen ? "max-h-[500px] mb-8 opacity-100" : "max-h-0 opacity-0"}`}>
-        <div className="w-full p-6 rounded-2xl bg-zinc-900/50 border border-purple-500/20 shadow-inner">
-          <label className="block text-[10px] font-bold text-purple-400/60 uppercase tracking-widest mb-3">Recall and write here</label>
+      {isPracticeOpen && (
+        <div className="w-full p-4 sm:p-6 bg-purple-900/10 border-b border-purple-500/10 animate-in fade-in slide-in-from-top-2">
+          <label className="block text-[10px] sm:text-[11px] font-bold text-purple-400/80 uppercase tracking-widest mb-2 sm:mb-3">Recall and write here</label>
           <textarea
             value={practiceText}
             onChange={(e) => setPracticeText(e.target.value)}
             placeholder="Type your recall here to test your memory..."
-            className="w-full h-40 bg-transparent border-none outline-none text-gray-200 placeholder:text-zinc-700 resize-none text-lg leading-relaxed"
+            className="w-full h-32 sm:h-40 bg-black/20 border border-purple-500/20 rounded-xl p-4 text-gray-200 placeholder:text-zinc-600 resize-none text-sm sm:text-lg leading-relaxed focus:outline-none focus:border-purple-500/50 transition-colors"
           />
-          <div className="mt-2 text-[10px] text-zinc-600 flex justify-between items-center">
+          <div className="mt-2 text-[10px] text-zinc-500 flex justify-between items-center">
             <span>TIP: Writing helps reinforce neural connections.</span>
             <span>{practiceText.length} characters</span>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Content Area - Full Expansion */}
-      <div className={`w-full bg-white/1 rounded-xl sm:rounded-[24px] p-5 md:p-10 border border-white/5 shadow-inner mb-10 flex flex-col items-start transition-all duration-500 ${isPracticeOpen ? "filter blur-sm opacity-20 pointer-events-none scale-95" : ""}`}>
-          <div className="markdown-body w-full text-[17px] leading-relaxed text-gray-300/95">
-             <ReactMarkdown
-                remarkPlugins={[remarkGfm, remarkMath]}
-                rehypePlugins={[rehypeKatex]}
-                components={markdownComponents}
-              >
-                {fixMalformedPlantUML(card.content)}
-              </ReactMarkdown>
-          </div>
-      </div>
-
-      <h3 className="text-zinc-500 font-bold tracking-[0.3em] uppercase text-[10px] mb-8 opacity-40">Evaluate your recall accuracy</h3>
-      
-      <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 w-full">
-        {[
-          { label: "Very Hard", val: 1, color: "rose" },
-          { label: "Hard", val: 2, color: "orange" },
-          { label: "Medium", val: 3, color: "amber" },
-          { label: "Good", val: 4, color: "emerald" },
-          { label: "Easy", val: 5, color: "cyan" }
-        ].map((btn) => (
-          <button 
-            key={btn.val}
-            disabled={isReviewPending}
-            onClick={() => onReview(card._id, btn.val)}
-            className={`flex-1 min-w-[125px] py-4 px-6 rounded-2xl font-bold bg-${btn.color}-500/10 text-${btn.color}-400 border border-${btn.color}-500/20 hover:bg-${btn.color}-500 hover:text-white transition-all transform active:scale-95 text-[11px] uppercase tracking-wider shadow-lg disabled:opacity-50`}
+      {/* Content Area */}
+      <div className={`w-full p-5 sm:p-8 md:p-12 flex flex-col items-start transition-all duration-300 ${isPracticeOpen ? "opacity-30 blur-[2px] select-none" : ""}`}>
+        <div className="markdown-body w-full text-[15px] sm:text-[17px] leading-relaxed text-gray-200">
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm, remarkMath]}
+            rehypePlugins={[rehypeKatex]}
+            components={markdownComponents}
           >
-            {btn.label}
-          </button>
-        ))}
+            {fixMalformedPlantUML(card.content)}
+          </ReactMarkdown>
+        </div>
+      </div>
+
+      {/* Footer Actions */}
+      <div className="w-full p-4 sm:p-6 md:p-8 border-t border-white/5 bg-black/20">
+        <h3 className="text-zinc-500 font-bold tracking-[0.2em] uppercase text-[10px] mb-4 text-center">Evaluate your recall accuracy</h3>
+        
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3 w-full max-w-4xl mx-auto">
+          {[
+            { label: "Very Hard", val: 1, color: "rose" },
+            { label: "Hard", val: 2, color: "orange" },
+            { label: "Medium", val: 3, color: "amber" },
+            { label: "Good", val: 4, color: "emerald" },
+            { label: "Easy", val: 5, color: "cyan" }
+          ].map((btn, i) => (
+            <button 
+              key={btn.val}
+              disabled={isReviewPending}
+              onClick={() => onReview(card._id, btn.val)}
+              className={`py-3 sm:py-4 px-2 sm:px-4 rounded-xl sm:rounded-2xl font-bold bg-${btn.color}-500/10 text-${btn.color}-400 border border-${btn.color}-500/20 hover:bg-${btn.color}-500 hover:text-white transition-all transform active:scale-95 text-[10px] sm:text-[11px] uppercase tracking-wider shadow-lg disabled:opacity-50 flex items-center justify-center text-center ${i === 4 ? "col-span-2 sm:col-span-1" : ""}`}
+            >
+              {btn.label}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -131,6 +151,8 @@ interface RecallPageProps {
 
 export default function RecallPage({ onClose }: RecallPageProps) {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const { token } = useParams<{ token?: string }>();
 
   const { data: cards = [], isLoading } = useQuery({
     queryKey: ["dueCards"],
@@ -141,10 +163,22 @@ export default function RecallPage({ onClose }: RecallPageProps) {
     staleTime: 1000 * 60 * 5, 
   });
 
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [isClearAllModalOpen, setIsClearAllModalOpen] = useState(false);
+
+  const handleGoToChat = (chatId: string) => {
+    if (onClose) onClose();
+    if (token) {
+      navigate(`/share/${token}/chat/${chatId}`);
+    } else {
+      navigate(`/${chatId}`);
+    }
+  };
+
   const reviewMutation = useMutation({
     mutationFn: async ({ cardId, rating }: { cardId: string; rating: number }) => {
       await api.post(`/recall/update/${cardId}`, { rating });
-      return  queryClient.invalidateQueries({queryKey:["recallCount"]})
+      return queryClient.invalidateQueries({queryKey:["recallCount"]})
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["dueCards"] });
@@ -154,7 +188,7 @@ export default function RecallPage({ onClose }: RecallPageProps) {
   const deleteMutation = useMutation({
     mutationFn: async (cardId: string) => {
       await api.delete(`/recall/${cardId}`);
-      return  queryClient.invalidateQueries({queryKey:["recallCount"]})
+      return queryClient.invalidateQueries({queryKey:["recallCount"]})
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["dueCards"] });
@@ -164,7 +198,7 @@ export default function RecallPage({ onClose }: RecallPageProps) {
   const clearAllMutation = useMutation({
     mutationFn: async () => {
        await api.delete("/recall/clear");
-       return  queryClient.invalidateQueries({queryKey:["recallCount"]})
+       return queryClient.invalidateQueries({queryKey:["recallCount"]})
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["dueCards"] });
@@ -176,13 +210,11 @@ export default function RecallPage({ onClose }: RecallPageProps) {
   };
 
   const handleDelete = (cardId: string) => {
-    if (!window.confirm("Delete this recall card permanently?")) return;
-    deleteMutation.mutate(cardId);
+    setDeleteTargetId(cardId);
   };
 
   const handleClearAll = () => {
-    if (!window.confirm("Clear your entire recall queue? This cannot be undone.")) return;
-    clearAllMutation.mutate();
+    setIsClearAllModalOpen(true);
   };
 
   if (isLoading) {
@@ -196,72 +228,102 @@ export default function RecallPage({ onClose }: RecallPageProps) {
 
   if (cards.length === 0) {
     return (
-      <div>
-         {onClose && (
-        <button
-          onClick={onClose}
-          className="fixed top-6 right-10 z-50 p-3 bg-zinc-900/50 border border-white/10 rounded-2xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all shadow-2xl backdrop-blur-md"
-        >
-          <X size={24} />
-        </button>
-      )}
-      <div className="flex flex-col items-center justify-center h-screen w-full text-zinc-400 bg-neutral-900">
-        <CheckCircle2 className="mb-4 text-emerald-500" size={48} />
-        <h2 className="text-xl font-semibold text-gray-200 mb-2">You're all caught up!</h2>
-        <p>You have reviewed all due Active Recall cards for today.</p>
+      <div className="w-full min-h-screen bg-neutral-900 text-gray-200 relative">
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="fixed top-4 right-4 sm:top-6 sm:right-6 md:top-8 md:right-10 z-50 p-2 sm:p-3 bg-zinc-900/80 border border-white/10 rounded-full sm:rounded-2xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all shadow-2xl backdrop-blur-md"
+          >
+            <X size={24} className="w-5 h-5 sm:w-6 sm:h-6" />
+          </button>
+        )}
+        <div className="flex flex-col items-center justify-center min-h-screen px-4 text-center max-w-5xl mx-auto">
+          <CheckCircle2 className="mb-4 text-emerald-500" size={48} />
+          <h2 className="text-xl sm:text-2xl font-semibold text-gray-200 mb-2">You're all caught up!</h2>
+          <p className="text-sm sm:text-base">You have reviewed all due Active Recall cards for today.</p>
+        </div>
       </div>
-      </div>
-      
     );
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-neutral-900 text-gray-200 px-0 sm:px-4 py-6 md:p-10 w-full max-w-6xl mx-auto animate-in fade-in duration-500 relative">
-      {onClose && (
-        <button
-          onClick={onClose}
-          className="fixed top-6 right-10 z-50 p-3 bg-zinc-900/50 border border-white/10 rounded-2xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all shadow-2xl backdrop-blur-md"
-        >
-          <X size={24} />
-        </button>
-      )}
-      
-      {/* Header Section */}
-      <div className="flex items-center gap-3 mb-10 shrink-0">
-        <div className="p-3 rounded-xl bg-purple-500/20 text-purple-400">
-          <Brain size={24} />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Active Recall Review</h1>
-          <div className="flex items-center gap-4 mt-1">
-            <p className="text-sm text-zinc-400">
-              {cards.length} cards pending in your queue
-            </p>
-            <button 
-              onClick={handleClearAll}
-              disabled={clearAllMutation.isPending}
-              className="text-[11px] font-bold text-rose-500/60 hover:text-rose-500 uppercase tracking-widest transition-colors flex items-center gap-2 group/clear disabled:opacity-50"
-            >
-              <div className="w-1 h-1 bg-rose-500/40 rounded-full group-hover/clear:bg-rose-500 transition-colors" />
-              {clearAllMutation.isPending ? "Clearing..." : "Clear Queue"}
-            </button>
+    <div className="w-full min-h-screen bg-neutral-900 text-gray-200">
+      <div className="flex flex-col min-h-screen px-4 sm:px-6 py-8 md:p-10 w-full max-w-5xl mx-auto animate-in fade-in duration-500 relative">
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="fixed top-4 right-4 sm:top-6 sm:right-6 md:top-8 md:right-10 z-50 p-2 sm:p-3 bg-zinc-900/80 border border-white/10 rounded-full sm:rounded-2xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all shadow-2xl backdrop-blur-md"
+          >
+            <X size={24} className="w-5 h-5 sm:w-6 sm:h-6" />
+          </button>
+        )}
+        
+        {/* Header Section */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 sm:mb-12 shrink-0 pt-8 sm:pt-0">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-purple-500/20 text-purple-400">
+              <Brain size={24} className="w-6 h-6 sm:w-8 sm:h-8" />
+            </div>
+            <div>
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Active Recall</h1>
+              <p className="text-xs sm:text-sm text-zinc-400 mt-1">
+                {cards.length} cards pending in your queue
+              </p>
+            </div>
           </div>
+          
+          <button 
+            onClick={handleClearAll}
+            disabled={clearAllMutation.isPending}
+            className="self-start sm:self-center text-[10px] sm:text-[11px] font-bold text-rose-500/60 hover:text-rose-500 uppercase tracking-widest transition-colors flex items-center gap-2 group/clear disabled:opacity-50 bg-rose-500/5 hover:bg-rose-500/10 px-4 py-2 rounded-lg"
+          >
+            <div className="w-1.5 h-1.5 bg-rose-500/40 rounded-full group-hover/clear:bg-rose-500 transition-colors" />
+            {clearAllMutation.isPending ? "Clearing..." : "Clear Queue"}
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-8 sm:gap-12 pb-24">
+          {cards.map((card: Card, index: number) => (
+            <RecallCard 
+              key={card._id}
+              card={card}
+              index={index}
+              onReview={handleReview}
+              onDelete={handleDelete}
+              isReviewPending={reviewMutation.isPending}
+              onGoToChat={handleGoToChat}
+            />
+          ))}
         </div>
       </div>
 
-   
-      <div className="flex flex-col gap-10 pb-20">
-        {cards.map((card: Card, index: number) => (
-          <RecallCard 
-            key={card._id}
-            card={card}
-            index={index}
-            onReview={handleReview}
-            onDelete={handleDelete}
-            isReviewPending={reviewMutation.isPending}
-          />
-        ))}
-      </div>
+      <ActionModal
+        isOpen={deleteTargetId !== null}
+        title="Delete Recall Card"
+        description="Are you sure you want to delete this recall card permanently? This action cannot be undone."
+        variant="warning"
+        confirmLabel="Delete"
+        onConfirm={() => {
+          if (deleteTargetId) {
+            deleteMutation.mutate(deleteTargetId);
+            setDeleteTargetId(null);
+          }
+        }}
+        onCancel={() => setDeleteTargetId(null)}
+      />
+
+      <ActionModal
+        isOpen={isClearAllModalOpen}
+        title="Clear Recall Queue"
+        description="Are you sure you want to clear your entire recall queue? This cannot be undone."
+        variant="warning"
+        confirmLabel="Clear Queue"
+        onConfirm={() => {
+          clearAllMutation.mutate();
+          setIsClearAllModalOpen(false);
+        }}
+        onCancel={() => setIsClearAllModalOpen(false)}
+      />
     </div>
   );
 }

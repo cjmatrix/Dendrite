@@ -3,70 +3,37 @@ what if two sticky chat at with same y
 
 
 
-active recall dont open in empty chat state
 
 
 
 
-create breathing room for summurizing
 
 
 
-deleting folder or chat wont delete data from cloudinary
+
+
+
 
 
 quich chat doesnt get user profile
 
 sharing  a single chat only the sideexplorer doesnt show the name
 
-optimistic creation of chat
 
-in the backend analyze my sendmessage and stream quicjchat message and aiservice. i Want to add another model groq llama 70b model use the their cloud free tier do that and in the frontend add that optinn as free and in the backend do the streaming for that .only for main chat and quick chat
+
+docker build -t cjmatrix/dentrites-backend:latest ./backend
+
+docker push cjmatrix/dentrites-backend:latest
+docker compose -f docker-compose.prod.yml pull
+docker compose -f docker-compose.prod.yml up -d
+
+
 
 
 //next week
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-Final system prompt sent to Gemini:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-[PRODUCT CORE — never overrideable]
-You are Dendrites, an AI learning companion.
-[Memory system instructions]
-[Code extraction instructions]
-[Output format instructions]
-
-[GLOBAL MEMORY — always injected]
-User name: Arun
-Primary stack: Node.js, React, TypeScript
-Learning goal: Build production SaaS
-
-[FOLDER BEHAVIOR — nearest ancestor]
-You are a React performance expert.
-Always show bundle size impact.
-Never suggest class components.
-
-[ACTIVE CONVERSATION STATE — Layer 2]
-[GOAL] User is optimizing re-renders...
-
-[RETRIEVED CONTEXT — Layer 3]
-[relevant code/fact/doc chunks]
-
-[CONVERSATION HISTORY — Layer 1]
-Last 20 messages
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-User message
 
 
 

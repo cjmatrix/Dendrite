@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently \"npm run dev --prefix backend\" \"npm run dev --prefix client\"",
-    "dev:all": "npm run infra:start && concurrently \"npm run dev --prefix backend\" \"npm run dev --prefix client\"",
+    "dev": "concurrently \"npm run dev --prefix backend\" \"npm run dev --prefix client\" \"npm run dev:fast-worker --prefix backend\" \"npm run dev:ai-worker --prefix backend\" \"npm run dev:cpu-worker --prefix backend\"",
+    "dev:all": "npm run infra:start && concurrently \"npm run dev --prefix backend\" \"npm run dev --prefix client\" \"npm run dev:fast-worker --prefix backend\" \"npm run dev:ai-worker --prefix backend\" \"npm run dev:cpu-worker --prefix backend\"",
     "infra:start": "docker start dentrites-qdrant || docker run -d --name dentrites-qdrant -p 6333:6333 -p 6334:6334 -v dentrites_qdrant_storage:/qdrant/storage qdrant/qdrant",
     "infra:stop": "docker stop dentrites-qdrant",
     "install:all": "npm install --prefix backend && npm install --prefix client",

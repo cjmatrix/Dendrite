@@ -16,6 +16,11 @@ export default async function embeddingCodeDesc(
       outboxId: outboxTask._id.toString(),
       content: content,
     },
-    { attempts: 5, backoff: { type: "exponential", delay: 1000 } },
+    {
+      attempts: 5,
+      backoff: { type: "exponential", delay: 1000 },
+      removeOnComplete: { count: 10 },
+      removeOnFail: { count: 50 },
+    },
   );
 }

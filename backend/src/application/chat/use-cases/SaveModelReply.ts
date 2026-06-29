@@ -190,7 +190,8 @@ export class SaveModelReply implements ISaveModelReplyUseCase {
         });
       }
 
-      if (updatedChat && totalUnCount >= CONTEXT_WINDOW) {
+      
+      if (updatedChat && totalUnCount >= CONTEXT_WINDOW - 2) {
         const recent = await this.messageRepository.findRecentByChatId(
           chatId,
           CONTEXT_WINDOW,

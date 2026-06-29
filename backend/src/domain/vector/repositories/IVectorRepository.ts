@@ -18,6 +18,7 @@ export interface IVectorPoint {
 
 export interface IVectorRepository {
   searchSimilarCode(
+    queryText: string,
     codeQueryVector: number[],
     descQueryVector: number[],
     userId: string,

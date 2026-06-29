@@ -82,10 +82,10 @@ export default function EmptyChatState() {
             <div className="relative group">
               <div className="absolute inset-0 bg-cyan-500/20 rounded-full blur-xl group-hover:bg-cyan-500/30 transition-all duration-700" />
               <div className="relative p-2 bg-black/20 rounded-2xl border border-white/5 backdrop-blur-md">
-                <DendritesLogo size={48} isRotate={false} />
+                <DendritesLogo size={48} />
               </div>
             </div>
-            <span className="text-xl font-semibold tracking-wide text-zinc-200">Dendrites</span>
+            <span className="text-xl font-semibold tracking-wide text-zinc-200">Nurons</span>
           </div>
 
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-white via-zinc-300 to-zinc-600 mb-6">

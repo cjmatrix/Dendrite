@@ -1,5 +1,5 @@
 import { useGetSystemHealth} from "./hook/useGetSystemHealth";
-import type { SystemHealthReport } from "./hook/useGetSystemHealth";
+
 import {
   Activity,
   Database,

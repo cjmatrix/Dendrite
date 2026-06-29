@@ -29,14 +29,14 @@ export function useToggleBan() {
 
             return { previousUser,};
         },
-        onError: (err: unknown, userId: string, context: unknown) => {
+        onError: (_err: unknown, userId: string, context: unknown) => {
             const ctx = context as { previousUser?: unknown } | undefined;
             if (ctx?.previousUser) {
                 queryClient.setQueryData(["user", userId], ctx.previousUser);
             }
     
         },
-        onSettled: (data, error, userId) => {
+        onSettled: (_data, _error, _userId) => {
             // queryClient.invalidateQueries({ queryKey: ["users"] });
             // queryClient.invalidateQueries({ queryKey: ["user", userId] });
         },

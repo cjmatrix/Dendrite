@@ -1,10 +1,199 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import P5Sandbox from "../P5Sandbox";
 import { MermaidBlock } from "react-markdown-mermaid";
+import { Maximize2, X, ZoomIn, ZoomOut } from "lucide-react";
+import { createPortal } from "react-dom";
 // @ts-ignore
 import plantumlEncoder from "plantuml-encoder";
+
+const PlantUMLViewer = ({ src, alt }: { src: string; alt?: string }) => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [scale, setScale] = useState(1);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+
+  const activePointers = useRef<any[]>([]);
+  const lastDistance = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!isModalOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsModalOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isModalOpen]);
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    activePointers.current.push(e.nativeEvent);
+
+    if (activePointers.current.length === 1) {
+      setIsDragging(true);
+      setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
+    } else if (activePointers.current.length === 2) {
+      setIsDragging(false);
+      const [p1, p2] = activePointers.current;
+      lastDistance.current = Math.hypot(p1.clientX - p2.clientX, p1.clientY - p2.clientY);
+    }
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const idx = activePointers.current.findIndex(p => p.pointerId === e.pointerId);
+    if (idx !== -1) {
+      activePointers.current[idx] = e.nativeEvent;
+    }
+
+    if (activePointers.current.length === 1 && isDragging) {
+      setPosition({
+        x: e.clientX - dragStart.x,
+        y: e.clientY - dragStart.y
+      });
+    } else if (activePointers.current.length === 2) {
+      const [p1, p2] = activePointers.current;
+      const currentDistance = Math.hypot(p1.clientX - p2.clientX, p1.clientY - p2.clientY);
+      if (lastDistance.current !== null && lastDistance.current > 0) {
+        const factor = currentDistance / lastDistance.current;
+        setScale(prev => Math.max(0.5, Math.min(prev * factor, 10)));
+      }
+      lastDistance.current = currentDistance;
+    }
+  };
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    activePointers.current = activePointers.current.filter(p => p.pointerId !== e.pointerId);
+
+    if (activePointers.current.length < 2) {
+      lastDistance.current = null;
+    }
+    if (activePointers.current.length === 0) {
+      setIsDragging(false);
+    } else if (activePointers.current.length === 1) {
+      setIsDragging(true);
+      const remainingPointer = activePointers.current[0];
+      setDragStart({ x: remainingPointer.clientX - position.x, y: remainingPointer.clientY - position.y });
+    }
+  };
+
+  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const zoomFactor = 1.1;
+    let newScale = scale;
+    if (e.deltaY < 0) {
+      newScale = Math.min(scale * zoomFactor, 10);
+    } else {
+      newScale = Math.max(scale / zoomFactor, 0.5);
+    }
+    setScale(newScale);
+  };
+
+  const zoomIn = () => setScale(prev => Math.min(prev * 1.25, 10));
+  const zoomOut = () => setScale(prev => Math.max(prev / 1.25, 0.5));
+  const resetZoom = () => {
+    setScale(1);
+    setPosition({ x: 0, y: 0 });
+  };
+
+  return (
+    <div className="relative group/diagram my-6 flex flex-col items-center p-6 rounded-xl hover:scale-120 transition-all overflow-hidden w-full">
+      <button
+        onClick={() => {
+          setIsModalOpen(true);
+          resetZoom();
+        }}
+        className="absolute top-4 right-4 p-1.5 bg-black/60 hover:bg-black/80 rounded-lg text-zinc-400 hover:text-white border border-white/10 opacity-0 group-hover/diagram:opacity-100 transition-opacity z-10 cursor-pointer shadow-md"
+        title="Expand Diagram"
+      >
+        <Maximize2 size={14} />
+      </button>
+      <img
+        src={src}
+        alt={alt || "Diagram"}
+        onClick={() => {
+          setIsModalOpen(true);
+          resetZoom();
+        }}
+        style={{ filter: "invert(0.9) hue-rotate(180deg)" }}
+        className="max-w-full h-auto select-none cursor-zoom-in"
+        draggable={false}
+      />
+
+      {isModalOpen && createPortal(
+        <div className="fixed inset-0 z-[100002] bg-black/85 backdrop-blur-md flex flex-col justify-between select-none pointer-events-auto">
+          {/* Header */}
+          <div className="flex items-center justify-between px-6 py-4 bg-zinc-950/20 backdrop-blur-xs border-b border-white/5 z-10">
+            <span className="text-sm font-bold uppercase tracking-wider text-zinc-400">
+              Diagram Viewer
+            </span>
+            <button
+              onClick={() => setIsModalOpen(false)}
+              className="p-2 bg-zinc-800/80 hover:bg-zinc-700/85 text-zinc-300 hover:text-white rounded-full border border-white/10 transition-all cursor-pointer"
+              title="Close (Esc)"
+            >
+              <X size={18} />
+            </button>
+          </div>
+
+          {/* Interactive Viewport */}
+          <div
+            className="flex-1 w-full h-full relative overflow-hidden flex items-center justify-center cursor-grab active:cursor-grabbing touch-none"
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerUp}
+            onWheel={handleWheel}
+          >
+            <img
+              src={src}
+              alt={alt || "Diagram"}
+              draggable={false}
+              style={{
+                filter: "invert(0.9) hue-rotate(180deg)",
+                transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
+                transition: isDragging ? "none" : "transform 0.15s ease-out",
+                transformOrigin: "center center",
+                maxHeight: "85vh",
+                maxWidth: "90vw",
+                objectFit: "contain"
+              }}
+            />
+          </div>
+
+          {/* Controls Bar */}
+          <div className="absolute bottom-6 right-6 z-10 flex items-center gap-1.5 p-1.5 bg-zinc-900/90 border border-white/10 shadow-2xl rounded-2xl">
+            <button
+              onClick={zoomIn}
+              className="p-2.5 bg-zinc-800 hover:bg-zinc-700 hover:text-white rounded-xl text-zinc-300 transition-colors cursor-pointer"
+              title="Zoom In (+)"
+            >
+              <ZoomIn size={16} />
+            </button>
+            <button
+              onClick={zoomOut}
+              className="p-2.5 bg-zinc-800 hover:bg-zinc-700 hover:text-white rounded-xl text-zinc-300 transition-colors cursor-pointer"
+              title="Zoom Out (-)"
+            >
+              <ZoomOut size={16} />
+            </button>
+            <button
+              onClick={resetZoom}
+              className="p-2.5 bg-zinc-800 hover:bg-zinc-700 hover:text-white rounded-xl text-zinc-300 transition-colors cursor-pointer flex items-center justify-center font-bold text-sm min-w-9"
+              title="Reset Zoom (=)"
+            >
+              =
+            </button>
+          </div>
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+};
 
 const PlantUMLBlock = ({ codeString }: { codeString: string }) => {
   const [imageError, setImageError] = useState(false);
@@ -64,37 +253,14 @@ const PlantUMLBlock = ({ codeString }: { codeString: string }) => {
     );
   }
 
-  return (
-    <div className="my-6 flex flex-col items-center p-6 rounded-xl hover:scale-120 transition-all overflow-hidden">
-      <div>
-        <button></button>
-      </div>
-      <img
-        src={url}
-        alt="PlantUML Diagram"
-        className="max-w-full h-auto"
-        style={{ filter: "invert(0.9) hue-rotate(180deg)" }}
-        onError={() => setImageError(true)}
-      />
-    </div>
-  );
+  return <PlantUMLViewer src={url} alt="PlantUML Diagram" />;
 };
 
 export const markdownComponents = {
   img({ src, alt, ...props }: React.ComponentPropsWithoutRef<"img">) {
     const isPlantUML = src && (src.includes("plantuml.com") || src.includes("plantuml"));
     if (isPlantUML) {
-      return (
-        <div className="my-6 flex flex-col items-center p-6 rounded-xl hover:scale-120 transition-all overflow-hidden w-full">
-          <img
-            src={src}
-            alt={alt}
-            style={{ filter: "invert(0.9) hue-rotate(180deg)" }}
-            className="max-w-full h-auto"
-            {...props}
-          />
-        </div>
-      );
+      return <PlantUMLViewer src={src} alt={alt || "PlantUML Diagram"} />;
     }
     return (
       <img

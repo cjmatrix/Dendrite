@@ -142,7 +142,7 @@ export class GenerateWorkspaceUseCase {
         return {};
       }
       const folderTree = await this.getMinimalFolders(params.userId);
-      const classification = await this.llm.classifyIntent(slidingWindowMsg, folderTree,params.message);
+      const classification = await this.llm.classifyIntent(slidingWindowMsg, folderTree, params.message, params.userId);
     
       return { agentResponse:classification.agentReponse,classification, userId: params.userId };
     };
@@ -195,7 +195,8 @@ export class GenerateWorkspaceUseCase {
         slidingWindowMsg,
         params.message,
         state.ambiguousFolders,
-        folderTree
+        folderTree,
+        state.userId || params.userId
       );
       
       if (goToRoot) {
@@ -223,7 +224,7 @@ export class GenerateWorkspaceUseCase {
       const topic = state.classification.topicToLearn;
       const conversationHistory = getSlidingWindowContext(state.messages);
       const folderTree = await this.getMinimalFolders(state.userId);
-      const blueprint = await this.llm.generateBlueprint(topic, conversationHistory, folderTree, params.message);
+      const blueprint = await this.llm.generateBlueprint(topic, conversationHistory, folderTree, params.message, state.userId || params.userId);
    
       return { agentResponse:blueprint.agentResponse,blueprint, status: "executing" };
     };

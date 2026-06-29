@@ -2,20 +2,82 @@
 import { injectable } from "tsyringe";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { z } from "zod";
+import { getRotatedAIKey, rotateAIKey, systemGeminiKeys } from "../../config/AIConfig";
+import { getCachedDecryptedKeys, getActiveBYOKKeyIndex, rotateBYOKKeyIndex } from "../../utils/byokKeysHelper";
 
 @injectable()
 export class AgentGeminiLLMService {
-  private fastModel: ChatGoogleGenerativeAI;
+  constructor() {}
 
-  constructor() {
-    this.fastModel = new ChatGoogleGenerativeAI({
-      model: "gemini-3.1-flash-lite",
-      temperature: 0,
-      apiKey: process.env.GEMINI_API_KEY,
-    });
+  private async runWithRetry<T>(
+    userId: string | undefined,
+    fn: (model: ChatGoogleGenerativeAI) => Promise<T>
+  ): Promise<T> {
+    let attempts = 0;
+    
+    let keys: string[] = [];
+    if (userId) {
+      keys = await getCachedDecryptedKeys(userId, "gemini");
+    }
+    
+    const isByok = keys.length > 0;
+    const maxAttempts = isByok ? keys.length : systemGeminiKeys.length;
+    
+    while (attempts < maxAttempts) {
+      let apiKey = "";
+      let currentIdx = 0;
+      if (isByok && userId) {
+        currentIdx = await getActiveBYOKKeyIndex(userId, "gemini");
+        currentIdx = currentIdx % keys.length;
+        apiKey = keys[currentIdx];
+      } else {
+        apiKey = await getRotatedAIKey();
+      }
+      
+      const model = new ChatGoogleGenerativeAI({
+        model: "gemini-3.1-flash-lite",
+        temperature: 0,
+        apiKey: apiKey,
+      });
+      
+      try {
+        return await fn(model);
+      } catch (error) {
+        const err = error as Record<string, unknown>;
+        const status = err?.status as number | undefined;
+        const msg = (err?.message as string) || "";
+        
+        const isQuotaError = 
+          status === 429 ||
+          status === 503 ||
+          status === 400 ||
+          msg.includes("API key not valid") ||
+          msg.includes("API_KEY_INVALID") ||
+          msg.includes("high demand") ||
+          msg.includes("quota") ||
+          msg.includes("RESOURCE_EXHAUSTED");
+          
+        if (isQuotaError) {
+          if (isByok && userId) {
+            await rotateBYOKKeyIndex(userId, keys.length, "gemini");
+          } else {
+            await rotateAIKey();
+          }
+          attempts++;
+          continue;
+        }
+        throw error;
+      }
+    }
+    
+    throw new Error(
+      isByok 
+        ? "All provided BYOK keys exhausted quota" 
+        : "All system AI instances exhausted quota"
+    );
   }
 
-  async classifyIntent(message: string, folderTree: string,latestMessage:string) {
+  async classifyIntent(message: string, folderTree: string, latestMessage: string, userId?: string) {
     const routingSchema = z.object({
       isValidWorkspaceRequest: z
         .boolean()
@@ -47,10 +109,6 @@ export class AgentGeminiLLMService {
         ),
     });
 
-    const structuredModel = this.fastModel.withStructuredOutput(routingSchema, {
-      name: "intent_classification",
-    });
-
     const systemPrompt = `You are a triage router for an execution workspace assistant. 
     Analyze the incoming conversation history to determine if they are requesting a technical structure/roadmap generation. 
     
@@ -71,19 +129,23 @@ export class AgentGeminiLLMService {
     4. If the user explicitly requested the root directory/folder, set targetFolderId to 'root' and targetFolder to 'root'.
     5. If no folder is mentioned, set targetFolderId and targetFolder to null.`;
 
-    const result = await structuredModel.invoke([
-      ["system", systemPrompt],
-      [
-        "human",
-        `User's CURRENT request:
+    return this.runWithRetry(userId, async (model) => {
+      const structuredModel = model.withStructuredOutput(routingSchema, {
+        name: "intent_classification",
+      });
+
+      return await structuredModel.invoke([
+        ["system", systemPrompt],
+        [
+          "human",
+          `User's CURRENT request:
 ${latestMessage}
 
 Previous conversation context:
 ${message}`,
-      ],
-    ]);
-
-    return result;
+        ],
+      ]);
+    });
   }
 
   async generateBlueprint(
@@ -91,6 +153,7 @@ ${message}`,
     conversationHistory: string,
     folderTree: string,
     latestMessage: string,
+    userId?: string,
   ) {
     const blueprintSchema = z.object({
       rootBehavior: z
@@ -111,13 +174,6 @@ ${message}`,
         ),
     });
 
-    const structuredModel = this.fastModel.withStructuredOutput(
-      blueprintSchema,
-      {
-        name: "roadmap_generator",
-      },
-    );
-
     const systemPrompt = `You are an expert technical curriculum designer. Your goal is to create a highly structured, step-by-step learning roadmap that translates into a workspace hierarchy of folders (milestones) and chats (sub-topics).
 
 CRITICAL SIZING RULES:
@@ -136,21 +192,28 @@ CONTENT GUIDELINES:
 Workspace Folder Tree:
 ${folderTree}`;
 
-    const result = await structuredModel.invoke([ 
-      ["system", systemPrompt],
-      [
-        "human",
-        `Topic: ${topic}
+    return this.runWithRetry(userId, async (model) => {
+      const structuredModel = model.withStructuredOutput(
+        blueprintSchema,
+        {
+          name: "roadmap_generator",
+        },
+      );
+
+      return await structuredModel.invoke([ 
+        ["system", systemPrompt],
+        [
+          "human",
+          `Topic: ${topic}
 
 User's CURRENT request:
 ${latestMessage}
 
 Previous conversation context:
 ${conversationHistory}`,
-      ],
-    ]);
-
-    return result;
+        ],
+      ]);
+    });
   }
 
   async resolveFolderAmbiguity(
@@ -158,6 +221,7 @@ ${conversationHistory}`,
     latestMessage: string,
     ambiguousOptions: { id: string; path: string }[],
     folderTree: string,
+    userId?: string,
   ) {
     const resolveSchema = z.object({
       selectedFolderId: z
@@ -171,10 +235,6 @@ ${conversationHistory}`,
         .describe(
           "True if the user explicitly requested to create it at the root folder/directory (e.g. 'root', 'root folder', 'create in root'). False otherwise.",
         ),
-    });
-
-    const structuredModel = this.fastModel.withStructuredOutput(resolveSchema, {
-      name: "resolve_ambiguity",
     });
 
     const systemPrompt = `You are a conflict resolver for a workspace folder structure.
@@ -191,17 +251,23 @@ ${conversationHistory}`,
     Or if user asked for some other else folder you can choose that folder ID
     If their message does not match any of the option choices, return null.`;
 
-    const result = await structuredModel.invoke([
-      ["system", systemPrompt],
-      [
-        "human",
-        `User's CURRENT response:
+    const result = await this.runWithRetry(userId, async (model) => {
+      const structuredModel = model.withStructuredOutput(resolveSchema, {
+        name: "resolve_ambiguity",
+      });
+
+      return await structuredModel.invoke([
+        ["system", systemPrompt],
+        [
+          "human",
+          `User's CURRENT response:
 ${latestMessage}
 
 Previous conversation context:
 ${userMessage}`,
-      ],
-    ]);
+        ],
+      ]);
+    });
 
     return {
       selectedFolderId: result.selectedFolderId,

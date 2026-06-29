@@ -135,7 +135,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
           
           <div className="hidden md:block">
             <div className="text-[10px] text-zinc-600 font-mono">
-              Dendrites Settings v1.0
+              Nurons Settings v1.0
             </div>
           </div>
         </div>

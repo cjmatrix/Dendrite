@@ -167,7 +167,7 @@ export const SearchExplorerModal: React.FC<SearchExplorerModalProps> = ({
                   <button
                     onClick={() => handleSelect(item)}
                     className="w-full px-4 py-3 flex items-start gap-3 hover:bg-zinc-800/50 transition-colors text-left group"
-                    title={item.breadcrumbs.map((b, index: number) => (
+                    title={item.breadcrumbs.map((b, _index: number) => (
                             
                               b.name 
                          

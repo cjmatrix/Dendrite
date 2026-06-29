@@ -29,9 +29,9 @@ For each snippet generate exactly ONE sentence (max 50 words) that includes:
 
 Focus on retrieval usefulness rather than code explanation.
 
-Return a JSON object where:
-- Keys are Snippet IDs.
-- Values are the generated descriptions.
+Return a JSON object with a "results" array. Each item in the array must be an object with:
+- "id": The Snippet ID.
+- "description": The generated description.
 
 IMPORTANT:
 - Return ONLY valid JSON.
@@ -72,9 +72,19 @@ ${snippetsText}`;
           responseSchema: {
             type: "object",
             properties: {
-              result: { type: "string" }
+              results: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    id: { type: "string" },
+                    description: { type: "string" }
+                  },
+                  required: ["id", "description"]
+                }
+              }
             },
-            required: ["result"]
+            required: ["results"]
           }
         }
       });
@@ -125,23 +135,16 @@ ${snippetsText}`;
     
     let rawJson = JSON.parse(cleanText || "{}");
     
- 
-    if (rawJson.result) {
-      if (typeof rawJson.result === "string") {
-        try {
-          rawJson = JSON.parse(rawJson.result);
-        } catch {
-         
-        }
-      } else {
-        rawJson = rawJson.result;
-      }
-    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const parsedResults: any[] = Array.isArray(rawJson.results) ? rawJson.results : [];
     
-    const results = blocks.map(b => ({
-      id: b.id,
-      description: rawJson[b.id] || "No description generated."
-    }));
+    const results = blocks.map(b => {
+      const match = parsedResults.find(r => String(r.id) === String(b.id));
+      return {
+        id: b.id,
+        description: match?.description || "No description generated."
+      };
+    });
     return { results, usageMetadata: response.usageMetadata };
   } catch (err) {
     console.error("Failed to parse batch AI response:", err);

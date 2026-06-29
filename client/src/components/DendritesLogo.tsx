@@ -1,19 +1,168 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 
-interface DendritesLogoProps {
+interface NuronsLogoProps {
   size?: number | string;
   className?: string;
-  isRotate?: boolean;
   isLoading?: boolean;
+  color?: string;
 }
 
-const DendritesLogo: React.FC<DendritesLogoProps> = ({
+/**
+ * Nurons mark — an "N" built from neuron anatomy: two somas per side
+ * (trunk ends), a single axon-like diagonal forming the spine of the
+ * "N", and small dendrite branches feeding into each soma.
+ *
+ * Loading state: a dramatic pulsing glow ring around the mark,
+ * bright white traveling dots along dendrites and axon,
+ * and a breathing scale animation on the whole SVG.
+ *
+ * Respects prefers-reduced-motion by freezing on a static glow state.
+ */
+const DendritesLogo: React.FC<NuronsLogoProps> = ({
   size = 46,
   className = "",
-  isRotate = false,
   isLoading = false,
+  color = "#3b82f6",
 }) => {
-  const shouldRotate = isRotate || isLoading;
+  const svgRef = useRef<SVGSVGElement>(null);
+  const rafRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg || !isLoading) return;
+
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+
+    const dendritePaths = [
+      svg.querySelector<SVGPathElement>("#nl-d1"),
+      svg.querySelector<SVGPathElement>("#nl-d2"),
+      svg.querySelector<SVGPathElement>("#nl-d3"),
+      svg.querySelector<SVGPathElement>("#nl-d4"),
+    ];
+    const dendriteDots = [
+      svg.querySelector<SVGCircleElement>("#nl-p1"),
+      svg.querySelector<SVGCircleElement>("#nl-p2"),
+      svg.querySelector<SVGCircleElement>("#nl-p3"),
+      svg.querySelector<SVGCircleElement>("#nl-p4"),
+    ];
+    const axonPath = svg.querySelector<SVGPathElement>("#nl-axon");
+    const axonDot = svg.querySelector<SVGCircleElement>("#nl-paxon");
+    const arrivalGlow = svg.querySelector<SVGCircleElement>("#nl-glow");
+    const pulseRing = svg.querySelector<SVGCircleElement>("#nl-pulse-ring");
+
+    if (
+      dendritePaths.some((p) => !p) ||
+      dendriteDots.some((d) => !d) ||
+      !axonPath ||
+      !axonDot ||
+      !arrivalGlow
+    ) {
+      return;
+    }
+
+    // Re-bind as non-null so TypeScript trusts them inside the frame() closure
+    const _svg = svg;
+    const _axonPath = axonPath;
+    const _axonDot = axonDot;
+    const _arrivalGlow = arrivalGlow;
+
+    if (reduceMotion) {
+      _arrivalGlow.setAttribute("opacity", "0.35");
+      dendriteDots.forEach((d) => d!.setAttribute("opacity", "0"));
+      _axonDot.setAttribute("opacity", "0");
+      return;
+    }
+
+    const dLens = dendritePaths.map((p) => p!.getTotalLength());
+    const axonLen = _axonPath.getTotalLength();
+
+    // Faster, more visible timing
+    const DENDRITE_DURATION = 500;
+    const DENDRITE_GAPS = [600, 550, 500, 450];
+    const DENDRITE_DELAYS = [0, 120, 240, 360];
+
+    const AXON_CYCLE = 1400;
+    const FIRE_START = 600;
+    const FIRE_DUR = 450;
+    const GLOW_DUR = 350;
+
+    const start = performance.now();
+
+    function frame(now: number) {
+      const elapsed = now - start;
+
+      // Breathing effect on the whole SVG
+      const breathe = Math.sin(elapsed / 800) * 0.06 + 1;
+      _svg.style.transform = `scale(${breathe})`;
+
+      // Pulse ring
+      if (pulseRing) {
+        const ringPhase = (elapsed % 1800) / 1800;
+        const ringR = 90 + ringPhase * 30;
+        const ringOpacity = Math.max(0, 0.6 - ringPhase * 0.7);
+        pulseRing.setAttribute("r", String(ringR));
+        pulseRing.setAttribute("opacity", String(ringOpacity));
+        pulseRing.setAttribute("stroke-width", String(3 - ringPhase * 2));
+      }
+
+      // Dendrite pulses — brighter, larger
+      dendritePaths.forEach((path, i) => {
+        const cycle = DENDRITE_DURATION + DENDRITE_GAPS[i];
+        const local = elapsed - DENDRITE_DELAYS[i];
+        if (local < 0) {
+          dendriteDots[i]!.setAttribute("opacity", "0");
+          return;
+        }
+        const t = local % cycle;
+        if (t > DENDRITE_DURATION) {
+          dendriteDots[i]!.setAttribute("opacity", "0");
+        } else {
+          const progress = t / DENDRITE_DURATION;
+          const pt = path!.getPointAtLength(progress * dLens[i]);
+          dendriteDots[i]!.setAttribute("cx", String(pt.x));
+          dendriteDots[i]!.setAttribute("cy", String(pt.y));
+          // Fade in then out for a comet trail feel
+          const dotOpacity = progress < 0.2 ? progress / 0.2 : progress > 0.8 ? (1 - progress) / 0.2 : 1;
+          dendriteDots[i]!.setAttribute("opacity", String(dotOpacity));
+        }
+      });
+
+      // Axon firing pulse
+      const axonT = elapsed % AXON_CYCLE;
+      if (axonT < FIRE_START || axonT > FIRE_START + FIRE_DUR) {
+        _axonDot.setAttribute("opacity", "0");
+      } else {
+        const lt = (axonT - FIRE_START) / FIRE_DUR;
+        const pt = _axonPath.getPointAtLength(lt * axonLen);
+        _axonDot.setAttribute("cx", String(pt.x));
+        _axonDot.setAttribute("cy", String(pt.y));
+        _axonDot.setAttribute("opacity", "1");
+      }
+
+      // Arrival flash — larger, more intense
+      const glowT = (axonT - (FIRE_START + FIRE_DUR)) / GLOW_DUR;
+      if (glowT >= 0 && glowT < 1) {
+        _arrivalGlow.setAttribute("opacity", String((1 - glowT) * 1));
+      } else {
+        _arrivalGlow.setAttribute("opacity", "0");
+      }
+
+      rafRef.current = requestAnimationFrame(frame);
+    }
+
+    rafRef.current = requestAnimationFrame(frame);
+
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      _svg.style.transform = "";
+      dendriteDots.forEach((d) => d!.setAttribute("opacity", "0"));
+      _axonDot.setAttribute("opacity", "0");
+      _arrivalGlow.setAttribute("opacity", "0");
+      if (pulseRing) pulseRing.setAttribute("opacity", "0");
+    };
+  }, [isLoading]);
 
   return (
     <div
@@ -21,29 +170,88 @@ const DendritesLogo: React.FC<DendritesLogoProps> = ({
       style={{ width: size, height: size }}
     >
       <svg
-        viewBox="0 0 1024 1024"
+        ref={svgRef}
+        viewBox="0 0 200 200"
         xmlns="http://www.w3.org/2000/svg"
-        className={`w-full h-full ${shouldRotate ? "animate-spin-slow" : ""}`}
+        className="w-full h-full"
+        style={{ transformOrigin: "center center" }}
+        role="img"
+        aria-label="Nurons"
+        aria-busy={isLoading}
       >
-        <g fill="#3b82f6">
-          <path d="M854.321167,566.405518 C865.965332,526.609436 869.739563,486.295044 868.152405,445.308563 C871.175842,449.105377 870.580750,453.620300 871.095642,457.727203 C873.521240,477.075043 874.957214,496.539307 874.093201,516.036011 C870.187439,604.170105 841.975281,683.002014 782.901794,749.491089 C741.754700,795.803406 691.716492,828.463989 631.425232,844.469971 C608.446655,850.570190 584.985718,853.745544 561.260803,852.948547 C511.543518,851.278503 465.685211,836.272400 423.566284,810.169861 C364.134064,773.337708 320.492798,722.342712 290.352814,659.492493 C274.528992,626.495605 263.991089,591.885254 259.024048,555.661133 C253.822403,517.726013 255.066055,479.942841 262.914337,442.410065 C273.428589,392.127960 294.260162,346.622803 326.450623,306.552155 C372.337677,249.431976 430.461761,211.825882 502.800629,197.297974 C506.385223,196.578079 510.025421,196.127625 513.648865,195.616089 C514.246521,195.531723 514.891357,195.781540 515.760193,195.914551 C515.195435,198.155624 513.333679,198.235748 511.927399,198.766205 C468.479767,215.154510 430.707855,240.113663 398.875092,273.924957 C354.907013,320.625854 326.780701,375.444763 315.250305,438.616394 C305.165955,493.865417 310.237396,547.734192 331.154602,599.883240 C350.035919,646.956665 378.637451,687.218201 417.293762,720.218201 C451.390442,749.325745 490.202393,769.194397 533.953552,778.970825 C581.162048,789.519714 627.659912,786.184509 673.112000,769.818420 C733.424133,748.101501 779.196960,708.337830 813.893250,655.122192 C831.760071,627.718872 845.048828,598.190369 854.321167,566.405518 Z" />
-          
-          <path d="M257.571503,325.539795 C213.798065,403.759033 199.348663,486.746246 216.721954,574.306641 C234.005051,661.412415 278.802551,732.790466 346.170990,790.234619 C344.554718,792.165283 343.490753,790.747559 342.485504,790.196777 C267.885468,749.325684 215.119431,689.292480 184.766571,609.796692 C174.456375,582.793640 167.958878,554.807495 164.555649,526.054932 C161.290527,498.469055 160.891205,470.890045 163.803329,443.308990 C170.744232,377.570679 192.741058,317.355621 230.902634,263.245026 C262.803772,218.011337 302.839661,181.586334 350.960144,154.271317 C390.326050,131.925720 432.617279,117.645370 477.343506,110.789970 C530.331360,102.668266 582.657898,105.633919 633.951355,121.655144 C694.285461,140.500168 744.146851,174.445221 781.862427,225.577087 C782.642517,226.634659 783.612732,227.616089 783.620300,229.358917 C781.578308,229.928406 780.770386,228.195908 779.755554,227.145844 C738.548767,184.506378 688.063049,159.053345 630.365295,147.706070 C592.276978,140.215332 553.936035,140.736481 515.583374,146.886139 C456.518005,156.356979 403.131897,179.225418 355.086945,214.562805 C314.632477,244.317291 282.725311,281.761383 257.571503,325.539795 Z" />
-          
-          <path d="M428.673523,605.359985 C453.627014,653.985535 490.505005,689.707031 540.013550,712.101318 C557.837097,720.163391 576.458923,725.778687 596.020142,727.862793 C597.162476,727.984436 598.378418,727.993408 599.265930,729.499634 C598.034241,731.528076 595.889404,730.861206 594.123169,730.885803 C543.766418,731.589355 498.649841,716.193298 458.894073,685.620422 C415.047882,651.901978 386.590698,607.560425 370.649841,554.835632 C362.619385,528.274719 358.572662,501.033112 359.986176,473.492432 C365.420868,367.604370 413.351349,288.230652 509.362396,240.503403 C547.665527,221.462830 589.022522,213.578613 631.653870,217.122757 C706.954102,223.382812 763.926086,259.553558 801.599365,325.416748 C802.450073,326.904083 803.961487,328.289398 803.222595,330.434631 C800.901367,330.303467 800.390442,328.264282 799.354248,326.918915 C764.792786,282.045502 719.932068,254.363800 663.473145,247.248108 C604.149841,239.771393 550.387207,255.119339 502.520416,290.413696 C452.359161,327.399902 421.928802,377.599243 408.231049,437.882385 C395.064331,495.828552 402.262726,551.677917 428.673523,605.359985 Z" />
-        </g>
-      </svg>
+        <defs>
+          <radialGradient id="nl-somaGlow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.9" />
+            <stop offset="40%" stopColor="#93c5fd" stopOpacity="0.6" />
+            <stop offset="100%" stopColor={color} stopOpacity="0" />
+          </radialGradient>
+          <filter id="nl-dotGlow" x="-200%" y="-200%" width="500%" height="500%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="3" />
+          </filter>
+        </defs>
 
-      <style>{`
-        @keyframes spin-slow {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-        .animate-spin-slow {
-          animation: spin-slow 8s linear infinite;
-          transform-origin: center;
-        }
-      `}</style>
+        {/* Expanding pulse ring — only visible during loading */}
+        <circle
+          cx="100"
+          cy="100"
+          r="90"
+          fill="none"
+          stroke="#60a5fa"
+          strokeWidth="2"
+          id="nl-pulse-ring"
+          opacity="0"
+        />
+
+        {/* trunks + axon — the strokes that form the "N" */}
+        <g stroke={color} strokeWidth="9" strokeLinecap="round" fill="none">
+          <path d="M52 150 L52 50" />
+          <path d="M148 50 L148 150" />
+          <path d="M52 50 C 80 90, 120 110, 148 150" id="nl-axon" />
+        </g>
+
+        {/* dendrite branches off each trunk */}
+        <g stroke={color} strokeWidth="5" strokeLinecap="round" fill="none">
+          <path d="M52 70 Q 34 64 24 52" id="nl-d1" />
+          <path d="M52 130 Q 34 136 24 148" id="nl-d2" />
+          <path d="M148 70 Q 166 64 176 52" id="nl-d3" />
+          <path d="M148 130 Q 166 136 176 148" id="nl-d4" />
+        </g>
+
+        {/* Arrival flash glow — bigger radius */}
+        <circle
+          cx="148"
+          cy="150"
+          r="40"
+          fill="url(#nl-somaGlow)"
+          id="nl-glow"
+          opacity="0"
+        />
+
+        {/* somas — trunk ends */}
+        <g fill={color}>
+          <circle cx="52" cy="50" r="13" />
+          <circle cx="52" cy="150" r="13" />
+          <circle cx="148" cy="50" r="13" />
+          <circle cx="148" cy="150" r="13" />
+        </g>
+
+        {/* synapse tips */}
+        <g fill={color}>
+          <circle cx="24" cy="52" r="5" />
+          <circle cx="24" cy="148" r="5" />
+          <circle cx="176" cy="52" r="5" />
+          <circle cx="176" cy="148" r="5" />
+        </g>
+
+        {/* traveling pulse dots — bigger, brighter, with glow filter */}
+        <g fill="#ffffff" filter="url(#nl-dotGlow)">
+          <circle r="7" id="nl-p1" opacity="0" />
+          <circle r="7" id="nl-p2" opacity="0" />
+          <circle r="7" id="nl-p3" opacity="0" />
+          <circle r="7" id="nl-p4" opacity="0" />
+        </g>
+        <circle r="9" fill="#ffffff" filter="url(#nl-dotGlow)" id="nl-paxon" opacity="0" />
+      </svg>
     </div>
   );
 };
