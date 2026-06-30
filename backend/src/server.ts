@@ -38,6 +38,7 @@ import { metricsMiddleware } from "./infrastructure/monitoring/middleware/middle
 dotenv.config();
 
 const app = express();
+app.set("trust proxy", 1);
 const PORT = process.env.PORT || 5000;
 app.use(metricsMiddleware);
 
@@ -102,12 +103,19 @@ app.use("/api", globalLimiter);
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20,
+  max: 40,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many login attempts, please try again later." },
 });
-app.use("/api/v1/auth", authLimiter);
+app.use("/api/v1/auth/login", authLimiter);
+app.use("/api/v1/auth/register", authLimiter);
+app.use("/api/v1/auth/google", authLimiter);
+app.use("/api/v1/auth/send-otp", authLimiter);
+app.use("/api/v1/auth/verify-otp", authLimiter);
+app.use("/api/v1/auth/forgot-password", authLimiter);
+app.use("/api/v1/auth/reset-password", authLimiter);
+app.use("/api/v1/admin/auth/login", authLimiter);
 
 app.use(trackActiveUserMiddleware);
 
