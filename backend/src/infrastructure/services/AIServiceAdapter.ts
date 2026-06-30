@@ -38,8 +38,10 @@ export class AIServiceAdapter implements IAIService {
             if (keys.length === 0) {
               throw new Error("BYOK tier users must provide their own Gemini API keys. Please upload your keys from the chat window.");
             }
+            console.log("STARTING WITH KEYS")
             stream = await AIService.streamAIContentWithKeys(contents, activeModel, keys, signal, userId, systemInstruction);
           } else {
+            console.log("STARTING WITHOUT KEYS")
             stream = await AIService.streamAIContent(contents, activeModel, signal, systemInstruction);
           }
         } else {

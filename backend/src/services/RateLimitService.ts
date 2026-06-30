@@ -148,6 +148,8 @@ export class RateLimitService implements IRateLimitService {
 
     const models = [
       "gemini-3-flash-preview",
+      "gemini-3.1-flash-lite",
+      "gemini-3.5-flash",
       "gemini-2.5-flash",
       "openai/gpt-5.5",
       "openai/gpt-5.4",
@@ -299,6 +301,8 @@ export class RateLimitService implements IRateLimitService {
 
     const models = [
       "gemini-3-flash-preview",
+      "gemini-3.1-flash-lite",
+      "gemini-3.5-flash",
       "gemini-2.5-flash",
       "openai/gpt-5.5",
       "openai/gpt-5.4",

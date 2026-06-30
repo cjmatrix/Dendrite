@@ -1,4 +1,4 @@
-import { getProviderKey } from "../../../constants/models";
+import { getProviderKey, DEFAULT_MODEL } from "../../../constants/models";
 import { AppError } from "../../../utils/AppError";
 import { hashCode } from "../../../utils/stripComments";
 import { redisConnection } from "../../../config/redis";
@@ -147,7 +147,7 @@ export class SaveModelReply implements ISaveModelReplyUseCase {
         [`token_usage.${provider}.p5Visualization.total`]: p5VisualizationTokens,
       });
 
-      const activeModel = model || "gemini-3-flash-preview";
+      const activeModel = model || DEFAULT_MODEL;
       const totalTokens = calculatedPromptTokens + calculatedResponseTokens;
       try {
         await this.rateLimitService.incrementTokens(

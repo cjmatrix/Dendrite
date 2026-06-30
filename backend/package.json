@@ -9,6 +9,7 @@
     "dev:ai-worker": "ts-node-dev --respawn --transpile-only src/workers/aiWorker.ts",
     "dev:cpu-worker": "ts-node-dev --respawn --transpile-only src/workers/cpuWorker.ts",
     "build": "tsc",
+    "seed:ratelimits": "ts-node src/scripts/seedRateLimits.ts",
     "start": "node dist/src/server.js",
     "start:fast-worker": "node dist/src/workers/fastWorker.js",
     "start:ai-worker": "node dist/src/workers/aiWorker.js",

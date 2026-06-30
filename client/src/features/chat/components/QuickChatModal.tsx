@@ -263,7 +263,10 @@ export const QuickChatModal: React.FC<QuickChatModalProps> = ({
                   onClick={() => setIsModelOpen(false)}
                 />
                 <div className="absolute bottom-full left-0 mb-2 w-48 bg-zinc-900/95 backdrop-blur-md border border-white/10 rounded-2xl p-1.5 shadow-2xl flex flex-col gap-0.5 z-50 pointer-events-auto">
-                  {MODEL_OPTIONS.map((opt) => {
+                  {(user?.tier === "byok"
+                    ? MODEL_OPTIONS.filter((opt) => opt.id === "DEFAULT" || opt.id.startsWith("gemini"))
+                    : MODEL_OPTIONS
+                  ).map((opt) => {
                     const isLocked =
                       opt.tier === "paid" && user?.tier === "free";
                     return (

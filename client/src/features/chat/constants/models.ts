@@ -5,11 +5,12 @@ export interface ModelOption {
 }
 
 export const MODEL_OPTIONS: ModelOption[] = [
-  { id: "DEFAULT", label: "Gemini 3 Flash", tier: "free" },
+  { id: "DEFAULT", label: "Gemini 3 Fast", tier: "free" },
+  { id: "gemini-3.5-flash", label: "Gemini 3 Flash", tier: "free" },
 
   // Major Paid 
   { id: "openai/gpt-5.5", label: "GPT-5.5", tier: "paid" },
-   { id: "gemini-2.5-flash", label: "Gemini 2 Flash", tier: "free" },
+   { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash", tier: "free" },
   { id: "openai/gpt-5.4", label: "GPT-5.4", tier: "paid" },
   { id: "anthropic/claude-opus-4.8", label: "Claude Opus 4.8", tier: "paid" },
   { id: "anthropic/claude-sonnet-4.6", label: "Claude Sonnet 4.6", tier: "paid" },

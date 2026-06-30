@@ -1023,7 +1023,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                         onClick={() => setIsModelOpen(false)}
                       ></div>
                       <div className="absolute bottom-full left-0 mb-3 w-48 bg-(--theme-bg-surface) border border-zinc-700 shadow-2xl rounded-xl overflow-hidden py-1.5 z-50 max-h-[300px] overflow-y-auto no-scrollbar">
-                        {MODEL_OPTIONS.map((opt) => {
+                        {(user?.tier === "byok"
+                          ? MODEL_OPTIONS.filter((opt) => opt.id === "DEFAULT" || opt.id.startsWith("gemini"))
+                          : MODEL_OPTIONS
+                        ).map((opt) => {
                           const isLocked = opt.tier === "paid" && user?.tier === "free";
                           return (
                             <button

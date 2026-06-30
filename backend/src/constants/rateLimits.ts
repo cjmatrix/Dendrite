@@ -11,6 +11,18 @@ export const MODEL_TOKEN_LIMITS: Record<string, Record<UserTier, number>> = {
     enterprise: 5_000_000,
     byok: -1,
   },
+  "gemini-3.1-flash-lite": {
+    free: 300_000,
+    pro: 1_500_000,
+    enterprise: 8_000_000,
+    byok: -1,
+  },
+  "gemini-3.5-flash": {
+    free: 200_000,
+    pro: 1_000_000,
+    enterprise: 5_000_000,
+    byok: -1,
+  },
   "gemini-2.5-flash": {
     free: 400_000,
     pro: 2_000_000,

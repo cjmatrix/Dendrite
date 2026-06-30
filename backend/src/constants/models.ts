@@ -1,11 +1,11 @@
-export const MAIN_CHAT_MODEL = "gemini-3-flash-preview";
+export const MAIN_CHAT_MODEL = "gemini-3.1-flash-lite";
 
 export const QUICK_CHAT_MODEL = "gemini-2.5-flash";
 // export const CHAT_SUMMARY_MODEL = "gemma-4-31b-it";
 // export const CHAT_SUMMARY_MODEL = "gemma-4-26b-a4b-it";
 export const CHAT_SUMMARY_MODEL = "gemini-3.1-flash-lite";
 export const CODE_DESCRIPTION_MODEL = "gemma-4-31b-it";
-export const INTERNET_SEARCH_ROUTER_MODEL = "gemini-2.5-flash-lite";
+export const INTERNET_SEARCH_ROUTER_MODEL = "gemini-3.1-flash-lite";
 
 export const DEFAULT_MODEL = MAIN_CHAT_MODEL;
 
@@ -19,8 +19,14 @@ export interface ModelOption {
 export const MODEL_OPTIONS: ModelOption[] = [
   
   {
-    id: "gemini-3-flash-preview",
-    label: "Gemini 3.5 Flash",
+    id: "gemini-3.1-flash-lite",
+    label: "Gemini 3 Fast",
+    provider: "gemini",
+    tier: "free",
+  },
+  {
+    id: "gemini-3.5-flash",
+    label: "Gemini 3 Flash",
     provider: "gemini",
     tier: "free",
   },

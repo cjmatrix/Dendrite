@@ -217,6 +217,15 @@ export class ChatController extends BaseController {
           HttpStatus.FORBIDDEN
         );
       }
+      if (userTier === "byok") {
+        const isGemini = requestedModel.startsWith("gemini");
+        if (!isGemini) {
+          throw new AppError(
+            "BYOK tier is restricted to Gemini models only.",
+            HttpStatus.FORBIDDEN
+          );
+        }
+      }
 
       const messageContext = await this.prepareMessageUseCase.execute({
         chatId,
@@ -290,17 +299,25 @@ export class ChatController extends BaseController {
       if (modelStr && modelStr.toUpperCase() === "DEFAULT") {
         modelStr = DEFAULT_MODEL;
       }
-      if (modelStr) {
-        const modelOption = getModelOption(modelStr);
-        if (!modelOption) {
+      const activeModel = modelStr || DEFAULT_MODEL;
+      const modelOption = getModelOption(activeModel);
+      if (!modelOption) {
+        throw new AppError(
+          CHAT_MESSAGES.INVALID_MODEL,
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      if (modelOption.tier === "paid" && userTier === "free") {
+        throw new AppError(
+          "Paid models from OpenRouter are locked on the Free plan. Please upgrade to Pro or Enterprise.",
+          HttpStatus.FORBIDDEN
+        );
+      }
+      if (userTier === "byok") {
+        const isGemini = activeModel.startsWith("gemini");
+        if (!isGemini) {
           throw new AppError(
-            CHAT_MESSAGES.INVALID_MODEL,
-            HttpStatus.BAD_REQUEST,
-          );
-        }
-        if (modelOption.tier === "paid" && userTier === "free") {
-          throw new AppError(
-            "Paid models from OpenRouter are locked on the Free plan. Please upgrade to Pro or Enterprise.",
+            "BYOK tier is restricted to Gemini models only.",
             HttpStatus.FORBIDDEN
           );
         }
@@ -322,7 +339,7 @@ export class ChatController extends BaseController {
             highlightedText,
             quickChatHistory,
             userTier,
-            model: modelStr,
+            model: activeModel,
           },
           abortController.signal
         );

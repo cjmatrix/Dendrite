@@ -15,7 +15,7 @@ import {
   getActiveBYOKKeyIndex,
   rotateBYOKKeyIndex,
 } from "../utils/byokKeysHelper";
-import { INTERNET_SEARCH_ROUTER_MODEL } from "../constants/models";
+import { INTERNET_SEARCH_ROUTER_MODEL, DEFAULT_MODEL } from "../constants/models";
 import { IGeminiContent, IAIStreamChunk } from "../domain/chat/entities/Gemini";
 import { IMessageRepository } from "../domain/chat/repositories/IMessageRepository";
 import { IMessage } from "../domain/chat/entities/Message";
@@ -68,7 +68,7 @@ User query: "${queryText}"`;
             }
           }
         });
-        
+        console.log("END SEARCH")
         try {
           const parsed = JSON.parse(routerResponse?.text || "{}");
           console.log(parsed)
@@ -155,7 +155,7 @@ User query: "${queryText}"`;
 
   static async streamAIContent(
     contents: IGeminiContent[],
-    model: string = "gemini-3-flash-preview",
+    model: string = DEFAULT_MODEL,
     signal?: AbortSignal,
     systemInstruction?: string,
   ): Promise<AsyncIterable<IAIStreamChunk>> {
@@ -221,7 +221,7 @@ User query: "${queryText}"`;
       currentIdx = await getActiveBYOKKeyIndex(userId, "gemini");
       currentIdx = currentIdx % instances.length;
     }
-
+    console.log(model)
     while (attempts < instances.length) {
       try {
         const activeAi = instances[currentIdx];
