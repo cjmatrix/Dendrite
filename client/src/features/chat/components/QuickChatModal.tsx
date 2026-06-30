@@ -312,6 +312,7 @@ export const QuickChatModal: React.FC<QuickChatModalProps> = ({
 
           <textarea
             placeholder={streamChatMutation.isPending ? "AI is typing..." : "Ask a clarifying question..."}
+            maxLength={16000}
             className="flex-1 bg-transparent border-none outline-none text-sm text-gray-200 placeholder:text-gray-500 resize-none max-h-32 py-1 overflow-y-auto no-scrollbar disabled:opacity-60"
             value={input}
             rows={1}

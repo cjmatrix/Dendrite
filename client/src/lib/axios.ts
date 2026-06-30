@@ -63,6 +63,9 @@ api.interceptors.response.use(
       } else if (error.message) {
         errorMsg = error.message;
       }
+
+      console.log(error)
+
         toast.error(errorMsg,{
           style: {
               background: "#18181b",
@@ -75,6 +78,9 @@ api.interceptors.response.use(
             },
         });
       }
+
+    
+
       return Promise.reject(error);
     }
 

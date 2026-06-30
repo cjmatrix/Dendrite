@@ -16,7 +16,9 @@ export const UpdateFolderInputSchema = z.object({
 export type UpdateFolderInputDTO = z.infer<typeof UpdateFolderInputSchema>;
 
 export const UpdateFolderBehaviorInputSchema = z.object({
-  content: z.string().min(1, "Behavior content is required"),
+  content: z.string()
+    .min(1, "Behavior content is required")
+    .max(800, "Behavior content cannot exceed 800 characters (approx. 200 tokens)"),
 });
 
 export type UpdateFolderBehaviorInputDTO = z.infer<typeof UpdateFolderBehaviorInputSchema>;

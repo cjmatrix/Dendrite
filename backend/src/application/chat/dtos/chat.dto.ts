@@ -19,7 +19,7 @@ export const UpdateChatBodySchema = z.object({
 });
 
 export const SendMessageBodySchema = z.object({
-  message: z.string().trim().nullable().optional(),
+  message: z.string().max(32000, "Input cannot exceed 16,000 characters (approx. 8,000 tokens)").trim().nullable().optional(),
   mode: z.string().trim().nullable().optional(),
   model: z.string().trim().nullable().optional(),
   imageUrl: z.string().trim().nullable().optional(),

@@ -117,6 +117,7 @@ export class GenerateWorkspaceUseCase {
       content: params.message,
     });
 
+    
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const getSlidingWindowContext = (messages: any[]): string => {
       const windowMessages = messages.slice(-10);

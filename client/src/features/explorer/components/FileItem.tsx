@@ -455,7 +455,7 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
               </button>
             )}
 
-            <button
+            {!isChat&&<button
               className="w-full text-left px-3 py-1.5 hover:bg-cyan-600 hover:text-white flex items-center gap-2 transition-colors"
               onClick={(e) => {
                 e.stopPropagation();
@@ -465,7 +465,7 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
               }}
             >
               <FolderPlus size={14} /> New Folder
-            </button>
+            </button>}
             {!isChat && (
               <button
                 className="w-full text-left px-3 py-1.5 hover:bg-cyan-600 hover:text-white flex items-center gap-2 transition-colors"
@@ -479,7 +479,7 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
                 <Brain size={14} /> New Agent
               </button>
             )}
-            <button
+            {!isChat&&<button
               className="w-full text-left px-3 py-1.5 hover:bg-cyan-600 hover:text-white flex items-center gap-2 transition-colors"
               onClick={(e) => {
                 e.stopPropagation();
@@ -490,6 +490,7 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
             >
               <FolderPlus size={14} /> Open With Folder
             </button>
+          }
             {node.id !== "root" &&!isChat && (
               <button
                 className="w-full text-left px-3 py-1.5 hover:bg-cyan-600 hover:text-white flex items-center gap-2 transition-colors"
@@ -506,7 +507,7 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
                 <Search size={14} /> Search in Folder
               </button>
             )}
-            <button
+            {!isChat&&<button
               className="w-full text-left px-3 py-1.5 hover:bg-amber-600 hover:text-white flex items-center gap-2 transition-colors"
               onClick={(e) => {
                 e.stopPropagation();
@@ -516,6 +517,7 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
             >
               <GitBranch size={14} /> Knowledge Graph
             </button>
+          }
             {!node.isSystemFolder && (
               <button
                 className="w-full text-left px-3 py-1.5 hover:bg-cyan-600 hover:text-white flex items-center gap-2 transition-colors"
@@ -529,7 +531,7 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
                 <Edit size={14} /> Rename
               </button>
             )}
-            <button
+            {!isChat&&<button
               className="w-full text-left px-3 py-1.5 hover:bg-amber-600 hover:text-white flex items-center gap-2 transition-colors"
               onClick={(e) => {
                 e.stopPropagation();
@@ -538,7 +540,7 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
               }}
             >
               <GitBranch size={14} /> Behaviour
-            </button>
+            </button>}
             {node.id !== "root" && !node.isSystemFolder && (
               <button
                 className="w-full text-left px-3 py-1.5 hover:bg-cyan-600 hover:text-white flex items-center gap-2 transition-colors"

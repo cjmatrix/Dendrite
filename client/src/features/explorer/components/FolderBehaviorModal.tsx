@@ -94,13 +94,19 @@ export const FolderBehaviorModal: React.FC<FolderBehaviorModalProps> = ({
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
+              maxLength={800}
               placeholder="e.g. You are an expert Python assistant. Provide high-performance code snippets and explain time/space complexity using Big O notation for every solution..."
               rows={6}
               className="w-full bg-zinc-900/50 border border-zinc-800 focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/50 rounded-xl text-sm text-zinc-200 outline-none p-4 transition-all resize-none shadow-inner placeholder:text-zinc-600"
             />
-            <p className="text-xs text-zinc-500">
-              Any chat sessions initiated or organized inside this folder will automatically prepend these instructions to the system directives.
-            </p>
+            <div className="flex justify-between items-start gap-4 text-xs text-zinc-500">
+              <p className="flex-1">
+                Any chat sessions initiated or organized inside this folder will automatically prepend these instructions to the system directives.
+              </p>
+              <span className={`shrink-0 font-mono font-semibold ${content.length >= 800 ? 'text-amber-500' : 'text-zinc-600'}`}>
+                {content.length}/800
+              </span>
+            </div>
           </div>
 
           {/* Recursive Inheritance Notice */}

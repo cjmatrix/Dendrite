@@ -207,7 +207,7 @@ export default function FileExplorer() {
       <div
         ref={sidebarRef}
         style={{ width: `${isCollapsed ? 0 : width}px` }}
-        className={`relative h-[100dvh] bg-neutral-950/40 shrink-0 flex flex-col pt-0 z-20 backdrop-blur-3xl ${
+        className={`relative h-[100dvh] bg-neutral-950/40 shrink-0 flex flex-col pt-0 z-20 backdrop-blur-3xl max-w-[calc(100vw-90px)] md:max-w-none ${
           isResizing ? "" : "transition-all duration-500"
         } ${
           isAgentPending 

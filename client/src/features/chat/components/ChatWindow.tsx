@@ -91,7 +91,16 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const { tree, isShareMode } = useAppSelector((state) => state.explorer);
   const queryClient = useQueryClient();
 
-  const { data: chat, isLoading: isChatLoading } = useChatDetails(id);
+  const { data: chat, isLoading: isChatLoading, error: chatError } = useChatDetails(id);
+
+  useEffect(() => {
+    if (chatError) {
+      const status = (chatError as any)?.response?.status;
+      if (status === 404) {
+        navigate("/");
+      }
+    }
+  }, [chatError, navigate]);
   const {
     data: messagesData,
     fetchNextPage,
@@ -1075,6 +1084,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
             <textarea
               placeholder={mode==="general"?"Ask follow-up or research next steps...":"Create an interactive visualization of NGINX."}
+              maxLength={32000}
               className="flex-1  bg-transparent border-none outline-none px-3 text-[16px] text-gray-200 placeholder:text-gray-500 resize-none max-h-48 py-1 overflow-y-auto no-scrollbar"
               value={input}
               rows={1}
