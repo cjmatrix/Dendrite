@@ -29,7 +29,6 @@ const AdminLogin: React.FC = () => {
       navigate("/admin");
     }
   }, [isAdminAuthenticated, admin, navigate]);
-  console.log(isAdminAuthenticated,admin?.role)
 
   const onSubmit = (data: AdminLoginRequest) => {
     dispatch(clearAdminError());

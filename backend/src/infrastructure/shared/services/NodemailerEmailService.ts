@@ -78,7 +78,7 @@ export class NodemailerEmailService implements IEmailService {
   async sendPasswordResetEmail(email: string, token: string): Promise<void> {
     const fromAddress =
       process.env.SMTP_FROM || `"Dentrites AI" <noreply@dentrites.ai>`;
-    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+    const frontendUrl = process.env.CLIENT_URL || "http://localhost:5173";
     const resetLink = `${frontendUrl}/reset-password?token=${token}&email=${email}`;
 
     const mailOptions = {

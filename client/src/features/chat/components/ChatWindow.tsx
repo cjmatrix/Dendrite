@@ -150,8 +150,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
   const isSplitModeActive = isQuickChatSplit && !isMobile;
 
-  console.log(user)
-
   const [externalSelectedFile, setExternalSelectedFile] = useState<{
     name: string;
     url: string;

@@ -20,9 +20,6 @@ export const FolderBehaviorModal: React.FC<FolderBehaviorModalProps> = ({
   const [inheritedBehavior, setInheritedBehavior] = useState<string | null>(null);
   const [inheritedFolderName, setInheritedFolderName] = useState<string | null>(null);
 
-  console.log(folder)
-
-
   const { behaviorData, isLoading, isSaving, saveBehavior } = useFolderBehavior(folder.id, onClose);
 
   useEffect(() => {

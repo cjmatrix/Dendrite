@@ -163,8 +163,6 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
 
   useEffect(() => {
     if (!contextMenu) return;
-    console.log(node);
-    console.log(isChat);
     const close = () => setContextMenu(null);
     window.addEventListener("click", close);
     return () => window.removeEventListener("click", close);

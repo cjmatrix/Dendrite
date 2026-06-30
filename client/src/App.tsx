@@ -35,13 +35,8 @@ function App() {
 
   const queryClient = useQueryClient();
   useEffect(() => {
-    console.log("Setting up Firebase message listener");
-    
     const unsubscribe = onMessage(messaging, (payload) => {
-      console.log("Foreground message received:", payload);
-      
       if (payload?.notification) {
-        console.log("received");
         queryClient.invalidateQueries({queryKey:["dueCards"]});
 
         toast.success(`${payload.notification.body}`, {
@@ -65,7 +60,6 @@ function App() {
     });
 
     return () => {
-      console.log("Cleaning up Firebase message listener");
       if (unsubscribe) unsubscribe();
     };
   }, [queryClient]);

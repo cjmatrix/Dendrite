@@ -53,7 +53,6 @@ api.interceptors.response.use(
         let errorMsg = "An unexpected error occurred";
         if (error.response?.data) {
         const data = error.response.data;
-        console.log(data)
         if (data.message) {
           errorMsg = data.message;
         } else if (data.error) {
@@ -83,7 +82,6 @@ api.interceptors.response.use(
       let errorMsg = "An unexpected error occurred";
       if (error.response?.data) {
         const data = error.response.data;
-        console.log(data)
         if (data.message) {
           errorMsg = data.message;
         } else if (data.error) {

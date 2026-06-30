@@ -21,8 +21,6 @@ Sentry.init({
   tracesSampleRate: 1.0,
   
   beforeSend(event: Sentry.ErrorEvent) {
-    console.log(event)
-   
     if (event.user) {
       delete event.user.email;
       delete event.user.ip_address;

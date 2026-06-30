@@ -18,7 +18,6 @@ export const DocumentBrowser: React.FC<DocumentBrowserProps> = ({
   onRemoveDocument,
 }) => {
   if (!isOpen) return null;
-    console.log(documents)
   const documentFiles = documents.length>0?documents.filter((doc) => doc.fileType === "document"):[];
   const imageFiles = documents.length>0?documents.filter((doc) => doc.fileType === "image"):[];
 

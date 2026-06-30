@@ -314,7 +314,6 @@ export const markdownComponents = {
     if (match && match[1] === "p5") {
       return <P5Sandbox p5CodeString={codeString} />;
     }
-    console.log("markdwon rendering");
     return match ? (
       <div className="my-5 rounded-xl overflow-hidden border border-white/5 bg-[var(--theme-bg-surface)] shadow-lg">
         {/* Language header */}
