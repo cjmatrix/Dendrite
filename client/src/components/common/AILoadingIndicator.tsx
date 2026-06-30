@@ -3,6 +3,7 @@ import gsap from "gsap";
 
 const loadingTexts = [
   "Analyzing context",
+  "Searching web",
   "Mapping the details",
   "Gathering insights",
   "Structuring response",
