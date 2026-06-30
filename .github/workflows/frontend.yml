@@ -30,9 +30,9 @@ jobs:
       - name: Build Frontend
         run: npm run build
         env:
-          # Inject production environment variables for Vite
           VITE_API_URL: ${{ secrets.VITE_API_URL }} 
-          # Add any other VITE_* environment variables you need here
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+          VITE_PADDLE_CLIENT_TOKEN: ${{ secrets.VITE_PADDLE_CLIENT_TOKEN }}
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
