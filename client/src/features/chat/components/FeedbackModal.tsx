@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { X, Send, MessageSquareHeart, Star } from "lucide-react";
 import { submitFeedback } from "../api/feedbackApi";
 import { toast } from "react-hot-toast";
+import { isAxiosError } from "axios";
 
 interface FeedbackModalProps {
   isOpen: boolean;
@@ -29,8 +30,13 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose })
       setContent("");
       setRating(0);
       onClose();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || "Failed to submit feedback");
+    } catch (error) {
+      const errorMessage = isAxiosError(error) 
+        ? error.response?.data?.message 
+        : error instanceof Error 
+        ? error.message 
+        : "Failed to submit feedback";
+      toast.error(errorMessage || "Failed to submit feedback");
     } finally {
       setIsSubmitting(false);
     }

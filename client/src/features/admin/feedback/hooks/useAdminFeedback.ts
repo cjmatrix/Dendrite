@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getAllFeedback, updateFeedbackStatus } from "../api/adminFeedbackApi";
 import toast from "react-hot-toast";
+import { AxiosError } from "axios";
 
 export const useAdminFeedback = () => {
   return useQuery({
@@ -19,7 +20,7 @@ export const useUpdateFeedbackStatus = () => {
       queryClient.invalidateQueries({ queryKey: ["adminFeedback"] });
       toast.success("Feedback status updated");
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ message?: string }>) => {
       toast.error(error.response?.data?.message || "Failed to update status");
     },
   });

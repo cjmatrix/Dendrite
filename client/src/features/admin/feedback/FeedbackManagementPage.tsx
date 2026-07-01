@@ -66,7 +66,7 @@ export default function FeedbackManagementPage() {
       render: (fb) => (
         <select
           value={fb.status}
-          onChange={(e) => updateStatus({ id: fb._id, status: e.target.value as any })}
+          onChange={(e) => updateStatus({ id: fb._id, status: e.target.value as "new" | "reviewed" | "resolved" })}
           disabled={isUpdating}
           className={`px-3 py-1 rounded-full text-xs font-semibold capitalize appearance-none cursor-pointer outline-none border transition-colors ${
             fb.status === "new"

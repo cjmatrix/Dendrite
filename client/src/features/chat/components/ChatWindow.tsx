@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
 import type { VirtuosoHandle } from "react-virtuoso";
+import { isAxiosError } from "axios";
 import { Virtuoso } from "react-virtuoso";
 import "../styles/markdown.css";
 import { useAppSelector, useAppDispatch } from "../../../store/store";
@@ -94,8 +95,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const { data: chat, isLoading: isChatLoading, error: chatError } = useChatDetails(id);
 
   useEffect(() => {
-    if (chatError) {
-      const status = (chatError as any)?.response?.status;
+    if (chatError && isAxiosError(chatError)) {
+      const status = chatError.response?.status;
       if (status === 404) {
         navigate("/");
       }

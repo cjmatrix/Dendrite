@@ -15,7 +15,7 @@ const PlantUMLViewer = ({ src, alt }: { src: string; alt?: string }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
-  const activePointers = useRef<any[]>([]);
+  const activePointers = useRef<PointerEvent[]>([]);
   const lastDistance = useRef<number | null>(null);
 
   useEffect(() => {
