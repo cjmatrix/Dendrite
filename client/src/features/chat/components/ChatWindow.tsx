@@ -60,7 +60,7 @@ import { useInheritContext } from "../hooks/useInheritContext";
 import { useTextSelection } from "../hooks/useTextSelection";
 import { useDocumentHistory } from "../hooks/useDocumentHistory";
 import { useFlattenedMessages, useBreadcrumbs } from "../hooks/useChatHelpers";
-import { MODEL_OPTIONS, DEFAULT_MODEL } from "../constants/models";
+import { MODEL_OPTIONS} from "../constants/models";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSendAgentMessageMutation } from "../hooks/useAgentMutation.ts";
 
