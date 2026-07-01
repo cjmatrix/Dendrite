@@ -162,6 +162,7 @@ User query: "${queryText}"`;
     // console.log(JSON.stringify(contents,null,2));
 
 
+    console.log(model)
   
     console.log("Strem STARTED ")
     let stream;
