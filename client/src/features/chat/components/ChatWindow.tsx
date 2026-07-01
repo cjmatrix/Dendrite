@@ -121,7 +121,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   }, [messages]);
 
   const [mode, setMode] = useState<"general" | "visual">("general");
-  const [model, setModel] = useState(DEFAULT_MODEL);
+  const [model, setModel] = useState("gemini-2.5-flash");
 
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [isModelOpen, setIsModelOpen] = useState(false);

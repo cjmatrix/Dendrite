@@ -25,8 +25,9 @@ export class MongooseBaseRepository<
   }
 
   async create(data: Partial<T>): Promise<T> {
-    const doc = await this.model.create(data);
-    return this.mapToDomain((doc.toObject ? doc.toObject() : doc) as Record<string, unknown>);
+    const doc = new this.model(data);
+    const savedDoc = await doc.save({ session: this.getSession() ?? undefined });
+    return this.mapToDomain((savedDoc.toObject ? savedDoc.toObject() : savedDoc) as Record<string, unknown>);
   }
 
   async save(entity: T): Promise<T> {

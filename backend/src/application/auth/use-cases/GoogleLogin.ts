@@ -70,24 +70,28 @@ export class GoogleLogin implements IGoogleLoginUseCase {
         const systemFolders = [
           {
             userId: newUser._id,
+            ownerId: newUser._id,
             parentId: null,
             name: "Documents",
             isSystemFolder: true,
           },
           {
             userId: newUser._id,
+            ownerId: newUser._id,
             parentId: null,
             name: "Media",
             isSystemFolder: true,
           },
           {
             userId: newUser._id,
+            ownerId: newUser._id,
             parentId: null,
             name: "Research",
             isSystemFolder: true,
           },
           {
             userId: newUser._id,
+            ownerId: newUser._id,
             parentId: null,
             name: "Chats",
             isSystemFolder: true,
