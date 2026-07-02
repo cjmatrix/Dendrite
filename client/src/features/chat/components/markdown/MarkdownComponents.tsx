@@ -287,7 +287,14 @@ export const markdownComponents = {
       : String(children).replace(/\n$/, "");
 
     if (match && match[1] === "plantuml") {
-      return <PlantUMLBlock codeString={codeString} />;
+      // Auto-fix common LLM hallucinations for PlantUML syntax
+      const sanitizedCode = codeString
+        .replace(/^\s*direction\s+LR\s*$/gm, "left to right direction")
+        .replace(/^\s*direction\s+TB\s*$/gm, "top to bottom direction")
+        .replace(/^\s*direction\s+RL\s*$/gm, "right to left direction")
+        .replace(/^\s*direction\s+BT\s*$/gm, "bottom to top direction");
+
+      return <PlantUMLBlock codeString={sanitizedCode} />;
     }
 
     if (match && match[1] === "mermaid") {
@@ -372,7 +379,7 @@ export const markdownComponents = {
           display: "inline-block",
           verticalAlign: "middle",
           margin: "0 0.3rem",
-          padding: "0.2rem 0.5rem",
+          padding: "0.1rem 0.5rem",
           background: "rgba(63, 63, 70, 0.2)",
           borderRadius: "0.375rem",
           border: "1px solid rgba(82, 82, 91, 0.3)",

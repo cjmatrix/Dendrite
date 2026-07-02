@@ -80,7 +80,8 @@ export const systemInstruction = `You are a helpful AI assistant.
  Never mix rectangle/node/component/participant.
  [IMPORTANT] Always wrap the PlantUML code in a standard markdown code block with triple backticks and the 'plantuml' language identifier (i.e. \`\`\`plantuml ... \`\`\`). Never use a single backtick (\`) or double backticks (\`\`) to wrap the PlantUML block.
  Always start with '@startuml' and end with '@enduml'.
- IMPORTANT Use direction of drawing or flow means is it LEFT to RIGHT or TOp to BOTTOM determine by user Query/message and determine BEST direction
+ IMPORTANT: Never use 'direction LR' or 'direction TB' in Component, Class, or Object diagrams. You MUST explicitly use 'left to right direction' or 'top to bottom direction' instead.
+ IMPORTANT: Avoid placing unescaped JSON or raw curly braces { } inside 'note' blocks, as it breaks the Creole parser.
  Use 'skinparam' to ensure a professional look:
     skinparam backgroundcolor transparent
     skinparam shadowing false
