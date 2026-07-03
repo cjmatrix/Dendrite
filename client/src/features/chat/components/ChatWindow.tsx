@@ -713,7 +713,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             }
             computeItemKey={(index, item) => item._id || String(index)}
             followOutput={isStreaming ? "smooth" : false}
-            increaseViewportBy={{ top: 1000, bottom: 1000 }}
+            increaseViewportBy={{ top: 3000, bottom: 3000 }}
             atBottomStateChange={(bottom) => setAtBottom(bottom)}
             context={{
               isFetchingNextPage,
