@@ -13,7 +13,7 @@ initializePaddle({
   eventCallback: function(event) {
     if (event.name === "checkout.completed") {
      
-      window.location.reload();
+      window.location.href = "https://nurons.me";
     }
   }
 });
