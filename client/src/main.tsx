@@ -10,6 +10,12 @@ import { initializePaddle } from "@paddle/paddle-js";
 initializePaddle({
   environment: "sandbox",
   token: import.meta.env.VITE_PADDLE_CLIENT_TOKEN || "",
+  eventCallback: function(event) {
+    if (event.name === "checkout.completed") {
+     
+      window.location.reload();
+    }
+  }
 });
 
 import * as Sentry from "@sentry/react";
