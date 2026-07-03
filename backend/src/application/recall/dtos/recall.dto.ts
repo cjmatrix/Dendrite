@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const CreateCardInputSchema = z.object({
-  content: z.string().trim().optional(),
+  content: z.string().trim().nullable().optional(),
   chatId: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid chat ID format"),
   msgId: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid message ID format").optional(),
 }).refine((data) => data.content || data.msgId, {
