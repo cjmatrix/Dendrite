@@ -112,6 +112,7 @@ export class DownloadSharedLink {
         }
 
      
+        const baseTime = Date.now();
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const folderDocs: any[] = [];
         const folderIdMap = new Map<string, mongoose.Types.ObjectId>();
@@ -129,6 +130,8 @@ export class DownloadSharedLink {
           color: rootFolder.color || "default",
           isExpanded: rootFolder.isExpanded || false,
           behavior: rootFolder.behavior,
+          createdAt: new Date(baseTime),
+          updatedAt: new Date(baseTime),
         });
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -137,6 +140,7 @@ export class DownloadSharedLink {
           const newId = new mongoose.Types.ObjectId();
           folderIdMap.set(originalId.toString(), newId);
 
+          const index = folderDocs.length;
           folderDocs.push({
             _id: newId,
             userId,
@@ -146,6 +150,8 @@ export class DownloadSharedLink {
             color: node.color || "default",
             isExpanded: node.isExpanded || false,
             behavior: node.behavior,
+            createdAt: new Date(baseTime + index),
+            updatedAt: new Date(baseTime + index),
           });
 
           for (const child of node.children || []) {
@@ -163,6 +169,7 @@ export class DownloadSharedLink {
         const chatIdMap = new Map<string, mongoose.Types.ObjectId>();
         const snapshotChats = shareRepo.chats || [];
 
+        let chatIndex = 0;
         for (const chat of snapshotChats) {
           const originalChatId = chat._id;
           const originalFolderId = chat.folderId;
@@ -183,7 +190,10 @@ export class DownloadSharedLink {
               tokenCount: chat.tokenCount || 0,
               unsummarizedCount: chat.unsummarizedCount || 0,
               contextParent: null,
+              createdAt: new Date(baseTime + chatIndex),
+              updatedAt: new Date(baseTime + chatIndex),
             });
+            chatIndex++;
           }
         }
 

@@ -78,6 +78,16 @@ export class CreateLink {
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const allFolders = [subtree, ...((subtree as { descendants?: any[] }).descendants || [])] as any[];
+      
+    
+      allFolders.sort((a, b) => {
+        if (a._id.toString() === targetId) return -1;
+        if (b._id.toString() === targetId) return 1;
+        const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return timeA - timeB;
+      });
+
         if ((subtree as { descendants?: unknown[] }).descendants?.length) {
           const allFolderIds: string[] = [targetId];
           allFolderIds.push(...((subtree as { descendants?: { _id: { toString: () => string } }[] }).descendants || []).map((d) => d._id.toString()));
@@ -91,6 +101,14 @@ export class CreateLink {
       ];
 
       const chats = await this.chatRepo.findByFolderIdsWithoutUserId(folderIds);
+      
+     
+      chats.sort((a, b) => {
+        const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return timeA - timeB;
+      });
+
       const folderMap = new Map();
 
       for (const folder of allFolders) {
@@ -103,6 +121,9 @@ export class CreateLink {
           children: [],
           isExpanded: folder.isExpanded || false,
           isSystemFolder: folder.isSystemFolder || false,
+          color: folder.color || "default",
+          behavior: folder.behavior || null,
+          createdAt: folder.createdAt,
         });
       }
 
