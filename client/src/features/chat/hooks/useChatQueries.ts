@@ -22,7 +22,7 @@ export function useChatMessages(chatId: string | undefined) {
     queryKey: ["chatMessages", chatId],
     initialPageParam: null as string | null,
     queryFn: ({ pageParam = null }) =>
-      getMessages(chatId!, pageParam, 10),
+      getMessages(chatId!, pageParam, 20),
     getNextPageParam: (lastPage) => lastPage.nextCursor || undefined,
     enabled: !!chatId && !token,
     staleTime: 1000 * 60 * 5,

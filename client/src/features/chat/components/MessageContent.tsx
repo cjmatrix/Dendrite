@@ -21,10 +21,23 @@ export function fixMalformedPlantUML(text: string): string {
   );
 }
 
+export function fixMalformedCodeBlocks(text: string): string {
+  if (!text) return text;
+  
+  ``
+  const langRegex = /(^|\s)`(bash|json|javascript|js|typescript|ts|html|css|python|py|java|cpp|c|go|rust|sql|sh|yaml|yml|xml|markdown|md|shell)\s+((?:(?!`|\n\n(?:[#*>-]|\*\*|`|\[!|\d+\.|[a-zA-Z]\.|\w+\)))[\s\S])+?)(`|\n\n(?=[#*>-]|\*\*|`|\[!|\d+\.|[a-zA-Z]\.|\w+\))|$)/gi;
+  
+  return text.replace(langRegex, (_match, prefix, lang, code) => {
+    return `${prefix}\n\`\`\`${lang.toLowerCase()}\n${code.trim()}\n\`\`\`\n\n`;
+  });
+}
 
 export const MessageContent = React.memo(
   ({ content }: MessageContentProps) => {
-    const processedContent = useMemo(() => fixMalformedPlantUML(content), [content]);
+    const processedContent = useMemo(() => {
+      const fixedBlocks = fixMalformedCodeBlocks(content);
+      return fixMalformedPlantUML(fixedBlocks);
+    }, [content]);
 
     const renderedMarkdown = useMemo(
       () => (

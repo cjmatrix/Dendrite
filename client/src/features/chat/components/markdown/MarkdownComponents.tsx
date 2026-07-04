@@ -373,6 +373,8 @@ export const markdownComponents = {
           style: {
             fontSize: "15px",
             lineHeight: "1.4",
+            whiteSpace: "pre-wrap",
+            wordBreak: "break-word",
           },
         }}
         customStyle={{
@@ -383,6 +385,8 @@ export const markdownComponents = {
           background: "rgba(63, 63, 70, 0.2)",
           borderRadius: "0.375rem",
           border: "1px solid rgba(82, 82, 91, 0.3)",
+          whiteSpace: "pre-wrap",
+          wordBreak: "break-word",
         }}
       >
         {String(children).replace(/\n$/, "")}
