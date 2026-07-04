@@ -25,7 +25,7 @@ export function fixMalformedCodeBlocks(text: string): string {
   if (!text) return text;
   
   ``
-  const langRegex = /(^|\s)`(bash|json|javascript|js|typescript|ts|html|css|python|py|java|cpp|c|go|rust|sql|sh|yaml|yml|tsx|xml|markdown|md|shell)\s+((?:(?!`|\n\n(?:[#*>-]|\*\*|`|\[!|\d+\.|[a-zA-Z]\.|\w+\)))[\s\S])+?)(`|\n\n(?=[#*>-]|\*\*|`|\[!|\d+\.|[a-zA-Z]\.|\w+\))|$)/gi;
+  const langRegex = /(^|\s)`(bash|json|javascript|js|typescript|ts|html|css|python|py|java|cpp|c|go|rust|sql|sh|yaml|yml|tsx|jsx|xml|markdown|md|shell)\s+((?:(?!`|\n\n(?:[#*>-]|\*\*|`|\[!|\d+\.|[a-zA-Z]\.|\w+\)))[\s\S])+?)(`|\n\n(?=[#*>-]|\*\*|`|\[!|\d+\.|[a-zA-Z]\.|\w+\))|$)/gi;
   
   return text.replace(langRegex, (_match, prefix, lang, code) => {
     return `${prefix}\n\`\`\`${lang.toLowerCase()}\n${code.trim()}\n\`\`\`\n\n`;
