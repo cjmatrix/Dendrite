@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { saveRecallCard as apiSaveRecallCard } from "../api/recallApi";
-import { requestFirebaseNotificationPermission } from "../../../lib/firebase";
+
 import toast from "react-hot-toast";
 
 export function useRecallActions(chatId: string | undefined) {

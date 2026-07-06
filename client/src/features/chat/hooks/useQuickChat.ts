@@ -4,7 +4,7 @@ import { getSubChat, stickToChat, streamQuickChat } from "../api/quickChatApi";
 import { saveRecallCard } from "../api/recallApi";
 import type { Message } from "../types/Message";
 import { getMarkdownFromDOMSelection } from "../../../utils/markdownUtils";
-import { requestFirebaseNotificationPermission } from "../../../lib/firebase";
+
 import toast from "react-hot-toast";
 
 interface UseQuickChatParams {
