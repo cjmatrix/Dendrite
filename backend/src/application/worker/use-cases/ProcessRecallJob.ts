@@ -38,8 +38,30 @@ export class ProcessRecallJob {
       };
 
       const response = await admin.messaging().sendEachForMulticast(message);
-      this.logger.info(`Successfully sent recall notification to User: ${userId}`);
-      
+      if (response.failureCount > 0) {
+        this.logger.warn(`Failed to send some notifications to User ${userId}. Success: ${response.successCount}, Failed: ${response.failureCount}`);
+        
+        const failedTokens: string[] = [];
+        response.responses.forEach((resp, idx) => {
+          if (!resp.success) {
+            this.logger.warn(`Token ${idx} failed: ${resp.error?.code || resp.error?.message}`);
+            if (
+              resp.error?.code === 'messaging/invalid-registration-token' ||
+              resp.error?.code === 'messaging/registration-token-not-registered'
+            ) {
+              failedTokens.push(user.fcmToken[idx]);
+            }
+          }
+        });
+
+        if (failedTokens.length > 0) {
+          const newTokens = user.fcmToken.filter(t => !failedTokens.includes(t));
+          await this.userRepository.findByIdAndUpdate(userId, { fcmToken: newTokens });
+          this.logger.info(`Removed ${failedTokens.length} dead FCM tokens for User ${userId}`);
+        }
+      } else {
+        this.logger.info(`Successfully sent recall notification to User: ${userId}. Success: ${response.successCount}`);
+      }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       this.logger.error(`Failed to process recall notification for ${cardId}`, error);

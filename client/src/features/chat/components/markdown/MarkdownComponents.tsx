@@ -257,6 +257,13 @@ const PlantUMLBlock = ({ codeString }: { codeString: string }) => {
 };
 
 export const markdownComponents = {
+  p({ children, ...props }: React.ComponentPropsWithoutRef<"p">) {
+    return (
+      <div className="mb-4 last:mb-0" {...props}>
+        {children}
+      </div>
+    );
+  },
   img({ src, alt, ...props }: React.ComponentPropsWithoutRef<"img">) {
     const isPlantUML = src && (src.includes("plantuml.com") || src.includes("plantuml"));
     if (isPlantUML) {

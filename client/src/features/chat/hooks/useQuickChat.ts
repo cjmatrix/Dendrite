@@ -245,7 +245,6 @@ export function useQuickChat({
     try {
       if (isRecalling) return;
       setIsRecalling(true);
-      await requestFirebaseNotificationPermission();
 
       let content = markdownContent;
       if (!content && msgIndex !== undefined && subMessages[msgIndex]) {

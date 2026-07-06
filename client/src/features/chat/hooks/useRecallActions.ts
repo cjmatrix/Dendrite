@@ -14,7 +14,6 @@ export function useRecallActions(chatId: string | undefined) {
       setIsRecalling(true);
 
       try {
-        await requestFirebaseNotificationPermission();
         await apiSaveRecallCard(markdownContent, chatId, msgId);
         queryClient.invalidateQueries({ queryKey: ["recallCount"] });
         toast.success("Recall card created successfully!");

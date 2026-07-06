@@ -11,6 +11,20 @@ import api from "../../../lib/axios";
 import React, { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ActionModal } from "../../../components/common/ActionModal";
+import Editor from "react-simple-code-editor";
+import Prism from "prismjs";
+import "prismjs/components/prism-clike";
+import "prismjs/components/prism-javascript";
+import "prismjs/components/prism-typescript";
+import "prismjs/components/prism-python";
+import "prismjs/components/prism-java";
+import "prismjs/components/prism-c";
+import "prismjs/components/prism-cpp";
+import "prismjs/components/prism-csharp";
+import "prismjs/components/prism-go";
+import "prismjs/components/prism-rust";
+import "prismjs/components/prism-markdown";
+import "prismjs/themes/prism-tomorrow.css";
 
 interface Card {
   _id: string;
@@ -31,6 +45,15 @@ interface RecallCardProps {
 const RecallCard: React.FC<RecallCardProps> = ({ card, index, onReview, onDelete, isReviewPending, onGoToChat }) => {
   const [isPracticeOpen, setIsPracticeOpen] = useState(false);
   const [practiceText, setPracticeText] = useState("");
+  const detectedLang = React.useMemo(() => {
+    const match = card.content.match(/```(\w+)/);
+    return match ? match[1] : null;
+  }, [card.content]);
+
+  const handleTogglePractice = () => {
+    const nextState = !isPracticeOpen;
+    setIsPracticeOpen(nextState);
+  };
 
   return (
     <div className="w-full relative rounded-2xl sm:rounded-[32px] border border-white/10 bg-neutral-900 shadow-2xl flex flex-col mb-8 animate-in slide-in-from-bottom-4 duration-500 overflow-hidden">
@@ -65,7 +88,7 @@ const RecallCard: React.FC<RecallCardProps> = ({ card, index, onReview, onDelete
           )}
 
           <button
-            onClick={() => setIsPracticeOpen(!isPracticeOpen)}
+            onClick={handleTogglePractice}
             className={`flex items-center gap-1.5 text-[11px] sm:text-xs font-bold px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-full border transition-all ${
               isPracticeOpen 
                 ? "bg-purple-500/20 border-purple-500/40 text-purple-300" 
@@ -91,15 +114,41 @@ const RecallCard: React.FC<RecallCardProps> = ({ card, index, onReview, onDelete
       {/* Practice Area */}
       {isPracticeOpen && (
         <div className="w-full p-4 sm:p-6 bg-purple-900/10 border-b border-purple-500/10 animate-in fade-in slide-in-from-top-2">
-          <label className="block text-[10px] sm:text-[11px] font-bold text-purple-400/80 uppercase tracking-widest mb-2 sm:mb-3">Recall and write here</label>
-          <textarea
-            value={practiceText}
-            onChange={(e) => setPracticeText(e.target.value)}
-            placeholder="Type your recall here to test your memory..."
-            className="w-full h-32 sm:h-40 bg-black/20 border border-purple-500/20 rounded-xl p-4 text-gray-200 placeholder:text-zinc-600 resize-none text-sm sm:text-lg leading-relaxed focus:outline-none focus:border-purple-500/50 transition-colors"
-          />
+          <div className="flex items-center justify-between mb-2 sm:mb-3">
+            <label className="block text-[10px] sm:text-[11px] font-bold text-purple-400/80 uppercase tracking-widest flex items-center gap-1.5">
+              
+              {detectedLang ? `Practice by typing here (${detectedLang})` : "Interactive Editor"}
+            </label>
+            {detectedLang && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-purple-500/10 text-purple-300 uppercase tracking-wider">
+                Code Mode
+              </span>
+            )}
+          </div>
+          
+          <div className="w-full bg-neutral-950/80 border border-purple-500/20 rounded-xl overflow-hidden shadow-2xl relative">
+            <Editor
+              value={practiceText}
+              onValueChange={setPracticeText}
+              highlight={(code) => Prism.highlight(
+                code, 
+                (detectedLang && Prism.languages[detectedLang]) ? Prism.languages[detectedLang] : (Prism.languages.markdown || Prism.languages.plain), 
+                (detectedLang && Prism.languages[detectedLang]) ? detectedLang : 'markdown'
+              )}
+              padding={16}
+              placeholder={detectedLang ? `Write your ${detectedLang} code here...` : "Type your recall here to test your memory..."}
+              className={`bg-neutral-900 w-full min-h-[128px] text-gray-200 resize-none leading-relaxed transition-colors ${
+                detectedLang ? "text-xs sm:text-sm" : "text-sm sm:text-base font-sans"
+              }`}
+              style={{
+                fontFamily: detectedLang ? '"Fira code", "Fira Mono", monospace' : 'inherit',
+              }}
+              textareaClassName="focus:outline-none"
+            />
+          </div>
+
           <div className="mt-2 text-[10px] text-zinc-500 flex justify-between items-center">
-            <span>TIP: Writing helps reinforce neural connections.</span>
+            <span>TIP: You are typing in a live preview editor.</span>
             <span>{practiceText.length} characters</span>
           </div>
         </div>

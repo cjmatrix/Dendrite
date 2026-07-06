@@ -15,6 +15,9 @@ function App() {
 
   useEffect(() => {
     dispatch(checkAuth());
+    import("./lib/firebase").then((module) => {
+      module.requestFirebaseNotificationPermission();
+    });
   }, [dispatch]);
 
   useEffect(() => {
@@ -36,6 +39,7 @@ function App() {
   const queryClient = useQueryClient();
   useEffect(() => {
     const unsubscribe = onMessage(messaging, (payload) => {
+      console.log("FCM Payload received in App.tsx:", payload);
       if (payload?.notification) {
         queryClient.invalidateQueries({queryKey:["dueCards"]});
 
