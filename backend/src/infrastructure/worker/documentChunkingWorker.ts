@@ -1,14 +1,11 @@
-import { Queue, Worker } from "bullmq";
+import { Worker } from "bullmq";
 import fs from "fs";
 import { container } from "tsyringe";
 import { redisConfig } from "../../config/redis";
 import { ProcessDocumentUpload } from "../../application/worker/use-cases/ProcessDocumentUpload";
 import { ProcessDocumentChunking } from "../../application/worker/use-cases/ProcessDocumentChunking";
 import { ILogger } from "../../application/common/ports/ILogger";
-
-export const documentChunkingQueue = new Queue("document-chunking", {
-  connection: redisConfig,
-});
+import { documentChunkingQueue } from "../queue/bullMqDocumentQueueInstance";
 
 interface DocumentUploadJobData {
   stage: "upload";

@@ -98,6 +98,8 @@ services:
       - ./backend/.env
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    volumes:
+      - uploads_tmp:/tmp/dendrites-file-uploads
     depends_on:
       - redis
     deploy:
@@ -179,6 +181,8 @@ services:
       - ./backend/.env
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    volumes:
+      - uploads_tmp:/tmp/dendrites-file-uploads
     depends_on:
       - redis
     deploy:
@@ -231,3 +235,4 @@ volumes:
   grafana-data:
   redis_data:
   loki-data:
+  uploads_tmp:

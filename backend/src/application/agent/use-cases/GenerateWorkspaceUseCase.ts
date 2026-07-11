@@ -15,7 +15,7 @@ import { IUnitOfWorkRepository } from "../../common/ports/IUnitOfWorkRepository"
 import { IRateLimitService } from "../../common/ports/IRateLimitService";
 
 const AgentState = Annotation.Root({
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any 
   messages: Annotation<any[]>({
     reducer: messagesStateReducer,
     default: () => [],

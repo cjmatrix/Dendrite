@@ -15,7 +15,10 @@ import {
   getActiveBYOKKeyIndex,
   rotateBYOKKeyIndex,
 } from "../utils/byokKeysHelper";
-import { INTERNET_SEARCH_ROUTER_MODEL, DEFAULT_MODEL } from "../constants/models";
+import {
+  INTERNET_SEARCH_ROUTER_MODEL,
+  DEFAULT_MODEL,
+} from "../constants/models";
 import { IGeminiContent, IAIStreamChunk } from "../domain/chat/entities/Gemini";
 import { IMessageRepository } from "../domain/chat/repositories/IMessageRepository";
 import { IMessage } from "../domain/chat/entities/Message";
@@ -62,19 +65,19 @@ User query: "${queryText}"`;
               type: "object",
               properties: {
                 requiresSearch: { type: "boolean" },
-                isInjection: { type: "boolean" }
+                isInjection: { type: "boolean" },
               },
-              required: ["requiresSearch", "isInjection"]
-            }
-          }
+              required: ["requiresSearch", "isInjection"],
+            },
+          },
         });
-        console.log("END SEARCH")
+        console.log("END SEARCH");
         try {
           const parsed = JSON.parse(routerResponse?.text || "{}");
-          console.log(parsed)
+          console.log(parsed);
           return {
             requiresSearch: !!parsed.requiresSearch,
-            isInjection: !!parsed.isInjection
+            isInjection: !!parsed.isInjection,
           };
         } catch (parseError) {
           return { requiresSearch: false, isInjection: false };
@@ -110,10 +113,7 @@ User query: "${queryText}"`;
     userId?: string,
   ): Promise<string> {
     try {
-      const analysis = await this.analyzeUserQuery(
-        queryText,
-        userId,
-      );
+      const analysis = await this.analyzeUserQuery(queryText, userId);
 
       return this.getInternetContextWithPrecomputedDecision(
         queryText,
@@ -161,15 +161,13 @@ User query: "${queryText}"`;
   ): Promise<AsyncIterable<IAIStreamChunk>> {
     // console.log(JSON.stringify(contents,null,2));
 
+    console.log(model);
 
-    console.log(model)
-  
-    console.log("Strem STARTED ")
+    console.log("Strem STARTED ");
     let stream;
     let attempts = 0;
     while (attempts < aiInstances.length) {
-
-      console.log("inside while loop")
+      console.log("inside while loop");
       try {
         const activeAi = await getRotatedAI();
         stream = await activeAi.models.generateContentStream({
@@ -179,7 +177,7 @@ User query: "${queryText}"`;
             ...(systemInstruction ? { systemInstruction } : {}),
           },
         });
-         console.log("Strem Returning ")
+        console.log("Strem Returning ");
         return stream as unknown as AsyncIterable<IAIStreamChunk>;
       } catch (error: unknown) {
         const e = error as { status?: number; message?: string };
@@ -222,7 +220,7 @@ User query: "${queryText}"`;
       currentIdx = await getActiveBYOKKeyIndex(userId, "gemini");
       currentIdx = currentIdx % instances.length;
     }
-    console.log(model)
+    console.log(model);
     while (attempts < instances.length) {
       try {
         const activeAi = instances[currentIdx];
@@ -298,65 +296,63 @@ User query: "${queryText}"`;
     }
   }
 
-//   static buildQuickChatSystemPrompt(
-//     historicalContext: string,
-//     highlightedText: string,
-//   ): string {
- 
+  //   static buildQuickChatSystemPrompt(
+  //     historicalContext: string,
+  //     highlightedText: string,
+  //   ): string {
 
-//     return `You are a surgical AI Assistant specialized in analyzing highlights within a side-modal.
-//     IMPORTANT- Use this if user query about for doubts or explanation First breifly answer what user asked in one sentence means you should answer user query in one sentence first  it is IMPORTANT, and then format for all answers: [Concept] - [1-sentence definition]. Key points: [bullet points].You should only focus on user Query and prioratize it first.
-//      When providing code, always use fenced code blocks with the language specified
-//      IF User asked detailed explanation or user says user doesnt understand the concept Use below Rules that i given
+  //     return `You are a surgical AI Assistant specialized in analyzing highlights within a side-modal.
+  //     IMPORTANT- Use this if user query about for doubts or explanation First breifly answer what user asked in one sentence means you should answer user query in one sentence first  it is IMPORTANT, and then format for all answers: [Concept] - [1-sentence definition]. Key points: [bullet points].You should only focus on user Query and prioratize it first.
+  //      When providing code, always use fenced code blocks with the language specified
+  //      IF User asked detailed explanation or user says user doesnt understand the concept Use below Rules that i given
 
-// - Use only short, minimal inline comments in code. Do NOT use JSDoc, @param, @returns, or block comment annotations
-// - For inline code references, use single backticks
-// - When emphasizing important information, warnings, or tips, use GitHub-style Markdown callouts (e.g., \`> [!NOTE]\`, \`> [!TIP]\`, \`> [!IMPORTANT]\`, \`> [!WARNING]\`, \`> [!CAUTION]\`)
-// - Separate callouts with blank lines for proper rendering
-// - For math and chemistry equations, use KaTeX formatting. Use \`$$\` for block equations and \`$\` for inline equations
-// - IMPORTANT ! Generate Appropritate emojis for titles and subtitles according to the context
+  // - Use only short, minimal inline comments in code. Do NOT use JSDoc, @param, @returns, or block comment annotations
+  // - For inline code references, use single backticks
+  // - When emphasizing important information, warnings, or tips, use GitHub-style Markdown callouts (e.g., \`> [!NOTE]\`, \`> [!TIP]\`, \`> [!IMPORTANT]\`, \`> [!WARNING]\`, \`> [!CAUTION]\`)
+  // - Separate callouts with blank lines for proper rendering
+  // - For math and chemistry equations, use KaTeX formatting. Use \`$$\` for block equations and \`$\` for inline equations
+  // - IMPORTANT ! Generate Appropritate emojis for titles and subtitles according to the context
 
-// [Rules for plantuml diagram below]
-//  - When the user asks for explanation or teaching,  and user query needs visual explanation then only generate a PlantUML diagram.
-//  Dont make complex UML diagrams if user not asked for explicitly create SIMPLE Diagrams if user query need complex or flexible to explain user query draw flexible diagrams.
-//  CRITICAL SYNTAX RULES TO AVOID "assumed to be activity diagram" ERRORS:
-//    - For Activity Diagrams: ALWAYS use modern syntax ('start', 'stop', ':Activity Name;', 'if (cond) then (yes)'). NEVER use the legacy '(*)' syntax!
-//    - For State/Flow Diagrams: Use '[*]' for start/end and '-->' for transitions (e.g., 'State1 --> State2'). NEVER use '(*)'.
-//    - Never mix legacy activity syntax with standard sequence arrows.
-//  Never connect quoted labels directly.
-//  Never mix rectangle/node/component/participant.
-//   Always wrap the PlantUML code in a standard markdown code block with triple backticks and the 'plantuml' language identifier (i.e. \`\`\`plantuml ... \`\`\`). Never use a single backtick (\`) or double backticks (\`\`) to wrap the PlantUML block.
-//   Always start with '@startuml' and end with '@enduml'.
-//  IMPORTANT Use direction of drawing or flow means is it LEFT to RIGHT or TOp to BOTTOM determine by user Query/message and determine BEST direction
-//  Use 'skinparam' to ensure a professional look:
-//     skinparam backgroundcolor transparent
-//     skinparam shadowing false
-//     skinparam monochrome true
-//     skinparam packageStyle rectangle
-//     CRITICAL: In Sequence Diagrams, use only -> for solid arrows or --> for dotted arrows. Never use -- or ->> as they may cause "Illegal sequence arrow" errors.
-//  Keep labels concise (max 5-7 words per node) and DO NOT OVERLAPS Labels it should be readable.
-//  If user explicitly asked for step by step explanation generate mutiple diagrams so that user could understand the concept 
-//  IMPORTANT Background must be transparent for plantuml
- 
-// ---
-// HISTORICAL CONTEXT use historical context to answer user questions(for background only):
-// ${historicalContext}
+  // [Rules for plantuml diagram below]
+  //  - When the user asks for explanation or teaching,  and user query needs visual explanation then only generate a PlantUML diagram.
+  //  Dont make complex UML diagrams if user not asked for explicitly create SIMPLE Diagrams if user query need complex or flexible to explain user query draw flexible diagrams.
+  //  CRITICAL SYNTAX RULES TO AVOID "assumed to be activity diagram" ERRORS:
+  //    - For Activity Diagrams: ALWAYS use modern syntax ('start', 'stop', ':Activity Name;', 'if (cond) then (yes)'). NEVER use the legacy '(*)' syntax!
+  //    - For State/Flow Diagrams: Use '[*]' for start/end and '-->' for transitions (e.g., 'State1 --> State2'). NEVER use '(*)'.
+  //    - Never mix legacy activity syntax with standard sequence arrows.
+  //  Never connect quoted labels directly.
+  //  Never mix rectangle/node/component/participant.
+  //   Always wrap the PlantUML code in a standard markdown code block with triple backticks and the 'plantuml' language identifier (i.e. \`\`\`plantuml ... \`\`\`). Never use a single backtick (\`) or double backticks (\`\`) to wrap the PlantUML block.
+  //   Always start with '@startuml' and end with '@enduml'.
+  //  IMPORTANT Use direction of drawing or flow means is it LEFT to RIGHT or TOp to BOTTOM determine by user Query/message and determine BEST direction
+  //  Use 'skinparam' to ensure a professional look:
+  //     skinparam backgroundcolor transparent
+  //     skinparam shadowing false
+  //     skinparam monochrome true
+  //     skinparam packageStyle rectangle
+  //     CRITICAL: In Sequence Diagrams, use only -> for solid arrows or --> for dotted arrows. Never use -- or ->> as they may cause "Illegal sequence arrow" errors.
+  //  Keep labels concise (max 5-7 words per node) and DO NOT OVERLAPS Labels it should be readable.
+  //  If user explicitly asked for step by step explanation generate mutiple diagrams so that user could understand the concept
+  //  IMPORTANT Background must be transparent for plantuml
 
-// USER'S HIGHLIGHT (your primary focus):
-// "${highlightedText}"
-// ---
-// RESPONSE GUIDELINES:
-// - DEFAULT:IMPORTANT Be brief. Use crisp bullet points and short, punchy sentences and give example according to the context..
-// - DO NOT PROVIDE DETAILED EXPLANATION. ONLY provide an expansive/detailed explanation if the user specifically asks to explanation in detail ".
-// .`;
-//   }
+  // ---
+  // HISTORICAL CONTEXT use historical context to answer user questions(for background only):
+  // ${historicalContext}
 
-static buildQuickChatSystemPrompt(
-  historicalContext: string,
-  highlightedText: string,
-): string {
+  // USER'S HIGHLIGHT (your primary focus):
+  // "${highlightedText}"
+  // ---
+  // RESPONSE GUIDELINES:
+  // - DEFAULT:IMPORTANT Be brief. Use crisp bullet points and short, punchy sentences and give example according to the context..
+  // - DO NOT PROVIDE DETAILED EXPLANATION. ONLY provide an expansive/detailed explanation if the user specifically asks to explanation in detail ".
+  // .`;
+  //   }
 
-  return `You are Quick Chat — a focused clarification assistant inside a side panel. The user has highlighted one specific piece of text and asked a question about it. Your only job is to resolve that question as efficiently as possible.
+  static buildQuickChatSystemPrompt(
+    historicalContext: string,
+    highlightedText: string,
+  ): string {
+    return `You are Quick Chat — a focused clarification assistant inside a side panel. The user has highlighted one specific piece of text and asked a question about it. Your only job is to resolve that question as efficiently as possible.
 
 [HIGHLIGHTED TEXT — YOUR PRIMARY SUBJECT]
 "${highlightedText}"
@@ -434,8 +430,7 @@ DIAGRAM RULES (Mode B only — never in Mode A)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Now answer the user's question about the highlighted text above,
 using Mode A unless their message clearly triggers Mode B.`;
-}
-
+  }
 
   static async generateRecallQuestion(content: string): Promise<string | null> {
     const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
@@ -464,7 +459,6 @@ ${content}
     }
   }
 
-
   static async urlToBase64(url: string): Promise<string> {
     try {
       const response = await fetch(url);
@@ -484,13 +478,22 @@ ${content}
   ): Promise<AsyncIterable<IAIStreamChunk>> {
     const groqModel = model.replace("groq/", "");
     const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-    const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [];
+    const messages: Array<{
+      role: "system" | "user" | "assistant";
+      content: string;
+    }> = [];
     if (systemInstruction) {
       messages.push({ role: "system", content: systemInstruction });
     }
     for (const content of contents) {
-      const textParts = content.parts.map(p => p.text).filter(Boolean).join("\n");
-      messages.push({ role: content.role === "model" ? "assistant" : "user", content: textParts });
+      const textParts = content.parts
+        .map((p) => p.text)
+        .filter(Boolean)
+        .join("\n");
+      messages.push({
+        role: content.role === "model" ? "assistant" : "user",
+        content: textParts,
+      });
     }
 
     const stream = await groq.chat.completions.create({
@@ -502,7 +505,7 @@ ${content}
     async function* generateStream() {
       for await (const chunk of stream) {
         if (signal?.aborted) {
-           break;
+          break;
         }
         const content = chunk.choices[0]?.delta?.content || "";
         yield { text: content } as IAIStreamChunk;
