@@ -4,6 +4,7 @@ export interface IRecallCard {
   chatId: string;
   breadCrumbs: string[];
   content: string;
+  question?: string;
   stage: 'learning' | 'review';
   stepIndex: number;
   repetitions: number;

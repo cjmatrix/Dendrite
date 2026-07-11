@@ -21,6 +21,10 @@ const RecallSchema = new mongoose.Schema({
     required: true,
   },
 
+  question: {
+    type: String,
+  },
+
 
   stage: {
     type: String,

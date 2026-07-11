@@ -20,7 +20,6 @@
 /* Fix KaTeX double-rendering */
 .katex-html {
   display: none;
-
 }
 
 .markdown-body h1 {
@@ -68,7 +67,7 @@
 
 .markdown-body li {
   margin-bottom: 0.6em;
-  line-height: 1.8;
+  line-height: 2;
 }
 
 .markdown-body li::marker {

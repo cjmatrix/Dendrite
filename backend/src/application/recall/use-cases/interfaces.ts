@@ -26,3 +26,4 @@ export interface IClearAllCardsUseCase {
 export interface ICountDueCardsUseCase {
   execute(userId: string): Promise<number>;
 }
+

@@ -3,6 +3,7 @@ import { IRecallRepository } from '../../../domain/recall/repositories/IRecallRe
 import { IRecallPublisher } from '../../common/ports/IRecallPublisher';
 import { ICreateCardUseCase } from "./interfaces";
 import { IRateLimitService } from "../../common/ports/IRateLimitService";
+import { AIService } from "../../../services/AIService";
 
 @injectable()
 export class CreateCard implements ICreateCardUseCase {
@@ -13,18 +14,22 @@ export class CreateCard implements ICreateCardUseCase {
   ) {}
 
   async execute(userId: string, content: string, chatId: string) {
-    const nextReview = new Date(Date.now() + 5000); 
+    const nextReview = new Date(Date.now() + 5000);
+
+    // Generate question at creation time so it's ready instantly on the recall page
+    const question = (await AIService.generateRecallQuestion(content)) ?? undefined;
 
     const recall = await this.recallRepository.create({
       userId,
       chatId,
       content,
+      question,
       nextReview,
     });
 
     const delayInMs = recall.nextReview.getTime() - Date.now();
     const jobId = await this.recallPublisher.publish(userId, recall._id.toString(), delayInMs);
-    
+
     if (jobId) {
       recall.jobId = jobId;
       await this.recallRepository.save(recall);

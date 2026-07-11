@@ -1158,13 +1158,13 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       </div>
       </div>
 
-      {/* Floating Actions Trigger */}
-      {selection && selection.visible && !isQuickChatOpen && (
+
+      {selection && selection.visible && (
         <div
           className="fixed z-[999] -translate-x-1/2 flex gap-2 animate-in fade-in slide-in-from-top-2 duration-200"
           style={{ top: selection.bottomY + 8, left: selection.x }}
         >
-          {!isShareMode&&<button
+          {!isShareMode && <button
             className="px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-lg shadow-xl hover:bg-blue-500 transition-all flex items-center gap-2"
             onClick={() => {
               setPinnedQuickChatSelection({
@@ -1173,14 +1173,15 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 relativeY: selection.relativeY ?? 0,
                 subChatId: selection.subChatId,
               });
+             
               setIsQuickChatOpen(true);
               clearSelection();
             }}
           >
             <Sparkles size={14} />
-            Quick Chat
+            {isQuickChatOpen ? "New Quick Chat" : "Quick Chat"}
           </button>}
-          {!isShareMode&&<button
+          {!isShareMode && <button
             className="px-3 py-1.5 bg-purple-600 text-white text-xs font-bold rounded-lg shadow-xl hover:bg-purple-500 transition-all flex items-center gap-2"
             onClick={() =>
               handleCreateRecall(selection.markdown, selection.messageId)

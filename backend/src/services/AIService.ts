@@ -436,6 +436,35 @@ Now answer the user's question about the highlighted text above,
 using Mode A unless their message clearly triggers Mode B.`;
 }
 
+
+  static async generateRecallQuestion(content: string): Promise<string | null> {
+    const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+
+    const prompt = `You are a spaced-repetition question writer. Study the card below and write ONE recall question that best tests it.
+
+    generate a questions like what is the card about. if user select definition ask what is the difinition of that specific topic .
+    .Only generate questions maximum of 3 sentence .strictly do not give answers in question also ouputs only the generated questiion
+Card content:
+"""
+${content}
+"""`;
+
+    try {
+      const completion = await groq.chat.completions.create({
+        model: "llama-3.1-8b-instant",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.4,
+        max_tokens: 100,
+      });
+
+      return completion.choices[0]?.message?.content?.trim() || null;
+    } catch (err) {
+      console.error("[AIService] generateRecallQuestion failed:", err);
+      return null;
+    }
+  }
+
+
   static async urlToBase64(url: string): Promise<string> {
     try {
       const response = await fetch(url);
