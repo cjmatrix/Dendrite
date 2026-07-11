@@ -12,7 +12,6 @@ import {
   MessageSquare,
   HelpCircle,
   Eye,
-  Sparkles,
   PenLine,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
@@ -218,7 +217,7 @@ const RecallCard: React.FC<RecallCardProps> = ({
           {/* Hint — shows first ~120 chars blurred */}
           {isHintOpen && !isCardRevealed && (
             <div className="mt-3 max-w-xl w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-sm text-zinc-400 blur-[3px] hover:blur-none transition-all duration-300 select-none cursor-pointer text-left">
-              {card.content.slice(0, 120)}…
+              {card.content.slice(0, 240)}…
             </div>
           )}
         </div>

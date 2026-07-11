@@ -16,7 +16,7 @@ export class CreateCard implements ICreateCardUseCase {
   async execute(userId: string, content: string, chatId: string) {
     const nextReview = new Date(Date.now() + 5000);
 
-    // Generate question at creation time so it's ready instantly on the recall page
+    
     const question = (await AIService.generateRecallQuestion(content)) ?? undefined;
 
     const recall = await this.recallRepository.create({

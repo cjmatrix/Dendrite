@@ -454,7 +454,7 @@ ${content}
         model: "llama-3.1-8b-instant",
         messages: [{ role: "user", content: prompt }],
         temperature: 0.4,
-        max_tokens: 100,
+        max_tokens: 150,
       });
 
       return completion.choices[0]?.message?.content?.trim() || null;
