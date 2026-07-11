@@ -16,8 +16,8 @@ export class CreateCard implements ICreateCardUseCase {
   async execute(userId: string, content: string, chatId: string) {
     const nextReview = new Date(Date.now() + 5000);
 
-    
-    const question = (await AIService.generateRecallQuestion(content)) ?? undefined;
+
+    const question = await AIService.generateRecallQuestion(content)??undefined;
 
     const recall = await this.recallRepository.create({
       userId,
