@@ -442,7 +442,7 @@ using Mode A unless their message clearly triggers Mode B.`;
 
     let prompt = `You are a spaced-repetition question writer. Study the highlighted text below and guess what it is about and write ONE recall question that best tests it.
 
-    generate a questions like what is the card about. if user select definition ask what is the difinition of that specific topic .
+    generate a questions about the card. if user select definition ask what is the difinition of that specific topic .
     .Only generate questions maximum of 3 sentence .strictly do not give answers in question also ouputs only the generated questiion
     Also generated questions should give overall context about what the card about by analyzing the highlighted text`;
 
