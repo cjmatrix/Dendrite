@@ -13,11 +13,11 @@ export class CreateCard implements ICreateCardUseCase {
     @inject("IRateLimitService") private rateLimitService: IRateLimitService
   ) {}
 
-  async execute(userId: string, content: string, chatId: string) {
+  async execute(userId: string, content: string, chatId: string, overallContext?: string) {
     const nextReview = new Date(Date.now() + 5000);
 
 
-    const question = await AIService.generateRecallQuestion(content)??undefined;
+    const question = await AIService.generateRecallQuestion(content, overallContext)??undefined;
 
     const recall = await this.recallRepository.create({
       userId,

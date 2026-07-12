@@ -1,6 +1,6 @@
 export interface ICreateCardUseCase {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  execute(userId: string, content: string, chatId: string): Promise<any>;
+  execute(userId: string, content: string, chatId: string, overallContext?: string): Promise<any>;
 }
 
 export interface IUpdateCardUseCase {

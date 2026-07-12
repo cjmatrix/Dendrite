@@ -22,7 +22,7 @@ import {
 import { IGeminiContent, IAIStreamChunk } from "../domain/chat/entities/Gemini";
 import { IMessageRepository } from "../domain/chat/repositories/IMessageRepository";
 import { IMessage } from "../domain/chat/entities/Message";
-
+import { cleanLLMResponse } from "../utils/cleanResponse";
 export class AIService {
   static async analyzeUserQuery(
     queryText: string,
@@ -354,7 +354,7 @@ User query: "${queryText}"`;
   ): string {
     return `You are Quick Chat — a focused clarification assistant inside a side panel. The user has highlighted one specific piece of text and asked a question about it. Your only job is to resolve that question as efficiently as possible.
 
-[HIGHLIGHTED TEXT — YOUR PRIMARY SUBJECT]
+[HIGHLIGHTED TEXT — YOUR PRIMARY SUBJECT.ALSO USER QUERY/MESSAGE IS THE HIGHEST PRIORITY]
 "${highlightedText}"
 
 [BACKGROUND CONTEXT — REFERENCE ONLY]
@@ -373,6 +373,7 @@ Structure, in this exact order:
 1. One sentence that directly answers the question. No preamble.
 2. [Concept] — one sentence definition.
 3. Key points — 2 to 4 short bullets maximum.
+-Also give good real life example/ or just example
 
 Hard limits:
 - Total response under 120 words.
@@ -432,24 +433,33 @@ Now answer the user's question about the highlighted text above,
 using Mode A unless their message clearly triggers Mode B.`;
   }
 
-  static async generateRecallQuestion(content: string): Promise<string | null> {
+  static async generateRecallQuestion(content: string, overallContext?: string): Promise<string | null> {
     const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+    
+   
+    const cleanContent = cleanLLMResponse(content);
+    const cleanContext = overallContext ? cleanLLMResponse(overallContext) : undefined;
 
-    const prompt = `You are a spaced-repetition question writer. Study the card below and write ONE recall question that best tests it.
+    let prompt = `You are a spaced-repetition question writer. Study the highlighted text below and guess what it is about and write ONE recall question that best tests it.
 
     generate a questions like what is the card about. if user select definition ask what is the difinition of that specific topic .
     .Only generate questions maximum of 3 sentence .strictly do not give answers in question also ouputs only the generated questiion
-Card content:
-"""
-${content}
-"""`;
+    Also generated questions should give overall context about what the card about by analyzing the highlighted text`;
+
+    if (cleanContext) {
+      prompt += ` and the full message context provided below:\n\nFull Message Context (For background information only, do not test on this unless it relates to the highlighted text):\n"""\n${cleanContext}\n"""\n\n`;
+    } else {
+      prompt += `:\n\n`;
+    }
+
+    prompt += `Highlighted Text (The core subject):\n"""\n${cleanContent}\n"""`;
 
     try {
       const completion = await groq.chat.completions.create({
         model: "llama-3.1-8b-instant",
         messages: [{ role: "user", content: prompt }],
         temperature: 0.4,
-        max_tokens: 150,
+        max_tokens: 100,
       });
 
       return completion.choices[0]?.message?.content?.trim() || null;

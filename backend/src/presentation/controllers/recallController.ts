@@ -35,11 +35,15 @@ export class RecallController extends BaseController {
     try {
       const userId = this.validateUserAuth(req);
       let { content, chatId, msgId } = req.body;
+      let overallContext: string | undefined = undefined;
 
-      if (!content && msgId) {
+      if (msgId) {
         const message = await this.messageRepository.findById(msgId);
         if (message) {
-          content = message.content;
+          overallContext = message.content;
+          if (!content) {
+            content = message.content;
+          }
         }
       }
 
@@ -51,6 +55,7 @@ export class RecallController extends BaseController {
         userId,
         content,
         chatId,
+        overallContext
       );
 
       this.sendSuccess(res, result, HttpStatus.CREATED, RECALL_MESSAGES.CARD_CREATED);
