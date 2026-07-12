@@ -376,7 +376,7 @@ Structure, in this exact order:
 -Also give good real life example/ or just example
 
 Hard limits:
-- Total response under 120 words.
+- Total response under 240 words.
 - No emoji unless the concept is genuinely better signposted by one
   (e.g. a warning). Default to none.
 - No diagrams in this mode.
