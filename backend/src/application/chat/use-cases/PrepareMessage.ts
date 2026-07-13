@@ -1,5 +1,5 @@
 import { AppError } from "../../../utils/AppError";
-import { cleanLLMResponse } from "../../../utils/cleanResponse";
+
 import { IVectorRepository } from "../../../domain/vector/repositories/IVectorRepository";
 import { IChatRepository } from "../../../domain/chat/repositories/IChatRepository";
 import { IMessageRepository } from "../../../domain/chat/repositories/IMessageRepository";
@@ -480,6 +480,7 @@ IMPORTANT:
 
 CANVAS & LAYOUT (CRITICAL):
 - Canvas: createCanvas(windowWidth, windowHeight);
+- ALWAYS draw a solid background in the draw() loop (e.g., background(255) or background(20)). NEVER leave the background transparent!
 - Add:
   function windowResized() {
     resizeCanvas(windowWidth, windowHeight);
@@ -506,7 +507,7 @@ FOOTER:
 - y = height - 50 → height
 - Status text font size 20px
 - Step counter
-- Current state description
+- Current state description. The explanation for each step MUST be highly specific, detailed, and directly describe exactly what is happening logically in that specific step of the concept, not just a generic overview.
 
 
 
@@ -515,8 +516,8 @@ OUTPUT RULES:
 - Complete runnable code.
 - No external libraries.
 - No markdown explanation.
-- Output ONLY one \`\`\`p5\`\`\` block when visualization mode is triggered.
-
+- CRITICAL: You MUST output exactly ONE fenced code block starting with \`\`\`p5 and ending with \`\`\`. 
+- DO NOT use \`\`\`javascript or \`\`\`js. If you do not use \`\`\`p5, the UI will break and the user will only see raw text!
 
 
 If any answer is NO, improve the visualization before returning it.`;
@@ -566,7 +567,6 @@ If any answer is NO, improve the visualization before returning it.`;
       if (msg.role === "model") {
         // Skip leading model turns — Gemini requires conversation to start with user
         if (contents.length === 0) continue;
-        sanitizedContent = cleanLLMResponse(sanitizedContent);
         if (sanitizedContent) {
           contents.push({
             role: "model",

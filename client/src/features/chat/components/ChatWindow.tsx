@@ -123,6 +123,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const [mode, setMode] = useState<"general" | "visual">("general");
   const [model, setModel] = useState("gemini-2.5-flash");
 
+
+
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [isModelOpen, setIsModelOpen] = useState(false);
   const user = useAppSelector((state) => state.auth.user);
@@ -977,6 +979,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                         <button
                           onClick={() => {
                             setMode("general");
+                            setModel(localStorage.getItem("model")||"gemini-2.5-flash")
                             setIsMoreMenuOpen(false);
                           }}
                           className="w-full flex items-center justify-between px-3 py-2 text-sm text-gray-300 hover:bg-white/5 transition-colors"
@@ -993,6 +996,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                         <button
                           onClick={() => {
                             setMode("visual");
+                            setModel("gemini-3-flash-preview");
+                           
+                              localStorage.setItem("model",model)  
                             setIsMoreMenuOpen(false);
                           }}
                           className="w-full flex items-center justify-between px-3 py-2 text-sm text-gray-300 hover:bg-white/5 transition-colors"

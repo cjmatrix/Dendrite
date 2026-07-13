@@ -22,7 +22,6 @@ import {
 import { IGeminiContent, IAIStreamChunk } from "../domain/chat/entities/Gemini";
 import { IMessageRepository } from "../domain/chat/repositories/IMessageRepository";
 import { IMessage } from "../domain/chat/entities/Message";
-import { cleanLLMResponse } from "../utils/cleanResponse";
 export class AIService {
   static async analyzeUserQuery(
     queryText: string,
@@ -435,10 +434,6 @@ using Mode A unless their message clearly triggers Mode B.`;
 
   static async generateRecallQuestion(content: string, overallContext?: string): Promise<string | null> {
     const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-    
-   
-    const cleanContent = cleanLLMResponse(content);
-    const cleanContext = overallContext ? cleanLLMResponse(overallContext) : undefined;
 
     let prompt = `You are a spaced-repetition question writer. Study the highlighted text below and guess what it is about and write ONE recall question that best tests it.
 
@@ -446,13 +441,13 @@ using Mode A unless their message clearly triggers Mode B.`;
     .Only generate questions maximum of 3 sentence .strictly do not give answers in question also ouputs only the generated questiion
     Also generated questions should give overall context about what the card about by analyzing the highlighted text`;
 
-    if (cleanContext) {
-      prompt += ` and the full message context provided below:\n\nFull Message Context (For background information only, do not test on this unless it relates to the highlighted text):\n"""\n${cleanContext}\n"""\n\n`;
+    if (overallContext) {
+      prompt += ` and the full message context provided below:\n\nFull Message Context (For background information only, do not test on this unless it relates to the highlighted text):\n"""\n${overallContext}\n"""\n\n`;
     } else {
       prompt += `:\n\n`;
     }
 
-    prompt += `Highlighted Text (The core subject):\n"""\n${cleanContent}\n"""`;
+    prompt += `Highlighted Text (The core subject):\n"""\n${content}\n"""`;
 
     try {
       const completion = await groq.chat.completions.create({

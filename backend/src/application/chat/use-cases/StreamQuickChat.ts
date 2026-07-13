@@ -1,5 +1,5 @@
 import { injectable, inject } from "tsyringe";
-import { cleanLLMResponse } from "../../../utils/cleanResponse";
+
 import { IStreamQuickChatUseCase } from "./interfaces";
 import { StreamQuickChatInputDTO } from "../dtos/chat.dto";
 import { IMessageRepository } from "../../../domain/chat/repositories/IMessageRepository";
@@ -50,7 +50,7 @@ export class StreamQuickChat implements IStreamQuickChatUseCase {
       { role: "user", parts: [{ text: systemPrompt }] },
       ...recentHistory.map((msg) => ({
         role: (msg.role === "model" ? "model" : "user") as "user" | "model",
-        parts: [{ text: msg.role === "model" ? cleanLLMResponse(msg.content) : msg.content }],
+        parts: [{ text: msg.content }],
       })),
     ];
 
