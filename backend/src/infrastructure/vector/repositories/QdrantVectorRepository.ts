@@ -70,7 +70,6 @@ export class QdrantVectorRepository implements IVectorRepository {
               query: descQueryVector,
               filter,
               limit: limitCandidates,
-              score_threshold: 0.49,
             },
             {
               using: "description-sparse",

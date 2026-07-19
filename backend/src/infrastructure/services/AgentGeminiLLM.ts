@@ -4,6 +4,13 @@ import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { z } from "zod";
 import { getRotatedAIKey, rotateAIKey, systemGeminiKeys } from "../../config/AIConfig";
 import { getCachedDecryptedKeys, getActiveBYOKKeyIndex, rotateBYOKKeyIndex } from "../../utils/byokKeysHelper";
+import { GoogleGenAI } from "@google/genai";
+
+const vertexAi = new GoogleGenAI({
+  vertexai: true,
+  project: "nurons-project-502805",
+  location: "global",
+});
 
 @injectable()
 export class AgentGeminiLLMService {
@@ -77,6 +84,29 @@ export class AgentGeminiLLMService {
     );
   }
 
+  
+  private async runWithVertex<T>(
+    fn: (ai: GoogleGenAI) => Promise<T>
+  ): Promise<T> {
+    let attempts = 0;
+    while (attempts < 3) {
+      try {
+        return await fn(vertexAi);
+      } catch (error) {
+        const err = error as Record<string, unknown>;
+        const status = err?.status as number | undefined;
+        const msg = (err?.message as string) || "";
+        const isTransient = status === 429 || status === 503 || msg.includes("RESOURCE_EXHAUSTED");
+        if (isTransient) {
+          attempts++;
+          continue;
+        }
+        throw error;
+      }
+    }
+    throw new Error("Vertex AI agent exhausted transient retries");
+  }
+
   async classifyIntent(message: string, folderTree: string, latestMessage: string, userId?: string) {
     const routingSchema = z.object({
       isValidWorkspaceRequest: z
@@ -129,6 +159,35 @@ export class AgentGeminiLLMService {
     4. If the user explicitly requested the root directory/folder, set targetFolderId to 'root' and targetFolder to 'root'.
     5. If no folder is mentioned, set targetFolderId and targetFolder to null.`;
 
+    const isByok = userId ? (await getCachedDecryptedKeys(userId, "gemini")).length > 0 : false;
+
+    if (!isByok) {
+      return this.runWithVertex(async (ai) => {
+        const userContent = `User's CURRENT request:\n${latestMessage}\n\nPrevious conversation context:\n${message}`;
+        const response = await ai.models.generateContent({
+          model: "gemini-3.1-flash-lite",
+          contents: [{ role: "user", parts: [{ text: userContent }] }],
+          config: {
+            systemInstruction: systemPrompt,
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: "object",
+              properties: {
+                isValidWorkspaceRequest: { type: "boolean" },
+                targetFolderId: { type: "string", nullable: true },
+                targetFolder: { type: "string", nullable: true },
+                topicToLearn: { type: "string", nullable: true },
+                agentReponse: { type: "string" },
+              },
+              required: ["isValidWorkspaceRequest", "targetFolderId", "targetFolder", "topicToLearn", "agentReponse"],
+            },
+            temperature: 0,
+          },
+        });
+        return JSON.parse(response.text || "{}");
+      });
+    }
+
     return this.runWithRetry(userId, async (model) => {
       const structuredModel = model.withStructuredOutput(routingSchema, {
         name: "intent_classification",
@@ -138,11 +197,7 @@ export class AgentGeminiLLMService {
         ["system", systemPrompt],
         [
           "human",
-          `User's CURRENT request:
-${latestMessage}
-
-Previous conversation context:
-${message}`,
+          `User's CURRENT request:\n${latestMessage}\n\nPrevious conversation context:\n${message}`,
         ],
       ]);
     });
@@ -192,25 +247,54 @@ CONTENT GUIDELINES:
 Workspace Folder Tree:
 ${folderTree}`;
 
+    const isByok = userId ? (await getCachedDecryptedKeys(userId, "gemini")).length > 0 : false;
+
+    if (!isByok) {
+      return this.runWithVertex(async (ai) => {
+        const userContent = `Topic: ${topic}\n\nUser's CURRENT request:\n${latestMessage}\n\nPrevious conversation context:\n${conversationHistory}`;
+        const response = await ai.models.generateContent({
+          model: "gemini-3.1-flash-lite",
+          contents: [{ role: "user", parts: [{ text: userContent }] }],
+          config: {
+            systemInstruction: systemPrompt,
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: "object",
+              properties: {
+                rootBehavior: { type: "string" },
+                agentResponse: { type: "string" },
+                folders: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      name: { type: "string" },
+                      chats: { type: "array", items: { type: "string" } },
+                    },
+                    required: ["name", "chats"],
+                  },
+                },
+              },
+              required: ["rootBehavior", "agentResponse", "folders"],
+            },
+            temperature: 0,
+          },
+        });
+        return JSON.parse(response.text || "{}");
+      });
+    }
+
     return this.runWithRetry(userId, async (model) => {
       const structuredModel = model.withStructuredOutput(
         blueprintSchema,
-        {
-          name: "roadmap_generator",
-        },
+        { name: "roadmap_generator" },
       );
 
-      return await structuredModel.invoke([ 
+      return await structuredModel.invoke([
         ["system", systemPrompt],
         [
           "human",
-          `Topic: ${topic}
-
-User's CURRENT request:
-${latestMessage}
-
-Previous conversation context:
-${conversationHistory}`,
+          `Topic: ${topic}\n\nUser's CURRENT request:\n${latestMessage}\n\nPrevious conversation context:\n${conversationHistory}`,
         ],
       ]);
     });
@@ -251,6 +335,33 @@ ${conversationHistory}`,
     Or if user asked for some other else folder you can choose that folder ID
     If their message does not match any of the option choices, return null.`;
 
+    const isByok = userId ? (await getCachedDecryptedKeys(userId, "gemini")).length > 0 : false;
+
+    if (!isByok) {
+      const result = await this.runWithVertex(async (ai) => {
+        const userContent = `User's CURRENT response:\n${latestMessage}\n\nPrevious conversation context:\n${userMessage}`;
+        const response = await ai.models.generateContent({
+          model: "gemini-3.1-flash-lite",
+          contents: [{ role: "user", parts: [{ text: userContent }] }],
+          config: {
+            systemInstruction: systemPrompt,
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: "object",
+              properties: {
+                selectedFolderId: { type: "string", nullable: true },
+                goToRoot: { type: "boolean" },
+              },
+              required: ["selectedFolderId", "goToRoot"],
+            },
+            temperature: 0,
+          },
+        });
+        return JSON.parse(response.text || "{}");
+      });
+      return { selectedFolderId: result.selectedFolderId, goToRoot: result.goToRoot };
+    }
+
     const result = await this.runWithRetry(userId, async (model) => {
       const structuredModel = model.withStructuredOutput(resolveSchema, {
         name: "resolve_ambiguity",
@@ -260,11 +371,7 @@ ${conversationHistory}`,
         ["system", systemPrompt],
         [
           "human",
-          `User's CURRENT response:
-${latestMessage}
-
-Previous conversation context:
-${userMessage}`,
+          `User's CURRENT response:\n${latestMessage}\n\nPrevious conversation context:\n${userMessage}`,
         ],
       ]);
     });

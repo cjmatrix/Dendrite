@@ -41,6 +41,7 @@ export const VirtuosoFooter = ({ context }: VirtuosoFooterProps) => {
 
       {/* Typing indicator */}
       {isStreaming && !streamingText && <AILoadingIndicator />}
+      {/* {true&&<AILoadingIndicator />} */}
     </div>
   );
 };

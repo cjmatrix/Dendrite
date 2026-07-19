@@ -5,6 +5,12 @@ import { Type, GoogleGenAI } from "@google/genai";
 import { getActiveBYOKKeyIndex, rotateBYOKKeyIndex } from "./byokKeysHelper";
 import { CHAT_SUMMARY_MODEL } from "../constants/models";
 
+const vertexAi = new GoogleGenAI({
+  vertexai: true,
+  project: "nurons-project-502805",
+  location: "global",
+});
+
 
 
 export interface SummaryItem {
@@ -351,22 +357,31 @@ export async function generateTripleMemoryOutput(
 
   while (attempts < totalAttempts) {
     try {
-      const activeAi = isByok ? instances[currentIdx] : await getRotatedAI();
-      response = await activeAi.models.generateContent({
-        model: CHAT_SUMMARY_MODEL,
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: userContent }],
+      if (isByok) {
+        const activeAi = instances[currentIdx];
+        response = await activeAi.models.generateContent({
+          model: CHAT_SUMMARY_MODEL,
+          contents: [{ role: "user", parts: [{ text: userContent }] }],
+          config: {
+            responseMimeType: "application/json",
+            responseSchema: MEMORY_SCHEMA,
+            systemInstruction: systemPrompt,
+            temperature: 0.2,
           },
-        ],
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: MEMORY_SCHEMA,
-          systemInstruction: systemPrompt,
-          temperature: 0.2,
-        },
-      });
+        });
+      } else {
+        
+        response = await vertexAi.models.generateContent({
+          model: CHAT_SUMMARY_MODEL,
+          contents: [{ role: "user", parts: [{ text: userContent }] }],
+          config: {
+            responseMimeType: "application/json",
+            responseSchema: MEMORY_SCHEMA,
+            systemInstruction: systemPrompt,
+            temperature: 0.2,
+          },
+        });
+      }
       break;
     } catch (error: unknown) {
       if (
@@ -380,9 +395,8 @@ export async function generateTripleMemoryOutput(
           } else {
             currentIdx = (currentIdx + 1) % instances.length;
           }
-        } else {
-          await rotateAIKey();
         }
+        
         attempts++;
         continue;
       }

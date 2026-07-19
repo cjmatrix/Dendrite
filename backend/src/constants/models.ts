@@ -1,10 +1,10 @@
 export const MAIN_CHAT_MODEL = "gemini-3.1-flash-lite";
 
 export const QUICK_CHAT_MODEL = "gemini-2.5-flash";
-export const CHAT_SUMMARY_MODEL = "gemma-4-31b-it";
+export const CHAT_SUMMARY_MODEL = "gemini-2.5-flash";
 // export const CHAT_SUMMARY_MODEL = "gemma-4-26b-a4b-it";
 // export const CHAT_SUMMARY_MODEL = "gemini-3.1-flash-lite";
-export const CODE_DESCRIPTION_MODEL = "gemma-4-31b-it";
+export const CODE_DESCRIPTION_MODEL = "gemini-2.5-flash";
 export const INTERNET_SEARCH_ROUTER_MODEL = "gemini-3.1-flash-lite";
 
 export const DEFAULT_MODEL = MAIN_CHAT_MODEL;

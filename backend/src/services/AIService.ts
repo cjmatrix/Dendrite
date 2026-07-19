@@ -8,6 +8,15 @@ import {
   aiInstances,
   systemInstruction,
 } from "../config/AIConfig";
+
+
+const vertexAi = new GoogleGenAI({
+  vertexai: true,
+  project: "nurons-project-502805",
+  location: "global",
+});
+
+
 import CONTEXT_WINDOW from "../constants/contextWindow";
 import { estimateTokenCount } from "../utils/tokenCounter";
 import {
@@ -152,55 +161,45 @@ User query: "${queryText}"`;
     }
   }
 
-  static async streamAIContent(
-    contents: IGeminiContent[],
-    model: string = DEFAULT_MODEL,
-    signal?: AbortSignal,
-    systemInstruction?: string,
-  ): Promise<AsyncIterable<IAIStreamChunk>> {
-    // console.log(JSON.stringify(contents,null,2));
 
-    console.log(model);
 
-    console.log("Strem STARTED ");
-    let stream;
-    let attempts = 0;
-    while (attempts < aiInstances.length) {
-      console.log("inside while loop");
-      try {
-        const activeAi = await getRotatedAI();
-        stream = await activeAi.models.generateContentStream({
-          model,
-          contents,
-          config: {
-            ...(systemInstruction ? { systemInstruction } : {}),
-          },
-        });
-        console.log("Strem Returning ");
-        return stream as unknown as AsyncIterable<IAIStreamChunk>;
-      } catch (error: unknown) {
-        const e = error as { status?: number; message?: string };
-        console.log(e.status, e.message);
-        if (
-          e.status === 429 ||
-          e.status === 503 ||
-          e.status === 400 ||
-          e.message?.includes("API key not valid") ||
-          e.message?.includes("API_KEY_INVALID") ||
-          e.message?.includes("high demand") ||
-          e.message?.includes("quota") ||
-          e.message?.includes("RESOURCE_EXHAUSTED")
-        ) {
-          await rotateAIKey();
-          attempts++;
-          continue;
-        }
-        throw error;
+static async streamAIContent(
+  contents: IGeminiContent[],
+  model: string = "gemini-3-flash-preview",
+  signal?: AbortSignal,
+  systemInstruction?: string,
+): Promise<AsyncIterable<IAIStreamChunk>> {
+  let attempts = 0;
+
+  while (attempts < 3) {
+    try {
+      const stream = await vertexAi.models.generateContentStream({
+        model,
+        contents,
+        config: {
+          ...(systemInstruction ? { systemInstruction } : {}),
+          ...(signal ? { signal } : {}),
+        },
+      });
+
+      return stream as unknown as AsyncIterable<IAIStreamChunk>;
+    } catch (error: any) {
+
+      console.log(error)
+      const msg = String(error?.message || "");
+      const status = error?.status;
+
+      if (status === 429 || status === 503 || msg.includes("RESOURCE_EXHAUSTED")) {
+        attempts++;
+        continue;
       }
-    }
 
-    throw new Error("All AI instances exhausted quota");
+      throw error;
+    }
   }
+
+  throw new Error("Vertex AI exhausted transient retries");
+}
 
   static async streamAIContentWithKeys(
     contents: IGeminiContent[],
@@ -435,11 +434,12 @@ using Mode A unless their message clearly triggers Mode B.`;
   static async generateRecallQuestion(content: string, overallContext?: string): Promise<string | null> {
     const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-    let prompt = `You are a spaced-repetition question writer. Study the highlighted text below and guess what it is about and write ONE recall question that best tests it.
+    let prompt = `You are a spaced-repetition question writer. Study the highlighted text below and guess what it is about and write ONE recall question that best tests it.IMPORTANT Try to find headings or sub headings in selected highlked text or from overall context try to make question from that.
 
     generate a questions about the card. if user select definition ask what is the difinition of that specific topic .
     .Only generate questions maximum of 3 sentence .strictly do not give answers in question also ouputs only the generated questiion
-    Also generated questions should give overall context about what the card about by analyzing the highlighted text`;
+    Also generated questions should give overall context about what the card about by analyzing the highlighted text.
+    `;
 
     if (overallContext) {
       prompt += ` and the full message context provided below:\n\nFull Message Context (For background information only, do not test on this unless it relates to the highlighted text):\n"""\n${overallContext}\n"""\n\n`;

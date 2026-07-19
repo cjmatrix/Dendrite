@@ -10,7 +10,10 @@ import { ILogger } from "../../common/ports/ILogger";
 import { estimateTokenCount } from "../../../utils/tokenCounter";
 import { DEFAULT_MODEL } from "../../../constants/models";
 import { IRateLimitService } from "../../common/ports/IRateLimitService";
-import { IAIStreamChunk, IGeminiUsageMetadata } from "../../../domain/chat/entities/Gemini";
+import {
+  IAIStreamChunk,
+  IGeminiUsageMetadata,
+} from "../../../domain/chat/entities/Gemini";
 
 @injectable()
 export class StreamAndSaveChatUseCase implements IStreamAndSaveChatUseCase {
@@ -41,7 +44,7 @@ export class StreamAndSaveChatUseCase implements IStreamAndSaveChatUseCase {
     const activeModel = model || DEFAULT_MODEL;
 
     let stream: AsyncIterable<IAIStreamChunk> | null = null;
-    
+
     try {
       stream = await this.aiService.streamAIContent(
         contents,
@@ -51,9 +54,15 @@ export class StreamAndSaveChatUseCase implements IStreamAndSaveChatUseCase {
         userTier,
         systemInstruction,
       );
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
-      yield { type: "error", value: error instanceof Error ? error.message : "Quota Exhausted or AI Error" };
+      yield {
+        type: "error",
+        value:
+          error instanceof Error
+            ? error.message
+            : "Quota Exhausted or AI Error",
+      };
       return;
     }
 
@@ -76,7 +85,7 @@ export class StreamAndSaveChatUseCase implements IStreamAndSaveChatUseCase {
 
     let fullReply = "";
     let finalUsageMetadata: IGeminiUsageMetadata | null = null;
-    console.log("STarting MY ASYC GENERATOR")
+    console.log("STarting MY ASYC GENERATOR");
     try {
       for await (const chunk of stream) {
         if (signal.aborted) break;
@@ -98,6 +107,14 @@ export class StreamAndSaveChatUseCase implements IStreamAndSaveChatUseCase {
       let responseTokens = 0;
 
       if (finalUsageMetadata) {
+        const cachedTokens = (finalUsageMetadata as any)
+          .cachedContentTokenCount;
+        
+        if (cachedTokens) {
+          console.log(`Cache Hit! Saved: ${cachedTokens} tokens`);
+        } else {
+          console.log("Cache Miss");
+        }
         promptTokens = finalUsageMetadata.promptTokenCount || 0;
         responseTokens = finalUsageMetadata.candidatesTokenCount || 0;
       } else {
@@ -141,7 +158,10 @@ export class StreamAndSaveChatUseCase implements IStreamAndSaveChatUseCase {
       try {
         await this.rateLimitService.incrementCount(userId, "mainQueries");
       } catch (err) {
-        this.logger.error("Failed to increment rate limit counter for mainQueries", err);
+        this.logger.error(
+          "Failed to increment rate limit counter for mainQueries",
+          err,
+        );
       }
     }
   }

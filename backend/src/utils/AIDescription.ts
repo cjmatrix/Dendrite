@@ -4,6 +4,12 @@ import { logAIQuery, logCodeBlockTokens } from "./logger";
 import { getActiveBYOKKeyIndex, rotateBYOKKeyIndex } from "./byokKeysHelper";
 import { CODE_DESCRIPTION_MODEL } from "../constants/models";
 
+const vertexAi = new GoogleGenAI({
+  vertexai: true,
+  project: "nurons-project-502805",
+  location: "global",
+});
+
 export async function generateBatchCodeDescriptions(
   blocks: { id: string; code: string; language: string }[],
   keys?: string[],
@@ -58,36 +64,59 @@ ${snippetsText}`;
 
   while (attempts < totalAttempts) {
     try {
-      const activeAi = isByok ? instances[currentIdx] : await getRotatedAI();
-      response = await activeAi.models.generateContent({
-        model: CODE_DESCRIPTION_MODEL,
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: queryText }],
-          },
-        ],
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: "object",
-            properties: {
-              results: {
-                type: "array",
-                items: {
-                  type: "object",
-                  properties: {
-                    id: { type: "string" },
-                    description: { type: "string" }
-                  },
-                  required: ["id", "description"]
+      if (isByok) {
+        const activeAi = instances[currentIdx];
+        response = await activeAi.models.generateContent({
+          model: CODE_DESCRIPTION_MODEL,
+          contents: [{ role: "user", parts: [{ text: queryText }] }],
+          config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: "object",
+              properties: {
+                results: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      id: { type: "string" },
+                      description: { type: "string" }
+                    },
+                    required: ["id", "description"]
+                  }
                 }
-              }
-            },
-            required: ["results"]
+              },
+              required: ["results"]
+            }
           }
-        }
-      });
+        });
+      } else {
+    
+        response = await vertexAi.models.generateContent({
+          model: CODE_DESCRIPTION_MODEL,
+          contents: [{ role: "user", parts: [{ text: queryText }] }],
+          config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: "object",
+              properties: {
+                results: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      id: { type: "string" },
+                      description: { type: "string" }
+                    },
+                    required: ["id", "description"]
+                  }
+                }
+              },
+              required: ["results"]
+            }
+          }
+        });
+      }
       break;
     } catch (error: unknown) {
       if (
@@ -101,9 +130,8 @@ ${snippetsText}`;
           } else {
             currentIdx = (currentIdx + 1) % instances.length;
           }
-        } else {
-          await rotateAIKey();
         }
+      
         attempts++;
         continue;
       }
