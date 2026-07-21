@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import { markdownComponents } from "./markdown/MarkdownComponents";
 import remarkGfm from "remark-gfm";
@@ -9,6 +9,11 @@ interface MessageContentProps {
   content: string;
 }
 
+
+export function stripGlobalMemory(text: string): string {
+  if (!text) return text;
+  return text.replace(/\s*<global_memory>[\s\S]*?(?:<\/global_memory>|$)\s*/gi, "");
+}
 
 export function fixMalformedPlantUML(text: string): string {
   if (!text || (!text.includes("@startuml") && !text.includes("plantuml"))) return text;
@@ -35,8 +40,17 @@ export function fixMalformedCodeBlocks(text: string): string {
 export const MessageContent = React.memo(
   ({ content }: MessageContentProps) => {
     const processedContent = useMemo(() => {
-      const fixedBlocks = fixMalformedCodeBlocks(content);
+      let cleaned = stripGlobalMemory(content);
+      const fixedBlocks = fixMalformedCodeBlocks(cleaned);
       return fixMalformedPlantUML(fixedBlocks);
+    }, [content]);
+
+    const hasTriggeredMemoryRef = useRef(false);
+    useEffect(() => {
+      if (content.includes("<global_memory>") && !hasTriggeredMemoryRef.current) {
+        hasTriggeredMemoryRef.current = true;
+        window.dispatchEvent(new CustomEvent("memory-updated"));
+      }
     }, [content]);
 
     const renderedMarkdown = useMemo(

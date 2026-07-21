@@ -149,6 +149,16 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     containerRef: quickChatContainerRef,
   });
 
+  const [showMemoryUpdated, setShowMemoryUpdated] = useState(false);
+  useEffect(() => {
+    const handleMemoryUpdated = () => {
+      setShowMemoryUpdated(true);
+      setTimeout(() => setShowMemoryUpdated(false), 3000);
+    };
+    window.addEventListener("memory-updated", handleMemoryUpdated);
+    return () => window.removeEventListener("memory-updated", handleMemoryUpdated);
+  }, []);
+
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
@@ -569,7 +579,22 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       </div>
 
       {/* Messages Area */}
-      <div className="flex-1 w-full relative">
+      <div className="flex-1 w-full relative overflow-hidden">
+        {/* Memory Updated Animation */}
+        {showMemoryUpdated && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 animate-in fade-in slide-in-from-top-4 fade-out slide-out-to-top-4 duration-300 pointer-events-none">
+            <div className="flex items-center gap-2 px-4 py-2 bg-zinc-900 border border-zinc-700/50 rounded-full shadow-[0_0_20px_rgba(0,0,0,0.5)]">
+              <div className="relative">
+                <Brain size={16} className="text-emerald-400" />
+                <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+              </div>
+              <span className="text-sm font-medium text-zinc-200">Memory updated</span>
+            </div>
+          </div>
+        )}
         {isDocumentProcessing && documentUpload && (
           <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/50 backdrop-blur-sm px-6">
             <div className="w-full max-w-md rounded-2xl border border-blue-500/30 bg-zinc-900/90 p-6 shadow-2xl">

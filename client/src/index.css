@@ -39,6 +39,10 @@
   height: 8px;
 }
 
+global_memory {
+  display: none !important;
+}
+
 ::-webkit-scrollbar-track {
   background: var(--theme-bg-base);
 }

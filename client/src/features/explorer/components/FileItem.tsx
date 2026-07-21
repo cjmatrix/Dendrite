@@ -344,33 +344,8 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
           )}
         </div>
 
-        {isFolder && (
-          <div className="flex opacity-0 pointer-events-none group-hover/item:pointer-events-auto group-hover/item:opacity-100 items-center gap-0.5 transition-opacity duration-200">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsCreating("chat");
-              }}
-              className="p-1 hover:bg-zinc-700/60 rounded-md text-zinc-500 hover:text-emerald-400 transition-colors active:scale-95"
-              title="New Chat"
-            >
-              <Plus size={14} strokeWidth={2.5} />
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsCreating("folder");
-              }}
-              className="p-1 hover:bg-zinc-700/60 rounded-md text-zinc-500 hover:text-cyan-400 transition-colors active:scale-95"
-              title="New Folder"
-            >
-              <FolderPlus size={14} strokeWidth={2.5} />
-            </button>
-          </div>
-        )}
-
-        {!isFolder && node.chatType !== "agent" && (
-          <div className="flex opacity-100 pointer-events-auto lg:opacity-0 lg:pointer-events-none group-hover/item:pointer-events-auto group-hover/item:opacity-100 items-center gap-0.5 transition-opacity duration-200">
+        <div className="flex items-center gap-0.5 opacity-100 lg:opacity-0 pointer-events-auto lg:pointer-events-none group-hover/item:pointer-events-auto group-hover/item:opacity-100 transition-opacity duration-200">
+          {!isFolder && node.chatType !== "agent" && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -385,17 +360,13 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
             >
               <ArrowUpRight size={14} strokeWidth={2.5} />
             </button>
-          </div>
-        )}
-
-        {/* 3 Dots Context Menu for Touch / Smaller Screens */}
-        <div className="flex lg:hidden items-center opacity-70 hover:opacity-100 transition-opacity">
+          )}
           <button
             onClick={handleThreeDotsClick}
-            className="p-1.5 text-zinc-500 hover:text-cyan-400 active:scale-95"
+            className="p-1 hover:bg-zinc-700/60 rounded-md text-zinc-500 hover:text-cyan-400 transition-colors active:scale-95"
             title="Options"
           >
-            <MoreVertical size={16} strokeWidth={2.5} />
+            <MoreVertical size={14} strokeWidth={2.5} />
           </button>
         </div>
       </div>
