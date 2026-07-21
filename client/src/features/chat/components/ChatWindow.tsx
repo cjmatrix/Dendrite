@@ -60,7 +60,7 @@ import { useInheritContext } from "../hooks/useInheritContext";
 import { useTextSelection } from "../hooks/useTextSelection";
 import { useDocumentHistory } from "../hooks/useDocumentHistory";
 import { useFlattenedMessages, useBreadcrumbs } from "../hooks/useChatHelpers";
-import { MODEL_OPTIONS} from "../constants/models";
+import { DEFAULT_MODEL, MODEL_OPTIONS} from "../constants/models";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSendAgentMessageMutation } from "../hooks/useAgentMutation.ts";
 
@@ -121,7 +121,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   }, [messages]);
 
   const [mode, setMode] = useState<"general" | "visual">("general");
-  const [model, setModel] = useState("gemini-2.5-flash");
+  const [model, setModel] = useState("gemini-3-flash-preview");
 
 
 
@@ -406,9 +406,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       return;
     }
 
-    // type === "quick" — always open Quick Chat, never fall through to setInput
-    // Since this action comes from the split file viewer (e.g. PDF), we explicitly
-    // use this placeholder ID so the QuickChatModal knows to disable the 'Stick to Chat' feature.
+
     const anchorMessageId = "__split_view_quick__";
     setExternalQuickSelection({
       text: selectedText,

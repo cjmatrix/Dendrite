@@ -24,8 +24,9 @@ export function useQuickChat({
   subChatId,
   relativeY,
   isOpen,
+  initialModel,
 }: UseQuickChatParams) {
-  const [model, setModel] = useState("gemini-2.5-flash" );
+  const [model, setModel] = useState("DEFAULT");
   const queryClient = useQueryClient();
 
   const [input, setInput] = useState("");
