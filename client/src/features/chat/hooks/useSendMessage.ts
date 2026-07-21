@@ -35,6 +35,7 @@ export function useSendMessage({
       input: string,
       imageUrl: string | null,
       selectedFile?: { name: string; url: string } | null,
+      editMessageId?: string,
     ) => {
       if (
         !chatId ||
@@ -62,7 +63,18 @@ export function useSendMessage({
           ? oldData
           : { pages: [{ messages: [] as Message[], nextCursor: null }], pageParams: [null] };
 
-        const newPages = [...existing.pages];
+        let existingPages = [...existing.pages];
+        if (editMessageId) {
+          existingPages = existingPages.map(page => {
+            const index = page.messages.findIndex(m => m._id === editMessageId);
+            if (index !== -1) {
+              return { ...page, messages: page.messages.slice(0, index) };
+            }
+            return page;
+          });
+        }
+
+        const newPages = [...existingPages];
         newPages[0] = {
           ...newPages[0],
           messages: [
@@ -100,6 +112,7 @@ export function useSendMessage({
           imageUrl,
           selectedFile?.url || null,
           selectedFile?.name || null,
+          editMessageId,
           controller,
           (chunk: StreamChunk) => {
             if (chunk.type === "metadata") {

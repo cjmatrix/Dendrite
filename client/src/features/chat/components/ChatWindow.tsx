@@ -120,6 +120,13 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     return "";
   }, [messages]);
 
+  const lastUserMessageId = useMemo(() => {
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+      if (messages[index]?.role === "user") return messages[index]?._id;
+    }
+    return null;
+  }, [messages]);
+
   const [mode, setMode] = useState<"general" | "visual">("general");
   const [model, setModel] = useState("gemini-3-flash-preview");
 
@@ -133,6 +140,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
   const [input, setInput] = useState("");
+  const [editMessageId, setEditMessageId] = useState<string | undefined>(undefined);
   const [isQuickChatOpen, setIsQuickChatOpen] = useState(false);
   const [isQuickChatSplit, setIsQuickChatSplit] = useState(false);
   const quickChatContainerRef = useRef<HTMLDivElement>(null);
@@ -335,7 +343,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     if (chat?.type === "agent") {
       sendAgentMessage.mutate({ chatId: id || "", message: msg });
     } else {
-      send(msg, selectedImageUrl, effectiveSelectedFile);
+      send(msg, selectedImageUrl, effectiveSelectedFile, editMessageId);
+      setEditMessageId(undefined);
     }
 
     clearImage();
@@ -362,6 +371,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       setInput(lastQueryRef.current);
     }
   }, [stopStreaming]);
+
+  const handleEdit = useCallback((msgId: string, content: string) => {
+    setInput(content);
+    setEditMessageId(msgId);
+    requestAnimationFrame(() => composerRef.current?.focus());
+  }, []);
 
   const handleOpenSubChat = useCallback(
     (messageId: string, subChatId: string) => {
@@ -757,6 +772,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                   onCreateRecall={(msgId) => handleCreateRecall(null, msgId)}
                   fileAttachment={getFileAttachmentForMessage(msg)}
                   onOpenSplitView={openSplitView}
+                  isLastUserMessage={msg._id === lastUserMessageId}
+                  onEdit={handleEdit}
+                  isEditing={msg._id === editMessageId}
                 />
               </div>
             )}

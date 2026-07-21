@@ -90,6 +90,13 @@ export class MongoMessageRepository
     await this.model.deleteMany({ chatId, userId }).session(this.getSession());
   }
 
+  async deleteMessagesSince(chatId: string, userId: string, messageId: string): Promise<void> {
+    const msg = await this.model.findOne({ _id: messageId, chatId, userId });
+    if (msg) {
+      await this.model.deleteMany({ chatId, userId, createdAt: { $gte: msg.createdAt } }).session(this.getSession());
+    }
+  }
+
   async findAllByChatId(chatId: string): Promise<IMessage[]> {
     const docs = await this.model
       .find({ chatId })

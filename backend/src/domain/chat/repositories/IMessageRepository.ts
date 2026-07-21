@@ -8,6 +8,7 @@ export interface IMessageRepository extends IBaseRepository<IMessage> {
   countByChatId(chatId: string, options?: { session?: unknown }): Promise<number>;
   findAnchorContext(chatId: string, createdAt: Date, limit: number): Promise<IMessage[]>;
   findByIdsAndDelete(chatId: string, userId: string): Promise<void>;
+  deleteMessagesSince(chatId: string, userId: string, messageId: string): Promise<void>;
   findAllByChatId(chatId: string): Promise<IMessage[]>;
   findAllByChatIds(chatIds: string[]): Promise<IMessage[]>;
 }

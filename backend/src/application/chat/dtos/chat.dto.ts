@@ -25,6 +25,7 @@ export const SendMessageBodySchema = z.object({
   imageUrl: z.string().trim().nullable().optional(),
   fileUrl: z.string().trim().nullable().optional(),
   fileName: z.string().trim().nullable().optional(),
+  editMessageId: z.string().trim().nullable().optional(),
 }).refine(data => data.message || data.imageUrl || data.fileUrl, {
   message: "At least one of message, imageUrl, or fileUrl must be provided",
 });
@@ -108,6 +109,7 @@ export interface PrepareMessageInputDTO {
   imageUrl?: string;
   fileUrl?: string;
   fileName?: string;
+  editMessageId?: string;
 }
 
 export interface PrepareMessageOutputDTO {

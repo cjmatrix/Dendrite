@@ -237,6 +237,7 @@ export class ChatController extends BaseController {
         imageUrl: input.imageUrl,
         fileUrl: input.fileUrl,
         fileName: input.fileName,
+        editMessageId: req.body.editMessageId,
       });
 
       const stream = this.streamAndSaveChatUseCase.execute(

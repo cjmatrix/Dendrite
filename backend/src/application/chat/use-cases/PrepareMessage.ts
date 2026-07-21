@@ -128,6 +128,12 @@ ${lines.join("\n")}`;
     const normalizedMessage =
       (userMessage || "").trim() || "Analyze this image";
 
+    if (input.editMessageId) {
+      await this.messageRepository.deleteMessagesSince(chatId, userId, input.editMessageId);
+      const newCount = Math.max(0, (chat.unsummarizedCount || 0) - 2);
+      await this.chatRepository.update(chatId, userId, { unsummarizedCount: newCount } as any);
+    }
+
  
     const badPhrases = [
       "ignore all previous",

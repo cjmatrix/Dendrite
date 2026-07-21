@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { ArrowUp, StickyNote, Brain } from "lucide-react";
+import { ArrowUp, StickyNote, Brain, Pencil } from "lucide-react";
 import DendritesLogo from "../../../components/DendritesLogo";
 import { MessageContent } from "./MessageContent";
 import type { Message } from "../types/Message";
@@ -75,6 +75,9 @@ interface MessageBubbleProps {
   onCreateRecall: (msgId: string) => void;
   fileAttachment?: { fileUrl: string; fileName: string };
   onOpenSplitView: (fileUrl: string, fileName: string) => void;
+  isLastUserMessage?: boolean;
+  onEdit?: (msgId: string, content: string) => void;
+  isEditing?: boolean;
 }
 
 export const MessageBubble = React.memo(
@@ -84,6 +87,9 @@ export const MessageBubble = React.memo(
     onCreateRecall,
     fileAttachment,
     onOpenSplitView,
+    isLastUserMessage,
+    onEdit,
+    isEditing,
   }: MessageBubbleProps) => {
     const isUser = msg.role === "user";
     const time = new Date().toLocaleTimeString([], {
@@ -160,10 +166,10 @@ export const MessageBubble = React.memo(
                 {time}
               </span>
               <span className="text-[13px] font-semibold text-gray-300">
-                Researcher
+                Researcher {isEditing && <span className="text-amber-500 ml-1 text-[11px] animate-pulse">(Editing...)</span>}
               </span>
             </div>
-            <div className="px-5 py-3.5 rounded-2xl rounded-tr-sm bg-(--theme-bg-surface) border border-zinc-800 text-[16px] leading-relaxed whitespace-pre-wrap text-gray-200 shadow-sm">
+            <div className={`px-5 py-3.5 rounded-2xl rounded-tr-sm bg-(--theme-bg-surface) border ${isEditing ? "border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.4)] ring-1 ring-amber-500/50" : "border-zinc-800"} text-[16px] leading-relaxed whitespace-pre-wrap text-gray-200 shadow-sm transition-all duration-300`}>
               {msg.imageUrl && (
                 <img
                   src={msg.imageUrl}
@@ -236,7 +242,7 @@ export const MessageBubble = React.memo(
                 </button>
               ))}
             {/* Recall Button for User Message */}
-            <div className="absolute top-0 right-full mr-2 opacity-0 group-hover/bubble:opacity-100 transition-opacity">
+            <div className="absolute top-0 right-full mr-2 opacity-0 group-hover/bubble:opacity-100 transition-opacity flex flex-col gap-2">
               <button
                 onClick={() => onCreateRecall(msg._id!)}
                 className="p-1.5 rounded-lg bg-zinc-800 text-purple-400 hover:bg-purple-600 hover:text-white transition-colors"
@@ -244,6 +250,15 @@ export const MessageBubble = React.memo(
               >
                 <Brain size={14} />
               </button>
+              {isLastUserMessage && onEdit && (
+                <button
+                  onClick={() => onEdit(msg._id!, msg.content)}
+                  className="p-1.5 rounded-lg bg-zinc-800 text-amber-400 hover:bg-amber-600 hover:text-white transition-colors"
+                  title="Edit and Retry"
+                >
+                  <Pencil size={14} />
+                </button>
+              )}
             </div>
           </div>
         ) : (
