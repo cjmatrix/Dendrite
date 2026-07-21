@@ -86,10 +86,16 @@ services:
     environment:
       - REDIS_HOST=redis
       - LOKI_URL=http://loki:3100
+      - GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcloud/adc.json
+      - GOOGLE_CLOUD_PROJECT=nurons-project-502805
+      - GOOGLE_CLOUD_LOCATION=us
     env_file:
       - ./backend/.env
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    volumes:
+      - uploads_tmp:/tmp/dendrites-file-uploads
+      - ./vertex-credentials.json:/tmp/gcloud/adc.json:ro
     depends_on:
       - redis
     deploy:
@@ -109,10 +115,15 @@ services:
     environment:
       - REDIS_HOST=redis
       - LOKI_URL=http://loki:3100
+      - GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcloud/adc.json
+      - GOOGLE_CLOUD_PROJECT=nurons-project-502805
+      - GOOGLE_CLOUD_LOCATION=us
     env_file:
       - ./backend/.env
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    volumes:
+      - ./vertex-credentials.json:/tmp/gcloud/adc.json:ro
     depends_on:
       - redis
     deploy:
@@ -132,10 +143,15 @@ services:
     environment:
       - REDIS_HOST=redis
       - LOKI_URL=http://loki:3100
+      - GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcloud/adc.json
+      - GOOGLE_CLOUD_PROJECT=nurons-project-502805
+      - GOOGLE_CLOUD_LOCATION=us
     env_file:
       - ./backend/.env
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    volumes:
+      - ./vertex-credentials.json:/tmp/gcloud/adc.json:ro
     depends_on:
       - redis
     deploy:

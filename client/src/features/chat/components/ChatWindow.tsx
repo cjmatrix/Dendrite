@@ -533,10 +533,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             <>
               <button
                 onClick={() => setIsFeedbackOpen(true)}
-                className="p-2 hover:bg-zinc-800/80 hover:text-emerald-400 rounded-lg transition-all cursor-pointer hover:scale-105 active:scale-95"
+                className="flex items-center gap-1.5 p-2 hover:bg-zinc-800/80 hover:text-emerald-400 rounded-lg transition-all cursor-pointer hover:scale-105 active:scale-95"
                 title="Send Feedback"
               >
                 <MessageSquareHeart size={18} />
+                <span className="hidden sm:inline text-xs font-medium">Feedback</span>
               </button>
               <button 
                 onClick={() => setIsShareOpen(true)}

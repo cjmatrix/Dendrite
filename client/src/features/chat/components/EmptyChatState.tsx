@@ -96,9 +96,13 @@ export default function EmptyChatState() {
             Elevate your research workflow with an intelligent companion designed to map complex data patterns and preserve critical contexts.
           </p>
 
-          <div className="inline-flex items-center justify-center lg:justify-start gap-3 text-sm text-zinc-500 bg-zinc-900/30 w-fit mx-auto lg:mx-0 py-2 px-4 rounded-full border border-zinc-800/50 backdrop-blur-md">
-            <Sparkles size={14} className="text-cyan-400 animate-pulse" />
-            <span>Type a prompt below to initialize a session</span>
+          <div className="flex flex-col items-center lg:items-start gap-4">
+        
+            
+            <div className="inline-flex items-center justify-center lg:justify-start gap-3 text-sm text-amber-400/90 bg-amber-500/10 w-fit py-2 px-4 rounded-full border border-amber-500/20 backdrop-blur-md shadow-[0_0_15px_rgba(245,158,11,0.05)] animate-in fade-in slide-in-from-bottom-2 duration-700 delay-300 fill-mode-both">
+              <Layers size={14} className="animate-bounce" />
+              <span><strong className="text-amber-400">Pro Tip:</strong> Right-click files in the sidebar to open the context menu</span>
+            </div>
           </div>
         </div>
 
