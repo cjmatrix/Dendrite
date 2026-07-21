@@ -107,13 +107,14 @@ export class StreamAndSaveChatUseCase implements IStreamAndSaveChatUseCase {
       let responseTokens = 0;
 
       if (finalUsageMetadata) {
+        console.log("[CACHE DEBUG] Raw usageMetadata:", JSON.stringify(finalUsageMetadata, null, 2));
         const cachedTokens = (finalUsageMetadata as any)
           .cachedContentTokenCount;
         
-        if (cachedTokens) {
-          console.log(`Cache Hit! Saved: ${cachedTokens} tokens`);
+        if (cachedTokens && cachedTokens > 0) {
+          console.log(`✅ Cache Hit! Saved: ${cachedTokens} cached tokens out of ${finalUsageMetadata.promptTokenCount} prompt tokens`);
         } else {
-          console.log("Cache Miss");
+          console.log(`❌ Cache Miss (prompt: ${finalUsageMetadata.promptTokenCount} tokens, response: ${finalUsageMetadata.candidatesTokenCount} tokens)`);
         }
         promptTokens = finalUsageMetadata.promptTokenCount || 0;
         responseTokens = finalUsageMetadata.candidatesTokenCount || 0;

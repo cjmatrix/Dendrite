@@ -29,7 +29,22 @@ export class StreamQuickChat implements IStreamQuickChatUseCase {
     const { userId, chatId, anchorMessageId, highlightedText, quickChatHistory, userTier, model } = input;
     const activeModel = model || QUICK_CHAT_MODEL;
   
-    const recentHistory = (quickChatHistory || []).slice(-8);
+    const historyArray = quickChatHistory || [];
+    const totalMessagesInChat = historyArray.length;
+    const QUICK_CHAT_WINDOW = 16;
+    const dropSize = Math.floor(QUICK_CHAT_WINDOW / 2);
+    
+    let dynamicWindowSize = QUICK_CHAT_WINDOW;
+    if (totalMessagesInChat <= QUICK_CHAT_WINDOW) {
+      dynamicWindowSize = totalMessagesInChat;
+    } else {
+      const droppedChunks = Math.floor(
+        (totalMessagesInChat - (dropSize + 1)) / dropSize
+      );
+      dynamicWindowSize = totalMessagesInChat - droppedChunks * dropSize;
+    }
+
+    const recentHistory = historyArray.slice(-dynamicWindowSize);
 
     const backgroundContext = await this.aiService.getAnchorContext(
       chatId,

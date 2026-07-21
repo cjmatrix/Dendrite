@@ -17,6 +17,42 @@ import { injectable, inject } from "tsyringe";
 import { ISaveModelReplyUseCase } from "./interfaces";
 import { IMessage } from "../../../domain/chat/entities/Message";
 import { ICodeBlock } from "../../../domain/chat/entities/CodeBlock";
+import { IGlobalProfile } from "../../../domain/auth/entities/User";
+
+function mergeProfileDelta(
+  existing: IGlobalProfile | null,
+  delta: Partial<IGlobalProfile>,
+): Record<string, string | string[]> | null {
+  const updates: Record<string, string | string[]> = {};
+  const profile = existing || {
+    tech_stack: [], environment: [], user_preferences: [],
+    current_projects: [], long_term_goals: [], constraints: [], entities: [],
+  } as IGlobalProfile;
+
+  const scalarFields = ["user_name", "location", "role", "expertise_level", "response_style"] as const;
+  for (const field of scalarFields) {
+    if (delta[field] && delta[field] !== profile[field]) {
+      updates[`globalProfile.${field}`] = String(delta[field]).slice(0, 100);
+    }
+  }
+
+  const arrayFields = ["tech_stack", "environment", "current_projects", "long_term_goals", "constraints", "user_preferences", "entities"] as const;
+  const MAX_ARRAY_ITEMS = 15;
+  const MAX_ITEM_LENGTH = 300;
+
+  for (const field of arrayFields) {
+    const deltaItems = delta[field];
+    if (deltaItems && Array.isArray(deltaItems) && deltaItems.length > 0) {
+      const existingItems: string[] = (profile[field] || []).map((item) => String(item).slice(0, MAX_ITEM_LENGTH));
+      const existingSet = new Set(existingItems.map((item) => item.toLowerCase()));
+      const newItems = deltaItems.map((item) => String(item).slice(0, MAX_ITEM_LENGTH)).filter((item) => !existingSet.has(item.toLowerCase()));
+      if (newItems.length > 0) {
+        updates[`globalProfile.${field}`] = [...existingItems, ...newItems].slice(-MAX_ARRAY_ITEMS);
+      }
+    }
+  }
+  return Object.keys(updates).length > 0 ? updates : null;
+}
 
 export function extractCodeBlocks(text: string) {
   const regex = /```(\w+)?\n([\s\S]*?)```/g;
@@ -66,7 +102,6 @@ export class SaveModelReply implements ISaveModelReplyUseCase {
     const {
       chatId,
       userId,
-      modelReply,
       parentContext,
       parentSummary,
       promptTokens,
@@ -74,12 +109,32 @@ export class SaveModelReply implements ISaveModelReplyUseCase {
       contents,
       model,
     } = input;
+    
+    let modelReply = input.modelReply;
 
     const chat = await this.chatRepository.findByIdAndUserId(chatId, userId);
 
     if (!chat) {
       throw new AppError("Chat not found", 404);
     }
+
+    const memoryRegex = /<global_memory>\s*([\s\S]*?)\s*<\/global_memory>/g;
+    let memoryMatch;
+    while ((memoryMatch = memoryRegex.exec(modelReply)) !== null) {
+      try {
+        const delta = JSON.parse(memoryMatch[1]);
+        const user = await this.userRepository.findByIdSafe(userId);
+        const updates = mergeProfileDelta(user?.globalProfile || null, delta);
+        if (updates) {
+          await this.userRepository.findByIdAndUpdate(userId, { $set: updates });
+          this.logger.info("In-band memory extracted and profile updated", { userId });
+        }
+      } catch (err) {
+        this.logger.warn("Failed to parse in-band global memory", { error: err });
+      }
+      modelReply = modelReply.replace(memoryMatch[0], "").trim();
+    }
+
     let modelMessageId: string | null = null;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let summaryOutboxEvent: any = null;
@@ -190,15 +245,18 @@ export class SaveModelReply implements ISaveModelReplyUseCase {
         });
       }
 
+      const dropChunks=Math.floor(CONTEXT_WINDOW/2)
       
-      if (updatedChat && totalUnCount >= CONTEXT_WINDOW - 2) {
+      if (updatedChat && totalUnCount >= CONTEXT_WINDOW) {
         const recent = await this.messageRepository.findRecentByChatId(
           chatId,
           CONTEXT_WINDOW,
         );
-        const totalRecent = [...recent, ...totalParentMessagesToCompress];
+        const messagesToDrop = recent.slice(dropChunks);
+        const messagesToProcess = messagesToDrop.length < dropChunks ? recent : messagesToDrop;
+        const totalRecent = [...messagesToProcess, ...totalParentMessagesToCompress];
         messageToCompress = totalRecent.reverse();
-        this.logger.debug("Compressed messages for chat", {
+        this.logger.debug(`Compressed messages for chat (dropping oldest ${dropChunks})`, {
           chatId,
           messageCount: messageToCompress.length,
         });

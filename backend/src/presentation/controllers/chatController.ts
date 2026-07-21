@@ -137,7 +137,8 @@ export class ChatController extends BaseController {
       const userId = this.validateUserAuth(req);
       const id = this.getRouteParam(req, "id");
       const cursor = this.getQueryParam(req, "cursor");
-      const limit = 4;
+      const limitParam = this.getQueryParam(req, "limit");
+      const limit = limitParam ? parseInt(limitParam, 10) : 20;
 
       const result = await this.getChatMessagesUseCase.execute({
         chatId: id,

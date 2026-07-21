@@ -122,7 +122,6 @@ function mergeProfileDelta(
         existingItems.map((item: string) => item.toLowerCase()),
       );
       
-      
       const newItems = deltaItems
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .map((item: any) => String(item).slice(0, MAX_ITEM_LENGTH))
