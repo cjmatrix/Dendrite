@@ -24,7 +24,6 @@ export function useQuickChat({
   subChatId,
   relativeY,
   isOpen,
-  initialModel,
 }: UseQuickChatParams) {
   const [model, setModel] = useState("DEFAULT");
   const queryClient = useQueryClient();
