@@ -129,12 +129,17 @@ ${lines.join("\n")}`;
       (userMessage || "").trim() || "Analyze this image";
 
     if (input.editMessageId) {
-      await this.messageRepository.deleteMessagesSince(chatId, userId, input.editMessageId);
+      await this.messageRepository.deleteMessagesSince(
+        chatId,
+        userId,
+        input.editMessageId,
+      );
       const newCount = Math.max(0, (chat.unsummarizedCount || 0) - 2);
-      await this.chatRepository.update(chatId, userId, { unsummarizedCount: newCount } as any);
+      await this.chatRepository.update(chatId, userId, {
+        unsummarizedCount: newCount,
+      } as any);
     }
 
- 
     const badPhrases = [
       "ignore all previous",
       "system prompt",
@@ -532,8 +537,16 @@ ${lines.join("\n")}`;
       dynamicSystemInstruction += `VISUAL MODE ACTIVE
 
 PRIMARY GOAL:
-Teach the concept accurately. Visual beauty is secondary to correctness.
+Teach the concept accurately. Visual beauty is secondary to correctness, BUT the visualization MUST look modern, polished, and use high-quality aesthetics.
 Every animation, movement, color change, highlight, and interaction must represent actual logical state changes in the underlying concept.
+
+P5.JS BEST PRACTICES (CRITICAL):
+1. STATE MACHINE: Always use a discrete state machine (e.g., \`let currentStep = 0;\` or \`let state = 'INTRO';\`) to manage the educational flow and logic.
+2. SMOOTH ANIMATION: NEVER snap objects instantly to new positions. ALWAYS use \`lerp()\` for coordinate movements and \`lerpColor()\` for color transitions to make animations fluid and organic.
+3. RESPONSIVE DESIGN: Always position elements relative to \`width\` and \`height\` (e.g., \`width * 0.5\`). Never hardcode exact pixel positions.
+4. MODERN AESTHETICS: Use curated, harmonious color palettes. Do not use generic, harsh primary colors. Use rounded rectangles and clean typography.
+5. DEFAULT PAUSED STATE: The animation MUST start in a paused or stopped state by default (e.g., \`let isPlaying = false;\`). It should only play when the user clicks 'Play' or 'Resume'.
+
 IMPORTANT:
 - Generate P5 visualizations ONLY when the user explicitly asks for a visualization.
 - Do NOT generate explanation and visualization together.
@@ -541,7 +554,7 @@ IMPORTANT:
   1. A visualization (single \`\`\`p5\`\`\` block only), OR
   2. A normal explanation.
 - Never return both unless the user explicitly asks for both.
--each explanation of visualization should given with text size of 15px
+- each explanation of visualization should given with text size of 15px
 
 CANVAS & LAYOUT (CRITICAL):
 - Canvas: createCanvas(windowWidth, windowHeight);
@@ -550,6 +563,7 @@ CANVAS & LAYOUT (CRITICAL):
   function windowResized() {
     resizeCanvas(windowWidth, windowHeight);
   }
+
 LAYOUT ZONES:
 HEADER:
 - y = 0 → 50
@@ -557,12 +571,9 @@ HEADER:
 
 CONTROLS:
 - y = 50 → 90
-- MUST contain:
-  Pause/Resume
-  Prev
-  Next
-  Reset
-  atleast these buttons should be provided and it should be clickable
+- MUST contain: Pause/Resume, Prev, Next, Reset
+- Buttons must be clickable, visibly change on hover, and be drawn relative to canvas width/height. Draw custom buttons inside \`draw()\` with hit detection for stylistic control.
+
 BODY:
 - y = 100 → height - 50
 - All educational content and animations
@@ -572,9 +583,7 @@ FOOTER:
 - y = height - 50 → height
 - Status text font size 20px
 - Step counter
-- Current state description. The explanation for each step MUST be highly specific, detailed, and directly describe exactly what is happening logically in that specific step of the concept, not just a generic overview.
-
-
+- Current state description. The explanation for each step MUST be highly specific, detailed, and directly describe exactly what is happening logically in that specific step.
 
 OUTPUT RULES:
 - Global p5 mode only.
@@ -583,7 +592,6 @@ OUTPUT RULES:
 - No markdown explanation.
 - CRITICAL: You MUST output exactly ONE fenced code block starting with \`\`\`p5 and ending with \`\`\`. 
 - DO NOT use \`\`\`javascript or \`\`\`js. If you do not use \`\`\`p5, the UI will break and the user will only see raw text!
-
 
 If any answer is NO, improve the visualization before returning it.`;
     } else {
