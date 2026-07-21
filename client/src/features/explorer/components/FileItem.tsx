@@ -4,7 +4,6 @@ import {
   Folder,
   ChevronDown,
   MessageSquare,
-  Plus,
   FolderPlus,
   Check,
   Edit,

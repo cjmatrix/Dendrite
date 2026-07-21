@@ -2,7 +2,6 @@ import {
   BrainCircuit,
   GitBranch,
   Layers,
-  Sparkles,
   Eye,
   MessageSquareQuote,
   RotateCcw,
