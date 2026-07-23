@@ -378,8 +378,8 @@ export const markdownComponents = {
         PreTag="span"
         codeTagProps={{
           style: {
-            fontSize: "15px",
-            lineHeight: "1.4",
+            fontSize: "14px",
+            lineHeight: "1",
             whiteSpace: "pre-wrap",
             wordBreak: "break-word",
           },
@@ -387,8 +387,8 @@ export const markdownComponents = {
         customStyle={{
           display: "inline-block",
           verticalAlign: "middle",
-          margin: "0 0.3rem",
-          padding: "0.1rem 0.5rem",
+          margin: "0.6rem 0.3rem",
+          padding: "0.1rem 0.2rem",
           background: "rgba(63, 63, 70, 0.2)",
           borderRadius: "0.375rem",
           border: "1px solid rgba(82, 82, 91, 0.3)",

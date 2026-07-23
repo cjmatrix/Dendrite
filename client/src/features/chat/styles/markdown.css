@@ -2,8 +2,8 @@
 .markdown-body {
   color: #e2e8f0;
   font-size: 16px;
-  line-height: 1.9;
-  letter-spacing: 0.01em;
+  line-height: 2;
+  letter-spacing: 0.03em;
 }
 
 .markdown-body h1,
@@ -54,19 +54,19 @@
 }
 
 .markdown-body ul {
-  margin: 1em 0;
+  margin: 1.8em 0;
   padding-left: 1.75em;
   list-style-type: disc;
 }
 
 .markdown-body ol {
-  margin: 1em 0;
+  margin: 1.8em 0;
   padding-left: 1.75em;
   list-style-type: decimal;
 }
 
 .markdown-body li {
-  margin-bottom: 0.6em;
+  margin-bottom: 1.5em;
   line-height: 2;
 }
 
