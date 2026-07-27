@@ -26,6 +26,7 @@ export function useQuickChat({
   isOpen,
 }: UseQuickChatParams) {
   const [model, setModel] = useState("DEFAULT");
+  const [mode, setMode] = useState<"general" | "visual">("general");
   const queryClient = useQueryClient();
 
   const [input, setInput] = useState("");
@@ -122,6 +123,7 @@ export function useQuickChat({
         highlightedText: selectedText,
         quickChatHistory: subMessages.concat({ role: "user", content: userPrompt }),
         model: model,
+        mode: mode,
         onChunk: (textSoFar) => setStreamingText(textSoFar),
       });
     },
@@ -281,6 +283,8 @@ export function useQuickChat({
       existingSubChat,
       model,
       setModel,
+      mode,
+      setMode,
 
 
       stickToChatMutation,

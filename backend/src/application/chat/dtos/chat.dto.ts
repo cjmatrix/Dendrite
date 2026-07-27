@@ -35,6 +35,7 @@ export const StreamQuickChatBodySchema = z.object({
   highlightedText: z.string().trim().nullable().optional(),
   quickChatHistory: z.array(z.any()).optional(),
   model: z.string().trim().nullable().optional(),
+  mode: z.string().trim().nullable().optional(),
 });
 
 export const SaveSubChatBodySchema = z.object({
@@ -179,6 +180,7 @@ export interface StreamQuickChatInputDTO {
   quickChatHistory: IMessage[];
   userTier?: string;
   model?: string;
+  mode?: string;
 }
 
 export interface UploadDocumentInputDTO {

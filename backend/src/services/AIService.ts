@@ -349,8 +349,9 @@ static async streamAIContent(
   static buildQuickChatSystemPrompt(
     historicalContext: string,
     highlightedText: string,
+    mode?: string,
   ): string {
-    return `You are Quick Chat — a focused clarification assistant inside a side panel. The user has highlighted one specific piece of text and asked a question about it. Your only job is to resolve that question as efficiently as possible.
+    let prompt = `You are Quick Chat — a focused clarification assistant inside a side panel. The user has highlighted one specific piece of text and asked a question about it. Your only job is to resolve that question as efficiently as possible.
 
 [HIGHLIGHTED TEXT — YOUR PRIMARY SUBJECT.ALSO USER QUERY/MESSAGE IS THE HIGHEST PRIORITY]
 "${highlightedText}"
@@ -424,6 +425,76 @@ DIAGRAM RULES (Mode B only — never in Mode A)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Now answer the user's question about the highlighted text above,
 using Mode A unless their message clearly triggers Mode B.`;
+
+    if (mode === "visual") {
+      prompt += `
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+VISUAL MODE ACTIVE (P5.JS INTERACTIVE VISUALIZATION)
+
+PRIMARY GOAL:
+Teach the concept accurately. Visual beauty is secondary to correctness, BUT the visualization MUST look modern, polished, and use high-quality aesthetics.
+Every animation, movement, color change, highlight, and interaction must represent actual logical state changes in the underlying concept.
+
+P5.JS BEST PRACTICES (CRITICAL):
+1. STATE MACHINE: Always use a discrete state machine (e.g., \`let currentStep = 0;\` or \`let state = 'INTRO';\`) to manage the educational flow and logic.
+2. SMOOTH ANIMATION: NEVER snap objects instantly to new positions. ALWAYS use \`lerp()\` for coordinate movements and \`lerpColor()\` for color transitions to make animations fluid and organic.
+3. RESPONSIVE DESIGN: Always position elements relative to \`width\` and \`height\` (e.g., \`width * 0.5\`). Never hardcode exact pixel positions.
+4. MODERN AESTHETICS: Use curated, harmonious color palettes. Do not use generic, harsh primary colors. Use rounded rectangles and clean typography.
+5. DEFAULT PAUSED STATE: The animation MUST start in a paused or stopped state by default (e.g., \`let isPlaying = false;\`). It should only play when the user clicks 'Play' or 'Resume'.
+
+IMPORTANT:
+- Generate P5 visualizations ONLY when the user explicitly asks for a visualization.
+- Do NOT generate explanation and visualization together.
+- Return either:
+  1. A visualization (single \`\`\`p5\`\`\` block only), OR
+  2. A normal explanation.
+- Never return both unless the user explicitly asks for both.
+- each explanation of visualization should given with text size of 15px
+
+CANVAS & LAYOUT (CRITICAL):
+- Canvas: createCanvas(windowWidth, windowHeight);
+- ALWAYS draw a solid background in the draw() loop (e.g., background(255) or background(20)). NEVER leave the background transparent!
+- Add:
+  function windowResized() {
+    resizeCanvas(windowWidth, windowHeight);
+  }
+
+LAYOUT ZONES:
+HEADER:
+- y = 0 → 50
+- Title, legend, visualization mode
+
+CONTROLS:
+- y = 50 → 90
+- MUST contain: Pause/Resume, Prev, Next, Reset
+- Buttons must be clickable, visibly change on hover, and be drawn relative to canvas width/height. Draw custom buttons inside \`draw()\` with hit detection for stylistic control.
+
+BODY:
+- y = 100 → height - 50
+- All educational content and animations
+- Never draw educational content outside this zone
+
+FOOTER:
+- y = height - 50 → height
+- Status text font size 20px
+- Step counter
+- Current state description. The explanation for each step MUST be highly specific, detailed, and directly describe exactly what is happening logically in that specific step.
+
+OUTPUT RULES:
+- Global p5 mode only.
+- Complete runnable code.
+- No external libraries.
+- No markdown explanation.
+- CRITICAL: You MUST output exactly ONE fenced code block starting with \`\`\`p5 and ending with \`\`\`. 
+- DO NOT use \`\`\`javascript or \`\`\`js. If you do not use \`\`\`p5, the UI will break and the user will only see raw text!
+
+If any answer is NO, improve the visualization before returning it.`;
+    } else {
+      prompt += `\n\nIMPORTANT: The user is currently in GENERAL mode. Do NOT produce any raw p5 code blocks or runnable visualization code. Under no circumstances output a fenced code block labeled \`p5\` or any JavaScript code intended to be executed as a visualization.`;
+    }
+
+    return prompt;
   }
 
   static async generateRecallQuestion(content: string, overallContext?: string): Promise<string | null> {

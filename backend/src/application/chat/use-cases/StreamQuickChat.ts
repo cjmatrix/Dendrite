@@ -26,7 +26,7 @@ export class StreamQuickChat implements IStreamQuickChatUseCase {
   ) {}
 
   async *execute(input: StreamQuickChatInputDTO, signal?: AbortSignal): AsyncGenerator<IAIStreamChunk> {
-    const { userId, chatId, anchorMessageId, highlightedText, quickChatHistory, userTier, model } = input;
+    const { userId, chatId, anchorMessageId, highlightedText, quickChatHistory, userTier, model, mode } = input;
     const activeModel = model || QUICK_CHAT_MODEL;
   
     const historyArray = quickChatHistory || [];
@@ -58,7 +58,8 @@ export class StreamQuickChat implements IStreamQuickChatUseCase {
 
     const systemPrompt = this.aiService.buildQuickChatSystemPrompt(
       historicalString,
-      highlightedText
+      highlightedText,
+      mode
     );
 
     const contents: IGeminiContent[] = [
@@ -127,17 +128,31 @@ export class StreamQuickChat implements IStreamQuickChatUseCase {
         responseTokens = estimateTokenCount(fullReply);
       }
 
-      const quickChatTokens = promptTokens + responseTokens;
+      let p5Tokens = 0;
+      const p5Regex = /```p5\n([\s\S]*?)```/g;
+      let p5Match;
+      while ((p5Match = p5Regex.exec(fullReply)) !== null) {
+        const p5Code = p5Match[1].trim();
+        p5Tokens += estimateTokenCount(p5Code);
+      }
 
-      if (quickChatTokens > 0) {
+      const quickChatOutputTokens = Math.max(0, responseTokens - p5Tokens);
+      const quickChatTokens = promptTokens + quickChatOutputTokens;
+      const p5VisualizationTokens = p5Tokens;
+      const totalTokens = quickChatTokens + p5VisualizationTokens;
+
+      if (totalTokens > 0) {
         try {
           const provider = getProviderKey(activeModel);
           await this.userRepo.findByIdAndUpdate(userId, {
             $inc: {
               [`token_usage.${provider}.quickChat.input`]: promptTokens,
-              [`token_usage.${provider}.quickChat.output`]: responseTokens,
+              [`token_usage.${provider}.quickChat.output`]: quickChatOutputTokens,
               [`token_usage.${provider}.quickChat.total`]: quickChatTokens,
-              tokensUsed: quickChatTokens,
+              [`token_usage.${provider}.p5Visualization.input`]: 0,
+              [`token_usage.${provider}.p5Visualization.output`]: p5VisualizationTokens,
+              [`token_usage.${provider}.p5Visualization.total`]: p5VisualizationTokens,
+              tokensUsed: totalTokens,
             },
           });
 
@@ -146,12 +161,24 @@ export class StreamQuickChat implements IStreamQuickChatUseCase {
 
           await this.dailyTokenUsageRepository.upsertUsage(userId, today, userTier || "free", {
             [`token_usage.${provider}.quickChat.input`]: promptTokens,
-            [`token_usage.${provider}.quickChat.output`]: responseTokens,
+            [`token_usage.${provider}.quickChat.output`]: quickChatOutputTokens,
             [`token_usage.${provider}.quickChat.total`]: quickChatTokens,
+            [`token_usage.${provider}.p5Visualization.input`]: 0,
+            [`token_usage.${provider}.p5Visualization.output`]: p5VisualizationTokens,
+            [`token_usage.${provider}.p5Visualization.total`]: p5VisualizationTokens,
           });
 
           await this.rateLimitService.incrementCount(userId, "quickChats");
-          await this.rateLimitService.incrementTokens(userId, activeModel, quickChatTokens);
+          await this.rateLimitService.incrementTokens(userId, activeModel, totalTokens);
+
+          const p5BlockCount = (fullReply.match(/```p5\n/g) || []).length;
+          if (p5BlockCount > 0) {
+            await this.rateLimitService.incrementCount(
+              userId,
+              "p5Visualizations",
+              p5BlockCount,
+            );
+          }
         } catch (err) {
           this.logger.error("Failed to update user token usage for quick chat:", err);
         }

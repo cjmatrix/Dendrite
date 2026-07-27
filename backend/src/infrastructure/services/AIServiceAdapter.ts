@@ -69,7 +69,7 @@ export class AIServiceAdapter implements IAIService {
     return AIService.getAnchorContext(chatId, anchorMessageId, messageRepo);
   }
 
-  buildQuickChatSystemPrompt(historicalContext: string, highlightedText: string): string {
-    return AIService.buildQuickChatSystemPrompt(historicalContext, highlightedText);
+  buildQuickChatSystemPrompt(historicalContext: string, highlightedText: string, mode?: string): string {
+    return AIService.buildQuickChatSystemPrompt(historicalContext, highlightedText, mode);
   }
 }

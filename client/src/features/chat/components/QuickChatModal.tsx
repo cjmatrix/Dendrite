@@ -13,6 +13,7 @@ import {
   ChevronDown,
   Lock,
   Columns,
+  Image,
 } from "lucide-react";
 
 import Draggable from "react-draggable";
@@ -22,6 +23,7 @@ import { MODEL_OPTIONS } from "../constants/models";
 import { AILoadingIndicator } from "../../../components/common/AILoadingIndicator";
 import type { Message } from "../types/Message";
 import { useAppSelector } from "../../../store/store";
+import { StreamingContext } from "../../../providers/StreamingContext";
 import toast from "react-hot-toast";
 
 interface QuickChatModalProps {
@@ -96,6 +98,8 @@ export const QuickChatModal: React.FC<QuickChatModalProps> = ({
     existingSubChat,
     model,
     setModel,
+    mode,
+    setMode,
     stickToChatMutation,
     streamChatMutation,
     handleSend,
@@ -198,7 +202,10 @@ export const QuickChatModal: React.FC<QuickChatModalProps> = ({
               </div>
               {streamingText ? (
                 <div className="markdown-body">
-                  <MessageContent content={streamingText}></MessageContent>
+                  <StreamingContext.Provider value={true}>
+                    <MessageContent content={streamingText}></MessageContent>
+                  </StreamingContext.Provider>
+                  <span className="inline-block w-2 h-4 bg-blue-400 ml-1 rounded-sm streaming-cursor align-middle" />
                 </div>
               ) : (
                 <div className="w-full">
@@ -309,6 +316,28 @@ export const QuickChatModal: React.FC<QuickChatModalProps> = ({
               </>
             )}
           </div>
+
+          {/* Visual Mode Toggle */}
+          <button
+            type="button"
+            onClick={() => {
+              if (mode === "general") {
+                setMode("visual");
+                setModel("gemini-3-flash-preview");
+              } else {
+                setMode("general");
+              }
+            }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-medium transition-all shadow-sm shrink-0 ${
+              mode === "visual"
+                ? "bg-purple-500/15 border-purple-500/30 text-purple-300 hover:bg-purple-500/20"
+                : "bg-white/5 border-white/5 text-gray-400 hover:bg-white/10 hover:border-white/10"
+            }`}
+            title={mode === "visual" ? "Switch to General Mode" : "Switch to Visual Mode"}
+          >
+            <Image size={13} className={mode === "visual" ? "text-purple-400" : "text-gray-500"} />
+            <span>{mode === "visual" ? "Visual" : "General"}</span>
+          </button>
 
           <textarea
             placeholder={streamChatMutation.isPending ? "AI is typing..." : "Ask a clarifying question..."}

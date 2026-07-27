@@ -294,7 +294,7 @@ export class ChatController extends BaseController {
       const userId = this.validateUserAuth(req);
       const userTier = req.user?.tier || "free";
       const chatId = req.params.id as string;
-      const { anchorMessageId, highlightedText, quickChatHistory, model } =
+      const { anchorMessageId, highlightedText, quickChatHistory, model, mode } =
         req.body;
 
       let modelStr = typeof model === "string" ? model.trim() : undefined;
@@ -342,6 +342,7 @@ export class ChatController extends BaseController {
             quickChatHistory,
             userTier,
             model: activeModel,
+            mode: mode || "general",
           },
           abortController.signal
         );

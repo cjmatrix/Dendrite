@@ -19,5 +19,6 @@ export interface IAIService {
   buildQuickChatSystemPrompt(
     historicalContext: string,
     highlightedText: string,
+    mode?: string,
   ): string;
 }
