@@ -76,10 +76,13 @@ export function useQuickChat({
   }, [existingSubChat, isHistoryLoading, sourceMessageId]);
 
   useEffect(() => {
-    if (!subMessages.length && selectedText) {
+    if (!subMessages.length && selectedText&&mode==="general") {
       setInput(`Explain what is ${selectedText}`);
     }
-  }, [selectedText, subMessages.length]);
+    else if(!subMessages.length && selectedText&&mode==="visual"){
+       setInput(`Helps me to visualize and understand ${selectedText}`);
+    }
+  }, [selectedText, subMessages.length,mode]);
 
 
 
