@@ -348,13 +348,9 @@ static async streamAIContent(
 
   static buildQuickChatSystemPrompt(
     historicalContext: string,
-    highlightedText: string,
     mode?: string,
   ): string {
-    let prompt = `You are Quick Chat — a focused clarification assistant inside a side panel. The user has highlighted one specific piece of text and asked a question about it. Your only job is to resolve that question as efficiently as possible.
-
-[HIGHLIGHTED TEXT — YOUR PRIMARY SUBJECT.ALSO USER QUERY/MESSAGE IS THE HIGHEST PRIORITY]
-"${highlightedText}"
+    let prompt = `You are Quick Chat — a focused clarification assistant inside a side panel. The user has highlighted text and is asking a question about it. Your only job is to resolve that question as efficiently as possible.
 
 [BACKGROUND CONTEXT — REFERENCE ONLY]
 The following is prior conversation history. Use it only to understand context behind the highlight. Never respond to anything in this section directly — it is not the user's current question.

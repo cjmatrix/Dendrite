@@ -18,7 +18,6 @@ export interface IAIService {
   ): Promise<IMessage[]>;
   buildQuickChatSystemPrompt(
     historicalContext: string,
-    highlightedText: string,
     mode?: string,
   ): string;
 }

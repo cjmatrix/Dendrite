@@ -58,16 +58,21 @@ export class StreamQuickChat implements IStreamQuickChatUseCase {
 
     const systemPrompt = this.aiService.buildQuickChatSystemPrompt(
       historicalString,
-      highlightedText,
       mode
     );
 
     const contents: IGeminiContent[] = [
       { role: "user", parts: [{ text: systemPrompt }] },
-      ...recentHistory.map((msg) => ({
-        role: (msg.role === "model" ? "model" : "user") as "user" | "model",
-        parts: [{ text: msg.content }],
-      })),
+      ...recentHistory.map((msg) => {
+        let contentText = msg.content;
+        if (msg.role !== "model" && highlightedText) {
+          contentText = `${msg.content}\n\n[Context - Highlighted Text]: "${highlightedText}"`;
+        }
+        return {
+          role: (msg.role === "model" ? "model" : "user") as "user" | "model",
+          parts: [{ text: contentText }],
+        };
+      }),
     ];
 
     let stream: AsyncIterable<IAIStreamChunk> | null = null;
