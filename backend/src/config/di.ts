@@ -86,6 +86,7 @@ import { GetDueCards } from "../application/recall/use-cases/GetDueCards";
 import { DeleteCard } from "../application/recall/use-cases/DeleteCard";
 import { ClearAllCards } from "../application/recall/use-cases/ClearAllCards";
 import { CountDueCards } from "../application/recall/use-cases/CountDueCards";
+import { UpdateQuestion } from "../application/recall/use-cases/UpdateQuestion";
 import { CreateFolder } from "../application/folder/use-cases/CreateFolder";
 import { GetFolders } from "../application/folder/use-cases/GetFolders";
 import { UpdateFolder } from "../application/folder/use-cases/UpdateFolder";
@@ -230,6 +231,7 @@ container.registerSingleton("IGetDueCardsUseCase", GetDueCards);
 container.registerSingleton("IDeleteCardUseCase", DeleteCard);
 container.registerSingleton("IClearAllCardsUseCase", ClearAllCards);
 container.registerSingleton("ICountDueCardsUseCase", CountDueCards);
+container.registerSingleton("IUpdateQuestionUseCase", UpdateQuestion);
 
 container.registerSingleton("ICreateFolderUseCase", CreateFolder);
 container.registerSingleton("IGetFoldersUseCase", GetFolders);

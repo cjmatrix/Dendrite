@@ -22,3 +22,9 @@ export const CardIdParamSchema = z.object({
 });
 
 export type CardIdParamDTO = z.infer<typeof CardIdParamSchema>;
+
+export const UpdateQuestionInputSchema = z.object({
+  question: z.string().trim().min(1, "Question cannot be empty"),
+});
+
+export type UpdateQuestionInputDTO = z.infer<typeof UpdateQuestionInputSchema>;

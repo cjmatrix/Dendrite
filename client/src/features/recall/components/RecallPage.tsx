@@ -13,6 +13,8 @@ import {
   HelpCircle,
   Eye,
   PenLine,
+  Pencil,
+  Check,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import "../../chat/styles/markdown.css";
@@ -26,6 +28,7 @@ import api from "../../../lib/axios";
 import React, { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ActionModal } from "../../../components/common/ActionModal";
+import { useUpdateQuestion } from "../hooks/useUpdateQuestion";
 import Editor from "react-simple-code-editor";
 import Prism from "prismjs";
 import "prismjs/components/prism-clike";
@@ -70,6 +73,22 @@ const RecallCard: React.FC<RecallCardProps> = ({
   const [isHintOpen, setIsHintOpen] = useState(false);
   const [isPracticeOpen, setIsPracticeOpen] = useState(false);
   const [practiceText, setPracticeText] = useState("");
+  const [isEditingQuestion, setIsEditingQuestion] = useState(false);
+  const [editedQuestionText, setEditedQuestionText] = useState(card.question || "");
+
+  const updateQuestionMutation = useUpdateQuestion();
+
+  const handleSaveQuestion = () => {
+    if (!editedQuestionText.trim()) return;
+    updateQuestionMutation.mutate(
+      { cardId: card._id, question: editedQuestionText.trim() },
+      {
+        onSuccess: () => {
+          setIsEditingQuestion(false);
+        },
+      }
+    );
+  };
 
   const detectedLang = React.useMemo(() => {
     const match = card.content.match(/```(\w+)/);
@@ -100,6 +119,23 @@ const RecallCard: React.FC<RecallCardProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              setEditedQuestionText(card.question || "");
+              setIsEditingQuestion((v) => !v);
+            }}
+            className={`flex items-center gap-1.5 text-[11px] sm:text-xs font-bold px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-full border transition-all ${
+              isEditingQuestion
+                ? "bg-purple-500/20 border-purple-500/40 text-purple-300"
+                : "bg-white/5 border-transparent text-zinc-400 hover:text-zinc-200 hover:bg-white/10"
+            }`}
+            title="Edit Question"
+          >
+            <Pencil size={14} />
+            <span className="hidden sm:inline">EDIT QUESTION</span>
+            <span className="sm:hidden">EDIT</span>
+          </button>
+
           {card.chatId && (
             <button
               onClick={() => onGoToChat(card.chatId)}
@@ -186,41 +222,92 @@ const RecallCard: React.FC<RecallCardProps> = ({
         </div>
       )}
 
-      {/* ── QUESTION PHASE ── */}
-      {/* ── QUESTION PHASE — only when a question was generated ── */}
-      {card.question && (
-        <div className="w-full p-6 sm:p-10 flex flex-col items-center text-center">
+      {/* ── EDIT QUESTION PHASE OR REGULAR QUESTION PHASE ── */}
+      {isEditingQuestion ? (
+        <div className="w-full p-6 sm:p-10 flex flex-col items-center text-center bg-purple-500/[0.03] border-b border-purple-500/10 animate-in fade-in zoom-in-95 duration-200">
           <div className="flex items-center justify-center gap-2 mb-5">
-            <div className="p-2 rounded-xl bg-purple-500/15 text-purple-400">
-              <HelpCircle size={20} />
+            <div className="p-2 rounded-xl bg-purple-500/20 text-purple-300 ring-1 ring-purple-500/30">
+              <Pencil size={20} />
             </div>
-            <span className="text-[11px] font-bold text-purple-400 uppercase tracking-widest">
-              Recall Challenge
+            <span className="text-[11px] font-bold text-purple-300 uppercase tracking-widest">
+              Editing Recall Question
             </span>
           </div>
 
-          <p className="text-lg sm:text-xl md:text-2xl font-semibold text-gray-100 leading-snug max-w-2xl">
-            {card.question}
-          </p>
-
-          {/* Hint toggle */}
-          {!isCardRevealed && (
-            <button
-              onClick={() => setIsHintOpen((v) => !v)}
-              className="mt-4 flex items-center gap-1.5 text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors"
-            >
-              {isHintOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-              {isHintOpen ? "Hide hint" : "Show a hint"}
-            </button>
-          )}
-
-          {/* Hint — shows first ~120 chars blurred */}
-          {isHintOpen && !isCardRevealed && (
-            <div className="mt-3 max-w-xl w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-sm text-zinc-400 blur-[3px] hover:blur-none transition-all duration-300 select-none cursor-pointer text-left">
-              {card.content.slice(0, 240)}…
+          <div className="w-full max-w-2xl flex flex-col items-center gap-3">
+            <textarea
+              autoFocus
+              value={editedQuestionText}
+              onChange={(e) => setEditedQuestionText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+                  e.preventDefault();
+                  handleSaveQuestion();
+                } else if (e.key === "Escape") {
+                  setIsEditingQuestion(false);
+                }
+              }}
+              placeholder="Type your custom recall question..."
+              rows={Math.max(2, Math.ceil(editedQuestionText.length / 45))}
+              className="w-full bg-neutral-950/80 border border-purple-500/30 focus:border-purple-400 focus:ring-4 focus:ring-purple-500/10 rounded-2xl p-4 sm:p-5 text-lg sm:text-xl md:text-2xl font-semibold text-gray-100 text-left leading-snug placeholder-zinc-600 resize-none transition-all duration-200 shadow-2xl"
+            />
+            <div className="flex items-center gap-3 mt-3">
+              <button
+                onClick={() => setIsEditingQuestion(false)}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-zinc-400 hover:text-white bg-white/5 hover:bg-white/10 border border-white/5 transition-all"
+              >
+                Cancel <span className="text-[10px] text-zinc-500 font-normal ml-1">(Esc)</span>
+              </button>
+              <button
+                onClick={handleSaveQuestion}
+                disabled={updateQuestionMutation.isPending || !editedQuestionText.trim()}
+                className="flex items-center gap-2 px-6 py-2 rounded-xl text-xs font-bold text-white bg-purple-600 hover:bg-purple-500 disabled:opacity-50 transition-all shadow-lg shadow-purple-600/25 active:scale-95"
+              >
+                {updateQuestionMutation.isPending ? (
+                  <Loader size={14} className="animate-spin" />
+                ) : (
+                  <Check size={14} />
+                )}
+                Save Question <span className="text-[10px] text-purple-200 font-normal ml-0.5">(Ctrl+Enter)</span>
+              </button>
             </div>
-          )}
+          </div>
         </div>
+      ) : (
+        card.question && (
+          <div className="w-full p-6 sm:p-10 flex flex-col items-center text-center">
+            <div className="flex items-center justify-center gap-2 mb-5">
+              <div className="p-2 rounded-xl bg-purple-500/15 text-purple-400">
+                <HelpCircle size={20} />
+              </div>
+              <span className="text-[11px] font-bold text-purple-400 uppercase tracking-widest">
+                Recall Challenge
+              </span>
+            </div>
+
+            <p className="text-lg sm:text-xl md:text-2xl font-semibold text-gray-100 leading-snug max-w-2xl">
+              {card.question}
+            </p>
+
+            {/* Hint toggle */}
+            {!isCardRevealed && (
+              <button
+                onClick={() => setIsHintOpen((v) => !v)}
+                className="mt-4 flex items-center gap-1.5 text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors"
+              >
+                {isHintOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                {isHintOpen ? "Hide hint" : "Show a hint"}
+              </button>
+            )}
+
+            {/* Hint — shows first ~120 chars blurred */}
+            {isHintOpen && !isCardRevealed && (
+              <div className="mt-3 max-w-xl w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-sm text-zinc-400 blur-[3px] hover:blur-none transition-all duration-300 select-none cursor-pointer text-left">
+                {card.content.slice(0, 240)}…
+              </div>
+            )}
+          </div>
+        )
       )}
 
       {/* ── REVEAL BUTTON — only shown when question exists and card not yet revealed ── */}

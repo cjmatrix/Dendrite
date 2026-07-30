@@ -10,6 +10,7 @@ import {
   IDeleteCardUseCase,
   IClearAllCardsUseCase,
   ICountDueCardsUseCase,
+  IUpdateQuestionUseCase,
 } from "../../application/recall/use-cases/interfaces";
 import { HttpStatus } from "../constants/httpStatus";
 import { RECALL_MESSAGES } from "../constants/recallMessages";
@@ -26,6 +27,8 @@ export class RecallController extends BaseController {
     private clearAllCardsUseCase: IClearAllCardsUseCase,
     @inject("ICountDueCardsUseCase")
     private countDueCardsUseCase: ICountDueCardsUseCase,
+    @inject("IUpdateQuestionUseCase")
+    private updateQuestionUseCase: IUpdateQuestionUseCase,
     @inject("IMessageRepository") private messageRepository: IMessageRepository,
   ) {
     super();
@@ -135,6 +138,28 @@ export class RecallController extends BaseController {
       const count = await this.countDueCardsUseCase.execute(userId);
 
       this.sendSuccess(res, { count });
+    } catch (error) {
+      this.sendError(res, error);
+    }
+  };
+
+  public updateQuestion = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const userId = this.validateUserAuth(req);
+      const cardId = this.getRouteParam(req, "id");
+      const { question } = req.body;
+
+      if (!question || typeof question !== "string" || !question.trim()) {
+        throw new AppError("Question is required", HttpStatus.BAD_REQUEST);
+      }
+
+      const result = await this.updateQuestionUseCase.execute(
+        userId,
+        cardId,
+        question.trim()
+      );
+
+      this.sendSuccess(res, result, HttpStatus.OK, "Question updated successfully");
     } catch (error) {
       this.sendError(res, error);
     }

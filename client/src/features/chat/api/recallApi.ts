@@ -7,3 +7,8 @@ export const saveRecallCard = async (content: string | null, chatId: string, msg
     msgId,
   });
 };
+
+export const updateRecallQuestion = async (cardId: string, question: string): Promise<any> => {
+  const res = await api.patch(`/recall/question/${cardId}`, { question });
+  return res.data;
+};

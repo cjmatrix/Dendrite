@@ -27,3 +27,8 @@ export interface ICountDueCardsUseCase {
   execute(userId: string): Promise<number>;
 }
 
+export interface IUpdateQuestionUseCase {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  execute(userId: string, cardId: string, question: string): Promise<any>;
+}
+
