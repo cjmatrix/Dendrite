@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { getFolders, getChats, getDueCount, createFolder as apiCreateFolder, createChat as apiCreateChat } from "../api/explorerApi";
 import { useEffect } from "react";
 import { useAppDispatch } from "../../../store/store";
-import { setTree } from "../store/explorerSlice";
+import { setTree, setSystemChatsFolderId } from "../store/explorerSlice";
 import type { FileNode } from "../types/types";
 import type { Folder } from "../types/Folder";
 import type { Chat } from "../../chat/types/Chat";
@@ -47,6 +47,13 @@ export function useFileTree() {
   
   useEffect(() => {
     if (!folders) return;
+
+    const chatsSysFolder = folders.find(
+      (f: Folder) => f.isSystemFolder && f.name === "Chats"
+    );
+    if (chatsSysFolder) {
+      dispatch(setSystemChatsFolderId(chatsSysFolder.id));
+    }
 
     const folderNodes: FileNode[] = JSON.parse(JSON.stringify(folders));
 
@@ -126,7 +133,7 @@ export function useExplorerMutations() {
   },
   });
 
-  const { mutate: createChat } = useMutation({
+  const { mutate: createChat, mutateAsync: createChatAsync } = useMutation({
     mutationFn: ({ title, folderId ,type}: { title: string; folderId: string | null,type?:string }) =>
       type&&type==="agent"?apiCreateChat(title, folderId,type):apiCreateChat(title, folderId),
     
@@ -144,5 +151,5 @@ export function useExplorerMutations() {
     onSettled: () => queryClient.invalidateQueries({ queryKey: ["chats"] }),
   });
 
-  return { createFolder, createChat };
+  return { createFolder, createChat, createChatAsync };
 }

@@ -4,6 +4,7 @@ import type { FileNode } from "../types/types";
 interface ExplorerState {
   tree: FileNode;
   activeSidebarRootId: string | null;
+  systemChatsFolderId: string | null;
   isExplorerModalOpen: boolean;
   isRecallOverlayOpen: boolean;
   isShareMode: boolean;
@@ -19,6 +20,7 @@ const initialState: ExplorerState = {
     children: [],
   },
   activeSidebarRootId: localStorage.getItem("dendrites_active_folder") || null,
+  systemChatsFolderId: null,
   isExplorerModalOpen: false,
   isRecallOverlayOpen: false,
   isShareMode: false,
@@ -32,6 +34,9 @@ const explorerSlice = createSlice({
   reducers: {
     setTree: (state, action: PayloadAction<FileNode>) => {
       state.tree = action.payload;
+    },
+    setSystemChatsFolderId: (state, action: PayloadAction<string | null>) => {
+      state.systemChatsFolderId = action.payload;
     },
     setActiveSidebarRootId: (state, action: PayloadAction<string | null>) => {
       state.activeSidebarRootId = action.payload;
@@ -73,6 +78,9 @@ const explorerSlice = createSlice({
         JSON.stringify(state.isExpandedTracker),
       );
     },
+    expandFolderTemporarily: (state, action: PayloadAction<string>) => {
+      state.isExpandedTracker[action.payload] = true;
+    },
     collapseAllFolders: (state) => {
       const newTracker: Record<string, boolean> = {};
       const traverse = (node: FileNode) => {
@@ -93,11 +101,13 @@ const explorerSlice = createSlice({
 
 export const {
   setTree,
+  setSystemChatsFolderId,
   setActiveSidebarRootId,
   toggleExplorerModal,
   toggleRecallOverlay,
   setIsShareMode,
   setIsExpandedTracker,
+  expandFolderTemporarily,
   collapseAllFolders,
 } = explorerSlice.actions;
 export default explorerSlice.reducer;

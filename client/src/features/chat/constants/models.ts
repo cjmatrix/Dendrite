@@ -5,8 +5,8 @@ export interface ModelOption {
 }
 
 export const MODEL_OPTIONS: ModelOption[] = [
-  { id: "DEFAULT", label: "Gemini 3 Fast", tier: "free" },
-  { id: "gemini-3-flash-preview", label: "Gemini 3 Flash", tier: "free" },
+  { id: "DEFAULT", label: "Gemini 3.1 Lite", tier: "free" },
+  { id: "gemini-3-flash-preview", label: "Gemini 3.5 Flash", tier: "free" },
 
   // Major Paid 
   { id: "openai/gpt-5.5", label: "GPT-5.5", tier: "paid" },

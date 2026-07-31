@@ -60,7 +60,7 @@ import { useInheritContext } from "../hooks/useInheritContext";
 import { useTextSelection } from "../hooks/useTextSelection";
 import { useDocumentHistory } from "../hooks/useDocumentHistory";
 import { useFlattenedMessages, useBreadcrumbs } from "../hooks/useChatHelpers";
-import { MODEL_OPTIONS} from "../constants/models";
+import { MODEL_OPTIONS, DEFAULT_MODEL } from "../constants/models";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSendAgentMessageMutation } from "../hooks/useAgentMutation.ts";
 
@@ -129,6 +129,21 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
   const [mode, setMode] = useState<"general" | "visual">("general");
   const [model, setModel] = useState("gemini-3-flash-preview");
+
+  useEffect(() => {
+    const initial = sessionStorage.getItem("initialChatMode");
+    if (initial === "visual") {
+      setMode("visual");
+      sessionStorage.removeItem("initialChatMode");
+    }
+
+    const initialModel = sessionStorage.getItem("initialModel");
+    if (initialModel) {
+      setModel(initialModel);
+     
+      sessionStorage.removeItem("initialModel");
+    }
+  }, [id]);
 
 
 
@@ -236,7 +251,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     onStreamStart: () => scrollToBottom("smooth"),
     onStreamEnd: () => scrollToBottom("auto"),
   });
-  const sendAgentMessage=useSendAgentMessageMutation();
+  const sendAgentMessage = useSendAgentMessageMutation();
+
+  useEffect(() => {
+    sendAgentMessage.reset();
+  }, [id]);
 
   const {
     selectedImageUrl,
@@ -364,6 +383,32 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     id,
     sendAgentMessage,
   ]);
+
+  useEffect(() => {
+    if (!id || isChatLoading || isMessagesLoading || !chat) return;
+
+    const initialPrompt = sessionStorage.getItem("initialPrompt");
+    const initialImageUrl = sessionStorage.getItem("initialImageUrl");
+    const initialFileStr = sessionStorage.getItem("initialFile");
+    let initialFile = null;
+    if (initialFileStr) {
+      try {
+        initialFile = JSON.parse(initialFileStr);
+      } catch (e) {}
+    }
+
+    if (initialPrompt || initialImageUrl || initialFile) {
+      sessionStorage.removeItem("initialPrompt");
+      sessionStorage.removeItem("initialImageUrl");
+      sessionStorage.removeItem("initialFile");
+
+      if (chat.type === "agent") {
+        sendAgentMessage.mutate({ chatId: id, message: initialPrompt || "" });
+      } else {
+        send(initialPrompt || "", initialImageUrl || null, initialFile || null, undefined);
+      }
+    }
+  }, [id, isChatLoading, isMessagesLoading, chat, send, sendAgentMessage]);
 
   const handleStop = useCallback(() => {
     stopStreaming();

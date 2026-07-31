@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from "react";
-import { Plus, FolderPlus, FolderMinus, MessageSquare, Check, Folder, ChevronLeft, Brain, Menu, LogOut, Settings, Download, Crown, Search } from "lucide-react";
+import { Plus, FolderPlus, FolderMinus, MessageSquare, Check, Folder, ChevronLeft, Brain, Menu, LogOut, Settings, Download, Crown, Search, Home } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { SettingsModal } from "../../chat/components/SettingsModal";
 import toast from "react-hot-toast";
@@ -102,6 +102,16 @@ export default function FileExplorer() {
   };
   const displayTree = activeSidebarRootId ? findNode(tree, activeSidebarRootId) || tree : tree;
 
+  useEffect(() => {
+    const handler = () => {
+      setIsCollapsed(false);
+      setRootCreating("folder");
+    };
+
+    window.addEventListener("root-folder-creation", handler);
+
+    return () => window.removeEventListener("root-folder-creation", handler);
+  }, []);
   // Root creation 
   const [rootCreating, setRootCreating] = useState<"chat"|"folder" |"agent"| null>(null);
   const [rootNewName, setRootNewName] = useState("");
@@ -162,11 +172,24 @@ export default function FileExplorer() {
       >
         <button
           onClick={() => setIsCollapsed((s) => !s)}
-          className="w-8 h-8 rounded-lg text-zinc-400 hover:text-zinc-200 flex items-center justify-center hover:bg-zinc-800/40 transition-colors"
+          className="w-8 h-8 rounded-lg text-zinc-400 hover:text-zinc-200 flex items-center justify-center hover:bg-zinc-800/40 transition-colors cursor-pointer"
           title={isCollapsed ? "Open Explorer" : "Collapse Explorer"}
         >
           {isCollapsed ? <Menu size={16} /> : <ChevronLeft size={16} />}
         </button>
+
+        {!isShareMode && (
+          <button
+            onClick={() => {
+             
+              navigate("/");
+            }}
+            className="w-8 h-8 rounded-lg text-zinc-400 hover:text-cyan-400 flex items-center justify-center hover:bg-zinc-800/40 transition-colors cursor-pointer"
+            title="Home (New Chat)"
+          >
+            <Home size={16} />
+          </button>
+        )}
 
         {!isShareMode && (
           <button
@@ -228,8 +251,15 @@ export default function FileExplorer() {
         {!isCollapsed && (
           <>
             {/* Logo */}
-            <div className="h-13 flex items-center gap-2.5 px-5 py-4 border-b border-zinc-800/40 bg-zinc-900/20 backdrop-blur-md">
-              <DendritesLogo size={28} />
+            <div
+              onClick={() => {
+                dispatch(setActiveSidebarRootId(null));
+                navigate("/");
+              }}
+              className="h-13 flex items-center gap-2.5 px-5 py-4 border-b border-zinc-800/40 bg-zinc-900/20 backdrop-blur-md cursor-pointer hover:bg-zinc-800/30 transition-colors group"
+              title="Go to Home"
+            >
+              <DendritesLogo size={28} className="group-hover:scale-105 transition-transform" />
               <span className="text-[18px] font-black tracking-tight bg-clip-text text-transparent bg-linear-to-r from-neutral-200 to-sky-200/40 drop-shadow-sm select-none">
                 Nurons
               </span>
@@ -241,7 +271,7 @@ export default function FileExplorer() {
                 {activeSidebarRootId && (
                   <button
                     onClick={() => dispatch(setActiveSidebarRootId(null))}
-                    className="flex items-center gap-1 text-[9.5px] font-bold uppercase tracking-wider text-zinc-500 hover:text-cyan-400 transition-colors w-fit"
+                    className="flex items-center gap-1 text-[9.5px] font-bold uppercase tracking-wider text-zinc-500 hover:text-cyan-400 transition-colors w-fit cursor-pointer"
                     title="Back to Root"
                   >
                     <ChevronLeft size={12} strokeWidth={3} /> BACK
@@ -254,8 +284,19 @@ export default function FileExplorer() {
               {!isShareMode && (
                 <div className="flex items-center gap-1 bg-zinc-900/60 p-1 rounded-lg border border-zinc-800/50 shadow-inner">
                   <button
+                    onClick={() => {
+                     
+                      navigate("/");
+                    }}
+                    className="p-1.5 text-zinc-400 hover:text-cyan-400 hover:bg-zinc-800 rounded-md transition-all active:scale-95 cursor-pointer"
+                    title="Home (New Chat)"
+                  >
+                    <Home size={14} strokeWidth={2.5} />
+                  </button>
+                  <div className="w-px h-3.5 bg-zinc-700/50 mx-0.5"></div>
+                  <button
                     onClick={() => setIsSearchModalOpen(true)}
-                    className="p-1.5 text-zinc-400 hover:text-cyan-400 hover:bg-zinc-800 rounded-md transition-all active:scale-95"
+                    className="p-1.5 text-zinc-400 hover:text-cyan-400 hover:bg-zinc-800 rounded-md transition-all active:scale-95 cursor-pointer"
                     title="Search"
                   >
                     <Search size={14} strokeWidth={2.5} />

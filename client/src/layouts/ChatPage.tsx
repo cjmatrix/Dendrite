@@ -97,6 +97,14 @@ function ChatPage() {
     }
   }, [id]);
 
+  useEffect(() => {
+    const handleRootFolderCreation = () => {
+      setSidebarOpen(true);
+    };
+    window.addEventListener("root-folder-creation", handleRootFolderCreation);
+    return () => window.removeEventListener("root-folder-creation", handleRootFolderCreation);
+  }, []);
+
   if (token && isShareLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-[#09090b] text-gray-200 font-sans">

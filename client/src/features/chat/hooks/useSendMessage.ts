@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { sendMessageStream } from "../api/chatApi";
 import type { StreamChunk, Message } from "../types/Message";
@@ -20,14 +20,18 @@ export function useSendMessage({
 }: UseSendMessageOptions) {
   const [streamingText, setStreamingText] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
+  const [streamingChatId, setStreamingChatId] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const stopStreaming = useCallback(() => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
-      setIsStreaming(false);
+      abortControllerRef.current = null;
     }
+    setIsStreaming(false);
+    setStreamingText("");
+    setStreamingChatId(null);
   }, []);
 
   const send = useCallback(
@@ -44,13 +48,14 @@ export function useSendMessage({
       )
         return;
 
+      const targetChatId = chatId;
       const userMessage = input.trim();
       const userTempId = `temp-${Date.now()}`;
       const fallbackText = selectedFile
         ? `Uploaded file: ${selectedFile.name}`
         : "Analyze this image";
 
-      queryClient.setQueryData(["chatMessages", chatId], (old: unknown) => {
+      queryClient.setQueryData(["chatMessages", targetChatId], (old: unknown) => {
         const oldData = old as {
           pages: {
             messages: Message[];
@@ -93,6 +98,7 @@ export function useSendMessage({
       });
 
       setIsStreaming(true);
+      setStreamingChatId(targetChatId);
       setStreamingText("");
       let streamUserMessageId: string | undefined;
       let streamModelMessageId: string | undefined;
@@ -105,7 +111,7 @@ export function useSendMessage({
 
       try {
         await sendMessageStream(
-          chatId,
+          targetChatId,
           userMessage,
           mode,
           model,
@@ -133,7 +139,7 @@ export function useSendMessage({
         const modelMessageId = streamModelMessageId;
         const userMessageId = streamUserMessageId;
 
-        queryClient.setQueryData(["chatMessages", chatId], (old: unknown) => {
+        queryClient.setQueryData(["chatMessages", targetChatId], (old: unknown) => {
           const oldData = old as {
             pages: {
               messages: Message[];
@@ -166,11 +172,20 @@ export function useSendMessage({
 
         setStreamingText("");
         setIsStreaming(false);
+        setStreamingChatId(null);
         onStreamEnd?.();
       }
     },
     [chatId, mode, model, isStreaming, queryClient, onStreamStart, onStreamEnd],
   );
 
-  return { send, isStreaming, streamingText ,stopStreaming};
+  const isCurrentChatStreaming = isStreaming && streamingChatId === chatId;
+  const currentChatStreamingText = streamingChatId === chatId ? streamingText : "";
+
+  return {
+    send,
+    isStreaming: isCurrentChatStreaming,
+    streamingText: currentChatStreamingText,
+    stopStreaming,
+  };
 }
