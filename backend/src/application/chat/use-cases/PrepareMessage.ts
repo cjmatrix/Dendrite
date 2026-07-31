@@ -463,6 +463,10 @@ ${lines.join("\n")}`;
       `</global_memory>\n` +
       `Only include the fields that need updating. If no valuable facts are found, DO NOT output this block.`;
 
+    if (chat.title) {
+      dynamicSystemInstruction += `\n\n--- [CONVERSATION TITLE / TOPIC CONTEXT] ---\nThe title/topic of this chat conversation is: "${chat.title}".\nIf the user's message is brief, ambiguous, or lacks context, use this chat title as high-level topic context to interpret and answer their query.`;
+    }
+
     const profile = user?.globalProfile;
     if (profile) {
       const profileSection = this.buildProfileSection(profile);
