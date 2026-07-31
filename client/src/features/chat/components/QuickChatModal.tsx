@@ -241,108 +241,15 @@ export const QuickChatModal: React.FC<QuickChatModalProps> = ({
 
       {/* Input Area */}
       <div className="p-4 border-t border-white/10 bg-neutral-900">
-        <div className={`flex items-center bg-zinc-950/40 border rounded-2xl px-4 py-3 shadow-inner transition-all gap-2 relative ${
+        <div className={`flex flex-col bg-zinc-950/40 border rounded-2xl p-3 shadow-inner transition-all gap-2.5 relative ${
           streamChatMutation.isPending 
             ? "border-blue-500/40 animate-pulse" 
             : "border-white/10 focus-within:border-blue-500/30"
         }`}>
-          {/* Dropup Model Selector */}
-          <div className="relative shrink-0">
-            <button
-              type="button"
-              onClick={() => setIsModelOpen(!isModelOpen)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 text-xs text-gray-300 font-medium transition-all shadow-sm"
-            >
-              <Sparkles size={13} className="text-blue-400" />
-              <span>
-                {MODEL_OPTIONS.find((m) => m.id === model)?.label || "Model"}
-              </span>
-              <ChevronDown
-                size={13}
-                className={`text-gray-500 transition-transform shrink-0 ${isModelOpen ? "rotate-180" : ""}`}
-              />
-            </button>
-
-            {isModelOpen && (
-              <>
-                <div
-                  className="fixed inset-0 z-40 pointer-events-auto"
-                  onClick={() => setIsModelOpen(false)}
-                />
-                <div className="absolute bottom-full left-0 mb-2 w-48 bg-zinc-900/95 backdrop-blur-md border border-white/10 rounded-2xl p-1.5 shadow-2xl flex flex-col gap-0.5 z-50 pointer-events-auto">
-                  {(user?.tier === "byok"
-                    ? MODEL_OPTIONS.filter((opt) => opt.id === "DEFAULT" || opt.id.startsWith("gemini"))
-                    : MODEL_OPTIONS
-                  ).map((opt) => {
-                    const isLocked =
-                      opt.tier === "paid" && user?.tier === "free";
-                    return (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        onClick={() => {
-                          if (isLocked) {
-                            toast.error(
-                              "This premium model is locked on the Free tier. Upgrade your plan to access it!",
-                            );
-                            return;
-                          }
-                          setModel(opt.id);
-                          setIsModelOpen(false);
-                        }}
-                        className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs transition-all ${
-                          isLocked
-                            ? "opacity-50 cursor-not-allowed text-gray-500"
-                            : model === opt.id
-                              ? "bg-blue-600 text-white font-semibold"
-                              : "text-gray-400 hover:bg-white/5 hover:text-white"
-                        }`}
-                      >
-                        <div className="flex items-center justify-between w-full">
-                          <span>{opt.label}</span>
-                          {isLocked ? (
-                            <Lock
-                              size={12}
-                              className="text-zinc-500 shrink-0"
-                            />
-                          ) : model === opt.id ? (
-                            <div className="w-1.5 h-1.5 rounded-full bg-white shrink-0" />
-                          ) : null}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* Visual Mode Toggle */}
-          <button
-            type="button"
-            onClick={() => {
-              if (mode === "general") {
-                setMode("visual");
-                setModel("gemini-3-flash-preview");
-              } else {
-                setMode("general");
-              }
-            }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-medium transition-all shadow-sm shrink-0 ${
-              mode === "visual"
-                ? "bg-purple-500/15 border-purple-500/30 text-purple-300 hover:bg-purple-500/20"
-                : "bg-white/5 border-white/5 text-gray-400 hover:bg-white/10 hover:border-white/10"
-            }`}
-            title={mode === "visual" ? "Switch to General Mode" : "Switch to Visual Mode"}
-          >
-            <Image size={13} className={mode === "visual" ? "text-purple-400" : "text-gray-500"} />
-            <span>{mode === "visual" ? "Visual" : "General"}</span>
-          </button>
-
           <textarea
             placeholder={streamChatMutation.isPending ? "AI is typing..." : "Ask a clarifying question..."}
             maxLength={16000}
-            className="flex-1 bg-transparent border-none outline-none text-sm text-gray-200 placeholder:text-gray-500 resize-none max-h-32 py-1 overflow-y-auto no-scrollbar disabled:opacity-60"
+            className="w-full bg-transparent border-none outline-none text-sm text-gray-200 placeholder:text-gray-500 resize-none max-h-32 py-1 overflow-y-auto no-scrollbar disabled:opacity-60"
             value={input}
             rows={1}
             ref={(el) => {
@@ -362,17 +269,115 @@ export const QuickChatModal: React.FC<QuickChatModalProps> = ({
             disabled={streamChatMutation.isPending}
             autoFocus
           />
-          <button
-            onClick={handleSend}
-            disabled={streamChatMutation.isPending || !input.trim()}
-            className={`p-2 rounded-xl ml-2 transition-all ${
-              input.trim() && !streamChatMutation.isPending
-                ? "bg-blue-600 text-white hover:bg-blue-500 shadow-lg shadow-blue-600/20"
-                : "bg-white/5 text-gray-600 cursor-not-allowed"
-            }`}
-          >
-            <ArrowUp size={18} strokeWidth={2.5} />
-          </button>
+
+          <div className="flex items-center justify-between border-t border-white/5 pt-2.5 gap-2 flex-wrap">
+            <div className="flex items-center gap-2">
+              {/* Dropup Model Selector */}
+              <div className="relative shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setIsModelOpen(!isModelOpen)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 text-xs text-gray-300 font-medium transition-all shadow-sm"
+                >
+                  <Sparkles size={13} className="text-blue-400" />
+                  <span>
+                    {MODEL_OPTIONS.find((m) => m.id === model)?.label || "Model"}
+                  </span>
+                  <ChevronDown
+                    size={13}
+                    className={`text-gray-500 transition-transform shrink-0 ${isModelOpen ? "rotate-180" : ""}`}
+                  />
+                </button>
+
+                {isModelOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-40 pointer-events-auto"
+                      onClick={() => setIsModelOpen(false)}
+                    />
+                    <div className="absolute bottom-full left-0 mb-2 w-48 bg-zinc-900/95 backdrop-blur-md border border-white/10 rounded-2xl p-1.5 shadow-2xl flex flex-col gap-0.5 z-50 pointer-events-auto">
+                      {(user?.tier === "byok"
+                        ? MODEL_OPTIONS.filter((opt) => opt.id === "DEFAULT" || opt.id.startsWith("gemini"))
+                        : MODEL_OPTIONS
+                      ).map((opt) => {
+                        const isLocked =
+                          opt.tier === "paid" && user?.tier === "free";
+                        return (
+                          <button
+                            key={opt.id}
+                            type="button"
+                            onClick={() => {
+                              if (isLocked) {
+                                toast.error(
+                                  "This premium model is locked on the Free tier. Upgrade your plan to access it!",
+                                );
+                                return;
+                              }
+                              setModel(opt.id);
+                              setIsModelOpen(false);
+                            }}
+                            className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs transition-all ${
+                              isLocked
+                                ? "opacity-50 cursor-not-allowed text-gray-500"
+                                : model === opt.id
+                                  ? "bg-blue-600 text-white font-semibold"
+                                  : "text-gray-400 hover:bg-white/5 hover:text-white"
+                            }`}
+                          >
+                            <div className="flex items-center justify-between w-full">
+                              <span>{opt.label}</span>
+                              {isLocked ? (
+                                <Lock
+                                  size={12}
+                                  className="text-zinc-500 shrink-0"
+                                />
+                              ) : model === opt.id ? (
+                                <div className="w-1.5 h-1.5 rounded-full bg-white shrink-0" />
+                              ) : null}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Visual Mode Toggle */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (mode === "general") {
+                    setMode("visual");
+                    setModel("gemini-3-flash-preview");
+                  } else {
+                    setMode("general");
+                  }
+                }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-medium transition-all shadow-sm shrink-0 ${
+                  mode === "visual"
+                    ? "bg-purple-500/15 border-purple-500/30 text-purple-300 hover:bg-purple-500/20"
+                    : "bg-white/5 border-white/5 text-gray-400 hover:bg-white/10 hover:border-white/10"
+                }`}
+                title={mode === "visual" ? "Switch to General Mode" : "Switch to Visual Mode"}
+              >
+                <Image size={13} className={mode === "visual" ? "text-purple-400" : "text-gray-500"} />
+                <span>{mode === "visual" ? "Visual" : "General"}</span>
+              </button>
+            </div>
+
+            <button
+              onClick={handleSend}
+              disabled={streamChatMutation.isPending || !input.trim()}
+              className={`p-2 rounded-xl transition-all ${
+                input.trim() && !streamChatMutation.isPending
+                  ? "bg-blue-600 text-white hover:bg-blue-500 shadow-lg shadow-blue-600/20"
+                  : "bg-white/5 text-gray-600 cursor-not-allowed"
+              }`}
+            >
+              <ArrowUp size={18} strokeWidth={2.5} />
+            </button>
+          </div>
         </div>
       </div>
     </>

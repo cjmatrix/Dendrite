@@ -765,7 +765,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               if (hasNextPage && !isFetchingNextPage) fetchNextPage();
             }}
             itemContent={(_, msg) => (
-              <div className="max-w-4xl mx-auto w-full pl-12 pr-4 md:px-8 pb-0">
+              <div className="max-w-4xl mx-auto w-full pl-12 pr-4 md:px-8 py-8">
                 <MessageBubble
                   msg={msg}
                   onOpenSubChat={handleOpenSubChat}

@@ -242,7 +242,7 @@ export const MessageBubble = React.memo(
                 </button>
               ))}
             {/* Recall Button for User Message */}
-            <div className="absolute top-0 right-full mr-2 opacity-0 group-hover/bubble:opacity-100 transition-opacity flex flex-col gap-2">
+            <div className={`absolute right-full mr-2 opacity-0 group-hover/bubble:opacity-100 transition-opacity flex flex-col gap-2 ${isLastUserMessage ? "top-8" : "top-0"}`}>
               <button
                 onClick={() => onCreateRecall(msg._id!)}
                 className="p-1.5 rounded-lg bg-zinc-800 text-purple-400 hover:bg-purple-600 hover:text-white transition-colors"
@@ -250,16 +250,20 @@ export const MessageBubble = React.memo(
               >
                 <Brain size={14} />
               </button>
-              {isLastUserMessage && onEdit && (
+            </div>
+
+            {/* Edit Button for Last User Message */}
+            {isLastUserMessage && onEdit && (
+              <div className="absolute top-0 right-full mr-2 flex flex-col gap-2">
                 <button
                   onClick={() => onEdit(msg._id!, msg.content)}
-                  className="p-1.5 rounded-lg bg-zinc-800 text-amber-400 hover:bg-amber-600 hover:text-white transition-colors"
+                  className="p-1.5 rounded-lg bg-zinc-800 text-amber-400 hover:bg-amber-600 hover:text-white transition-colors shadow-md"
                   title="Edit and Retry"
                 >
                   <Pencil size={14} />
                 </button>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         ) : (
           <div className="flex w-full gap-4 max-w-full group/bubble relative">

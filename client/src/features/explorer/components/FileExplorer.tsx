@@ -29,6 +29,16 @@ export default function FileExplorer() {
   const [searchInitialFolderId, setSearchInitialFolderId] = useState<string | undefined>(undefined);
   const isAgentPending = useIsMutating({ mutationKey: ["sendAgentMessage"] }) > 0;
 
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== "undefined" && window.innerWidth < 768,
+  );
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   useEffect(()=>{
     setSearchInitialFolderId(activeSidebarRootId?activeSidebarRootId:undefined)
   },[activeSidebarRootId])
@@ -206,8 +216,8 @@ export default function FileExplorer() {
 
       <div
         ref={sidebarRef}
-        style={{ width: `${isCollapsed ? 0 : width}px` }}
-        className={`relative h-[100dvh] bg-neutral-950/40 shrink-0 flex flex-col pt-0 z-20 backdrop-blur-3xl max-w-[calc(100vw-90px)] md:max-w-none ${
+        style={{ width: isCollapsed ? 0 : (isMobile ? "calc(100vw - 50px)" : `${width}px`) }}
+        className={`relative h-[100dvh] bg-neutral-950/40 shrink-0 flex flex-col pt-0 z-20 backdrop-blur-3xl max-w-[calc(100vw-50px)] md:max-w-none ${
           isResizing ? "" : "transition-all duration-500"
         } ${
           isAgentPending 
