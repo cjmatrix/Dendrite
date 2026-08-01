@@ -3,6 +3,7 @@ import { Provider } from "react-redux";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { store } from "./store/store";
 import "./index.css";
+import "katex/dist/katex.min.css";
 // import 'react-markdown-mermaid/style.css'; 
 import App from "./App.tsx";
 import { initializePaddle } from "@paddle/paddle-js";

@@ -18,19 +18,33 @@
   }
 }
 
+/* Block Math Equations */
 .katex-display {
   overflow-x: auto;
   overflow-y: hidden;
-  margin: 1.5em 0;
+  margin: 1.25em 0;
+  padding: 1rem 1.25rem;
+  background-color: #242427;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
-.katex {
-  font-size: 1.1em;
-  padding: 0.4rem 0.8rem;
-  background-color: #242424;
-  border-radius: 10px;
-  font-weight: bolder;
-  margin: 1rem 0.3rem;
+.katex-display > .katex {
+  font-size: 1.12em;
+  white-space: normal;
+}
+
+/* Inline Math Equations */
+:not(.katex-display) > .katex {
+  font-size: 0.95em;
+  padding: 0.15rem 0.45rem;
+  background-color: #1d1d1d;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  margin: 0 0.2rem;
+  display: inline-block;
+  vertical-align: middle;
 }
 
 /* Custom Scrollbar for pure dark theme */

@@ -291,7 +291,8 @@ export default function EmptyChatState() {
     window.dispatchEvent(new CustomEvent("root-folder-creation"));
   }, []);
 
-  const firstName = user?.name ? user.name.split(" ")[0] : null;
+  const displayName = user?.globalProfileName || user?.name;
+  const firstName = displayName ? displayName.split(" ")[0] : null;
 
   return (
     <div className="flex-1 flex flex-col items-center justify-between bg-[#0b0c10] text-gray-100 min-h-screen w-full relative overflow-y-auto no-scrollbar px-4 py-12 md:px-8 selection:bg-blue-500/30">

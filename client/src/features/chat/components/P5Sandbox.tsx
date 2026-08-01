@@ -41,7 +41,7 @@ export default function P5Sandbox({ p5CodeString }: P5SandboxProps) {
         {!isStreaming && (
           <button 
             onClick={toggleFullscreen}
-            className={`absolute top-4 right-4 z-20 p-2.5 rounded-xl bg-black/40 text-gray-400 hover:text-white hover:bg-black/80 backdrop-blur-md transition-all shadow-lg border border-white/10 ${isFullscreen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+            className={`absolute top-4 right-4 z-20 p-2.5 rounded-xl bg-black/60 text-gray-200 hover:text-white hover:bg-black/90 backdrop-blur-md transition-all shadow-lg border border-white/10 opacity-100`}
             title={isFullscreen ? "Exit Fullscreen" : "Expand to Fullscreen"}
           >
             {isFullscreen ? <Minimize2 size={18} strokeWidth={2.5} /> : <Maximize2 size={18} strokeWidth={2.5} />}

@@ -69,6 +69,7 @@ export interface UserOutputDTO {
   status:string;
   fcmToken: string[];
   tier: string;
+  globalProfileName?: string;
   byokKeysCount?: number;
   createdAt?: string;
   updatedAt?: string;
@@ -89,6 +90,7 @@ export class AuthMapper {
       status:user.status,
       fcmToken: user.fcmToken || [],
       tier: user.tier || "free",
+      globalProfileName: user.globalProfile?.user_name || undefined,
       byokKeysCount: user.byok_keys?.find((k) => k.provider === "gemini")?.encryptedKeys?.length || 0,
       createdAt: user.createdAt?.toString(),
       updatedAt: user.updatedAt?.toString(),

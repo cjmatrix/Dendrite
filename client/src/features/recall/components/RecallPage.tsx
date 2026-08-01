@@ -327,7 +327,7 @@ const RecallCard: React.FC<RecallCardProps> = ({
       {isCardRevealed && (
         <>
           {/* Revealed card content */}
-          <div className="w-full px-5 sm:px-8 md:px-12 pb-8 flex flex-col items-start border-t border-white/5 pt-6 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="w-full px-3.5 sm:px-8 md:px-12 pb-6 sm:pb-8 flex flex-col items-start border-t border-white/5 pt-4 sm:pt-6 animate-in fade-in slide-in-from-top-2 duration-300">
             
             <div className="markdown-body w-full text-[15px] sm:text-[17px] leading-relaxed text-gray-200">
               <ReactMarkdown
@@ -481,7 +481,7 @@ export default function RecallPage({ onClose }: RecallPageProps) {
 
   return (
     <div className="w-full min-h-screen bg-neutral-900 text-gray-200">
-      <div className="flex flex-col min-h-screen px-4 sm:px-6 py-8 md:p-10 w-full max-w-5xl mx-auto animate-in fade-in duration-500 relative">
+      <div className="flex flex-col min-h-screen px-2 sm:px-6 py-6 md:p-10 w-full max-w-5xl mx-auto animate-in fade-in duration-500 relative">
         {onClose && (
           <button
             onClick={onClose}

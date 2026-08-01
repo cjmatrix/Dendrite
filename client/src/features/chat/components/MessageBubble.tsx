@@ -159,7 +159,7 @@ export const MessageBubble = React.memo(
         {isUser ? (
           <div
             ref={containerRef}
-            className="flex flex-col items-end max-w-[85%] md:max-w-[70%] relative"
+            className="flex flex-col items-end max-w-[calc(100%-2.5rem)] md:max-w-[70%] relative"
           >
             <div className="flex items-center gap-2 mb-1.5 px-1">
               <span className="text-[12px] text-gray-500 font-medium">
@@ -169,7 +169,7 @@ export const MessageBubble = React.memo(
                 Researcher {isEditing && <span className="text-amber-500 ml-1 text-[11px] animate-pulse">(Editing...)</span>}
               </span>
             </div>
-            <div className={`px-5 py-3.5 rounded-2xl rounded-tr-sm bg-(--theme-bg-surface) border ${isEditing ? "border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.4)] ring-1 ring-amber-500/50" : "border-zinc-800"} text-[16px] leading-relaxed whitespace-pre-wrap text-gray-200 shadow-sm transition-all duration-300`}>
+            <div className={`px-3.5 py-2.5 sm:px-5 sm:py-3.5 rounded-2xl rounded-tr-sm bg-(--theme-bg-surface) border ${isEditing ? "border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.4)] ring-1 ring-amber-500/50" : "border-zinc-800"} text-[14px] sm:text-[16px] leading-relaxed whitespace-pre-wrap text-gray-200 shadow-sm transition-all duration-300`}>
               {msg.imageUrl && (
                 <img
                   src={msg.imageUrl}
@@ -231,7 +231,7 @@ export const MessageBubble = React.memo(
                 <button
                   key={sc.subChatId}
                   onClick={() => onOpenSubChat(msg._id!, sc.subChatId)}
-                  className="absolute left-full ml-4 p-1.5 rounded-lg bg-blue-600/20 border border-blue-500/30 text-blue-400 hover:bg-blue-600 hover:text-white transition-all group shadow-xl backdrop-blur-sm z-10"
+                  className="absolute left-full ml-2 sm:ml-4 p-1.5 rounded-lg bg-blue-600/20 border border-blue-500/30 text-blue-400 hover:bg-blue-600 hover:text-white transition-all group shadow-xl backdrop-blur-sm z-10"
                   style={{ top: resolvedYOffsets[sc.subChatId] ?? sc.relY }}
                   title="View sticky deep-dive"
                 >
@@ -266,7 +266,7 @@ export const MessageBubble = React.memo(
             )}
           </div>
         ) : (
-          <div className="flex w-full gap-4 max-w-full group/bubble relative">
+          <div className="flex w-full gap-2 sm:gap-4 max-w-full group/bubble relative pl-7 sm:pl-0">
             <DendritesLogo className="mt-1 hidden sm:flex shrink-0" />
 
             <div
@@ -289,7 +289,7 @@ export const MessageBubble = React.memo(
                   <button
                     key={sc.subChatId}
                     onClick={() => onOpenSubChat(msg._id!, sc.subChatId)}
-                    className="absolute right-full mr-4 p-1.5 rounded-lg bg-blue-600/20 border border-blue-500/30 text-blue-400 hover:bg-blue-600 hover:text-white transition-all group shadow-xl backdrop-blur-sm z-10"
+                    className="absolute right-full mr-1 sm:mr-4 p-1 sm:p-1.5 rounded-md sm:rounded-lg bg-blue-600/20 border border-blue-500/30 text-blue-400 hover:bg-blue-600 hover:text-white transition-all group shadow-xl backdrop-blur-sm z-10"
                     style={{ top: resolvedYOffsets[sc.subChatId] ?? sc.relY }}
                     title="View sticky deep-dive"
                   >

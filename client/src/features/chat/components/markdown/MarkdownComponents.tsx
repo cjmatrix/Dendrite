@@ -106,7 +106,7 @@ const PlantUMLViewer = ({ src, alt }: { src: string; alt?: string }) => {
           setIsModalOpen(true);
           resetZoom();
         }}
-        className="absolute top-4 right-4 p-1.5 bg-black/60 hover:bg-black/80 rounded-lg text-zinc-400 hover:text-white border border-white/10 opacity-0 group-hover/diagram:opacity-100 transition-opacity z-10 cursor-pointer shadow-md"
+        className="absolute top-4 right-4 p-1.5 bg-black/70 hover:bg-black/90 rounded-lg text-zinc-300 hover:text-white border border-white/10 opacity-100 transition-opacity z-10 cursor-pointer shadow-md"
         title="Expand Diagram"
       >
         <Maximize2 size={14} />

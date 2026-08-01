@@ -10,6 +10,7 @@ export interface User {
   tier: string;
   role?: string;
   byokKeysCount?: number;
+  globalProfileName?: string;
 }
 
 interface AuthState {
