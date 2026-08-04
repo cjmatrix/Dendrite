@@ -63,6 +63,10 @@ export const router = createBrowserRouter([
     path: "/refund",
     element: <RefundPolicy />,
   },
+  {
+    path: "/billing",
+    element: <BillingPage />,
+  },
 
   {
     path: "/admin",
@@ -147,10 +151,6 @@ export const router = createBrowserRouter([
             element: <ChatWindow />
           }
         ]
-      },
-      {
-        path: "/billing",
-        element: <BillingPage />,
       },
     ],
   },

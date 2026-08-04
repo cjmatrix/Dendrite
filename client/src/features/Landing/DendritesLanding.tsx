@@ -694,6 +694,12 @@ export function DendritesLanding() {
             Features
           </a>
           <Link
+            to="/billing"
+            className="text-sm font-medium text-neutral-500 hover:text-neutral-900 transition-colors"
+          >
+            Pricing
+          </Link>
+          <Link
             to="/terms"
             className="text-sm font-medium text-neutral-500 hover:text-neutral-900 transition-colors"
           >

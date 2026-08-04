@@ -51,6 +51,12 @@ export default function BillingPage() {
 
   const handlePlanAction = (planId: string) => {
     if (planId === "free") return;
+    
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+
     setActivePlanId(planId);
     
     if (planId === currentTier) {
@@ -158,17 +164,19 @@ export default function BillingPage() {
         {/* Top Navigation */}
         <div className="max-w-7xl mx-auto flex justify-between items-center mb-20">
           <button
-            onClick={() => navigate("/")}
+            onClick={() => navigate(user ? "/" : "/home")}
             className="flex items-center gap-2 text-sm font-medium text-neutral-400 hover:text-neutral-100 transition-colors"
           >
             <ArrowLeft size={16} />
-            Back to Workspace
+            {user ? "Back to Workspace" : "Back to Home"}
           </button>
 
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-neutral-800/80 border border-neutral-700/80 rounded-md text-xs font-medium text-neutral-300 backdrop-blur-sm">
-            <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
-            Current Plan: <span className="text-white capitalize">{currentTier}</span>
-          </div>
+          {user && (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-neutral-800/80 border border-neutral-700/80 rounded-md text-xs font-medium text-neutral-300 backdrop-blur-sm">
+              <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
+              Current Plan: <span className="text-white capitalize">{currentTier}</span>
+            </div>
+          )}
         </div>
 
         {/* Header Section */}
