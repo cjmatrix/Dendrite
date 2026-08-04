@@ -22,7 +22,9 @@ const KnowledgeGraphPage = lazy(() => import("../features/graph/components/Knowl
 const SplitFileViewer = lazy(() => import("../features/chat/components/SplitFileViewer"));
 const BillingPage = lazy(() => import("../features/billing/components/BillingPage"));
 const DendritesLanding = lazy(() => import("../features/Landing/DendritesLanding").then(module => ({ default: module.DendritesLanding })));
-
+const TermsOfService = lazy(() => import("../features/legal/components/TermsOfService"));
+const PrivacyPolicy = lazy(() => import("../features/legal/components/PrivacyPolicy"));
+const RefundPolicy = lazy(() => import("../features/legal/components/RefundPolicy"));
 function SplitFileViewerWrapper() {
   const fileData = sessionStorage.getItem('splitViewFile');
   if (!fileData) {
@@ -48,8 +50,19 @@ export const router = createBrowserRouter([
   {
      path:"/home",
      element:<DendritesLanding></DendritesLanding>
-  }
- ,
+  },
+  {
+    path: "/terms",
+    element: <TermsOfService />,
+  },
+  {
+    path: "/privacy",
+    element: <PrivacyPolicy />,
+  },
+  {
+    path: "/refund",
+    element: <RefundPolicy />,
+  },
 
   {
     path: "/admin",

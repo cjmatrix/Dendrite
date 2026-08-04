@@ -295,11 +295,11 @@ export default function EmptyChatState() {
   const firstName = displayName ? displayName.split(" ")[0] : null;
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-between bg-[#0b0c10] text-gray-100 min-h-screen w-full relative overflow-y-auto no-scrollbar px-4 py-12 md:px-8 selection:bg-blue-500/30">
+    <div className="flex-1 flex flex-col items-center justify-between bg-[#0b0c10] text-gray-100 min-h-screen w-full relative overflow-y-auto no-scrollbar px-4 py-12 md:px-8 selection:bg-purple-500/30">
       
-      {/* Soft Center Radial Glow (Gemini-style Aura) */}
+      {/* Soft Center Radial Glow (Dark Ambient Aura) */}
       <div className="absolute inset-0 pointer-events-none flex items-center justify-center overflow-hidden">
-        <div className="w-[800px] h-[500px] rounded-full bg-gradient-to-tr from-blue-950/30 via-indigo-900/20 to-purple-950/15 blur-[120px] opacity-70" />
+        <div className="w-[800px] h-[500px] rounded-full bg-gradient-to-tr from-neutral-950/80 via-neutral-900/40 to-purple-950/20 blur-[140px] opacity-70" />
       </div>
 
       <div className="relative z-10 w-full max-w-3xl flex flex-col items-center my-auto">
@@ -310,7 +310,7 @@ export default function EmptyChatState() {
             className="mb-6 cursor-pointer p-2.5 bg-white/5 border border-white/10 rounded-2xl backdrop-blur-xl hover:border-white/20 transition-all shadow-xl group"
             onClick={() => navigate("/")}
           >
-            <DendritesLogo size={32} className="text-blue-400 group-hover:scale-105 transition-transform" />
+            <DendritesLogo size={32} className="text-purple-400 group-hover:scale-105 transition-transform" />
           </div>
 
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-normal tracking-tight text-white/90 mb-3 font-sans">
@@ -321,17 +321,17 @@ export default function EmptyChatState() {
           </p>
         </div>
 
-        {/* Premium Gemini-style Prompt Pill Bar */}
+        {/* Premium Prompt Pill Bar */}
         <div className="w-full mb-8 animate-in fade-in zoom-in-95 duration-500">
           <div
             className={`flex flex-col bg-[#121318] border rounded-[28px] p-3 sm:p-4 shadow-[0_12px_40px_rgba(0,0,0,0.8)] backdrop-blur-2xl transition-all duration-300 ${
               isSubmitting
-                ? "border-blue-500/50 ring-1 ring-blue-500/30 animate-pulse"
+                ? "border-purple-500/50 ring-1 ring-purple-500/30 animate-pulse"
                 : chatMode === "agent"
                   ? "border-amber-500/40 focus-within:border-amber-500/60 focus-within:ring-1 focus-within:ring-amber-500/30"
                   : chatMode === "visual"
                     ? "border-violet-500/40 focus-within:border-violet-500/60 focus-within:ring-1 focus-within:ring-violet-500/30"
-                    : "border-white/10 focus-within:border-blue-500/40 focus-within:ring-1 focus-within:ring-blue-500/20"
+                    : "border-white/10"
             }`}
           >
             {/* Top Toolbar: Mode Switcher Pills & Model Selector */}
@@ -342,11 +342,11 @@ export default function EmptyChatState() {
                   onClick={() => setChatMode("general")}
                   className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all cursor-pointer ${
                     chatMode === "general"
-                      ? "bg-blue-500/20 text-blue-300 border border-blue-500/30 shadow-sm"
+                      ? "bg-blue-500/20 text-blue-300 border border-blue-500/40 shadow-sm"
                       : "text-zinc-400 hover:text-zinc-200 hover:bg-white/5"
                   }`}
                 >
-                  <MessageSquare size={13} />
+                  <MessageSquare size={13} className={chatMode === "general" ? "text-blue-400" : ""} />
                   <span>General</span>
                 </button>
 
@@ -444,17 +444,17 @@ export default function EmptyChatState() {
 
             {/* Non-blocking SSE Upload Progress Bar */}
             {uploadProgress && (
-              <div className="flex flex-col gap-1.5 p-3 mb-2 rounded-2xl bg-blue-500/10 border border-blue-500/30 text-xs text-blue-200 backdrop-blur-xl animate-in fade-in duration-300 w-full">
+              <div className="flex flex-col gap-1.5 p-3 mb-2 rounded-2xl bg-zinc-800/80 border border-zinc-700 text-xs text-zinc-200 backdrop-blur-xl animate-in fade-in duration-300 w-full">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Loader2 size={15} className="animate-spin text-blue-400 shrink-0" />
+                    <Loader2 size={15} className="animate-spin text-purple-400 shrink-0" />
                     <span className="font-semibold text-white truncate max-w-[200px]">{uploadProgress.fileName}</span>
                   </div>
-                  <span className="text-[11px] font-mono text-blue-300 font-bold">{uploadProgress.progress}%</span>
+                  <span className="text-[11px] font-mono text-purple-300 font-bold">{uploadProgress.progress}%</span>
                 </div>
                 <div className="w-full bg-white/10 rounded-full h-1.5 overflow-hidden">
                   <div
-                    className="bg-gradient-to-r from-blue-500 to-indigo-500 h-full rounded-full transition-all duration-300"
+                    className="bg-gradient-to-r from-purple-500 to-indigo-500 h-full rounded-full transition-all duration-300"
                     style={{ width: `${Math.max(5, uploadProgress.progress)}%` }}
                   />
                 </div>
@@ -466,7 +466,7 @@ export default function EmptyChatState() {
             {(attachedImage || attachedFile) && !uploadProgress && (
               <div className="flex items-center gap-2 mb-2 px-2 flex-wrap">
                 {attachedImage && (
-                  <div className="relative group flex items-center gap-2 px-3 py-1.5 rounded-xl bg-blue-500/10 border border-blue-500/30 text-xs text-blue-200">
+                  <div className="relative group flex items-center gap-2 px-3 py-1.5 rounded-xl bg-zinc-800/80 border border-zinc-700 text-xs text-zinc-200">
                     <img src={attachedImage.url} alt="Preview" className="w-5 h-5 object-cover rounded" />
                     <span className="max-w-[180px] truncate">{attachedImage.name}</span>
                     <button
@@ -555,7 +555,7 @@ export default function EmptyChatState() {
                 </button>
               </div>
 
-              {/* Gemini-style Round Send Button */}
+              {/* Round Send Button */}
               <button
                 type="button"
                 onClick={() => handleStartChat()}
@@ -690,7 +690,7 @@ export default function EmptyChatState() {
         </div>
 
         {/* Workspace Organization Tip Card */}
-        <div className="w-full mt-6 p-4 rounded-2xl bg-[#13141b]/90 border border-blue-500/20 backdrop-blur-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xl">
+        <div className="w-full mt-6 p-4 rounded-2xl bg-[#121318]/90 border border-blue-500/20 backdrop-blur-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xl">
           <div className="flex items-start gap-3">
             <div className="p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 shrink-0">
               <FolderPlus size={18} />
@@ -712,7 +712,7 @@ export default function EmptyChatState() {
 
           <button
             onClick={handleQuickFolderCreate}
-            className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-blue-600/90 hover:bg-blue-500 text-white text-xs font-medium transition-all shadow-md active:scale-95 cursor-pointer shrink-0 whitespace-nowrap self-end sm:self-auto"
+            className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition-all shadow-md active:scale-95 cursor-pointer shrink-0 whitespace-nowrap self-end sm:self-auto"
           >
             <FolderPlus size={14} />
             <span>Create Folder</span>

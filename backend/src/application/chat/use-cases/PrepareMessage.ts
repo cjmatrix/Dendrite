@@ -76,7 +76,7 @@ export class PrepareMessage implements IPrepareMessageUseCase {
     if (lines.length === 0) return null;
 
     return `\n\n--- [GLOBAL USER PROFILE / PERSISTENT MEMORY] ---
-The following is the user's persistent profile gathered across all conversations YOU may can use it if it only ralated and relevent to answer user query OTHERWISE IGNORE IT. 
+Use the following persistent user profile to subtly personalize your responses — tailor examples to their tech stack, calibrate explanation depth to their expertise level, and respect their stated preferences. Do NOT recite this profile back to the user or reference it explicitly unless they ask about it.
 ${lines.join("\n")}`;
   }
 

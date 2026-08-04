@@ -686,24 +686,36 @@ export function DendritesLanding() {
             Nurons
           </span>
         </div>
-        <nav className="nav-links">
+        <nav className="nav-links flex items-center gap-6">
           <a
             href="#features"
-            className="text-neutral-500 hover:text-neutral-900 transition-colors"
+            className="text-sm font-medium text-neutral-500 hover:text-neutral-900 transition-colors"
           >
             Features
           </a>
-          <a
-            href="#agent"
-            className="text-neutral-500 hover:text-neutral-900 transition-colors"
+          <Link
+            to="/terms"
+            className="text-sm font-medium text-neutral-500 hover:text-neutral-900 transition-colors"
           >
-            Agent
-          </a>
-          <a
-            href="#pricing"
-            className="text-neutral-500 hover:text-neutral-900 transition-colors"
+            Terms
+          </Link>
+          <Link
+            to="/privacy"
+            className="text-sm font-medium text-neutral-500 hover:text-neutral-900 transition-colors"
           >
-            Pricing
+            Privacy
+          </Link>
+          <Link
+            to="/refund"
+            className="text-sm font-medium text-neutral-500 hover:text-neutral-900 transition-colors"
+          >
+            Refunds
+          </Link>
+          <a
+            href="mailto:nuronstech@gmail.com"
+            className="text-sm font-medium text-neutral-500 hover:text-neutral-900 transition-colors"
+          >
+            Contact
           </a>
         </nav>
         <div className="flex items-center gap-5">

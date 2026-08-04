@@ -98,16 +98,16 @@ export const GoogleSignInButton: React.FC = () => {
     <div className="w-full flex flex-col items-center gap-4 mt-6">
       <div className="flex items-center w-full gap-3">
         <div className="h-px bg-white/10 flex-1" />
-        <span className="text-xs uppercase tracking-wider text-gray-500 font-bold select-none">
+        <span className="text-[11px] uppercase tracking-wider text-zinc-500 font-semibold select-none">
           or continue with
         </span>
         <div className="h-px bg-white/10 flex-1" />
       </div>
       
       {error && (
-        <div className="w-full p-3 rounded-lg bg-red-500/10 border border-red-500/20 flex items-start gap-2.5">
-          <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
-          <p className="text-xs text-red-400">{error}</p>
+        <div className="w-full p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-start gap-2.5">
+          <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+          <p className="text-xs text-rose-300">{error}</p>
         </div>
       )}
 

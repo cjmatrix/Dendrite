@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
-import { Mail, Lock, LogIn, AlertCircle, Loader2, Key, ArrowLeft, CheckCircle, Eye, EyeOff } from "lucide-react";
+import { Mail, Lock, LogIn, AlertCircle, Loader2, ArrowLeft, CheckCircle, Eye, EyeOff } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "../../../store/store";
 import { clearError } from "../store/authSlice";
 import { GoogleSignInButton } from "./GoogleSignInButton";
 import { useAuthMutations } from "../hooks/useAuthMutations";
+import DendritesLogo from "../../../components/DendritesLogo";
 import type { LoginRequest } from "../types/auth.types";
 import "../styles/auth.css";
 
@@ -68,25 +69,44 @@ const Login: React.FC = () => {
   };
   
   return (
-    <div className="auth-container min-h-screen flex items-center justify-center relative overflow-hidden bg-(--theme-bg-base)">
-      {/* Background Orbs */}
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-blue-600/20 blur-[120px]" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-indigo-600/20 blur-[120px]" />
+    <div className="auth-container min-h-screen flex items-center justify-center relative overflow-hidden bg-[#0b0c10] text-gray-100 p-4">
+      {/* Background Ambient Glows */}
+      <div className="absolute top-[-15%] left-[-15%] w-[600px] h-[600px] rounded-full bg-purple-950/20 blur-[150px] pointer-events-none" />
+      <div className="absolute bottom-[-15%] right-[-15%] w-[600px] h-[600px] rounded-full bg-indigo-950/20 blur-[150px] pointer-events-none" />
 
-      <div className="auth-card relative z-10 w-full max-w-md p-8 md:p-10 rounded-2xl border border-white/10 bg-(--theme-bg-surface)/80 backdrop-blur-xl shadow-2xl">
+      <div className="auth-card relative z-10 w-full max-w-md p-8 sm:p-10 rounded-3xl border border-white/10 bg-[#121318]/90 backdrop-blur-2xl shadow-[0_16px_50px_rgba(0,0,0,0.8)] my-6">
         
+        {/* Brand Header */}
+        <div className="flex flex-col items-center text-center mb-8">
+          <div
+            className="mb-4 cursor-pointer p-3 bg-white/5 border border-white/10 rounded-2xl backdrop-blur-xl hover:border-white/20 transition-all shadow-xl group"
+            onClick={() => navigate("/")}
+          >
+            <DendritesLogo size={36} className="text-purple-400 group-hover:scale-105 transition-transform" />
+          </div>
+
+          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-white mb-1.5 font-sans">
+            {isForgotPassword ? "Forgot Password" : "Welcome back"}
+          </h1>
+          <p className="text-xs sm:text-sm text-zinc-400 font-light">
+            {isForgotPassword
+              ? "Enter your email to receive a password reset link"
+              : "Sign in to access your Dentrites AI workspace"}
+          </p>
+        </div>
+
         {isForgotPassword ? (
           forgotSuccess ? (
-            <div className="text-center py-4">
-              <div className="flex justify-center mb-6">
-                <div className="w-16 h-16 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shadow-lg shadow-emerald-500/10">
-                  <CheckCircle className="w-8 h-8 text-emerald-400" />
+            <div className="text-center py-2">
+              <div className="flex justify-center mb-5">
+                <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shadow-lg shadow-emerald-500/10">
+                  <CheckCircle className="w-7 h-7 text-emerald-400" />
                 </div>
               </div>
-              <h1 className="text-2xl font-bold text-white mb-3 tracking-tight">
+              <h2 className="text-xl font-bold text-white mb-2 tracking-tight">
                 Reset Link Sent
-              </h1>
-              <p className="text-gray-400 text-sm mb-8 leading-relaxed">
+              </h2>
+              <p className="text-zinc-400 text-xs sm:text-sm mb-6 leading-relaxed">
                 {forgotSuccess}
               </p>
               
@@ -97,7 +117,7 @@ const Login: React.FC = () => {
                   setForgotSuccess(null);
                   setForgotError(null);
                 }}
-                className="w-full py-3.5 bg-zinc-800 hover:bg-zinc-700 text-white font-semibold rounded-xl border border-white/5 transition-all flex items-center justify-center gap-2"
+                className="w-full py-3 bg-zinc-800 hover:bg-zinc-700 text-white text-sm font-semibold rounded-xl border border-zinc-700 transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 <ArrowLeft className="w-4 h-4" />
                 Back to Sign In
@@ -105,33 +125,21 @@ const Login: React.FC = () => {
             </div>
           ) : (
             <div>
-              <div className="text-center mb-8">
-                <div className="flex justify-center mb-4">
-                  <div className="w-16 h-16 rounded-xl bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
-                    <Key className="w-8 h-8 text-white" />
-                  </div>
-                </div>
-                <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">
-                  Forgot Password
-                </h1>
-                <p className="text-gray-400">Enter your email to receive a password reset link</p>
-              </div>
-
               {forgotError && (
-                <div className="mb-6 p-4 rounded-lg bg-red-500/10 border border-red-500/20 flex items-start gap-3">
-                  <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
-                  <p className="text-sm text-red-400">{forgotError}</p>
+                <div className="mb-5 p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+                  <p className="text-xs text-rose-300">{forgotError}</p>
                 </div>
               )}
 
-              <form onSubmit={handleForgotSubmit(onForgotSubmit)} className="space-y-6">
+              <form onSubmit={handleForgotSubmit(onForgotSubmit)} className="space-y-5">
                 <div className="space-y-1">
-                  <label className="text-sm font-medium text-gray-300 ml-1">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-zinc-400 ml-0.5 mb-1 block">
                     Email Address
                   </label>
                   <div className="relative group">
                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                      <Mail className="h-5 w-5 text-gray-500 group-focus-within:text-blue-500 transition-colors" />
+                      <Mail className="h-5 w-5 text-zinc-500 group-focus-within:text-purple-400 transition-colors" />
                     </div>
                     <input
                       type="email"
@@ -142,12 +150,12 @@ const Login: React.FC = () => {
                           message: "Invalid email address",
                         },
                       })}
-                      className="w-full pl-11 pr-4 py-3 bg-(--theme-bg-elevated) border border-white/5 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
+                      className="w-full pl-11 pr-4 py-3 bg-[#181922] border border-white/10 rounded-xl text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500/60 focus:ring-2 focus:ring-purple-500/20 text-sm transition-all"
                       placeholder="you@example.com"
                     />
                   </div>
                   {forgotErrors.email && (
-                    <p className="text-xs text-red-500 mt-1 ml-1">
+                    <p className="text-xs text-rose-400 mt-1 ml-0.5">
                       {forgotErrors.email.message}
                     </p>
                   )}
@@ -156,7 +164,7 @@ const Login: React.FC = () => {
                 <button
                   type="submit"
                   disabled={forgotPasswordMutation.isPending}
-                  className="w-full py-3.5 bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/25 transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="w-full py-3.5 bg-purple-600 hover:bg-purple-500 text-white text-sm font-semibold rounded-xl shadow-lg shadow-purple-600/25 transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
                 >
                   {forgotPasswordMutation.isPending ? (
                     <Loader2 className="w-5 h-5 animate-spin" />
@@ -173,7 +181,7 @@ const Login: React.FC = () => {
                   setForgotSuccess(null);
                   setForgotError(null);
                 }}
-                className="mt-6 w-full py-3 bg-zinc-900/60 hover:bg-zinc-800/60 text-gray-400 hover:text-white text-sm font-medium rounded-xl transition-all flex items-center justify-center gap-2"
+                className="mt-5 w-full py-3 bg-zinc-900/60 hover:bg-zinc-800/60 text-zinc-400 hover:text-white text-xs sm:text-sm font-medium rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer border border-white/5"
               >
                 <ArrowLeft className="w-4 h-4" />
                 Back to Sign In
@@ -182,33 +190,21 @@ const Login: React.FC = () => {
           )
         ) : (
           <>
-            <div className="text-center mb-10">
-              <div className="flex justify-center mb-4">
-                <div className="w-16 h-16 rounded-xl bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
-                  <LogIn className="w-8 h-8 text-white" />
-                </div>
-              </div>
-              <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">
-                Welcome Back
-              </h1>
-              <p className="text-gray-400">Sign in to access your Dentrites AI</p>
-            </div>
-
             {error && (
-              <div className="mb-6 p-4 rounded-lg bg-red-500/10 border border-red-500/20 flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
-                <p className="text-sm text-red-400">{error}</p>
+              <div className="mb-5 p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+                <p className="text-xs text-rose-300">{error}</p>
               </div>
             )}
 
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
               <div className="space-y-1">
-                <label className="text-sm font-medium text-gray-300 ml-1">
+                <label className="text-xs font-semibold uppercase tracking-wider text-zinc-400 ml-0.5 mb-1 block">
                   Email Address
                 </label>
                 <div className="relative group">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <Mail className="h-5 w-5 text-gray-500 group-focus-within:text-blue-500 transition-colors" />
+                    <Mail className="h-5 w-5 text-zinc-500 group-focus-within:text-purple-400 transition-colors" />
                   </div>
                   <input
                     type="email"
@@ -219,37 +215,49 @@ const Login: React.FC = () => {
                         message: "Invalid email address",
                       },
                     })}
-                    className="w-full pl-11 pr-4 py-3 bg-(--theme-bg-elevated) border border-white/5 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
+                    className="w-full pl-11 pr-4 py-3 bg-[#181922] border border-white/10 rounded-xl text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500/60 focus:ring-2 focus:ring-purple-500/20 text-sm transition-all"
                     placeholder="you@example.com"
                   />
                 </div>
                 {errors.email && (
-                  <p className="text-xs text-red-500 mt-1 ml-1">
+                  <p className="text-xs text-rose-400 mt-1 ml-0.5">
                     {errors.email.message}
                   </p>
                 )}
               </div>
 
               <div className="space-y-1">
-                <label className="text-sm font-medium text-gray-300 ml-1">
-                  Password
-                </label>
+                <div className="flex items-center justify-between ml-0.5 mb-1">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-zinc-400 block">
+                    Password
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsForgotPassword(true);
+                      dispatch(clearError());
+                    }}
+                    className="text-xs text-purple-400 hover:text-purple-300 transition-colors font-medium bg-transparent border-none cursor-pointer"
+                  >
+                    Forgot Password?
+                  </button>
+                </div>
                 <div className="relative group">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <Lock className="h-5 w-5 text-gray-500 group-focus-within:text-blue-500 transition-colors" />
+                    <Lock className="h-5 w-5 text-zinc-500 group-focus-within:text-purple-400 transition-colors" />
                   </div>
                   <input
                     type={showPassword ? "text" : "password"}
                     {...register("password", {
                       required: "Password is required",
                     })}
-                    className="w-full pl-11 pr-12 py-3 bg-(--theme-bg-elevated) border border-white/5 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
+                    className="w-full pl-11 pr-12 py-3 bg-[#181922] border border-white/10 rounded-xl text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500/60 focus:ring-2 focus:ring-purple-500/20 text-sm transition-all"
                     placeholder="••••••••"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-500 hover:text-white transition-colors"
+                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-zinc-500 hover:text-white transition-colors cursor-pointer"
                   >
                     {showPassword ? (
                       <EyeOff className="h-5 w-5" />
@@ -259,29 +267,16 @@ const Login: React.FC = () => {
                   </button>
                 </div>
                 {errors.password && (
-                  <p className="text-xs text-red-500 mt-1 ml-1">
+                  <p className="text-xs text-rose-400 mt-1 ml-0.5">
                     {errors.password.message}
                   </p>
                 )}
-                
-                <div className="flex justify-end mt-1.5">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsForgotPassword(true);
-                      dispatch(clearError());
-                    }}
-                    className="text-xs text-blue-400 hover:text-blue-300 transition-colors font-medium bg-transparent border-none cursor-pointer"
-                  >
-                    Forgot Password?
-                  </button>
-                </div>
               </div>
 
               <button
                 type="submit"
                 disabled={loginMutation.isPending}
-                className="w-full py-3.5 bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/25 transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full py-3.5 bg-purple-600 hover:bg-purple-500 text-white text-sm font-semibold rounded-xl shadow-lg shadow-purple-600/25 transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer mt-2"
               >
                 {loginMutation.isPending ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
@@ -294,28 +289,15 @@ const Login: React.FC = () => {
               </button>
             </form>
 
-            <div className="mt-8">
-              <div className="relative mb-8">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-white/5"></div>
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-4 bg-(--theme-bg-surface) text-gray-500">
-                    Or continue with
-                  </span>
-                </div>
-              </div>
+            <GoogleSignInButton />
 
-              <GoogleSignInButton />
-            </div>
-
-            <p className="mt-8 text-center text-gray-400">
+            <p className="mt-8 text-center text-xs sm:text-sm text-zinc-400">
               Don't have an account?{" "}
               <Link
                 to="/register"
-                className="text-blue-400 font-semibold hover:text-blue-300 transition-colors"
+                className="text-purple-400 font-semibold hover:text-purple-300 transition-colors"
               >
-                Sign up
+                Create account
               </Link>
             </p>
           </>
@@ -326,3 +308,4 @@ const Login: React.FC = () => {
 };
 
 export default Login;
+

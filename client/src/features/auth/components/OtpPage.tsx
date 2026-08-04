@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { ShieldCheck, ArrowLeft, RotateCw, AlertCircle, CheckCircle } from "lucide-react";
+import { ArrowLeft, RotateCw, AlertCircle, CheckCircle } from "lucide-react";
 import api from "../../../lib/axios";
+import DendritesLogo from "../../../components/DendritesLogo";
 import "../styles/auth.css";
 
 const OtpPage: React.FC = () => {
@@ -124,13 +125,10 @@ const OtpPage: React.FC = () => {
     setSuccess(null);
 
     try {
-      
       await api.post("/auth/verify-otp", { email, otp: otpString });
 
-    
       sessionStorage.removeItem("pending_signup");
       localStorage.removeItem(`otp_cooldown_end:${email}`);
-
 
       setSuccess("Account activated successfully! Redirecting you to login...");
       
@@ -156,45 +154,48 @@ const OtpPage: React.FC = () => {
   };
 
   return (
-    <div className="auth-container min-h-screen flex items-center justify-center relative overflow-hidden bg-[var(--theme-bg-base)]">
+    <div className="auth-container min-h-screen flex items-center justify-center relative overflow-hidden bg-[#0b0c10] text-gray-100 p-4">
       {/* Visual Background Orbs */}
-      <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-emerald-600/10 blur-[120px]" />
-      <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-indigo-600/15 blur-[120px]" />
+      <div className="absolute top-[-15%] right-[-15%] w-[600px] h-[600px] rounded-full bg-emerald-950/20 blur-[150px] pointer-events-none" />
+      <div className="absolute bottom-[-15%] left-[-15%] w-[600px] h-[600px] rounded-full bg-purple-950/20 blur-[150px] pointer-events-none" />
 
-      <div className="auth-card relative z-10 w-full max-w-md p-8 md:p-10 rounded-2xl border border-white/10 bg-[var(--theme-bg-surface)]/80 backdrop-blur-xl shadow-2xl my-8">
+      <div className="auth-card relative z-10 w-full max-w-md p-8 sm:p-10 rounded-3xl border border-white/10 bg-[#121318]/90 backdrop-blur-2xl shadow-[0_16px_50px_rgba(0,0,0,0.8)] my-6">
         <button
           onClick={() => navigate("/register")}
-          className="group flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors mb-6"
+          className="group flex items-center gap-2 text-xs text-zinc-400 hover:text-white transition-colors mb-6 cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
           Back to signup
         </button>
 
-        <div className="text-center mb-8">
-          <div className="flex justify-center mb-4">
-            <div className="w-16 h-16 rounded-xl bg-linear-to-br from-emerald-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-emerald-500/30">
-              <ShieldCheck className="w-8 h-8 text-white animate-pulse" />
-            </div>
+        {/* Brand Header */}
+        <div className="flex flex-col items-center text-center mb-8">
+          <div
+            className="mb-4 cursor-pointer p-3 bg-white/5 border border-white/10 rounded-2xl backdrop-blur-xl hover:border-white/20 transition-all shadow-xl group"
+            onClick={() => navigate("/")}
+          >
+            <DendritesLogo size={36} className="text-purple-400 group-hover:scale-105 transition-transform" />
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">
-            Verify Your Email
+
+          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-white mb-1.5 font-sans">
+            Verify Email
           </h1>
-          <p className="text-gray-400 text-sm">
-            We sent a verification code to <span className="text-indigo-400 font-medium">{email}</span>
+          <p className="text-xs sm:text-sm text-zinc-400 font-light">
+            We sent a 6-digit code to <span className="text-purple-400 font-medium">{email}</span>
           </p>
         </div>
 
         {error && (
-          <div className="mb-6 p-4 rounded-lg bg-red-500/10 border border-red-500/20 flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
-            <p className="text-sm text-red-400">{error}</p>
+          <div className="mb-5 p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+            <p className="text-xs text-rose-300">{error}</p>
           </div>
         )}
 
         {success && (
-          <div className="mb-6 p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-start gap-3">
-            <CheckCircle className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
-            <p className="text-sm text-emerald-400">{success}</p>
+          <div className="mb-5 p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-start gap-3">
+            <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+            <p className="text-xs text-emerald-300">{success}</p>
           </div>
         )}
 
@@ -212,7 +213,7 @@ const OtpPage: React.FC = () => {
                 onChange={(e) => handleChange(idx, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(idx, e)}
                 onPaste={idx === 0 ? handlePaste : undefined}
-                className="w-12 h-14 text-center text-2xl font-bold bg-[var(--theme-bg-elevated)] border border-white/5 focus:border-indigo-500/50 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all"
+                className="w-12 h-14 text-center text-2xl font-bold bg-[#181922] border border-white/10 focus:border-purple-500/60 focus:ring-2 focus:ring-purple-500/20 rounded-xl text-white focus:outline-none transition-all"
                 required
               />
             ))}
@@ -221,22 +222,22 @@ const OtpPage: React.FC = () => {
           <button
             type="submit"
             disabled={isLoading || otp.join("").length !== 6}
-            className="w-full py-3 px-4 bg-linear-to-r from-emerald-600 to-indigo-600 hover:from-emerald-500 hover:to-indigo-500 text-white rounded-xl font-semibold shadow-lg shadow-emerald-500/25 transition-all mt-6 active:scale-[0.98] disabled:opacity-50 flex justify-center items-center"
+            className="w-full py-3.5 px-4 bg-purple-600 hover:bg-purple-500 text-white text-sm font-semibold rounded-xl shadow-lg shadow-purple-600/25 transition-all mt-6 active:scale-[0.98] disabled:opacity-50 flex justify-center items-center cursor-pointer"
           >
             {isLoading ? (
-              <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
             ) : (
-              "Verify OTP"
+              "Verify Code"
             )}
           </button>
         </form>
 
-        <div className="mt-8 text-center text-sm text-gray-400">
+        <div className="mt-8 text-center text-xs sm:text-sm text-zinc-400">
           Didn't receive the code?{" "}
           <button
             onClick={handleResend}
             disabled={cooldown > 0 || isLoading}
-            className="text-indigo-400 hover:text-indigo-300 font-medium transition-colors disabled:text-gray-600 disabled:cursor-not-allowed inline-flex items-center gap-1.5"
+            className="text-purple-400 hover:text-purple-300 font-medium transition-colors disabled:text-zinc-600 disabled:cursor-not-allowed inline-flex items-center gap-1.5 bg-transparent border-none cursor-pointer"
           >
             {cooldown > 0 ? (
               `Resend in ${cooldown}s`
@@ -254,3 +255,4 @@ const OtpPage: React.FC = () => {
 };
 
 export default OtpPage;
+
