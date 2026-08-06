@@ -15,7 +15,7 @@ export class PaddleService implements IBillingProvider {
     @inject("ITransactionRepository") private transactionRepository: ITransactionRepository,
   ) {
     this.paddle = new Paddle(process.env.PADDLE_API_KEY || "mock_api_key", {
-      environment:Environment.sandbox,
+      environment: Environment.production,
     });
     this.endpointSecret =
       process.env.PADDLE_WEBHOOK_SECRET || "mock_webhook_secret";

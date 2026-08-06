@@ -9,7 +9,7 @@ import App from "./App.tsx";
 import { initializePaddle } from "@paddle/paddle-js";
 
 initializePaddle({
-  environment: "sandbox",
+  environment: "production",
   token: import.meta.env.VITE_PADDLE_CLIENT_TOKEN || "",
   eventCallback: function(event) {
     if (event.name === "checkout.completed") {
@@ -21,29 +21,32 @@ initializePaddle({
 
 import * as Sentry from "@sentry/react";
 
-Sentry.init({
-  dsn: "your_frontend_dsn",
-  integrations: [Sentry.browserTracingIntegration()],
-  tracePropagationTargets: ["localhost", /^\//, 'https://yourdomain.com'],
-  tracesSampleRate: 1.0,
-  
-  beforeSend(event: Sentry.ErrorEvent) {
-    if (event.user) {
-      delete event.user.email;
-      delete event.user.ip_address;
-    }
-    if (event && event.request && event.request.headers) {
-      const sensitiveHeaders = ['authorization', 'cookie', 'x-api-key'];
-      sensitiveHeaders.forEach(header => {
-        if (event.request?.headers?.[header]) {
-          event.request.headers[header] = '[FILTERED]';
-        }
-      });
-    }
+const sentryDsn = import.meta.env.VITE_SENTRY_DSN;
+if (sentryDsn && sentryDsn !== "your_frontend_dsn") {
+  Sentry.init({
+    dsn: sentryDsn,
+    integrations: [Sentry.browserTracingIntegration()],
+    tracePropagationTargets: ["localhost", /^\//, "https://nurons.me"],
+    tracesSampleRate: 1.0,
 
-    return event; 
-  },
-});
+    beforeSend(event: Sentry.ErrorEvent) {
+      if (event.user) {
+        delete event.user.email;
+        delete event.user.ip_address;
+      }
+      if (event && event.request && event.request.headers) {
+        const sensitiveHeaders = ['authorization', 'cookie', 'x-api-key'];
+        sensitiveHeaders.forEach(header => {
+          if (event.request?.headers?.[header]) {
+            event.request.headers[header] = '[FILTERED]';
+          }
+        });
+      }
+
+      return event; 
+    },
+  });
+}
 
 
 const queryClient = new QueryClient({
