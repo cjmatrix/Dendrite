@@ -25,7 +25,7 @@ import { markdownComponents } from "../../chat/components/markdown/MarkdownCompo
 import { fixMalformedPlantUML } from "../../chat/components/MessageContent";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "../../../lib/axios";
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ActionModal } from "../../../components/common/ActionModal";
 import { useUpdateQuestion } from "../hooks/useUpdateQuestion";
@@ -48,8 +48,59 @@ interface Card {
   _id: string;
   content: string;
   question?: string;
-  stage: string;
+  stage: "learning" | "review";
   chatId: string;
+  stepIndex: number;
+  repetitions: number;
+  interval: number;
+  easeFactor: number;
+}
+
+
+const LEARNING_STEPS = [1, 10, 30]; 
+
+function previewNextInterval(
+  card: Card,
+  rating: number
+): { value: number; unit: "m" | "d" } {
+  if (card.stage === "learning") {
+    if (rating >= 3) {
+      if (card.stepIndex < LEARNING_STEPS.length - 1) {
+     
+        return { value: LEARNING_STEPS[card.stepIndex + 1], unit: "m" };
+      } else {
+      
+        return { value: 1, unit: "d" };
+      }
+    } else {
+  
+      return { value: 1, unit: "m" };
+    }
+  }
+
+
+  if (rating < 3) {
+ 
+    return { value: 1, unit: "m" };
+  }
+
+
+  let ef = card.easeFactor + (0.1 - (5 - rating) * (0.08 + (5 - rating) * 0.02));
+  if (ef < 1.3) ef = 1.3;
+
+  let interval: number;
+  const reps = card.repetitions;
+  if (reps === 1) interval = 1;
+  else if (reps === 2) interval = 6;
+  else interval = Math.round(card.interval * ef);
+
+  return { value: interval, unit: "d" };
+}
+
+function formatInterval(iv: { value: number; unit: "m" | "d" }): string {
+  if (iv.unit === "m") return `${iv.value}m`;
+  if (iv.value === 1) return "1d";
+  return `${iv.value}d`;
 }
 
 interface RecallCardProps {
@@ -77,6 +128,12 @@ const RecallCard: React.FC<RecallCardProps> = ({
   const [editedQuestionText, setEditedQuestionText] = useState(card.question || "");
 
   const updateQuestionMutation = useUpdateQuestion();
+
+  const intervalPreviews = useMemo(
+    () =>
+      [1, 2, 3, 4, 5].map((rating) => formatInterval(previewNextInterval(card, rating))),
+    [card.stage, card.stepIndex, card.repetitions, card.interval, card.easeFactor]
+  );
 
   const handleSaveQuestion = () => {
     if (!editedQuestionText.trim()) return;
@@ -358,11 +415,14 @@ const RecallCard: React.FC<RecallCardProps> = ({
                   key={btn.val}
                   disabled={isReviewPending}
                   onClick={() => onReview(card._id, btn.val)}
-                  className={`py-3 sm:py-4 px-2 sm:px-4 rounded-xl sm:rounded-2xl font-bold bg-${btn.color}-500/10 text-${btn.color}-400 border border-${btn.color}-500/20 hover:bg-${btn.color}-500 hover:text-white transition-all transform active:scale-95 text-[10px] sm:text-[11px] uppercase tracking-wider shadow-lg disabled:opacity-50 flex items-center justify-center text-center ${
+                  className={`py-3 sm:py-4 px-2 sm:px-4 rounded-xl sm:rounded-2xl font-bold bg-${btn.color}-500/10 text-${btn.color}-400 border border-${btn.color}-500/20 hover:bg-${btn.color}-500 hover:text-white transition-all transform active:scale-95 text-[10px] sm:text-[11px] uppercase tracking-wider shadow-lg disabled:opacity-50 flex flex-col items-center justify-center text-center gap-1 ${
                     i === 4 ? "col-span-2 sm:col-span-1" : ""
                   }`}
                 >
-                  {btn.label}
+                  <span>{btn.label}</span>
+                  <span className="text-[9px] sm:text-[10px] opacity-60 font-semibold normal-case tracking-normal">
+                    {intervalPreviews[i]}
+                  </span>
                 </button>
               ))}
             </div>
