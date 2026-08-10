@@ -56,43 +56,48 @@ interface Card {
   easeFactor: number;
 }
 
-
-const LEARNING_STEPS = [1, 10, 30]; 
+const LEARNING_STEPS = [1, 10, 30];
 
 function previewNextInterval(
   card: Card,
-  rating: number
+  rating: number,
 ): { value: number; unit: "m" | "d" } {
   if (card.stage === "learning") {
     if (rating >= 3) {
       if (card.stepIndex < LEARNING_STEPS.length - 1) {
-     
         return { value: LEARNING_STEPS[card.stepIndex + 1], unit: "m" };
       } else {
-      
         return { value: 1, unit: "d" };
       }
     } else {
-  
-      return { value: 1, unit: "m" };
+      return { value: LEARNING_STEPS[0], unit: "m" };
     }
   }
 
-
-  if (rating < 3) {
- 
-    return { value: 1, unit: "m" };
+  if (rating === 1) {
+    return { value: LEARNING_STEPS[0], unit: "m" };
   }
 
+  if (rating === 2) {
+    const halved = Math.max(1, Math.round(card.interval * 0.5));
+    return { value: halved, unit: "d" };
+  }
 
-  let ef = card.easeFactor + (0.1 - (5 - rating) * (0.08 + (5 - rating) * 0.02));
-  if (ef < 1.3) ef = 1.3;
+  let ef = card.easeFactor;
+  if (rating === 3) ef = Math.max(1.3, ef - 0.14);
+  else if (rating === 4) {
+  } else if (rating === 5) ef = Math.min(3.0, ef + 0.15);
 
   let interval: number;
   const reps = card.repetitions;
-  if (reps === 1) interval = 1;
-  else if (reps === 2) interval = 6;
-  else interval = Math.round(card.interval * ef);
+  if (reps === 1) {
+    interval = rating === 5 ? 4 : 1;
+  } else if (reps === 2) {
+    interval = rating === 5 ? 10 : 6;
+  } else {
+    const base = Math.round(card.interval * ef);
+    interval = rating === 5 ? Math.round(base * 1.3) : base;
+  }
 
   return { value: interval, unit: "d" };
 }
@@ -125,14 +130,24 @@ const RecallCard: React.FC<RecallCardProps> = ({
   const [isPracticeOpen, setIsPracticeOpen] = useState(false);
   const [practiceText, setPracticeText] = useState("");
   const [isEditingQuestion, setIsEditingQuestion] = useState(false);
-  const [editedQuestionText, setEditedQuestionText] = useState(card.question || "");
+  const [editedQuestionText, setEditedQuestionText] = useState(
+    card.question || "",
+  );
 
   const updateQuestionMutation = useUpdateQuestion();
 
   const intervalPreviews = useMemo(
     () =>
-      [1, 2, 3, 4, 5].map((rating) => formatInterval(previewNextInterval(card, rating))),
-    [card.stage, card.stepIndex, card.repetitions, card.interval, card.easeFactor]
+      [1, 2, 3, 4, 5].map((rating) =>
+        formatInterval(previewNextInterval(card, rating)),
+      ),
+    [
+      card.stage,
+      card.stepIndex,
+      card.repetitions,
+      card.interval,
+      card.easeFactor,
+    ],
   );
 
   const handleSaveQuestion = () => {
@@ -143,7 +158,7 @@ const RecallCard: React.FC<RecallCardProps> = ({
         onSuccess: () => {
           setIsEditingQuestion(false);
         },
-      }
+      },
     );
   };
 
@@ -216,7 +231,11 @@ const RecallCard: React.FC<RecallCardProps> = ({
             <PenLine size={14} />
             <span className="hidden sm:inline">PRACTICE BY WRITING</span>
             <span className="sm:hidden">PRACTICE</span>
-            {isPracticeOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            {isPracticeOpen ? (
+              <ChevronUp size={14} />
+            ) : (
+              <ChevronDown size={14} />
+            )}
           </button>
 
           <button
@@ -234,7 +253,9 @@ const RecallCard: React.FC<RecallCardProps> = ({
         <div className="w-full p-4 sm:p-6 bg-purple-900/10 border-b border-purple-500/10 animate-in fade-in slide-in-from-top-2">
           <div className="flex items-center justify-between mb-2 sm:mb-3">
             <label className="block text-[10px] sm:text-[11px] font-bold text-purple-400/80 uppercase tracking-widest flex items-center gap-1.5">
-              {detectedLang ? `Practice by typing here (${detectedLang})` : "Interactive Editor"}
+              {detectedLang
+                ? `Practice by typing here (${detectedLang})`
+                : "Interactive Editor"}
             </label>
             {detectedLang && (
               <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-purple-500/10 text-purple-300 uppercase tracking-wider">
@@ -253,7 +274,9 @@ const RecallCard: React.FC<RecallCardProps> = ({
                   detectedLang && Prism.languages[detectedLang]
                     ? Prism.languages[detectedLang]
                     : Prism.languages.markdown || Prism.languages.plain,
-                  detectedLang && Prism.languages[detectedLang] ? detectedLang : "markdown",
+                  detectedLang && Prism.languages[detectedLang]
+                    ? detectedLang
+                    : "markdown",
                 )
               }
               padding={16}
@@ -263,10 +286,14 @@ const RecallCard: React.FC<RecallCardProps> = ({
                   : "Type your recall here to test your memory..."
               }
               className={`bg-neutral-900 w-full min-h-[128px] text-gray-200 resize-none leading-relaxed transition-colors ${
-                detectedLang ? "text-xs sm:text-sm" : "text-sm sm:text-base font-sans"
+                detectedLang
+                  ? "text-xs sm:text-sm"
+                  : "text-sm sm:text-base font-sans"
               }`}
               style={{
-                fontFamily: detectedLang ? '"Fira code", "Fira Mono", monospace' : "inherit",
+                fontFamily: detectedLang
+                  ? '"Fira code", "Fira Mono", monospace'
+                  : "inherit",
               }}
               textareaClassName="focus:outline-none"
             />
@@ -313,11 +340,16 @@ const RecallCard: React.FC<RecallCardProps> = ({
                 onClick={() => setIsEditingQuestion(false)}
                 className="px-4 py-2 rounded-xl text-xs font-bold text-zinc-400 hover:text-white bg-white/5 hover:bg-white/10 border border-white/5 transition-all"
               >
-                Cancel <span className="text-[10px] text-zinc-500 font-normal ml-1">(Esc)</span>
+                Cancel{" "}
+                <span className="text-[10px] text-zinc-500 font-normal ml-1">
+                  (Esc)
+                </span>
               </button>
               <button
                 onClick={handleSaveQuestion}
-                disabled={updateQuestionMutation.isPending || !editedQuestionText.trim()}
+                disabled={
+                  updateQuestionMutation.isPending || !editedQuestionText.trim()
+                }
                 className="flex items-center gap-2 px-6 py-2 rounded-xl text-xs font-bold text-white bg-purple-600 hover:bg-purple-500 disabled:opacity-50 transition-all shadow-lg shadow-purple-600/25 active:scale-95"
               >
                 {updateQuestionMutation.isPending ? (
@@ -325,7 +357,10 @@ const RecallCard: React.FC<RecallCardProps> = ({
                 ) : (
                   <Check size={14} />
                 )}
-                Save Question <span className="text-[10px] text-purple-200 font-normal ml-0.5">(Ctrl+Enter)</span>
+                Save Question{" "}
+                <span className="text-[10px] text-purple-200 font-normal ml-0.5">
+                  (Ctrl+Enter)
+                </span>
               </button>
             </div>
           </div>
@@ -352,7 +387,11 @@ const RecallCard: React.FC<RecallCardProps> = ({
                 onClick={() => setIsHintOpen((v) => !v)}
                 className="mt-4 flex items-center gap-1.5 text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors"
               >
-                {isHintOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                {isHintOpen ? (
+                  <ChevronUp size={13} />
+                ) : (
+                  <ChevronDown size={13} />
+                )}
                 {isHintOpen ? "Hide hint" : "Show a hint"}
               </button>
             )}
@@ -380,12 +419,10 @@ const RecallCard: React.FC<RecallCardProps> = ({
         </div>
       )}
 
-   
       {isCardRevealed && (
         <>
           {/* Revealed card content */}
           <div className="w-full px-3.5 sm:px-8 md:px-12 pb-6 sm:pb-8 flex flex-col items-start border-t border-white/5 pt-4 sm:pt-6 animate-in fade-in slide-in-from-top-2 duration-300">
-            
             <div className="markdown-body w-full text-[15px] sm:text-[17px] leading-relaxed text-gray-200">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm, remarkMath]}
@@ -433,7 +470,6 @@ const RecallCard: React.FC<RecallCardProps> = ({
   );
 };
 
-
 interface RecallPageProps {
   onClose?: () => void;
 }
@@ -465,7 +501,13 @@ export default function RecallPage({ onClose }: RecallPageProps) {
   };
 
   const reviewMutation = useMutation({
-    mutationFn: async ({ cardId, rating }: { cardId: string; rating: number }) => {
+    mutationFn: async ({
+      cardId,
+      rating,
+    }: {
+      cardId: string;
+      rating: number;
+    }) => {
       await api.post(`/recall/update/${cardId}`, { rating });
       return queryClient.invalidateQueries({ queryKey: ["recallCount"] });
     },
