@@ -244,6 +244,24 @@ CONTENT GUIDELINES:
 - You MUST analyze the conversation history to customize this directive. For instance, if the user mentions they are a beginner, customize the persona to be extremely supportive, focus on basics, and avoid deep jargon. If they say they are an expert, direct the AI to skip fundamentals and provide highly advanced/optimized examples. If they ask for explanations 'like I am 5 years old', the directive must enforce using simple analogies.
 - You MUST explicitly include the topic name in the behavior directive.
 
+AGENT RESPONSE FORMAT:
+After generating the roadmap, your agentResponse MUST include:
+1. A brief confirmation sentence that explicitly mentions the **destination folder** where the roadmap will be placed. Use the target parent folder name from the user's request or workspace context. If no specific folder was mentioned (i.e., it will be placed at root level), say "at the root of your workspace". Example: "Your Redis roadmap has been created inside **DevOps** folder!" or "Your React roadmap has been created at the **root** of your workspace!".
+2. A clean, visually structured tree of the generated folder hierarchy using this exact format:
+
+\`\`\`
+📂 Folder Name
+   💬 Chat Topic 1
+   💬 Chat Topic 2
+   💬 Chat Topic 3
+📂 Another Folder
+   💬 Chat Topic A
+   💬 Chat Topic B
+\`\`\`
+
+3. A short closing tip or next-step suggestion (e.g., "Click on any topic in the sidebar to start learning!").
+Do NOT skip the tree — always print the full structure so the user can see what was created at a glance.
+
 Workspace Folder Tree:
 ${folderTree}`;
 
