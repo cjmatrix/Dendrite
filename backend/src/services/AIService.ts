@@ -177,6 +177,7 @@ static async streamAIContent(
         model,
         contents,
         config: {
+              maxOutputTokens: 16284,
           ...(systemInstruction ? { systemInstruction } : {}),
           ...(signal ? { signal } : {}),
         },

@@ -73,7 +73,7 @@ function App() {
      <Sentry.ErrorBoundary 
       fallback={<p>Something went wrong. Our team has been notified!</p>}
     >
-     <Toaster />
+     <Toaster containerStyle={{ zIndex: 99999 }} />
       <Suspense fallback={<div className="h-screen w-screen flex items-center justify-center bg-zinc-950"><div className="h-8 w-8 animate-spin rounded-full border-b-2 border-white"></div></div>}>
         <RouterProvider router={router} />
       </Suspense>
