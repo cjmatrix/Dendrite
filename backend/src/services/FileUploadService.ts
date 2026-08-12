@@ -203,7 +203,7 @@ export class FileUploadService {
       const detected = await FileType.fromBuffer(buffer);
       return detected?.mime || 'application/octet-stream';
     } catch {
-      // Fall back to extension-based detection
+     
       const ext = path.extname(filePath).toLowerCase();
       const mimeMap: { [key: string]: string } = {
         '.pdf': 'application/pdf',
@@ -224,7 +224,7 @@ export class FileUploadService {
   }
 
   
-  // Clean up temporary file
+  
    
   static async cleanupTempFile(filePath: string): Promise<void> {
     try {

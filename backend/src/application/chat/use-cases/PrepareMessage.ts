@@ -142,9 +142,6 @@ ${lines.join("\n")}`;
 
     const badPhrases = [
       "ignore all previous",
-      "system prompt",
-      "you are now",
-      "disregard the above",
       "new instructions",
     ];
     const lowerInput = normalizedMessage.toLowerCase();
