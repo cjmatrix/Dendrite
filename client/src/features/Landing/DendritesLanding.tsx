@@ -747,19 +747,19 @@ export function DendritesLanding() {
         <div className="hero-container">
           <div className="hero-left">
             <p className="hero-eyebrow text-blue-600 font-semibold">
-              an ai that doesn't reset at midnight
+              ai chat, finally organized
             </p>
             <h1 className="hero-title text-neutral-900">
-              Most AI chat forgets you the moment you close the tab.
+              Every other AI chat is a messy, endless scroll.
               <span className="hero-title-accent text-blue-600 font-extrabold">
-                Nurons doesn't.
+                Nurons gives it structure.
               </span>
             </h1>
             <p className="hero-sub text-neutral-500">
-              A learning companion with real memory — across sessions, branches,
-              and documents — plus an agent that turns "I want to learn
-              Kubernetes" into a folder tree, named chats, and a roadmap, before
-              you've typed a second sentence.
+              Folders, nested chats, branching conversations, and an agent that
+              turns "I want to learn Kubernetes" into a full workspace — organized
+              topics, named chats, and a learning roadmap — before you've typed a
+              second sentence.
             </p>
             <div className="hero-cta">
               <Link
@@ -772,7 +772,7 @@ export function DendritesLanding() {
                 href="#features"
                 className="btn-ghost text-neutral-800 hover:text-red-500 border-neutral-300 hover:border-red-500 transition-all font-semibold"
               >
-                See how memory works ↓
+                See how it works ↓
               </a>
             </div>
             <div className="hero-stats">

@@ -253,7 +253,7 @@ export const MessageBubble = React.memo(
             </div>
 
             {/* Edit Button for Last User Message */}
-            {isLastUserMessage && onEdit && (
+            {isLastUserMessage && onEdit && msg._id && !msg._id.startsWith("temp-") && (
               <div className="absolute top-0 right-full mr-2 flex flex-col gap-2">
                 <button
                   onClick={() => onEdit(msg._id!, msg.content)}

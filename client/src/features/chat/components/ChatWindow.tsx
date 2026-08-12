@@ -415,6 +415,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   }, [stopStreaming]);
 
   const handleEdit = useCallback((msgId: string, content: string) => {
+    if (msgId.startsWith("temp-")) return;
     setInput(content);
     setEditMessageId(msgId);
     requestAnimationFrame(() => composerRef.current?.focus());
