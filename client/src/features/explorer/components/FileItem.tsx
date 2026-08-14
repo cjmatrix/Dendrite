@@ -343,7 +343,7 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
           )}
         </div>
 
-        <div className="flex items-center gap-0.5 opacity-100 lg:opacity-0 pointer-events-auto lg:pointer-events-none group-hover/item:pointer-events-auto group-hover/item:opacity-100 transition-opacity duration-200">
+        <div className="flex items-center gap-0.5 opacity-100  pointer-events-auto  transition-opacity duration-200">
           {!isFolder && node.chatType !== "agent" && (
             <button
               onClick={(e) => {
@@ -355,7 +355,7 @@ export const FileItem: React.FC<FileItemProps> = React.memo(({ node }) => {
                 );
               }}
               className="p-1 hover:bg-zinc-700/60 rounded-md text-zinc-500 hover:text-cyan-400 transition-colors active:scale-95"
-              title="Reference chat name in composer"
+              title="Copy chat title in input box"
             >
               <ArrowUpRight size={14} strokeWidth={2.5} />
             </button>
