@@ -79,7 +79,7 @@ function previewNextInterval(
   }
 
   if (rating === 2) {
-    const halved = Math.max(1, Math.round(card.interval * 0.5));
+    const halved = Math.max(1, Math.round(card.interval * 0.35));
     return { value: halved, unit: "d" };
   }
 
@@ -95,8 +95,12 @@ function previewNextInterval(
   } else if (reps === 2) {
     interval = rating === 5 ? 10 : 6;
   } else {
-    const base = Math.round(card.interval * ef);
-    interval = rating === 5 ? Math.round(base * 1.3) : base;
+    if (rating === 3) {
+      interval = Math.max(1, Math.round(card.interval * 0.75));
+    } else {
+      const base = Math.round(card.interval * ef);
+      interval = rating === 5 ? Math.round(base * 1.3) : base;
+    }
   }
 
   return { value: interval, unit: "d" };

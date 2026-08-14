@@ -53,7 +53,7 @@ export class UpdateCard implements IUpdateCardUseCase {
       } else if (rating === 2) {
        
         card.easeFactor = Math.max(1.3, card.easeFactor - 0.15);
-        card.interval = Math.max(1, Math.round(card.interval * 0.5));
+        card.interval = Math.max(1, Math.round(card.interval * 0.35));
         card.repetitions++;
         card.nextReview = new Date(now.getTime() + card.interval * 86400000);
 
@@ -78,9 +78,12 @@ export class UpdateCard implements IUpdateCardUseCase {
          
           newInterval = rating === 5 ? 10 : 6;
         } else {
-          const base = Math.round(card.interval * card.easeFactor);
-         
-          newInterval = rating === 5 ? Math.round(base * 1.3) : base;
+          if (rating === 3) {
+            newInterval = Math.max(1, Math.round(card.interval * 0.75));
+          } else {
+            const base = Math.round(card.interval * card.easeFactor);
+            newInterval = rating === 5 ? Math.round(base * 1.3) : base;
+          }
         }
 
         card.interval = newInterval;
