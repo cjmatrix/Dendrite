@@ -189,6 +189,7 @@ export class ChatController extends BaseController {
 
   public sendMessage = async (req: Request, res: Response): Promise<void> => {
     const abortController = new AbortController();
+    let heartbeatInterval: NodeJS.Timeout | undefined;
 
     try {
       const userId = this.validateUserAuth(req);
@@ -214,13 +215,18 @@ export class ChatController extends BaseController {
         }
       }
 
-    
       res.setHeader("Content-Type", "text/event-stream");
       res.setHeader("Cache-Control", "no-cache");
       res.setHeader("Connection", "keep-alive");
       res.flushHeaders();
+      res.write(":\n\n"); 
+
+      heartbeatInterval = setInterval(() => {
+        res.write(":\n\n");
+      }, 15000);
 
       req.on("close", () => {
+        if (heartbeatInterval) clearInterval(heartbeatInterval);
         if (!abortController.signal.aborted) {
           abortController.abort();
           this.logger.info("Client closed connection, aborting message generation");
@@ -281,9 +287,10 @@ export class ChatController extends BaseController {
         res.write("data: [DONE]\n\n");
         res.end();
       } else {
-      
         this.sendError(res, error);
       }
+    } finally {
+      if (heartbeatInterval) clearInterval(heartbeatInterval);
     }
   };
 
@@ -291,6 +298,7 @@ export class ChatController extends BaseController {
     req: Request,
     res: Response,
   ): Promise<void> => {
+    let heartbeatInterval: NodeJS.Timeout | undefined;
     try {
       const userId = this.validateUserAuth(req);
       const userTier = req.user?.tier || "free";
@@ -332,6 +340,10 @@ export class ChatController extends BaseController {
       res.flushHeaders();
       res.write(":\n\n"); 
 
+      heartbeatInterval = setInterval(() => {
+        res.write(":\n\n");
+      }, 15000);
+
       const abortController = new AbortController();
       let stream;
       try {
@@ -364,6 +376,7 @@ export class ChatController extends BaseController {
       }
 
       req.on("close", () => {
+        if (heartbeatInterval) clearInterval(heartbeatInterval);
         if (!abortController.signal.aborted) {
           abortController.abort();
           this.logger.info("Client closed connection, aborting quick chat generation");
@@ -390,6 +403,8 @@ export class ChatController extends BaseController {
       );
       res.write("data: [DONE]\n\n");
       res.end();
+    } finally {
+      if (heartbeatInterval) clearInterval(heartbeatInterval);
     }
   };
 
