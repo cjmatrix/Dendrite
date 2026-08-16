@@ -9,6 +9,7 @@ import { setIsShareMode, toggleRecallOverlay } from "../features/explorer/store/
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import DendritesLogo from "../components/DendritesLogo";
 import RecallPage from "../features/recall/components/RecallPage";
+import TutorialOverlay from "../components/TutorialOverlay";
 
 function ChatPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -140,7 +141,10 @@ function ChatPage() {
         />
       )}
 
+      <TutorialOverlay />
+
       <div
+        id="file-explorer-sidebar"
         className={`
         fixed md:sticky md:top-0 md:h-[100dvh] md:self-start z-40
         transition-transform duration-300 ease-in-out

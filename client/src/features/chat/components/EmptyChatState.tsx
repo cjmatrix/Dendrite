@@ -12,8 +12,9 @@ import {
   Check,
   Paperclip,
   FileText,
-  X,
   Loader2,
+  Plus,
+  X,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import DendritesLogo from "../../../components/DendritesLogo";
@@ -82,6 +83,7 @@ export default function EmptyChatState() {
     () => "gemini-3-flash-preview",
   );
   const [isModelOpen, setIsModelOpen] = useState(false);
+  const [showExtraActions, setShowExtraActions] = useState(false);
 
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
@@ -519,40 +521,53 @@ export default function EmptyChatState() {
             />
 
             {/* Bottom Controls Bar */}
-            <div className="flex items-center justify-between px-1 pt-2 border-t border-white/5 mt-2">
+            <div className="flex items-center justify-between px-1 pt-2 border-t border-white/5 mt-2 h-10">
               <div className="flex items-center gap-2">
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileChange}
-                  accept="image/*,application/pdf,.pdf,.txt,.md,.js,.ts,.py,.json,.csv"
-                  className="hidden"
-                />
                 <button
                   type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isSubmitting || isUploadingFile}
-                  className="p-2 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-400 hover:text-white transition-all cursor-pointer disabled:opacity-50"
-                  title="Attach PDF or Image"
+                  onClick={() => setShowExtraActions(!showExtraActions)}
+                  className={`p-2 rounded-full transition-all cursor-pointer ${showExtraActions ? 'bg-white/20 text-white' : 'bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-400 hover:text-white'}`}
+                  title="More actions"
                 >
-                  <Paperclip size={16} />
+                  <Plus size={16} className={`transition-transform duration-300 ${showExtraActions ? 'rotate-45' : ''}`} />
                 </button>
-                <button
-                  type="button"
-                  onClick={handleQuickFolderCreate}
-                  className="p-2 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-400 hover:text-white transition-all cursor-pointer"
-                  title="Create folder"
-                >
-                  <FolderPlus size={16} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => dispatch(toggleRecallOverlay(true))}
-                  className="p-2 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-400 hover:text-white transition-all cursor-pointer"
-                  title="Open Active Recall"
-                >
-                  <Brain size={16} />
-                </button>
+
+                {showExtraActions && (
+                  <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-4 duration-300">
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleFileChange}
+                      accept="image/*,application/pdf,.pdf,.txt,.md,.js,.ts,.py,.json,.csv"
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isSubmitting || isUploadingFile}
+                      className="p-2 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-400 hover:text-white transition-all cursor-pointer disabled:opacity-50"
+                      title="Attach PDF or Image"
+                    >
+                      <Paperclip size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleQuickFolderCreate}
+                      className="p-2 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-400 hover:text-white transition-all cursor-pointer"
+                      title="Create folder"
+                    >
+                      <FolderPlus size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => dispatch(toggleRecallOverlay(true))}
+                      className="p-2 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-400 hover:text-white transition-all cursor-pointer"
+                      title="Open Active Recall"
+                    >
+                      <Brain size={16} />
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Round Send Button */}
@@ -576,73 +591,7 @@ export default function EmptyChatState() {
             </div>
           </div>
         </div>
-
-        {/* Action Pills Row */}
-        <div className="flex items-center justify-center gap-2.5 flex-wrap mb-10">
-          <button
-            onClick={() => {
-              setChatMode("general");
-              const el = document.getElementById("empty-chat-textarea");
-              if (el) el.focus();
-            }}
-            className={`flex items-center gap-2 px-4 py-2 rounded-full border text-xs font-medium transition-all shadow-md active:scale-95 cursor-pointer ${
-              chatMode === "general"
-                ? "bg-blue-500/20 border-blue-500/40 text-blue-200"
-                : "bg-[#16171d]/80 hover:bg-[#1d1e26] border-white/10 text-zinc-300 hover:text-white"
-            }`}
-          >
-            <MessageSquare size={14} className="text-blue-400" />
-            <span>General Chat</span>
-          </button>
-
-          <button
-            onClick={() => {
-              setChatMode("agent");
-              const el = document.getElementById("empty-chat-textarea");
-              if (el) el.focus();
-            }}
-            className={`flex items-center gap-2 px-4 py-2 rounded-full border text-xs font-medium transition-all shadow-md active:scale-95 cursor-pointer ${
-              chatMode === "agent"
-                ? "bg-amber-500/20 border-amber-500/40 text-amber-200"
-                : "bg-[#16171d]/80 hover:bg-[#1d1e26] border-white/10 text-zinc-300 hover:text-white"
-            }`}
-          >
-            <Bot size={14} className="text-amber-400" />
-            <span>Agent Workspace</span>
-          </button>
-
-          <button
-            onClick={() => {
-              setChatMode("visual");
-              const el = document.getElementById("empty-chat-textarea");
-              if (el) el.focus();
-            }}
-            className={`flex items-center gap-2 px-4 py-2 rounded-full border text-xs font-medium transition-all shadow-md active:scale-95 cursor-pointer ${
-              chatMode === "visual"
-                ? "bg-violet-500/20 border-violet-500/40 text-violet-200"
-                : "bg-[#16171d]/80 hover:bg-[#1d1e26] border-white/10 text-zinc-300 hover:text-white"
-            }`}
-          >
-            <Image size={14} className="text-violet-400" />
-            <span>Visual Mode</span>
-          </button>
-
-          <button
-            onClick={handleQuickFolderCreate}
-            className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#16171d]/80 hover:bg-[#1d1e26] border border-white/10 text-xs font-medium text-zinc-300 hover:text-white transition-all shadow-md active:scale-95 cursor-pointer"
-          >
-            <FolderPlus size={14} className="text-blue-400" />
-            <span>New Folder</span>
-          </button>
-
-          <button
-            onClick={() => dispatch(toggleRecallOverlay(true))}
-            className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#16171d]/80 hover:bg-[#1d1e26] border border-white/10 text-xs font-medium text-zinc-300 hover:text-white transition-all shadow-md active:scale-95 cursor-pointer"
-          >
-            <Brain size={14} className="text-purple-400" />
-            <span>Active Recall</span>
-          </button>
-        </div>
+        {/* Action Pills Row Removed For Cleaner Layout */}
 
         {/* Starter Suggestions Grid */}
         <div className="w-full">

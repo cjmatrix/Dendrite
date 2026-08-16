@@ -271,7 +271,7 @@ export const MessageBubble = React.memo(
 
             <div
               ref={containerRef}
-              className="flex-1 flex flex-col min-w-0 relative"
+              className="flex-1 flex flex-col min-w-0 relative tutorial-ai-message"
             >
               <div className="flex items-center gap-2 mb-1.5">
                 <span className="text-[13px] font-semibold text-gray-200">
@@ -282,6 +282,19 @@ export const MessageBubble = React.memo(
                 </span>
               </div>
               <MessageContent content={msg.content} />
+
+              {/* Recall Button for AI Message */}
+              <div className="mt-2 flex items-center gap-2 ">
+                <button
+                  id="tutorial-recall-btn"
+                  onClick={() => onCreateRecall(msg._id!)}
+                  className="p-1.5 px-2.5 rounded-lg bg-zinc-800/40 hover:bg-purple-950/20 text-purple-400 hover:text-purple-300 border border-zinc-800 hover:border-purple-900/50 transition-all flex items-center gap-1.5 shadow-sm"
+                  title="Save as Recall Card"
+                >
+                  <Brain size={13} />
+                  <span className="text-[11px] font-semibold tracking-wide">Save Recall</span>
+                </button>
+              </div>
 
               {/* Sticky Note Icons */}
               {msg.hasSubChat &&
@@ -299,17 +312,6 @@ export const MessageBubble = React.memo(
                     />
                   </button>
                 ))}
-
-              {/* Recall Button for AI Message */}
-              <div className="absolute top-0 left-full ml-2 opacity-0 group-hover/bubble:opacity-100 transition-opacity">
-                <button
-                  onClick={() => onCreateRecall(msg._id!)}
-                  className="p-1.5 rounded-lg bg-zinc-800 text-purple-400 hover:bg-purple-600 hover:text-white transition-colors shadow-md"
-                  title="Save as Recall Card"
-                >
-                  <Brain size={14} />
-                </button>
-              </div>
             </div>
           </div>
         )}

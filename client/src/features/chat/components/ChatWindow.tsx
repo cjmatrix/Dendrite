@@ -765,6 +765,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                       {/* Premium Branch Indicator */}
                       <div className="relative group/inherit">
                         <button
+                          id="inherit-branch-button"
                           onClick={openInheritModal}
                           className={`flex items-center gap-3 px-6 py-3 rounded-2xl transition-all duration-500 border backdrop-blur-xl hover:scale-105 active:scale-95 ${
                             chat?.contextParent

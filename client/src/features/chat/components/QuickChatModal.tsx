@@ -354,7 +354,7 @@ export const QuickChatModal: React.FC<QuickChatModalProps> = ({
                     setMode("general");
                   }
                 }}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-medium transition-all shadow-sm shrink-0 ${
+                className={`quick-chat-mode-btn flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-medium transition-all shadow-sm shrink-0 ${
                   mode === "visual"
                     ? "bg-purple-500/15 border-purple-500/30 text-purple-300 hover:bg-purple-500/20"
                     : "bg-white/5 border-white/5 text-gray-400 hover:bg-white/10 hover:border-white/10"
@@ -403,7 +403,7 @@ export const QuickChatModal: React.FC<QuickChatModalProps> = ({
                 disabled={
                   stickToChatMutation.isPending || subMessages.length === 0 || streamChatMutation.isPending
                 }
-                className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium transition-all border ${
+                className={`quick-chat-stick-btn flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium transition-all border ${
                   existingSubChat
                     ? "text-blue-400 bg-blue-500/10 border-blue-500/30 cursor-default"
                     : "text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 border-transparent hover:border-blue-500/30"
@@ -422,7 +422,7 @@ export const QuickChatModal: React.FC<QuickChatModalProps> = ({
             {onToggleSplit && (
               <button
                 onClick={onToggleSplit}
-                className="text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 border border-transparent hover:border-blue-500/30 rounded-md p-1 transition-all"
+                className="quick-chat-split-btn text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 border border-transparent hover:border-blue-500/30 rounded-md p-1 transition-all"
                 title="Dock as Modal"
               >
                 <Columns size={16} className="text-blue-400" />
@@ -447,11 +447,11 @@ export const QuickChatModal: React.FC<QuickChatModalProps> = ({
   return createPortal(
     <>
       <div
-        className={`fixed inset-0 z-[9999] ${showBackgroundContent ? "bg-transparent pointer-events-none" : "bg-black/10 backdrop-blur-sm"}`}
+        className={`fixed inset-0 z-[40] ${showBackgroundContent ? "bg-transparent pointer-events-none" : "bg-black/10 backdrop-blur-sm"}`}
         onClick={!showBackgroundContent ? onClose : undefined}
       />
 
-      <div className="fixed inset-0 z-[10000] flex items-center justify-center pointer-events-none">
+      <div className="fixed inset-0 z-[50] flex items-center justify-center pointer-events-none">
         <Draggable
           nodeRef={draggableNodeRef}
           handle=".quickchat-drag-handle"
@@ -483,7 +483,7 @@ export const QuickChatModal: React.FC<QuickChatModalProps> = ({
                   onClick={() =>
                     setShowBackgroundContent(!showBackgroundContent)
                   }
-                  className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium transition-all border ${
+                  className={`quick-chat-visual-btn flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium transition-all border ${
                     showBackgroundContent
                       ? "text-amber-400 bg-amber-500/10 border-amber-500/30 hover:bg-amber-500/20"
                       : "text-gray-400 hover:text-amber-400 hover:bg-amber-500/10 border-transparent hover:border-amber-500/30"
@@ -510,7 +510,7 @@ export const QuickChatModal: React.FC<QuickChatModalProps> = ({
                     disabled={
                       stickToChatMutation.isPending || subMessages.length === 0 || streamChatMutation.isPending
                     }
-                    className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium transition-all border ${
+                    className={`quick-chat-stick-btn flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium transition-all border ${
                       existingSubChat
                         ? "text-blue-400 bg-blue-500/10 border-blue-500/30 cursor-default"
                         : "text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 border-transparent hover:border-blue-500/30"
@@ -529,7 +529,7 @@ export const QuickChatModal: React.FC<QuickChatModalProps> = ({
                 {onToggleSplit && (
                   <button
                     onClick={onToggleSplit}
-                    className="text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 border border-transparent hover:border-blue-500/30 rounded-md p-1 transition-all"
+                    className="quick-chat-split-btn text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 border border-transparent hover:border-blue-500/30 rounded-md p-1 transition-all"
                     title="Split View"
                   >
                     <Columns size={16} />
