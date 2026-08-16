@@ -190,20 +190,6 @@ export class ChatController extends BaseController {
   public sendMessage = async (req: Request, res: Response): Promise<void> => {
     const abortController = new AbortController();
 
-    res.on("close", () => {
-      if (!res.writableEnded) {
-        abortController.abort();
-        this.logger.info(
-          "Client closed connection, aborting use case from res",
-        );
-      }
-    });
-
-    req.on("aborted", () => {
-      abortController.abort();
-      this.logger.info("Client aborted request, aborting use case from req");
-    });
-
     try {
       const userId = this.validateUserAuth(req);
       const chatId = this.getRouteParam(req, "id");
@@ -228,6 +214,19 @@ export class ChatController extends BaseController {
         }
       }
 
+    
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache");
+      res.setHeader("Connection", "keep-alive");
+      res.flushHeaders();
+
+      req.on("close", () => {
+        if (!abortController.signal.aborted) {
+          abortController.abort();
+          this.logger.info("Client closed connection, aborting message generation");
+        }
+      });
+
       const messageContext = await this.prepareMessageUseCase.execute({
         chatId,
         userId,
@@ -250,10 +249,6 @@ export class ChatController extends BaseController {
         },
         abortController.signal,
       );
-
-      res.setHeader("Content-Type", "text/event-stream");
-      res.setHeader("Cache-Control", "no-cache");
-      res.flushHeaders();
 
       for await (const chunk of stream) {
         if (chunk.type === "text") {
@@ -278,11 +273,17 @@ export class ChatController extends BaseController {
       res.end();
     } catch (error) {
       this.logger.error("Error in sendMessage controller", error);
-      res.write(
-        `data: ${JSON.stringify({ text: `\n\n**System Error:** ${(error as Error).message}` })}\n\n`,
-      );
-      res.write("data: [DONE]\n\n");
-      res.end();
+      
+      if (res.headersSent) {
+        res.write(
+          `data: ${JSON.stringify({ text: `\n\n**System Error:** ${(error as Error).message}` })}\n\n`,
+        );
+        res.write("data: [DONE]\n\n");
+        res.end();
+      } else {
+      
+        this.sendError(res, error);
+      }
     }
   };
 
@@ -329,6 +330,7 @@ export class ChatController extends BaseController {
       res.setHeader("Cache-Control", "no-cache");
       res.setHeader("Connection", "keep-alive");
       res.flushHeaders();
+      res.write(":\n\n"); 
 
       const abortController = new AbortController();
       let stream;
@@ -362,7 +364,10 @@ export class ChatController extends BaseController {
       }
 
       req.on("close", () => {
-        abortController.abort();
+        if (!abortController.signal.aborted) {
+          abortController.abort();
+          this.logger.info("Client closed connection, aborting quick chat generation");
+        }
       });
 
       for await (const chunk of await stream) {
