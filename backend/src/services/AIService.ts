@@ -512,19 +512,33 @@ If any answer is NO, improve the visualization before returning it.`;
 
     prompt += `Highlighted Text (The core subject):\n"""\n${content}\n"""`;
 
-    try {
-      const completion = await groq.chat.completions.create({
-        model: "llama-3.1-8b-instant",
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0.4,
-        max_tokens: 100,
-      });
+    const candidateModels = [
+      "groq/compound-mini",
+      "groq/compound",
+      "openai/gpt-oss-120b",
+    ];
 
-      return completion.choices[0]?.message?.content?.trim() || null;
-    } catch (err) {
-      console.error("[AIService] generateRecallQuestion failed:", err);
-      return null;
+    for (const model of candidateModels) {
+      try {
+        const completion = await groq.chat.completions.create({
+          model,
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.4,
+          max_tokens: 100,
+        });
+
+        const resultText = completion.choices[0]?.message?.content?.trim();
+        if (resultText) {
+          return resultText;
+        }
+      } catch (err) {
+        console.warn(
+          `[AIService] generateRecallQuestion model '${model}' failed: ${(err as Error).message}`
+        );
+      }
     }
+
+    return null;
   }
 
   static async urlToBase64(url: string): Promise<string> {
