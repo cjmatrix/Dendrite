@@ -2,8 +2,8 @@
 .markdown-body {
   color: #dcdcdc;
   font-size: 16px;
-  line-height: 2;
-  letter-spacing: 0.03em;
+  line-height: 1.9;
+  letter-spacing: 0.025em;
 }
 
 .markdown-body h1,
@@ -11,13 +11,11 @@
 .markdown-body h3 {
   color: #cfcfcf;
   font-weight: 600;
-  margin-top: 1.8em;
-  margin-bottom: 1em;
-  padding-bottom: 0.4em;
+  margin-top: 2.5em;
+  margin-bottom: 1.2em;
+  padding-bottom: 0.3em;
   border-bottom: 1px solid rgba(100, 116, 139, 0.3);
 }
-
-
 
 .markdown-body h1 {
   font-size: 1.7em;
@@ -34,11 +32,12 @@
   font-size: 1.2em;
   font-weight: bold;
   border-bottom: none;
-  padding: 1rem 0;
+  margin-top: 2.4em;
+  margin-bottom: 1em;
 }
 
 .markdown-body p {
-  margin-bottom: 1.3em;
+  margin-bottom: 2em;
 }
 
 .markdown-body strong {
@@ -51,20 +50,24 @@
 }
 
 .markdown-body ul {
-  margin: 1.8em 0;
-  padding-left: 1.75em;
+  margin: 2.2em 0;
+  padding-left: 1.8em;
   list-style-type: disc;
 }
 
 .markdown-body ol {
-  margin: 1.8em 0;
-  padding-left: 1.75em;
+  margin: 2.2em 0;
+  padding-left: 1.8em;
   list-style-type: decimal;
 }
 
 .markdown-body li {
-  margin-bottom: 1.5em;
-  line-height: 2;
+  margin-bottom: 1.8em;
+  line-height: 1.9;
+}
+
+.markdown-body li > p {
+  margin-bottom: 1.8em;
 }
 
 .markdown-body li::marker {

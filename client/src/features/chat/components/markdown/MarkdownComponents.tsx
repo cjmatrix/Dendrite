@@ -294,7 +294,7 @@ export const markdownComponents = {
       : String(children).replace(/\n$/, "");
 
     if (match && match[1] === "plantuml") {
-      // Auto-fix common LLM hallucinations for PlantUML syntax
+   
       const sanitizedCode = codeString
         .replace(/^\s*direction\s+LR\s*$/gm, "left to right direction")
         .replace(/^\s*direction\s+TB\s*$/gm, "top to bottom direction")
@@ -385,13 +385,12 @@ export const markdownComponents = {
           },
         }}
         customStyle={{
-          display: "inline-block",
-          verticalAlign: "middle",
-          margin: "0.6rem 0.3rem",
-          padding: "0.1rem 0.2rem",
-          background: "rgba(63, 63, 70, 0.2)",
-          borderRadius: "0.375rem",
-          border: "1px solid rgba(82, 82, 91, 0.3)",
+          display: "inline", 
+          margin: "0 0.15rem",
+          padding: "0.1rem 0.3rem",
+          background: "rgba(255, 255, 255, 0.1)",
+          borderRadius: "0.25rem",
+          border: "1px solid rgba(255, 255, 255, 0.1)",
           whiteSpace: "pre-wrap",
           wordBreak: "break-word",
         }}
