@@ -500,7 +500,7 @@ If any answer is NO, improve the visualization before returning it.`;
     let prompt = `You are a spaced-repetition question writer. Study the highlighted text below and guess what it is about and write ONE recall question that best tests it.IMPORTANT Try to find headings or sub headings in selected highlked text or from overall context try to make question from that.
 
     generate a questions about the card. if user select definition ask what is the difinition of that specific topic .
-    .Only generate questions maximum of 3 sentence .strictly do not give answers in question also ouputs only the generated questiion
+    .Only generate questions maximum of 2 to 3 sentence .strictly do not give answers in question also ouputs only the generated questiion
     Also generated questions should give overall context about what the card about by analyzing the highlighted text.
     `;
 
