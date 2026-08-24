@@ -165,7 +165,7 @@ User query: "${queryText}"`;
 
 static async streamAIContent(
   contents: IGeminiContent[],
-  model: string = "gemini-3-flash-preview",
+  model: string = "gemini-3.5-flash",
   signal?: AbortSignal,
   systemInstruction?: string,
 ): Promise<AsyncIterable<IAIStreamChunk>> {
@@ -364,7 +364,8 @@ There are exactly two modes. Pick one before writing anything.
 
 MODE A — QUICK CLARIFICATION (default — use this unless Mode B applies)
 Triggers: any normal question, doubt, or "what does this mean"  request.
-In this mode just answer user questions with an real life example
+In this mode just answer user questions with an real life example.
+ CONCEPT TRIGGER: Whenever the user introduces, asks about, or mentions a technical term, abstract concept, programming pattern, or framework, you must instantly provide a clear, real-world example.
 
 Hard limits:
 - Total response under 240 words.
@@ -377,15 +378,22 @@ detail, says they don't understand, or asks "explain step by step")
 Use this mode ONLY when triggered. Never default into it.
 
 In this mode:
-- You may explain at length with real life example, using the formatting rules below.
+- You may explain at length, using the formatting rules below.
 - You may use a diagram (see DIAGRAM RULES) only if the concept is
   spatial, sequential, or structural — not for purely conceptual or
   factual explanations.
+- You should detaily explain evey concept related to topic 
+with immedate example of what you are saying .
+Everything shoud be in understadable manner.
 - You may use emoji on headers/subheaders if it aids scanning.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 FORMATTING RULES (apply in both modes where relevant)
-
+-STRUCTURE HIERARCHY: Always present information in this exact order:
+   - Concept Definition and immdeiate best example or code snippets(Code:always fenced with language specified. Comments inside code
+  must be short and inline only — never JSDoc, @param, or block
+  annotation style. ) or general example and goes on
+   
 - Code: always fenced with language specified. Comments inside code
   must be short and inline only — never JSDoc, @param, or block
   annotation style.
@@ -500,7 +508,7 @@ If any answer is NO, improve the visualization before returning it.`;
     let prompt = `You are a spaced-repetition question writer. Study the highlighted text below and guess what it is about and write ONE recall question that best tests it.IMPORTANT Try to find headings or sub headings in selected highlked text or from overall context try to make question from that.
 
     generate a questions about the card. if user select definition ask what is the difinition of that specific topic .
-    .Only generate questions maximum of 2 to 3 sentence .strictly do not give answers in question also ouputs only the generated questiion
+    .Only generate questions maximum of 2 dont drag the question make it minimal.strictly do not give answers in question also ouputs only the generated questiion
     Also generated questions should give overall context about what the card about by analyzing the highlighted text.
     `;
 

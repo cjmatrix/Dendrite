@@ -131,7 +131,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   }, [messages]);
 
   const [mode, setMode] = useState<"general" | "visual">("general");
-  const [model, setModel] = useState("gemini-3-flash-preview");
+  const [model, setModel] = useState("gemini-3.5-flash");
 
   useEffect(() => {
     const initial = sessionStorage.getItem("initialChatMode");
@@ -1152,7 +1152,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                               <button
                                 onClick={() => {
                                   setMode("visual");
-                                  setModel("gemini-3-flash-preview");
+                                  setModel("gemini-3.5-flash");
 
                                   localStorage.setItem("model", model);
                                   setIsMoreMenuOpen(false);

@@ -25,7 +25,7 @@ export const MODEL_OPTIONS: ModelOption[] = [
     tier: "free",
   },
   {
-    id: "gemini-3-flash-preview",
+    id: "gemini-3.5-flash",
     label: "Gemini 3 Flash",
     provider: "gemini",
     tier: "free",

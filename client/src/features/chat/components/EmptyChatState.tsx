@@ -80,7 +80,7 @@ export default function EmptyChatState() {
   const [chatMode, setChatMode] = useState<"general" | "agent" | "visual">("general");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedModel, setSelectedModel] = useState(
-    () => "gemini-3-flash-preview",
+    () => "gemini-3.5-flash",
   );
   const [isModelOpen, setIsModelOpen] = useState(false);
   const [showExtraActions, setShowExtraActions] = useState(false);

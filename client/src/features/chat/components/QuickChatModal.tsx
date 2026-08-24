@@ -349,7 +349,7 @@ export const QuickChatModal: React.FC<QuickChatModalProps> = ({
                 onClick={() => {
                   if (mode === "general") {
                     setMode("visual");
-                    setModel("gemini-3-flash-preview");
+                    setModel("gemini-3.5-flash");
                   } else {
                     setMode("general");
                   }
