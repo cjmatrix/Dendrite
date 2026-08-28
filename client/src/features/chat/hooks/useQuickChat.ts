@@ -77,10 +77,10 @@ export function useQuickChat({
 
   useEffect(() => {
     if (!subMessages.length && selectedText&&mode==="general") {
-      setInput(`Explain what is ${selectedText}`);
+      setInput(`Explain what is this line means`);
     }
-    else if(!subMessages.length && selectedText&&mode==="visual"){
-       setInput(`Helps me to visualize and understand ${selectedText}`);
+    else if(input===`Explain what is this line means`&&!subMessages.length && selectedText&&mode==="visual"){
+       setInput(`Helps me to visualize and understand this`);
     }
   }, [selectedText, subMessages.length,mode]);
 
