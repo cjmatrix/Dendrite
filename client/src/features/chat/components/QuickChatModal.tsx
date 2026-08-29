@@ -159,7 +159,7 @@ export const QuickChatModal: React.FC<QuickChatModalProps> = ({
               className={`flex w-full ${msg.role === "user" ? "justify-end" : "justify-start"} group/subchat-bubble relative`}
             >
               {msg.role === "user" ? (
-                <div className="max-w-[85%] px-4 py-3 rounded-2xl text-[15px] leading-relaxed bg-blue-600 text-white rounded-tr-sm shadow-lg shadow-blue-900/20">
+                <div className="max-w-[85%] px-4 py-3 rounded-2xl text-[15px] leading-relaxed bg-blue-600/55 text-white/90 rounded-tr-sm shadow-lg shadow-blue-900/10">
                   {msg.content}
                 </div>
               ) : (
@@ -170,7 +170,7 @@ export const QuickChatModal: React.FC<QuickChatModalProps> = ({
                     </span>
                   </div>
                   <div className="markdown-body">
-                    <MessageContent content={msg.content}></MessageContent>
+                    <MessageContent content={msg.content} compact />
                   </div>
                 </div>
               )}
@@ -203,7 +203,7 @@ export const QuickChatModal: React.FC<QuickChatModalProps> = ({
               {streamingText ? (
                 <div className="markdown-body">
                   <StreamingContext.Provider value={true}>
-                    <MessageContent content={streamingText}></MessageContent>
+                    <MessageContent content={streamingText} compact />
                   </StreamingContext.Provider>
                   <span className="inline-block w-2 h-4 bg-blue-400 ml-1 rounded-sm streaming-cursor align-middle" />
                 </div>

@@ -659,3 +659,21 @@ export const markdownComponents = {
     );
   },
 };
+
+// Compact variant used only in QuickChatModal
+export const compactMarkdownComponents = {
+  ...markdownComponents,
+  code({ className, children }: { className?: string; children?: React.ReactNode }) {
+    const match = /language-(\w+)/.exec(className || "");
+    const codeString = Array.isArray(children)
+      ? children.join("")
+      : String(children).replace(/\n$/, "");
+
+    if (match && match[1] === "p5") {
+      return <P5Sandbox p5CodeString={codeString} compact />;
+    }
+
+   
+    return markdownComponents.code({ className, children });
+  },
+};

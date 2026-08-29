@@ -1,12 +1,13 @@
 import React, { useMemo, useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
-import { markdownComponents } from "./markdown/MarkdownComponents";
+import { markdownComponents, compactMarkdownComponents } from "./markdown/MarkdownComponents";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 
 interface MessageContentProps {
   content: string;
+  compact?: boolean;
 }
 
 
@@ -38,7 +39,7 @@ export function fixMalformedCodeBlocks(text: string): string {
 }
 
 export const MessageContent = React.memo(
-  ({ content }: MessageContentProps) => {
+  ({ content, compact = false }: MessageContentProps) => {
     const processedContent = useMemo(() => {
       let cleaned = stripGlobalMemory(content);
       const fixedBlocks = fixMalformedCodeBlocks(cleaned);
@@ -58,12 +59,12 @@ export const MessageContent = React.memo(
         <ReactMarkdown
           remarkPlugins={[remarkGfm, remarkMath]}
           rehypePlugins={[rehypeKatex]}
-          components={markdownComponents}
+          components={compact ? compactMarkdownComponents : markdownComponents}
         >
           {processedContent}
         </ReactMarkdown>
       ),
-      [processedContent],
+      [processedContent, compact],
     );
 
     return (

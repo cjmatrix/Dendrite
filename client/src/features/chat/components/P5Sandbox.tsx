@@ -4,9 +4,10 @@ import { Maximize2, Minimize2 } from "lucide-react";
 
 interface P5SandboxProps {
   p5CodeString: string;
+  compact?: boolean;
 }
 
-export default function P5Sandbox({ p5CodeString }: P5SandboxProps) {
+export default function P5Sandbox({ p5CodeString, compact = false }: P5SandboxProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const isStreaming = useContext(StreamingContext);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -31,7 +32,9 @@ export default function P5Sandbox({ p5CodeString }: P5SandboxProps) {
  
   const iframeWrapperClasses = isFullscreen
     ? "relative w-full h-[90vh] max-w-7xl mx-auto shadow-[0_0_50px_rgba(0,0,0,0.5)] flex bg-zinc-900/40 rounded-2xl overflow-hidden border border-zinc-700/80"
-    : "relative w-[115%] -ml-[7.5%] max-w-[92vw] h-[700px]  rounded-xl   overflow-hidden self-center ";
+    : compact
+    ? "relative w-full max-w-full h-[65vh] rounded-xl overflow-hidden self-center"
+    : "relative w-[115%] -ml-[7.5%] max-w-[92vw] h-[700px] rounded-xl overflow-hidden self-center";
 
   return (
     <div className={containerClasses}>
