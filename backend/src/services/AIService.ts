@@ -13,7 +13,7 @@ import {
 const vertexAi = new GoogleGenAI({
   vertexai: true,
   project: "nurons-project-502805",
-  location: "asia-northeast1",
+  location: "global",
 });
 
 
