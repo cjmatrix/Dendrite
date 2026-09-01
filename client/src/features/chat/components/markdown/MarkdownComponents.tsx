@@ -328,6 +328,47 @@ export const markdownComponents = {
     if (match && match[1] === "p5") {
       return <P5Sandbox p5CodeString={codeString} />;
     }
+
+    // Plain text / ASCII diagrams — skip SyntaxHighlighter entirely to avoid
+    // the green tint, row highlights, and "[Enter]" artifacts it adds.
+    const isPlainText = match && ["text", "plain", "ascii", "txt"].includes(match[1]);
+    if (isPlainText) {
+      return (
+        <div className="my-5 rounded-xl overflow-hidden border border-white/5 bg-zinc-900/60 shadow-lg">
+          <div className="flex items-center justify-between px-4 py-2.5 bg-zinc-800/60 border-b border-white/5">
+            <span className="text-[11px] font-semibold text-gray-500 tracking-wider uppercase">
+              {match[1].toUpperCase()}
+            </span>
+            <button
+              onClick={() => navigator.clipboard.writeText(codeString)}
+              className="flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-gray-300 transition-colors px-2 py-1.5 rounded hover:bg-white/5"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+              Copy
+            </button>
+          </div>
+          <pre
+            style={{
+              margin: 0,
+              padding: "1.25rem",
+              fontSize: "13.5px",
+              lineHeight: "1.65",
+              fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace",
+              color: "#d4d4d4",
+              whiteSpace: "pre",
+              overflowX: "auto",
+              background: "transparent",
+            }}
+          >
+            {codeString}
+          </pre>
+        </div>
+      );
+    }
+
     return match ? (
       <div className="my-5 rounded-xl overflow-hidden border border-white/5 bg-[var(--theme-bg-surface)] shadow-lg">
         {/* Language header */}
