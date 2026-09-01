@@ -144,10 +144,7 @@ ${lines.join("\n")}`;
       } as any);
     }
 
-    const badPhrases = [
-      "ignore all previous",
-      "new instructions",
-    ];
+    const badPhrases = ["ignore all previous", "new instructions"];
     const lowerInput = normalizedMessage.toLowerCase();
     if (badPhrases.some((phrase) => lowerInput.includes(phrase))) {
       throw new AppError(
@@ -471,7 +468,16 @@ ${lines.join("\n")}`;
       `If no genuinely new personal facts or cross-session preferences are shared, DO NOT output this block at all.`;
 
     if (chat.title) {
-      dynamicSystemInstruction += `\n\n--- [CONVERSATION TITLE / TOPIC CONTEXT] ---\nThe title/topic of this chat conversation is: "${chat.title}".\nIf the user's message is brief, ambiguous, or lacks context, use this chat title as high-level topic context to interpret and answer their query.`;
+      dynamicSystemInstruction +=
+        `\n\n--- [CONVERSATION TITLE / TOPIC CONTEXT] ---\n` +
+        `The title of this conversation is: "${chat.title}".\n\n` +
+        `Use this title to resolve ambiguity in the user's messages:\n` +
+        `- If the user's message is short, vague, or lacks explicit context (e.g. "teach me", "explain", ` +
+        `"continue", "what is it", "go on"), interpret it as a request about "${chat.title}".\n` +
+        `- PRIORITY RULE: Even when inherited background context from a linked parent chat is present, ` +
+        `vague messages MUST be answered in the context of "${chat.title}" — not the parent chat's topic. ` +
+        `The parent context provides supporting knowledge only. The user opened this chat specifically to learn about "${chat.title}".\n` +
+        `- If the user's message is clearly about a different subject, respond to what they asked and do not force the title topic.`;
     }
 
     const profile = user?.globalProfile;
