@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { ArrowUp, StickyNote, Brain, Pencil } from "lucide-react";
+import { ArrowUp, StickyNote, Brain, Pencil, Copy, Check } from "lucide-react";
 import DendritesLogo from "../../../components/DendritesLogo";
 import { MessageContent } from "./MessageContent";
 import type { Message } from "../types/Message";
@@ -97,6 +97,14 @@ export const MessageBubble = React.memo(
       minute: "2-digit",
     });
     const [isExpanded, setIsExpanded] = useState(false);
+    const [isCopied, setIsCopied] = useState(false);
+
+    const handleCopy = () => {
+      navigator.clipboard.writeText(msg.content);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    };
+
     const { clampedLines, isClamped, fullText } = clampText(msg.content, 3);
     const containerRef = useRef<HTMLDivElement>(null);
 
@@ -241,29 +249,27 @@ export const MessageBubble = React.memo(
                   />
                 </button>
               ))}
-            {/* Recall Button for User Message */}
-            <div className={`absolute right-full mr-2 opacity-0 group-hover/bubble:opacity-100 transition-opacity flex flex-col gap-2 ${isLastUserMessage ? "top-8" : "top-0"}`}>
-              <button
-                onClick={() => onCreateRecall(msg._id!)}
-                className="p-1.5 rounded-lg bg-zinc-800 text-purple-400 hover:bg-purple-600 hover:text-white transition-colors"
-                title="Save as Recall Card"
-              >
-                <Brain size={14} />
-              </button>
-            </div>
-
-            {/* Edit Button for Last User Message */}
-            {isLastUserMessage && onEdit && msg._id && !msg._id.startsWith("temp-") && (
-              <div className="absolute top-0 right-full mr-2 flex flex-col gap-2">
+            {/* User Message Actions */}
+            <div className="mt-1.5 flex flex-wrap items-center justify-end gap-2 pr-1 w-full">
+              {isLastUserMessage && onEdit && msg._id && !msg._id.startsWith("temp-") && (
                 <button
                   onClick={() => onEdit(msg._id!, msg.content)}
-                  className="p-1.5 rounded-lg bg-zinc-800 text-amber-400 hover:bg-amber-600 hover:text-white transition-colors shadow-md"
+                  className="p-1.5 rounded-lg text-amber-400 hover:bg-zinc-800 hover:text-amber-300 transition-colors flex items-center gap-1.5"
                   title="Edit and Retry"
                 >
-                  <Pencil size={14} />
+                  <Pencil size={13} />
+                  <span className="text-[11px] font-semibold tracking-wide">Edit</span>
                 </button>
-              </div>
-            )}
+              )}
+              <button
+                onClick={handleCopy}
+                className="p-1.5 rounded-lg text-gray-400 hover:bg-zinc-800 hover:text-gray-300 transition-colors flex items-center gap-1.5"
+                title="Copy message"
+              >
+                {isCopied ? <Check size={13} className="text-green-500" /> : <Copy size={13} />}
+                <span className="text-[11px] font-semibold tracking-wide">{isCopied ? "Copied" : "Copy"}</span>
+              </button>
+            </div>
           </div>
         ) : (
           <div className="flex w-full gap-2 sm:gap-4 max-w-full group/bubble relative pl-7 sm:pl-0">
@@ -283,8 +289,16 @@ export const MessageBubble = React.memo(
               </div>
               <MessageContent content={msg.content} />
 
-              {/* Recall Button for AI Message */}
+              {/* Actions for AI Message */}
               <div className="mt-2 flex items-center gap-2 ">
+                <button
+                  onClick={handleCopy}
+                  className="p-1.5 px-2.5 rounded-lg bg-zinc-800/40 hover:bg-zinc-700/50 text-gray-400 hover:text-gray-300 border border-zinc-800 hover:border-zinc-600/50 transition-all flex items-center gap-1.5 shadow-sm"
+                  title="Copy message"
+                >
+                  {isCopied ? <Check size={13} className="text-green-500" /> : <Copy size={13} />}
+                  <span className="text-[11px] font-semibold tracking-wide">{isCopied ? "Copied" : "Copy"}</span>
+                </button>
                 <button
                   id="tutorial-recall-btn"
                   onClick={() => onCreateRecall(msg._id!)}

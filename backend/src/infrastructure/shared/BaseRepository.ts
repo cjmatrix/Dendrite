@@ -61,4 +61,9 @@ export class MongooseBaseRepository<
       .lean();
     return doc ? this.mapToDomain(doc as Record<string, unknown>) : null;
   }
+
+  async deleteById(id: string): Promise<boolean> {
+    const res = await this.model.deleteOne({ _id: id }).session(this.getSession() ?? null);
+    return (res.deletedCount ?? 0) > 0;
+  }
 }

@@ -225,13 +225,19 @@ export class ChatController extends BaseController {
         res.write(":\n\n");
       }, 15000);
 
-      req.on("close", () => {
+      const onClientDisconnect = () => {
         if (heartbeatInterval) clearInterval(heartbeatInterval);
         if (!abortController.signal.aborted) {
           abortController.abort();
           this.logger.info("Client closed connection, aborting message generation");
         }
-      });
+      };
+
+      req.on("close", onClientDisconnect);
+      res.on("close", onClientDisconnect);
+      req.on("aborted", onClientDisconnect);
+      if (req.socket) req.socket.on("close", onClientDisconnect);
+
 
       const messageContext = await this.prepareMessageUseCase.execute({
         chatId,

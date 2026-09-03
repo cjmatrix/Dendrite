@@ -179,7 +179,7 @@ static async streamAIContent(
         config: {
               maxOutputTokens: 16284,
           ...(systemInstruction ? { systemInstruction } : {}),
-          ...(signal ? { signal } : {}),
+          ...(signal ? { abortSignal: signal } : {}),
         },
       });
 
@@ -228,6 +228,7 @@ static async streamAIContent(
           contents,
           config: {
             ...(systemInstruction ? { systemInstruction } : {}),
+            ...(signal ? { abortSignal: signal } : {}),
           },
         });
         return stream as unknown as AsyncIterable<IAIStreamChunk>;

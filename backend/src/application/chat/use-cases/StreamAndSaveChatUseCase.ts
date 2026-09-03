@@ -14,6 +14,7 @@ import {
   IAIStreamChunk,
   IGeminiUsageMetadata,
 } from "../../../domain/chat/entities/Gemini";
+import { IMessageRepository } from "../../../domain/chat/repositories/IMessageRepository";
 
 @injectable()
 export class StreamAndSaveChatUseCase implements IStreamAndSaveChatUseCase {
@@ -21,6 +22,8 @@ export class StreamAndSaveChatUseCase implements IStreamAndSaveChatUseCase {
     @inject("IAIService") private aiService: IAIService,
     @inject("ISaveModelReplyUseCase")
     private saveModelReplyUseCase: ISaveModelReplyUseCase,
+    @inject("IMessageRepository")
+    private messageRepository: IMessageRepository,
     @inject("ILogger") private logger: ILogger,
     @inject("IRateLimitService") private rateLimitService: IRateLimitService,
   ) {}
@@ -78,6 +81,14 @@ export class StreamAndSaveChatUseCase implements IStreamAndSaveChatUseCase {
 
     if (signal.aborted) {
       onAbort();
+      if (userMessageId) {
+        try {
+          await this.messageRepository.deleteById(userMessageId);
+          this.logger.info("Deleted user message from DB on early abort", { userMessageId });
+        } catch (err) {
+          this.logger.error("Failed to delete user message on early abort", err, { userMessageId });
+        }
+      }
       return;
     }
 
@@ -163,6 +174,17 @@ export class StreamAndSaveChatUseCase implements IStreamAndSaveChatUseCase {
           "Failed to increment rate limit counter for mainQueries",
           err,
         );
+      }
+    } else if (signal.aborted) {
+
+      onAbort();
+      if (userMessageId) {
+        try {
+          await this.messageRepository.deleteById(userMessageId);
+          this.logger.info("Deleted user message from DB on stream abort", { userMessageId });
+        } catch (err) {
+          this.logger.error("Failed to delete user message on stream abort", err, { userMessageId });
+        }
       }
     }
   }

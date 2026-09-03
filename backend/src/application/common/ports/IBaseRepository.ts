@@ -4,4 +4,5 @@ export interface IBaseRepository<T> {
   save(entity: T): Promise<T>;
   count(filter?: Record<string, unknown>): Promise<number>;
   findByIdAndUpdate(id: string, update: Record<string, unknown>): Promise<T | null>;
+  deleteById(id: string): Promise<boolean>;
 }
