@@ -329,8 +329,7 @@ export const markdownComponents = {
       return <P5Sandbox p5CodeString={codeString} />;
     }
 
-    // Plain text / ASCII diagrams — skip SyntaxHighlighter entirely to avoid
-    // the green tint, row highlights, and "[Enter]" artifacts it adds.
+  
     const isPlainText = match && ["text", "plain", "ascii", "txt"].includes(match[1]);
     if (isPlainText) {
       return (
@@ -701,7 +700,7 @@ export const markdownComponents = {
   },
 };
 
-// Compact variant used only in QuickChatModal
+
 export const compactMarkdownComponents = {
   ...markdownComponents,
   code({ className, children }: { className?: string; children?: React.ReactNode }) {

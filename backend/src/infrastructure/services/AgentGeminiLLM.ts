@@ -42,7 +42,7 @@ export class AgentGeminiLLMService {
       }
       
       const model = new ChatGoogleGenerativeAI({
-        model: "gemini-3.1-flash-lite",
+        model: "gemini-3.5-flash",
         temperature: 0,
         apiKey: apiKey,
       });
@@ -233,12 +233,13 @@ export class AgentGeminiLLMService {
 
 CRITICAL SIZING RULES:
 Analyze the conversation history to determine the required depth of the curriculum:
-1. DEFAULT SCOPE: If the user simply asks for a topic (e.g., "Learn Redis" or "DevOps roadmap"), generate exactly 3 to 5 high-level folders. Inside each folder, place 2 to 4 specific, actionable sub-topic chats.
+1. DEFAULT SCOPE: If the user simply asks for a topic (e.g., "Learn Redis" or "DevOps roadmap"), generate exactly 3 to 5 high-level folders. Inside each folder, place 2 to 5 specific, actionable sub-topic chats.
 2. DETAILED SCOPE: If the user explicitly asks for a "detailed", "elaborated", "comprehensive", or "deep dive" roadmap, expand the curriculum. Generate up to 10 high-level folders, and place up to 10 specific, actionable sub-topic chats inside each.
 
 CONTENT GUIDELINES:
+- Start with introduction chat about the topic what is it.why is it matter and all 
 - Ensure the progression is logically ordered, moving from fundamentals to advanced concepts.
-- Keep folder and chat names concise, technical, and professional.
+- Keep folders and chat names concise, technical, and professional.
 - Do not generate filler content; every chat must represent a tangible concept or task.
 - Generate a highly tailored, custom "behavior directive" (maximum 100 tokens) that explains how the AI assistant must act, what rules/constraints it must follow, and how it should format answers when responding to questions in this specific learning workspace. Store this in the rootBehavior field.
 - You MUST analyze the conversation history to customize this directive. For instance, if the user mentions they are a beginner, customize the persona to be extremely supportive, focus on basics, and avoid deep jargon. If they say they are an expert, direct the AI to skip fundamentals and provide highly advanced/optimized examples. If they ask for explanations 'like I am 5 years old', the directive must enforce using simple analogies.
