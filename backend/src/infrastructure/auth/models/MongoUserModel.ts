@@ -71,7 +71,7 @@ const UserSchema = new Schema<IMongoUserDocument>(
       location: { type: String, default: null, trim: true },
       role: { type: String, default: null, trim: true },
       tech_stack: { type: [String], default: [] },
-      expertise_level: { type: String, default: null, trim: true },
+      expertise_level: { type: String, default:"beginner", trim: true },
       environment: { type: [String], default: [] },
       user_preferences: { type: [String], default: [] },
       response_style: { type: String, default: null, trim: true },
