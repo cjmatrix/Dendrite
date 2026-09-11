@@ -12,6 +12,12 @@ const RecallSchema = new mongoose.Schema({
       required: true,
       index: true,
     },
+    deckId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Deck",
+      default: null,
+      index: true,
+    },
     breadCrumbs:{
         type:[String],
         default:[]
@@ -72,5 +78,7 @@ const RecallSchema = new mongoose.Schema({
     default: Date.now,
   },
 });
+
+RecallSchema.index({ userId: 1, deckId: 1 });
 
 export default mongoose.model("Recall", RecallSchema);

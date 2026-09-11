@@ -44,6 +44,14 @@ export function useQuickChat({
   } | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
+  const isAtBottomRef = useRef(true);
+
+  const handleScroll = () => {
+    if (!scrollRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+   
+    isAtBottomRef.current = scrollHeight - scrollTop - clientHeight <= 60;
+  };
 
 
 
@@ -149,10 +157,24 @@ export function useQuickChat({
   const prevIsPending = useRef(false);
 
   useEffect(() => {
+    if (!isOpen) {
+      prevMessagesLength.current = 0;
+      isAtBottomRef.current = true;
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
     const messagesChanged = subMessages.length !== prevMessagesLength.current;
     const streamStarted = streamChatMutation.isPending && !prevIsPending.current;
+    const lastMsg = subMessages[subMessages.length - 1];
+    const isInitialLoad =
+      prevMessagesLength.current === 0 &&
+      subMessages.length > 0 &&
+      !streamChatMutation.isPending;
+    const isNewUserMsg = messagesChanged && lastMsg?.role === "user";
 
-    if (messagesChanged || streamStarted) {
+    
+    if (isInitialLoad || isNewUserMsg || streamStarted) {
       setTimeout(() => {
         if (scrollRef.current) {
           scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -164,6 +186,14 @@ export function useQuickChat({
     prevIsPending.current = streamChatMutation.isPending;
   }, [subMessages, streamChatMutation.isPending]);
 
+ 
+  useEffect(() => {
+    if (!streamingText || !isAtBottomRef.current) return;
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [streamingText]);
+
   // Handlers ─────────────────────────────────────
 
 
@@ -171,6 +201,7 @@ export function useQuickChat({
     if (!input.trim() || streamChatMutation.isPending) return;
     const userPrompt = input.trim();
     setInput("");
+    isAtBottomRef.current = true;
     streamChatMutation.mutate({ userPrompt });
   };
 
@@ -283,6 +314,7 @@ export function useQuickChat({
       isRecalling,
       recallSelection,
       scrollRef,
+      handleScroll,
       existingSubChat,
       model,
       setModel,

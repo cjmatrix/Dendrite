@@ -13,7 +13,7 @@ export class CreateCard implements ICreateCardUseCase {
     @inject("IRateLimitService") private rateLimitService: IRateLimitService
   ) {}
 
-  async execute(userId: string, content: string, chatId: string, overallContext?: string) {
+  async execute(userId: string, content: string, chatId: string, overallContext?: string, deckId?: string | null) {
     const nextReview = new Date(Date.now() + 60000);
 
 
@@ -25,6 +25,7 @@ export class CreateCard implements ICreateCardUseCase {
       content,
       question,
       nextReview,
+      deckId: deckId ?? null,
     });
 
     const delayInMs = recall.nextReview.getTime() - Date.now();

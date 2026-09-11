@@ -14,6 +14,7 @@ import authRoutes from "./presentation/routes/authRoutes";
 import folderRoutes from "./presentation/routes/folderRoutes";
 import chatRoutes from "./presentation/routes/chatRoutes";
 import recallRoutes from "./presentation/routes/recallRoutes";
+import deckRoutes from "./presentation/routes/deckRoutes";
 import branchRoutes from "./presentation/routes/branchRoutes";
 import shareLinkRoutes from "./presentation/routes/shareLinkRoutes";
 import agentRoutes from "./presentation/routes/agentRoutes";
@@ -124,6 +125,7 @@ app.use("/api/v1/admin/auth", adminAuthRoutes);
 app.use("/api/v1/folders", folderRoutes);
 app.use("/api/v1/chats", chatRoutes);
 app.use("/api/v1/recall", recallRoutes);
+app.use("/api/v1/deck", deckRoutes);
 app.use("/api/v1/branch", branchRoutes);
 app.use("/api/v1/share", shareLinkRoutes);
 

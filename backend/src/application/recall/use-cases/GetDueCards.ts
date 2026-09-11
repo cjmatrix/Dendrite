@@ -8,8 +8,11 @@ export class GetDueCards implements IGetDueCardsUseCase {
     @inject("IRecallRepository") private recallRepository: IRecallRepository
   ) {}
 
-  async execute(userId: string) {
+  async execute(userId: string, deckId?: string | null) {
     const now = new Date();
+    if (deckId !== undefined) {
+      return await this.recallRepository.findDueCardsByUserIdAndDeck(userId, now, deckId);
+    }
     return await this.recallRepository.findDueCardsByUserId(userId, now);
   }
 }

@@ -37,7 +37,7 @@ export class RecallController extends BaseController {
   public createCard = async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
-      let { content, chatId, msgId } = req.body;
+      let { content, chatId, msgId, deckId } = req.body;
       let overallContext: string | undefined = undefined;
 
       if (msgId) {
@@ -58,7 +58,8 @@ export class RecallController extends BaseController {
         userId,
         content,
         chatId,
-        overallContext
+        overallContext,
+        deckId ?? null
       );
 
       this.sendSuccess(res, result, HttpStatus.CREATED, RECALL_MESSAGES.CARD_CREATED);
@@ -97,8 +98,16 @@ export class RecallController extends BaseController {
   public getDueCards = async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = this.validateUserAuth(req);
+      const deckIdQuery = req.query.deckId as string | undefined;
 
-      const dueCards = await this.getDueCardsUseCase.execute(userId);
+      let deckId: string | null | undefined = undefined;
+      if (deckIdQuery === "null" || deckIdQuery === "") {
+        deckId = null;
+      } else if (deckIdQuery) {
+        deckId = deckIdQuery;
+      }
+
+      const dueCards = await this.getDueCardsUseCase.execute(userId, deckId);
 
       this.sendSuccess(res, dueCards);
     } catch (error) {

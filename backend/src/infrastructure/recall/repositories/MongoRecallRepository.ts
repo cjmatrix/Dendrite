@@ -1,4 +1,5 @@
-import { IRecallRepository, IRecallCard } from '../../../domain/recall/repositories/IRecallRepository';
+import mongoose from 'mongoose';
+import { IRecallRepository, IRecallCard, IRecallDeckStats, IDeckCardStats } from '../../../domain/recall/repositories/IRecallRepository';
 import Recall from '../models/MongoRecallModel';
 
 export class MongoRecallRepository implements IRecallRepository {
@@ -40,5 +41,77 @@ export class MongoRecallRepository implements IRecallRepository {
 
   async deleteAllByUserId(userId: string): Promise<{ deletedCount?: number }> {
     return Recall.deleteMany({ userId });
+  }
+
+  async findDueCardsByUserIdAndDeck(userId: string, date: Date, deckId: string | null): Promise<IRecallCard[]> {
+    return Recall.find({
+      userId,
+      deckId: deckId,
+      nextReview: { $lte: date },
+    }).sort({ nextReview: -1 }) as unknown as IRecallCard[];
+  }
+
+  async moveCardToDeck(userId: string, cardId: string, deckId: string | null): Promise<IRecallCard | null> {
+    return Recall.findOneAndUpdate(
+      { _id: cardId, userId },
+      { $set: { deckId } },
+      { new: true }
+    ) as unknown as IRecallCard | null;
+  }
+
+  async moveCardsToDeck(userId: string, fromDeckId: string | null, toDeckId: string | null): Promise<{ modifiedCount?: number }> {
+    return Recall.updateMany(
+      { userId, deckId: fromDeckId },
+      { $set: { deckId: toDeckId } }
+    );
+  }
+
+  async clearDeckReference(userId: string, deckId: string): Promise<{ modifiedCount?: number }> {
+    return Recall.updateMany(
+      { userId, deckId },
+      { $set: { deckId: null } }
+    );
+  }
+
+  async getDeckStatsByUserId(userId: string): Promise<IRecallDeckStats> {
+    const stats = await Recall.aggregate([
+      {
+        $match: {
+          userId: new mongoose.Types.ObjectId(userId),
+        },
+      },
+      {
+        $group: {
+          _id: "$deckId",
+          cardCount: { $sum: 1 },
+          dueCardCount: {
+            $sum: {
+              $cond: [{ $lte: ["$nextReview", new Date()] }, 1, 0],
+            },
+          },
+        },
+      },
+    ]);
+
+    const byDeck: Record<string, IDeckCardStats> = {};
+    const undecked: IDeckCardStats = { cardCount: 0, dueCardCount: 0 };
+    const total: IDeckCardStats = { cardCount: 0, dueCardCount: 0 };
+
+    for (const s of stats) {
+      const cardCount = s.cardCount || 0;
+      const dueCardCount = s.dueCardCount || 0;
+
+      total.cardCount += cardCount;
+      total.dueCardCount += dueCardCount;
+
+      if (s._id) {
+        byDeck[s._id.toString()] = { cardCount, dueCardCount };
+      } else {
+        undecked.cardCount = cardCount;
+        undecked.dueCardCount = dueCardCount;
+      }
+    }
+
+    return { byDeck, undecked, total };
   }
 }

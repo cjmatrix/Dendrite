@@ -95,6 +95,7 @@ export const QuickChatModal: React.FC<QuickChatModalProps> = ({
     isRecalling,
     recallSelection,
     scrollRef,
+    handleScroll,
     existingSubChat,
     model,
     setModel,
@@ -136,6 +137,7 @@ export const QuickChatModal: React.FC<QuickChatModalProps> = ({
       {/* Messages Area */}
       <div
         ref={scrollRef}
+        onScroll={handleScroll}
         data-subchat-messages=""
         className="flex-1 overflow-y-auto p-4 flex flex-col gap-6"
         onMouseUp={handleSubChatTextSelection}

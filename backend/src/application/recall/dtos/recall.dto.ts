@@ -4,6 +4,7 @@ export const CreateCardInputSchema = z.object({
   content: z.string().trim().nullable().optional(),
   chatId: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid chat ID format"),
   msgId: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid message ID format").optional(),
+  deckId: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid deck ID format").nullable().optional(),
 }).refine((data) => data.content || data.msgId, {
   message: "Either card content or message ID is required",
   path: ["content"],

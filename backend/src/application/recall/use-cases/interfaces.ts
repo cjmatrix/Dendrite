@@ -1,6 +1,6 @@
 export interface ICreateCardUseCase {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  execute(userId: string, content: string, chatId: string, overallContext?: string): Promise<any>;
+  execute(userId: string, content: string, chatId: string, overallContext?: string, deckId?: string | null): Promise<any>;
 }
 
 export interface IUpdateCardUseCase {
@@ -10,7 +10,7 @@ export interface IUpdateCardUseCase {
 
 export interface IGetDueCardsUseCase {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  execute(userId: string): Promise<any>;
+  execute(userId: string, deckId?: string | null): Promise<any>;
 }
 
 export interface IDeleteCardUseCase {

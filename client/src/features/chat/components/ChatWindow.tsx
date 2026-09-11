@@ -221,6 +221,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const lastQueryRef = useRef("");
   const lastHandledExternalActionRef = useRef<number | null>(null);
   const [atBottom, setAtBottom] = useState(true);
+  const atBottomRef = useRef(true);
   const [isTracerActive, setIsTracerActive] = useState(false);
 
   const openSplitView = useCallback(
@@ -236,8 +237,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   );
 
   const scrollToBottom = useCallback(
-    (behavior: "smooth" | "auto" = "smooth") => {
+    (behavior: "smooth" | "auto" = "smooth", onlyIfAtBottom = false) => {
       setTimeout(() => {
+        if (onlyIfAtBottom && !atBottomRef.current) return;
         virtuosoRef.current?.scrollToIndex({
           index: "LAST",
           align: "end",
@@ -252,13 +254,21 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     chatId: id,
     mode,
     model,
-    onStreamStart: () => scrollToBottom("smooth"),
-    onStreamEnd: () => scrollToBottom("auto"),
+    onStreamStart: () => {
+      atBottomRef.current = true;
+      scrollToBottom("smooth");
+    },
+    onStreamEnd: () => {
+      if (atBottomRef.current) {
+        scrollToBottom("auto", true);
+      }
+    },
   });
   const sendAgentMessage = useSendAgentMessageMutation();
 
   useEffect(() => {
     sendAgentMessage.reset();
+    atBottomRef.current = true;
   }, [id]);
 
   const {
@@ -351,6 +361,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     const msg = input.trim();
     lastQueryRef.current = msg;
     setInput("");
+    atBottomRef.current = true;
 
     if (chat?.type === "agent") {
       sendAgentMessage.mutate({ chatId: id || "", message: msg });
@@ -833,9 +844,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 messages.length > 0 ? messages.length - 1 + firstItemIndex : 0
               }
               computeItemKey={(index, item) => item._id || String(index)}
-              followOutput={isStreaming ? "smooth" : false}
+              followOutput={(isAtBottom) =>
+                isStreaming && isAtBottom ? "smooth" : false
+              }
               increaseViewportBy={{ top: 3000, bottom: 3000 }}
-              atBottomStateChange={(bottom) => setAtBottom(bottom)}
+              atBottomStateChange={(bottom) => {
+                atBottomRef.current = bottom;
+                setAtBottom(bottom);
+              }}
               context={{
                 isFetchingNextPage,
                 isStreaming,
@@ -868,13 +884,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           {/* Scroll to Bottom Button */}
           {!atBottom && messages.length > 0 && (
             <button
-              onClick={() =>
+              onClick={() => {
+                atBottomRef.current = true;
                 virtuosoRef.current?.scrollToIndex({
                   index: messages.length - 1 + firstItemIndex,
                   align: "end",
                   behavior: "smooth",
-                })
-              }
+                });
+              }}
               className="absolute bottom-24 right-8 z-30 p-2.5 rounded-full bg-zinc-800/90 border border-white/10 text-white shadow-2xl hover:bg-zinc-700 transition-all hover:scale-110 active:scale-95 group"
               title="Scroll to bottom"
             >
