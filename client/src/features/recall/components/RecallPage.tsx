@@ -15,6 +15,10 @@ import {
   PenLine,
   Pencil,
   Check,
+  Layers,
+  FolderOpen,
+  ArrowRightLeft,
+  Plus,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import "../../chat/styles/markdown.css";
@@ -43,6 +47,10 @@ import "prismjs/components/prism-go";
 import "prismjs/components/prism-rust";
 import "prismjs/components/prism-markdown";
 import "prismjs/themes/prism-tomorrow.css";
+import { getDecks, getDeckStats, moveCardToDeck } from "../api/deckApi";
+import type { Deck } from "../api/deckApi";
+import { CreateDeckModal } from "./CreateDeckModal";
+import toast from "react-hot-toast";
 
 interface Card {
   _id: string;
@@ -50,6 +58,7 @@ interface Card {
   question?: string;
   stage: "learning" | "review";
   chatId: string;
+  deckId?: string | null;
   stepIndex: number;
   repetitions: number;
   interval: number;
@@ -112,6 +121,113 @@ function formatInterval(iv: { value: number; unit: "m" | "d" }): string {
   return `${iv.value}d`;
 }
 
+
+interface MoveToDeckDropdownProps {
+  card: Card;
+  decks: Deck[];
+  onMove: (cardId: string, deckId: string | null) => void;
+  onCreateDeck?: () => void;
+}
+
+const MoveToDeckDropdown: React.FC<MoveToDeckDropdownProps> = ({
+  card,
+  decks,
+  onMove,
+  onCreateDeck,
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
+
+ 
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [isOpen]);
+
+  const options = [
+    { id: null, name: "All (No Deck)", color: "#71717a", dueCardCount: undefined },
+    ...decks.map((d) => ({ id: d._id, name: d.name, color: d.color, dueCardCount: d.dueCardCount })),
+  ];
+
+  const filteredOptions = options.filter((o) => {
+    if (card.deckId === null || card.deckId === undefined) {
+      return o.id !== null;
+    }
+    return o.id !== card.deckId;
+  });
+
+  return (
+    <div ref={dropdownRef} className="relative">
+      <button
+        onClick={() => setIsOpen((v) => !v)}
+        className={`flex items-center gap-1.5 text-[11px] sm:text-xs font-bold px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-full border transition-all ${
+          isOpen
+            ? "bg-blue-500/20 border-blue-500/40 text-blue-300"
+            : "bg-white/5 border-transparent text-zinc-400 hover:text-zinc-200 hover:bg-white/10"
+        }`}
+        title="Move to Deck"
+      >
+        <ArrowRightLeft size={14} />
+        <span className="hidden sm:inline">MOVE</span>
+      </button>
+
+      {isOpen && (
+        <div className="absolute right-0 top-full mt-2 w-56 rounded-xl border border-white/10 bg-neutral-900 shadow-2xl z-50 py-1 animate-in fade-in slide-in-from-top-2 duration-150">
+          {filteredOptions.length > 0 && (
+            <div className="max-h-48 overflow-y-auto">
+              {filteredOptions.map((opt) => (
+                <button
+                  key={opt.id ?? "all"}
+                  onClick={() => {
+                    onMove(card._id, opt.id);
+                    setIsOpen(false);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-white/5 transition-colors text-left"
+                >
+                  <div
+                    className="w-3 h-3 rounded-full shrink-0"
+                    style={{ backgroundColor: opt.color }}
+                  />
+                  <span className="text-xs text-zinc-300 truncate flex-1">
+                    {opt.name}
+                  </span>
+                  {opt.dueCardCount !== undefined && (
+                    <span className="text-[10px] text-zinc-500 font-mono shrink-0">
+                      {opt.dueCardCount}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+          {onCreateDeck && (
+            <div className={filteredOptions.length > 0 ? "border-t border-white/10 mt-1 pt-1" : ""}>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOpen(false);
+                  onCreateDeck();
+                }}
+                className="w-full flex items-center gap-2 px-3 py-2 text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 transition-colors text-left text-xs font-semibold"
+              >
+                <Plus size={13} />
+                <span>Create new deck</span>
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+
 interface RecallCardProps {
   card: Card;
   index: number;
@@ -119,6 +235,9 @@ interface RecallCardProps {
   onDelete: (cardId: string) => void;
   isReviewPending: boolean;
   onGoToChat: (chatId: string) => void;
+  decks: Deck[];
+  onMoveToDeck: (cardId: string, deckId: string | null) => void;
+  onCreateDeck?: () => void;
 }
 
 const RecallCard: React.FC<RecallCardProps> = ({
@@ -128,6 +247,9 @@ const RecallCard: React.FC<RecallCardProps> = ({
   onDelete,
   isReviewPending,
   onGoToChat,
+  decks,
+  onMoveToDeck,
+  onCreateDeck,
 }) => {
   const [isCardRevealed, setIsCardRevealed] = useState(!card.question);
   const [isHintOpen, setIsHintOpen] = useState(false);
@@ -175,6 +297,9 @@ const RecallCard: React.FC<RecallCardProps> = ({
     setIsCardRevealed(true);
   };
 
+  
+  const cardDeck = card.deckId ? decks.find((d) => d._id === card.deckId) : null;
+
   return (
     <div className="w-full relative rounded-2xl sm:rounded-[32px] border border-white/10 bg-neutral-900 shadow-2xl flex flex-col mb-8 animate-in slide-in-from-bottom-4 duration-500 overflow-hidden">
       {/* Card Header */}
@@ -190,6 +315,20 @@ const RecallCard: React.FC<RecallCardProps> = ({
           ) : (
             <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-bold text-emerald-500 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
               <Award size={12} /> SPACED REVIEW
+            </div>
+          )}
+         
+          {cardDeck && (
+            <div
+              className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-bold px-3 py-1.5 rounded-full border"
+              style={{
+                backgroundColor: `${cardDeck.color}15`,
+                borderColor: `${cardDeck.color}30`,
+                color: cardDeck.color,
+              }}
+            >
+              <Layers size={11} />
+              <span className="truncate max-w-[80px]">{cardDeck.name}</span>
             </div>
           )}
         </div>
@@ -241,6 +380,14 @@ const RecallCard: React.FC<RecallCardProps> = ({
               <ChevronDown size={14} />
             )}
           </button>
+
+          {/* Move to Deck */}
+          <MoveToDeckDropdown
+            card={card}
+            decks={decks}
+            onMove={onMoveToDeck}
+            onCreateDeck={onCreateDeck}
+          />
 
           <button
             onClick={() => onDelete(card._id)}
@@ -474,6 +621,7 @@ const RecallCard: React.FC<RecallCardProps> = ({
   );
 };
 
+/* ── RecallPage ── */
 interface RecallPageProps {
   onClose?: () => void;
 }
@@ -483,17 +631,40 @@ export default function RecallPage({ onClose }: RecallPageProps) {
   const navigate = useNavigate();
   const { token } = useParams<{ token?: string }>();
 
+  // "all" means no filter, null means undecked cards, string means specific deck
+  const [selectedDeckFilter, setSelectedDeckFilter] = useState<string | null | "all">("all");
+
+  // Build query key and params based on deck filter
+  const deckQueryParam = selectedDeckFilter === "all" ? undefined : selectedDeckFilter;
+
   const { data: cards = [], isLoading } = useQuery({
-    queryKey: ["dueCards"],
+    queryKey: ["dueCards", selectedDeckFilter],
     queryFn: async () => {
-      const res = await api.get("/recall");
+      const params: Record<string, string> = {};
+      if (deckQueryParam !== undefined) {
+        params.deckId = deckQueryParam === null ? "null" : deckQueryParam;
+      }
+      const res = await api.get("/recall", { params });
       return res.data.data;
     },
     staleTime: 1000 * 60 * 5,
   });
 
+  const { data: decks = [] } = useQuery({
+    queryKey: ["decks"],
+    queryFn: getDecks,
+    staleTime: 1000 * 60 * 2,
+  });
+
+  const { data: deckStats } = useQuery({
+    queryKey: ["deckStats"],
+    queryFn: getDeckStats,
+    staleTime: 1000 * 60 * 2,
+  });
+
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [isClearAllModalOpen, setIsClearAllModalOpen] = useState(false);
+  const [isCreateDeckOpen, setIsCreateDeckOpen] = useState(false);
 
   const handleGoToChat = (chatId: string) => {
     if (onClose) onClose();
@@ -540,6 +711,21 @@ export default function RecallPage({ onClose }: RecallPageProps) {
     },
   });
 
+  const moveCardMutation = useMutation({
+    mutationFn: async ({ cardId, deckId }: { cardId: string; deckId: string | null }) => {
+      await moveCardToDeck(cardId, deckId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["dueCards"] });
+      queryClient.invalidateQueries({ queryKey: ["decks"] });
+      queryClient.invalidateQueries({ queryKey: ["deckStats"] });
+      toast.success("Card moved successfully!");
+    },
+    onError: () => {
+      toast.error("Failed to move card");
+    },
+  });
+
   const handleReview = (cardId: string, rating: number) => {
     reviewMutation.mutate({ cardId, rating });
   };
@@ -552,6 +738,10 @@ export default function RecallPage({ onClose }: RecallPageProps) {
     setIsClearAllModalOpen(true);
   };
 
+  const handleMoveToDeck = (cardId: string, deckId: string | null) => {
+    moveCardMutation.mutate({ cardId, deckId });
+  };
+
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-screen w-full text-zinc-400 bg-neutral-900">
@@ -561,7 +751,7 @@ export default function RecallPage({ onClose }: RecallPageProps) {
     );
   }
 
-  if (cards.length === 0) {
+  if (cards.length === 0 && selectedDeckFilter === "all") {
     return (
       <div className="w-full min-h-screen bg-neutral-900 text-gray-200 relative">
         {onClose && (
@@ -577,10 +767,26 @@ export default function RecallPage({ onClose }: RecallPageProps) {
           <h2 className="text-xl sm:text-2xl font-semibold text-gray-200 mb-2">
             You're all caught up!
           </h2>
-          <p className="text-sm sm:text-base">
+          <p className="text-sm sm:text-base text-zinc-400">
             You have reviewed all due Active Recall cards for today.
           </p>
+
+          <div className="flex items-center gap-3 mt-6">
+            <button
+              onClick={() => setIsCreateDeckOpen(true)}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 text-purple-300 transition-all shadow-sm"
+            >
+              <Plus size={15} />
+              <span>Create New Deck</span>
+            </button>
+          </div>
         </div>
+
+        <CreateDeckModal
+          isOpen={isCreateDeckOpen}
+          onClose={() => setIsCreateDeckOpen(false)}
+          onDeckCreated={(newDeck) => setSelectedDeckFilter(newDeck._id)}
+        />
       </div>
     );
   }
@@ -598,7 +804,7 @@ export default function RecallPage({ onClose }: RecallPageProps) {
         )}
 
         {/* Header Section */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 sm:mb-12 shrink-0 pt-8 sm:pt-0">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 sm:mb-6 shrink-0 pt-8 sm:pt-0">
           <div className="flex items-center gap-3 sm:gap-4">
             <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-purple-500/20 text-purple-400">
               <Brain size={24} className="w-6 h-6 sm:w-8 sm:h-8" />
@@ -613,15 +819,148 @@ export default function RecallPage({ onClose }: RecallPageProps) {
             </div>
           </div>
 
+          <div className="flex items-center gap-2.5 self-start sm:self-center">
+            <button
+              onClick={() => setIsCreateDeckOpen(true)}
+              className="text-xs font-semibold text-purple-300 hover:text-white bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/25 px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5 shadow-sm"
+            >
+              <Plus size={14} />
+              <span>New Deck</span>
+            </button>
+
+            <button
+              onClick={handleClearAll}
+              disabled={clearAllMutation.isPending}
+              className="text-[10px] sm:text-[11px] font-bold text-rose-500/60 hover:text-rose-500 uppercase tracking-widest transition-colors flex items-center gap-2 group/clear disabled:opacity-50 bg-rose-500/5 hover:bg-rose-500/10 px-4 py-2 rounded-xl"
+            >
+              <div className="w-1.5 h-1.5 bg-rose-500/40 rounded-full group-hover/clear:bg-rose-500 transition-colors" />
+              {clearAllMutation.isPending ? "Clearing..." : "Clear Queue"}
+            </button>
+          </div>
+        </div>
+
+        {/* ── Deck Filter Tabs ── */}
+        <div className="flex items-center gap-2 mb-6 sm:mb-8 overflow-x-auto pb-1 scrollbar-hide">
+          {/* All tab */}
           <button
-            onClick={handleClearAll}
-            disabled={clearAllMutation.isPending}
-            className="self-start sm:self-center text-[10px] sm:text-[11px] font-bold text-rose-500/60 hover:text-rose-500 uppercase tracking-widest transition-colors flex items-center gap-2 group/clear disabled:opacity-50 bg-rose-500/5 hover:bg-rose-500/10 px-4 py-2 rounded-lg"
+            onClick={() => setSelectedDeckFilter("all")}
+            className={`shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold border transition-all ${
+              selectedDeckFilter === "all"
+                ? "bg-white/10 border-white/20 text-white"
+                : "bg-white/[0.03] border-white/5 text-zinc-500 hover:text-zinc-300 hover:bg-white/5"
+            }`}
           >
-            <div className="w-1.5 h-1.5 bg-rose-500/40 rounded-full group-hover/clear:bg-rose-500 transition-colors" />
-            {clearAllMutation.isPending ? "Clearing..." : "Clear Queue"}
+            <Layers size={13} />
+            <span>All</span>
+            {deckStats && (
+              <span
+                className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono font-medium ${
+                  selectedDeckFilter === "all"
+                    ? "bg-white/20 text-white"
+                    : "bg-white/5 text-zinc-400"
+                }`}
+              >
+                {deckStats.total.dueCardCount}
+              </span>
+            )}
+          </button>
+
+          {/* Undecked tab */}
+          <button
+            onClick={() => setSelectedDeckFilter(null)}
+            className={`shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold border transition-all ${
+              selectedDeckFilter === null
+                ? "bg-white/10 border-white/20 text-white"
+                : "bg-white/[0.03] border-white/5 text-zinc-500 hover:text-zinc-300 hover:bg-white/5"
+            }`}
+          >
+            <FolderOpen size={13} />
+            <span>No Deck</span>
+            {deckStats && (
+              <span
+                className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono font-medium ${
+                  selectedDeckFilter === null
+                    ? "bg-white/20 text-white"
+                    : "bg-white/5 text-zinc-400"
+                }`}
+              >
+                {deckStats.undecked.dueCardCount}
+              </span>
+            )}
+          </button>
+
+          {/* Deck tabs */}
+          {decks.map((deck) => (
+            <button
+              key={deck._id}
+              onClick={() => setSelectedDeckFilter(deck._id)}
+              className={`shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold border transition-all ${
+                selectedDeckFilter === deck._id
+                  ? "text-white"
+                  : "text-zinc-500 hover:text-zinc-300"
+              }`}
+              style={
+                selectedDeckFilter === deck._id
+                  ? {
+                      backgroundColor: `${deck.color}20`,
+                      borderColor: `${deck.color}40`,
+                      color: deck.color,
+                    }
+                  : {
+                      backgroundColor: "rgba(255,255,255,0.02)",
+                      borderColor: "rgba(255,255,255,0.05)",
+                    }
+              }
+            >
+              <div
+                className="w-2.5 h-2.5 rounded-full shrink-0"
+                style={{ backgroundColor: deck.color }}
+              />
+              <span className="truncate max-w-[100px]">{deck.name}</span>
+              <span
+                className="text-[10px] px-1.5 py-0.5 rounded-full font-mono font-medium"
+                style={{
+                  backgroundColor:
+                    selectedDeckFilter === deck._id
+                      ? `${deck.color}35`
+                      : "rgba(255,255,255,0.08)",
+                  color: selectedDeckFilter === deck._id ? deck.color : "#a1a1aa",
+                }}
+              >
+                {deck.dueCardCount ?? 0}
+              </span>
+            </button>
+          ))}
+
+          {/* Create Deck inline button in tabs */}
+          <button
+            onClick={() => setIsCreateDeckOpen(true)}
+            className="shrink-0 flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-semibold border border-dashed border-white/15 text-zinc-400 hover:text-purple-300 hover:border-purple-500/40 hover:bg-purple-500/10 transition-all"
+            title="Create New Deck"
+          >
+            <Plus size={13} />
+            <span>New Deck</span>
           </button>
         </div>
+
+        {/* Empty state for filtered view */}
+        {cards.length === 0 && selectedDeckFilter !== "all" && (
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <CheckCircle2 className="mb-4 text-emerald-500/50" size={40} />
+            <h2 className="text-lg font-semibold text-gray-300 mb-1">
+              No due cards in this deck
+            </h2>
+            <p className="text-sm text-zinc-500">
+              All cards in this deck have been reviewed.
+            </p>
+            <button
+              onClick={() => setSelectedDeckFilter("all")}
+              className="mt-4 px-4 py-2 rounded-lg text-xs font-bold text-purple-400 bg-purple-500/10 border border-purple-500/20 hover:bg-purple-500/20 transition-all"
+            >
+              View All Cards
+            </button>
+          </div>
+        )}
 
         <div className="flex flex-col gap-8 sm:gap-12 pb-24">
           {cards.map((card: Card, index: number) => (
@@ -633,6 +972,9 @@ export default function RecallPage({ onClose }: RecallPageProps) {
               onDelete={handleDelete}
               isReviewPending={reviewMutation.isPending}
               onGoToChat={handleGoToChat}
+              decks={decks}
+              onMoveToDeck={handleMoveToDeck}
+              onCreateDeck={() => setIsCreateDeckOpen(true)}
             />
           ))}
         </div>
@@ -664,6 +1006,12 @@ export default function RecallPage({ onClose }: RecallPageProps) {
           setIsClearAllModalOpen(false);
         }}
         onCancel={() => setIsClearAllModalOpen(false)}
+      />
+
+      <CreateDeckModal
+        isOpen={isCreateDeckOpen}
+        onClose={() => setIsCreateDeckOpen(false)}
+        onDeckCreated={(newDeck) => setSelectedDeckFilter(newDeck._id)}
       />
     </div>
   );

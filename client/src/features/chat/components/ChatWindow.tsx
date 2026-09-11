@@ -56,6 +56,7 @@ import { useChatDetails, useChatMessages } from "../hooks/useChatQueries";
 import { useSendMessage } from "../hooks/useSendMessage";
 import { useFileUpload } from "../hooks/useFileUpload";
 import { useRecallActions } from "../hooks/useRecallActions";
+import { DeckPickerModal } from "../../recall/components/DeckPickerModal";
 import { useInheritContext } from "../hooks/useInheritContext";
 import { useTextSelection } from "../hooks/useTextSelection";
 import { useDocumentHistory } from "../hooks/useDocumentHistory";
@@ -273,7 +274,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     clearFile,
   } = useFileUpload(id);
 
-  const { isRecalling, saveRecallCard } = useRecallActions(id);
+  const { isRecalling, isDeckPickerOpen, initiateRecall, confirmRecall, cancelRecall } = useRecallActions(id);
   const {
     isModalOpen: isInheritModalOpen,
     openModal: openInheritModal,
@@ -438,10 +439,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
   const handleCreateRecall = useCallback(
     (markdownContent: string | null, msgId: string) => {
-      saveRecallCard(markdownContent, msgId);
+      initiateRecall(markdownContent, msgId);
       clearSelection();
     },
-    [saveRecallCard, clearSelection],
+    [initiateRecall, clearSelection],
   );
 
   useEffect(() => {
@@ -1550,6 +1551,13 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           token={token}
         />
       )}
+
+      <DeckPickerModal
+        isOpen={isDeckPickerOpen}
+        onSelect={confirmRecall}
+        onCancel={cancelRecall}
+        isLoading={isRecalling}
+      />
     </div>
   );
 };
