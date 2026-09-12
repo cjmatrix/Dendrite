@@ -25,6 +25,7 @@ import type { Message } from "../types/Message";
 import { useAppSelector } from "../../../store/store";
 import { StreamingContext } from "../../../providers/StreamingContext";
 import toast from "react-hot-toast";
+import { DeckPickerModal } from "../../recall/components/DeckPickerModal";
 
 interface QuickChatModalProps {
   isOpen: boolean;
@@ -93,6 +94,9 @@ export const QuickChatModal: React.FC<QuickChatModalProps> = ({
     isPinned,
     setIsPinned,
     isRecalling,
+    isDeckPickerOpen,
+    confirmRecall,
+    cancelRecall,
     recallSelection,
     scrollRef,
     handleScroll,
@@ -550,6 +554,13 @@ export const QuickChatModal: React.FC<QuickChatModalProps> = ({
           </div>
         </Draggable>
       </div>
+
+      <DeckPickerModal
+        isOpen={isDeckPickerOpen}
+        onSelect={confirmRecall}
+        onCancel={cancelRecall}
+        isLoading={isRecalling}
+      />
     </>,
     document.body,
   );

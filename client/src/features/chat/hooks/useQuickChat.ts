@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getSubChat, stickToChat, streamQuickChat } from "../api/quickChatApi";
-import { saveRecallCard } from "../api/recallApi";
+import { useRecallActions } from "./useRecallActions";
 import type { Message } from "../types/Message";
 import { getMarkdownFromDOMSelection } from "../../../utils/markdownUtils";
 
@@ -33,7 +33,7 @@ export function useQuickChat({
   const [subMessages, setSubMessages] = useState<Message[]>([]);
   const [streamingText, setStreamingText] = useState("");
   const [isPinned, setIsPinned] = useState(false);
-  const [isRecalling, setIsRecalling] = useState(false);
+  const { isRecalling, isDeckPickerOpen, initiateRecall, confirmRecall, cancelRecall } = useRecallActions(chatId);
   const [recallSelection, setRecallSelection] = useState<{
     markdown: string;
     x: number;
@@ -279,27 +279,22 @@ export function useQuickChat({
 
   const handleCreateRecall = async (markdownContent: string | null, msgIndex?: number) => {
     try {
-      if (isRecalling) return;
-      setIsRecalling(true);
-
       let content = markdownContent;
       if (!content && msgIndex !== undefined && subMessages[msgIndex]) {
         content = subMessages[msgIndex].content;
       }
 
-      await saveRecallCard(content || null, chatId!, sourceMessageId);
+      initiateRecall(content || null, sourceMessageId);
       setRecallSelection(null);
-      toast.success("Recall card created successfully!");
+      
       try {
         window.getSelection()?.removeAllRanges();
       } catch (e) {
         console.error(e);
       }
     } catch (error) {
-      console.error("Failed to save recall card from subchat", error);
-      toast.error("Failed to create recall card");
-    } finally {
-      setIsRecalling(false);
+      console.error("Failed to initiate recall card from subchat", error);
+      toast.error("Failed to initiate recall card");
     }
   };
 
@@ -312,6 +307,9 @@ export function useQuickChat({
       isPinned,
       setIsPinned,
       isRecalling,
+      isDeckPickerOpen,
+      confirmRecall,
+      cancelRecall,
       recallSelection,
       scrollRef,
       handleScroll,
