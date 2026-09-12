@@ -165,15 +165,8 @@ export const QuickChatModal: React.FC<QuickChatModalProps> = ({
                   {msg.content}
                 </div>
               ) : (
-                <div className="flex-1 flex flex-col min-w-0 relative">
-                  <div className="flex items-center gap-2 mb-1.5 px-1">
-                    <span className="text-[12px] font-bold text-gray-400 tracking-wider uppercase">
-                      AI ASSISTANT
-                    </span>
-                  </div>
-                  <div className="markdown-body">
-                    <MessageContent content={msg.content} compact />
-                  </div>
+                <div className="flex-1 min-w-0 relative pl-3 border-l border-white/10">
+                  <MessageContent content={msg.content} compact />
                 </div>
               )}
 
@@ -196,14 +189,9 @@ export const QuickChatModal: React.FC<QuickChatModalProps> = ({
         {/* Streaming Bubble */}
         {(streamChatMutation.isPending || streamingText) && (
           <div className="flex w-full justify-start">
-            <div className="flex-1 flex flex-col min-w-0 relative">
-              <div className="flex items-center gap-2 mb-1.5 px-1">
-                <span className="text-[12px] font-bold text-gray-400 tracking-wider uppercase">
-                  AI ASSISTANT
-                </span>
-              </div>
+            <div className="flex-1 min-w-0 relative pl-3 border-l border-white/10">
               {streamingText ? (
-                <div className="markdown-body">
+                <div>
                   <StreamingContext.Provider value={true}>
                     <MessageContent content={streamingText} compact />
                   </StreamingContext.Provider>
