@@ -89,6 +89,15 @@ export class MongoRecallRepository implements IRecallRepository {
               $cond: [{ $lte: ["$nextReview", new Date()] }, 1, 0],
             },
           },
+          latestCardTime: {
+            $max: {
+              $cond: [
+                { $lte: ["$nextReview", new Date()] },
+                "$nextReview",
+                { $ifNull: ["$lastReviewed", "$createdAt"] },
+              ],
+            },
+          },
         },
       },
     ]);
@@ -100,15 +109,17 @@ export class MongoRecallRepository implements IRecallRepository {
     for (const s of stats) {
       const cardCount = s.cardCount || 0;
       const dueCardCount = s.dueCardCount || 0;
+      const latestCardTime = s.latestCardTime ? new Date(s.latestCardTime) : undefined;
 
       total.cardCount += cardCount;
       total.dueCardCount += dueCardCount;
 
       if (s._id) {
-        byDeck[s._id.toString()] = { cardCount, dueCardCount };
+        byDeck[s._id.toString()] = { cardCount, dueCardCount, latestCardTime };
       } else {
         undecked.cardCount = cardCount;
         undecked.dueCardCount = dueCardCount;
+        undecked.latestCardTime = latestCardTime;
       }
     }
 

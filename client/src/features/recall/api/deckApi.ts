@@ -7,6 +7,7 @@ export interface Deck {
   color: string;
   cardCount?: number;
   dueCardCount?: number;
+  latestActivityTime?: string;
   createdAt: string;
 }
 

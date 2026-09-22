@@ -5,6 +5,7 @@ export interface IDeck {
   color: string;
   cardCount?: number;
   dueCardCount?: number;
+  latestActivityTime?: Date | string;
   createdAt?: Date;
 }
 

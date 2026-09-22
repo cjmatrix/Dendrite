@@ -36,6 +36,7 @@ export interface IRecallRepository {
 export interface IDeckCardStats {
   cardCount: number;
   dueCardCount: number;
+  latestCardTime?: Date;
 }
 
 export interface IRecallDeckStats {
