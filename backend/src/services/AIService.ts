@@ -9,13 +9,11 @@ import {
   systemInstruction,
 } from "../config/AIConfig";
 
-
 const vertexAi = new GoogleGenAI({
   vertexai: true,
   project: "nurons-project-502805",
   location: "global",
 });
-
 
 import CONTEXT_WINDOW from "../constants/contextWindow";
 import { estimateTokenCount } from "../utils/tokenCounter";
@@ -161,46 +159,47 @@ User query: "${queryText}"`;
     }
   }
 
+  static async streamAIContent(
+    contents: IGeminiContent[],
+    model: string = "gemini-3.5-flash",
+    signal?: AbortSignal,
+    systemInstruction?: string,
+  ): Promise<AsyncIterable<IAIStreamChunk>> {
+    let attempts = 0;
 
+    while (attempts < 3) {
+      try {
+        const stream = await vertexAi.models.generateContentStream({
+          model,
+          contents,
+          config: {
+            maxOutputTokens: 16284,
+            ...(systemInstruction ? { systemInstruction } : {}),
+            ...(signal ? { abortSignal: signal } : {}),
+          },
+        });
 
-static async streamAIContent(
-  contents: IGeminiContent[],
-  model: string = "gemini-3.5-flash",
-  signal?: AbortSignal,
-  systemInstruction?: string,
-): Promise<AsyncIterable<IAIStreamChunk>> {
-  let attempts = 0;
+        return stream as unknown as AsyncIterable<IAIStreamChunk>;
+      } catch (error: any) {
+        console.log(error);
+        const msg = String(error?.message || "");
+        const status = error?.status;
 
-  while (attempts < 3) {
-    try {
-      const stream = await vertexAi.models.generateContentStream({
-        model,
-        contents,
-        config: {
-              maxOutputTokens: 16284,
-          ...(systemInstruction ? { systemInstruction } : {}),
-          ...(signal ? { abortSignal: signal } : {}),
-        },
-      });
+        if (
+          status === 429 ||
+          status === 503 ||
+          msg.includes("RESOURCE_EXHAUSTED")
+        ) {
+          attempts++;
+          continue;
+        }
 
-      return stream as unknown as AsyncIterable<IAIStreamChunk>;
-    } catch (error: any) {
-
-      console.log(error)
-      const msg = String(error?.message || "");
-      const status = error?.status;
-
-      if (status === 429 || status === 503 || msg.includes("RESOURCE_EXHAUSTED")) {
-        attempts++;
-        continue;
+        throw error;
       }
-
-      throw error;
     }
-  }
 
-  throw new Error("Vertex AI exhausted transient retries");
-}
+    throw new Error("Vertex AI exhausted transient retries");
+  }
 
   static async streamAIContentWithKeys(
     contents: IGeminiContent[],
@@ -352,7 +351,7 @@ static async streamAIContent(
     historicalContext: string,
     mode?: string,
   ): string {
-   let prompt = `You are Quick Chat — a focused clarification assistant embedded in a side panel.
+    let prompt = `You are Quick Chat — a focused clarification assistant embedded in a side panel.
 
 The user has highlighted a specific piece of text from an AI response and is asking a question about it.
 
@@ -690,7 +689,10 @@ If any answer is NO, improve the visualization before returning it.`;
     return prompt;
   }
 
-  static async generateRecallQuestion(content: string, overallContext?: string): Promise<string | null> {
+  static async generateRecallQuestion(
+    content: string,
+    overallContext?: string,
+  ): Promise<string | null> {
     const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
     let prompt = `You are a spaced-repetition question writer. Study the highlighted text below and guess what it is about and write ONE recall question that best tests it.IMPORTANT Try to find headings or sub headings in selected highlked text or from overall context try to make question from that.
@@ -709,27 +711,40 @@ If any answer is NO, improve the visualization before returning it.`;
     prompt += `Highlighted Text (The core subject):\n"""\n${content}\n"""`;
 
     const candidateModels = [
-      "groq/compound-mini",
-      "groq/compound",
+      "openai/gpt-oss-20b",
       "openai/gpt-oss-120b",
-    ];
+    ] as const;
 
     for (const model of candidateModels) {
       try {
         const completion = await groq.chat.completions.create({
           model,
-          messages: [{ role: "user", content: prompt }],
+          messages: [
+            {
+              role: "system",
+              content:
+                "Generate one concise, clear recall question. Return only the question.",
+            },
+            {
+              role: "user",
+              content: prompt,
+            },
+          ],
           temperature: 0.4,
-          max_tokens: 100,
+          max_completion_tokens: 100,
+          reasoning_effort: "low",
+          reasoning_format: "hidden",
         });
 
         const resultText = completion.choices[0]?.message?.content?.trim();
+
         if (resultText) {
           return resultText;
         }
-      } catch (err) {
+      } catch (error) {
+        const err = error as Error;
         console.warn(
-          `[AIService] generateRecallQuestion model '${model}' failed: ${(err as Error).message}`
+          `[AIService] generateRecallQuestion failed for ${model}: ${err.message}`,
         );
       }
     }
