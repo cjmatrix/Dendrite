@@ -11,7 +11,7 @@ import {
 
 const vertexAi = new GoogleGenAI({
   vertexai: true,
-  project: "nurons-project-502805",
+  project: process.env.GCP_PROJECT_ID as string,
   location: "global",
 });
 
