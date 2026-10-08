@@ -3,11 +3,6 @@
 This diagram maps out the full deployment architecture, including the Dockerized microservices, background workers, observability stack, and external cloud services.
 
 ```mermaid
-architecture-diagram
-```
-Wait, standard Mermaid for architecture is a graph or architecture diagram. Let's use `graph TD`.
-
-```mermaid
 graph TD
     %% Define Styles
     classDef frontend fill:#3b82f6,stroke:#1e3a8a,stroke-width:2px,color:#fff

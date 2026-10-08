@@ -30,37 +30,31 @@ This repository implements an advanced Retrieval-Augmented Generation (RAG) pipe
 
 This pipeline handles the secure and efficient upload, validation, parsing, and chunking of new documents.
 
-`plantuml
-@startuml
-skinparam backgroundcolor transparent
-skinparam shadowing false
-skinparam monochrome true
-skinparam packageStyle rectangle
-top to bottom direction
-
-start
-:User Uploads Document (e.g., PDF);
-:In-Stream Validation (Busboy & Magic Bytes);
-if (Validation Fails?) then (yes)
-  :Reject Document;
-  stop
-else (no)
-  :Store Document Temporarily;
-  :Compute Content Hash (for Caching);
-  :Check LlamaParse Cache (Redis);
-  if (Cache Hit?) then (yes)
-    :Retrieve Markdown from Cache;
-  else (no)
-    :Call LlamaParse API to Extract Markdown;
-    :Cache LlamaParse Result (Redis);
-  endif
-  :Apply Semantic Chunking Logic;
-  :Store Chunks in Document Collection (with Embeddings & Metadata);
-endif
-:Document Ready for Retrieval;
-stop
-@enduml
-
+```mermaid
+flowchart TD
+    Start((Start)) --> Upload["User Uploads Document (e.g., PDF)"]
+    Upload --> Validate["In-Stream Validation (Busboy & Magic Bytes)"]
+    Validate --> CheckValid{"Validation Fails?"}
+    
+    CheckValid -- yes --> Reject["Reject Document"]
+    Reject --> Stop1((Stop))
+    
+    CheckValid -- no --> Store["Store Document Temporarily"]
+    Store --> Hash["Compute Content Hash (for Caching)"]
+    Hash --> CheckCache["Check LlamaParse Cache (Redis)"]
+    CheckCache --> IsHit{"Cache Hit?"}
+    
+    IsHit -- yes --> Retrieve["Retrieve Markdown from Cache"]
+    IsHit -- no --> CallAPI["Call LlamaParse API to Extract Markdown"]
+    CallAPI --> CacheResult["Cache LlamaParse Result (Redis)"]
+    
+    Retrieve --> Chunking["Apply Semantic Chunking Logic"]
+    CacheResult --> Chunking
+    
+    Chunking --> StoreChunks["Store Chunks in Document Collection (with Embeddings & Metadata)"]
+    StoreChunks --> Ready["Document Ready for Retrieval"]
+    Ready --> Stop2((Stop))
+```
 **Detailed Steps:**
 
 1.  **Document Upload**: A user initiates the upload of a document (e.g., PDF).
@@ -84,39 +78,35 @@ stop
 
 This pipeline takes a user query, retrieves relevant information, and generates a personalized response using an LLM.
 
-`plantuml
-@startuml
-skinparam backgroundcolor transparent
-skinparam shadowing false
-skinparam monochrome true
-skinparam packageStyle rectangle
-left to right direction
-
-start
-:User Query;
-:Check if Internet Search Needed?;
-if (Internet Search Needed?) then (yes)
-  :Perform Internet Search;
-  :Integrate Search Results;
-endif
-:Embed Query;
-:Retrieve Memory from Long-Term Memory Collection (RAG);
-:Fetch User Preferences from User Profile;
-
-partition "Semantic Chunking Logic (Document Retrieval)" {
-  :Retrieve Data from Document Collection;
-  note right: Hybrid Search:
-  - Semantic Cosine Similarity
-  - BM25 Keyword Search
-  :Select Top 20 Chunks;
-  :Pass Top 20 Chunks into Reranker;
-  :Reranker Produces Optimized Context;
-}
-
-:Pass Optimized Context to LLM;
-:LLM Generates Response;
-stop
-@enduml
+```mermaid
+flowchart LR
+    Start((Start)) --> Query["User Query"]
+    Query --> CheckSearch["Check if Internet Search Needed?"]
+    CheckSearch --> IsSearch{"Internet Search Needed?"}
+    
+    IsSearch -- yes --> PerformSearch["Perform Internet Search"]
+    PerformSearch --> IntegrateSearch["Integrate Search Results"]
+    IntegrateSearch --> Embed["Embed Query"]
+    
+    IsSearch -- no --> Embed
+    
+    Embed --> RetrieveMem["Retrieve Memory from Long-Term Memory Collection (RAG)"]
+    RetrieveMem --> FetchPrefs["Fetch User Preferences from User Profile"]
+    
+    FetchPrefs --> SubStart
+    
+    subgraph ChunkingLogic ["Semantic Chunking Logic (Document Retrieval)"]
+        SubStart["Retrieve Data from Document Collection"]
+        Note[/"Hybrid Search:<br/>- Semantic Cosine Similarity<br/>- BM25 Keyword Search"/] -.-> SubStart
+        SubStart --> SelectChunks["Select Top 20 Chunks"]
+        SelectChunks --> PassReranker["Pass Top 20 Chunks into Reranker"]
+        PassReranker --> OptimizeContext["Reranker Produces Optimized Context"]
+    end
+    
+    OptimizeContext --> PassLLM["Pass Optimized Context to LLM"]
+    PassLLM --> LLMGen["LLM Generates Response"]
+    LLMGen --> Stop((Stop))
+```
 
 **Detailed Steps:**
 
@@ -134,8 +124,8 @@ stop
 7.  **LLM Generation**: The user query, retrieved long-term memory, user preferences, and the reranked, optimized document context are all fed into the `Large Language Model (LLM)`.
 8.  **Response Generation**: The LLM generates a comprehensive, contextually aware, and personalized response to the user's query.
 
-## Core Components
 
+## Core Components
 *   **`tsyringe`**: Dependency injection framework for managing service dependencies and promoting clean architecture.
 *   **`Redis`**: Utilized for high-speed caching of LlamaParse results and potentially other temporary data.
 *   **`BullMQ`**: (Implied, often used with Redis for background jobs) Likely used for asynchronous processing of document uploads and chunking.
