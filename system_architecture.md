@@ -2,7 +2,8 @@
 
 This diagram maps out the full deployment architecture, including the Dockerized microservices, background workers, observability stack, and external cloud services.
 
-<img width="5657" height="2941" alt="SSv8png" src="https://github.com/user-attachments/assets/bd3eb649-97eb-4604-b856-fc0df773da62" />
+<img width="5925" height="3171" alt="SSv9png" src="https://github.com/user-attachments/assets/4b9c3673-5521-4c61-809f-53d6c77c0d7d" />
+
 
 # Abstract System Architecture
 
