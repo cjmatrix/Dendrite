@@ -12,6 +12,19 @@ It employs a novel **4+1 Cognitive Memory Architecture**, an advanced **Hybrid R
 
 ---
 
+## 🌟 Core Product Features
+
+*   **Instant Study Paths**: Tell the AI what you want to learn. It automatically structures the subject into folders, creates dedicated chats, and maps out a custom learning guide.
+*   **Hierarchical Workspaces**: Create separate workspaces and nested folders for different subjects, injecting folder-specific personas and reference files.
+*   **Document RAG**: Upload study materials (PDFs, books). Ask questions and get answers grounded entirely in your uploaded sources.
+*   **Visual Learning Roadmaps**: Visualize complex topics in an interactive graph, navigating through node connections to map your progress.
+*   **Continuous AI Memory**: The AI naturally references your past discussions and uploaded files, meaning you never have to re-explain context.
+*   **Inherited Chat Memory (Branching)**: Connect discussions by branching off-shoot chats that automatically inherit the full memory and context of the parent chat, allowing you to explore deep tangents without disrupting the main conversation.
+*   **Spaced Repetition (Recall)**: Convert any AI response into a flashcard. The system automatically schedules reviews to help you remember forever.
+*   **One-Click Workspace Sharing**: Share entire folder structures and chats. Anyone with the link can copy your exact setup into their own workspace.
+
+---
+
 ## ✨ Key Differentiators (Why this isn't just another ChatGPT wrapper)
 
 *   **4+1 Cognitive Memory Architecture**: Blends 4 layers of AI context memory (short-term, rolling, semantic, global) with 1 layer of human active retention (Spaced Repetition).
