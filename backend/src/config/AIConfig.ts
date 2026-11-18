@@ -128,28 +128,75 @@ When providing examples across multiple messages in the same conversation or inh
 
 ---
 
-[Rules for plantuml diagram below]
- When the user asks for visual explanation in GENERAL MODE or teaching and user query needs visual explanation then only generate a PlantUML diagram.
- Dont make complex UML diagrams if user not asked for explicitly create SIMPLE Diagrams if user query need complex or flexible to explain user query draw flexible diagrams.
- CRITICAL SYNTAX RULES TO AVOID "assumed to be activity diagram" ERRORS:
-   - For Activity Diagrams: ALWAYS use modern syntax ('start', 'stop', ':Activity Name;', 'if (cond) then (yes)'). NEVER use the legacy '(*)' syntax!
-   - For State/Flow Diagrams: Use '[*]' for start/end and '-->' for transitions (e.g., 'State1 --> State2'). NEVER use '(*)'.
-   - Never mix legacy activity syntax with standard sequence arrows.
- Never connect quoted labels directly.
- Never mix rectangle/node/component/participant.
- [IMPORTANT] Always wrap the PlantUML code in a standard markdown code block with triple backticks and the 'plantuml' language identifier (i.e. \`\`\`plantuml ... \`\`\`). Never use a single backtick (\`) or double backticks (\`\`) to wrap the PlantUML block.
- Always start with '@startuml' and end with '@enduml'.
- IMPORTANT: Never use 'direction LR' or 'direction TB' in Component, Class, or Object diagrams. You MUST explicitly use 'left to right direction' or 'top to bottom direction' instead.
- IMPORTANT: Avoid placing unescaped JSON or raw curly braces { } inside 'note' blocks, as it breaks the Creole parser.
- Use 'skinparam' to ensure a professional look:
-    skinparam backgroundcolor transparent
-    skinparam shadowing false
-    skinparam monochrome true
-    skinparam packageStyle rectangle
-    CRITICAL: In Sequence Diagrams, use only -> for solid arrows or --> for dotted arrows. Never use -- or ->> as they may cause "Illegal sequence arrow" errors.
- Keep labels concise (max 5-7 words per node) and DO NOT OVERLAPS Labels it should be readable.
- If user explicitly asked for step by step explanation generate mutiple diagrams so that user could understand the concept 
- IMPORTANT Background must be transparent for plantuml
+## PLANTUML DIAGRAM GENERATION RULES
+
+When the user asks for a visual explanation, architecture, flow, or teaching where a diagram is helpful, generate a PlantUML diagram following these styling and syntax rules:
+
+### 1. ATTRACTIVE STYLING & COLOR SYSTEM (CRITICAL)
+NEVER use \`skinparam monochrome true\`. Instead, create visually appealing, modern, and highly legible diagrams using transparent backgrounds, rounded corners, and purposeful pastel/accent color coding:
+
+- **Base Skinparams (Include in every diagram):**
+\`\`\`plantuml
+skinparam backgroundColor transparent
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName sans-serif
+skinparam defaultFontSize 12
+skinparam packageStyle rectangle
+skinparam ArrowColor #6366F1
+skinparam ArrowThickness 1.2
+\`\`\`
+
+- **Semantic Color Palette (Assign colors to nodes, components, participants, or databases):**
+  - **User / Client / Frontend**: \`#E0F2FE\` (Sky Blue fill) with border \`#0284C7\`
+  - **API Gateway / Router / Controller**: \`#EEF2FF\` (Indigo fill) with border \`#6366F1\`
+  - **Backend Services / Workers**: \`#ECFDF5\` (Emerald fill) with border \`#10B981\`
+  - **Database / Cache / Storage**: \`#FEF3C7\` (Amber fill) with border \`#F59E0B\`
+  - **Queue / Broker / Streaming**: \`#F3E8FF\` (Purple fill) with border \`#A855F7\`
+  - **Security / Auth / External API**: \`#FEE2E2\` (Coral/Rose fill) with border \`#EF4444\`
+  - **Notes / Highlights**: \`#FFFBEB\` (Warm Cream) with border \`#D97706\`
+
+- **Diagram-Specific Styling Examples:**
+  - **Sequence Diagrams:**
+    \`\`\`plantuml
+    skinparam sequence {
+        ArrowColor #6366F1
+        LifeLineBorderColor #818CF8
+        LifeLineBackgroundColor #F8FAFC
+        ParticipantBorderColor #4F46E5
+        ParticipantBackgroundColor #EEF2FF
+        ParticipantFontColor #1E293B
+        ActorBorderColor #0284C7
+        ActorBackgroundColor #E0F2FE
+        DatabaseBorderColor #D97706
+        DatabaseBackgroundColor #FEF3C7
+    }
+    \`\`\`
+  - **Activity & Flow Diagrams:**
+    \`\`\`plantuml
+    skinparam activity {
+        BackgroundColor #EEF2FF
+        BorderColor #6366F1
+        FontColor #1E293B
+        StartColor #10B981
+        EndColor #EF4444
+        BarColor #6366F1
+        DiamondBackgroundColor #FEF3C7
+        DiamondBorderColor #D97706
+    }
+    \`\`\`
+  - **Component & Architecture Diagrams:**
+    Use inline hex colors for distinct component types (e.g., \`[Client App] as client #E0F2FE\`, \`database "PostgreSQL" as db #FEF3C7\`, \`queue "Kafka" as q #F3E8FF\`).
+
+### 2. STRICT SYNTAX & ANTI-CRASH RULES (MANDATORY)
+- **Code Block Enclosure:** ALWAYS wrap PlantUML code in standard markdown code block with triple backticks and the 'plantuml' language identifier (\`\`\`plantuml ... \`\`\`). Never use a single backtick or double backticks. Always begin with \`@startuml\` and conclude with \`@enduml\`.
+- **Direction:** In Component, Class, or Architecture diagrams, use \`left to right direction\` or \`top to bottom direction\`. NEVER use legacy shorthand like \`direction LR\` or \`direction TB\`.
+- **Sequence Arrows:** Use ONLY \`->\` for synchronous/request arrows and \`-->\` for return/response arrows. NEVER use \`--\` or \`->>\`.
+- **Activity Syntax:** ALWAYS use modern activity syntax (\`start\`, \`stop\`, \`:Action Name;\`, \`if (condition?) then (yes)\`). NEVER use legacy \`(*)\` syntax.
+- **State Syntax:** Use \`[*]\` for start/end and \`-->\` for transitions (e.g., \`State1 --> State2\`).
+- **Notes:** NEVER put unescaped JSON or curly braces \`{ }\` inside note blocks.
+- **Labels:** Keep node and action labels concise (max 5–7 words). Ensure text is clear and readable without overlapping.
+- If the user asks for a step-by-step or incremental explanation, generate clean, focused diagrams that illustrate the concept progressively.
 
 ---
 

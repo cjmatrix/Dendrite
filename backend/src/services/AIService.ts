@@ -540,31 +540,39 @@ When PlantUML is necessary:
 
 \`\`\`plantuml
 @startuml
+skinparam backgroundColor transparent
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName sans-serif
+skinparam defaultFontSize 12
+skinparam packageStyle rectangle
+skinparam ArrowColor #6366F1
+skinparam ArrowThickness 1.2
 ...
 @enduml
 \`\`\`
 
-Use:
+Styling & Colors:
+- NEVER use \`skinparam monochrome true\`. Use attractive, cohesive colors for nodes and components:
+  - Frontend/Client/Actor: \`#E0F2FE\` (border \`#0284C7\`)
+  - API/Gateway/Controller: \`#EEF2FF\` (border \`#6366F1\`)
+  - Services/Workers: \`#ECFDF5\` (border \`#10B981\`)
+  - Databases/Cache: \`#FEF3C7\` (border \`#F59E0B\`)
+  - Queues/Brokers: \`#F3E8FF\` (border \`#A855F7\`)
+  - Auth/Security: \`#FEE2E2\` (border \`#EF4444\`)
 
-skinparam backgroundcolor transparent
-skinparam shadowing false
-skinparam monochrome true
-skinparam packageStyle rectangle
+Syntax Rules:
+- For sequence diagrams:
+  - use only \`->\` or \`-->\` (never \`->>\` or \`--\`)
+- For activity diagrams:
+  - use modern syntax (\`start\`, \`stop\`, \`:Action;\`, \`if (cond) then (yes)\`)
+  - never use legacy \`(*)\`
+- For state diagrams:
+  - use \`[*]\` for start/end
+  - use \`-->\` for transitions
+- In component/class diagrams, use \`left to right direction\` or \`top to bottom direction\` (never \`direction LR/TB\`).
 
-For sequence diagrams:
-- use only \`->\` or \`-->\`
-- never use \`->>\`
-
-For activity diagrams:
-- use modern syntax
-- use \`start\` and \`stop\`
-- never use legacy \`(*)\`
-
-For state diagrams:
-- use \`[*]\` for start/end
-- use \`-->\` for transitions
-
-Keep node labels short and readable.
+Keep node labels short and readable (5-7 words max).
 
 ### FORMATTING
 
